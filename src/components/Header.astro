@@ -1,0 +1,137 @@
+---
+import SearchBar from "./SearchBar.astro";
+import Icon from "./icons/Icon.astro";
+import { strings } from "../lib/strings";
+---
+
+<header class="header">
+    <!-- Mobile: only search bar -->
+    <div class="header__mobile">
+        <SearchBar />
+    </div>
+
+    <!-- Desktop: logo + search + nav icons -->
+    <div class="header__desktop">
+        <a href="/" class="header__logo" aria-label={strings.logoText}>
+            {strings.logoText}
+        </a>
+        <div class="header__search">
+            <SearchBar />
+        </div>
+        <nav class="header__nav" aria-label="Navegación principal">
+            <a
+                href="/"
+                class="header__nav-link header__nav-link--active"
+                aria-label={strings.navHome}
+            >
+                <Icon name="home" size={22} />
+            </a>
+            <a
+                href="/wishlist"
+                class="header__nav-link"
+                aria-label={strings.navWishlist}
+            >
+                <Icon name="heart" size={22} />
+            </a>
+            <a
+                href="/profile"
+                class="header__nav-link"
+                aria-label={strings.navProfile}
+            >
+                <Icon name="user" size={22} />
+            </a>
+            <a
+                href="/cart"
+                class="header__nav-link"
+                aria-label={strings.navCart}
+            >
+                <Icon name="shopping-cart" size={22} />
+            </a>
+            <a
+                href="/sell"
+                class="header__nav-link"
+                aria-label={strings.navSell}
+            >
+                <Icon name="tag" size={22} />
+            </a>
+        </nav>
+    </div>
+</header>
+
+<style>
+    .header {
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        background-color: var(--color-bg);
+    }
+
+    /* Mobile */
+    .header__mobile {
+        display: flex;
+        padding: 12px 16px;
+        padding-top: calc(12px + env(safe-area-inset-top, 0px));
+    }
+
+    .header__desktop {
+        display: none;
+    }
+
+    /* Desktop */
+    @media (min-width: 768px) {
+        .header__mobile {
+            display: none;
+        }
+
+        .header__desktop {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            padding: 16px 40px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header__logo {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--color-text-primary);
+            text-decoration: none;
+            letter-spacing: -0.5px;
+            flex-shrink: 0;
+        }
+
+        .header__search {
+            flex: 1;
+            max-width: 480px;
+        }
+
+        .header__nav {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-left: auto;
+        }
+
+        .header__nav-link {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius-md);
+            color: var(--color-text-secondary);
+            text-decoration: none;
+            transition: color 0.15s ease, background-color 0.15s ease;
+        }
+
+        .header__nav-link:hover {
+            color: var(--color-text-primary);
+            background-color: var(--color-border-light);
+        }
+
+        .header__nav-link--active {
+            color: var(--color-text-primary);
+        }
+    }
+</style>

@@ -1,0 +1,84 @@
+---
+import Icon from "./icons/Icon.astro";
+import { strings } from "../lib/strings";
+---
+
+<nav class="bottom-nav" aria-label="Navegación móvil">
+    <a
+        href="/"
+        class="bottom-nav__link bottom-nav__link--active"
+        aria-label={strings.navHome}
+    >
+        <Icon name="home" size={22} />
+        <span class="bottom-nav__label">{strings.navHome}</span>
+    </a>
+    <a
+        href="/wishlist"
+        class="bottom-nav__link"
+        aria-label={strings.navWishlist}
+    >
+        <Icon name="heart" size={22} />
+        <span class="bottom-nav__label">{strings.navWishlist}</span>
+    </a>
+    <a href="/profile" class="bottom-nav__link" aria-label={strings.navProfile}>
+        <Icon name="user" size={22} />
+        <span class="bottom-nav__label">{strings.navProfile}</span>
+    </a>
+    <a href="/cart" class="bottom-nav__link" aria-label={strings.navCart}>
+        <Icon name="shopping-cart" size={22} />
+        <span class="bottom-nav__label">{strings.navCart}</span>
+    </a>
+    <a href="/sell" class="bottom-nav__link" aria-label={strings.navSell}>
+        <Icon name="tag" size={22} />
+        <span class="bottom-nav__label">{strings.navSell}</span>
+    </a>
+</nav>
+
+<style>
+    .bottom-nav {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 50;
+        display: flex;
+        justify-content: space-around;
+        align-items: center;
+        background-color: var(--color-surface);
+        border-top: 1px solid var(--color-border-light);
+        padding: 8px 0;
+        padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+    }
+
+    .bottom-nav__link {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+        padding: 4px 12px;
+        color: var(--color-text-tertiary);
+        text-decoration: none;
+        transition: color 0.15s ease;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .bottom-nav__link:active {
+        transform: scale(0.92);
+    }
+
+    .bottom-nav__link--active {
+        color: var(--color-text-primary);
+    }
+
+    .bottom-nav__label {
+        font-size: 10px;
+        font-weight: 500;
+        letter-spacing: 0.01em;
+    }
+
+    @media (min-width: 768px) {
+        .bottom-nav {
+            display: none;
+        }
+    }
+</style>

@@ -1,11 +1,32 @@
 ---
-import Welcome from '../components/Welcome.astro';
-import Layout from '../layouts/Layout.astro';
+import Layout from "../layouts/Layout.astro";
+import Header from "../components/Header.astro";
+import HeroBanner from "../components/HeroBanner.astro";
+import ProductGrid from "../components/ProductGrid.astro";
+import BottomNav from "../components/BottomNav.astro";
+import { supabase } from "../lib/supabase";
+import type { Product } from "../lib/types";
 
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
+const { data, error } = await supabase
+	.from("products")
+	.select("*, shop:shops(*)")
+	.eq("is_active", true)
+	.order("created_at", { ascending: false });
+
+const products: Product[] = data ?? [];
+
+// TODO: Replace with real auth check when auth is implemented
+const isLoggedIn = false;
+
+// PWA detection is done client-side via CSS media query; server defaults to false
+const isPwa = false;
 ---
 
 <Layout>
-	<Welcome />
+	<Header />
+	<main>
+		<HeroBanner isPwa={isPwa} isLoggedIn={isLoggedIn} />
+		<ProductGrid products={products} />
+	</main>
+	<BottomNav />
 </Layout>

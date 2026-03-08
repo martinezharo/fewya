@@ -1,0 +1,117 @@
+---
+import { strings } from "../lib/strings";
+
+interface Props {
+  isPwa?: boolean;
+  isLoggedIn?: boolean;
+}
+
+const { isPwa = false, isLoggedIn = false } = Astro.props;
+
+const showBanner = !isLoggedIn;
+const showPwaBanner = showBanner && isPwa;
+const showWebBanner = showBanner && !isPwa;
+---
+
+{
+  showPwaBanner && (
+    <section class="hero-pwa">
+      <p class="hero-pwa__text">{strings.pwaSignupMessage}</p>
+      <button class="hero-pwa__cta" disabled>
+        {strings.pwaSignupCta}
+      </button>
+    </section>
+  )
+}
+
+{
+  showWebBanner && (
+    <section class="hero-web">
+      <div class="hero-web__content">
+        <h1 class="hero-web__title">{strings.heroTitle}</h1>
+        <p class="hero-web__subtitle">{strings.heroSubtitle}</p>
+      </div>
+    </section>
+  )
+}
+
+<style>
+  /* PWA banner */
+  .hero-pwa {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 0 16px 8px;
+    padding: 14px 18px;
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--radius-lg);
+  }
+
+  .hero-pwa__text {
+    font-size: 13px;
+    color: var(--color-text-secondary);
+    line-height: 1.4;
+    margin: 0;
+  }
+
+  .hero-pwa__cta {
+    flex-shrink: 0;
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: var(--font-sans);
+    color: white;
+    background-color: var(--color-accent);
+    border: none;
+    border-radius: var(--radius-full);
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+  }
+
+  .hero-pwa__cta:hover {
+    background-color: var(--color-accent-hover);
+  }
+
+  /* Web SEO section */
+  .hero-web {
+    padding: 32px 16px 24px;
+  }
+
+  .hero-web__content {
+    max-width: 560px;
+  }
+
+  .hero-web__title {
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    line-height: 1.15;
+    margin: 0 0 10px;
+    color: var(--color-text-primary);
+  }
+
+  .hero-web__subtitle {
+    font-size: 15px;
+    line-height: 1.5;
+    color: var(--color-text-secondary);
+    margin: 0;
+  }
+
+  @media (min-width: 768px) {
+    .hero-web {
+      padding: 48px 40px 32px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .hero-web__title {
+      font-size: 36px;
+    }
+
+    .hero-web__subtitle {
+      font-size: 17px;
+    }
+  }
+</style>
