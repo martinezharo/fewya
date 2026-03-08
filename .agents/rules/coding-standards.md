@@ -7,3 +7,4 @@ trigger: always_on
 - Modulariza y componetiza siempre que sea posible, crea archivos separados para componente y funciones que sean propensos de ser reutilizado o simplemente son lo suficientemente complejos para estar en un archivo a parte.
 - Haz que el código sea escalable.
 - Explica en el chat siempre lo que has hecho y no te cortes en proponer mejoras o reportar malas prácticas o errores que encuentres.
+- No hardcodees texto, crea archivos con variables para facilitar futuros cambios o traducciónes.
