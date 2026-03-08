@@ -9,25 +9,6 @@ interface Props {
 const { products } = Astro.props;
 ---
 
-<section class="product-grid">
+<section class="grid grid-cols-2 gap-2.5 px-4 pb-[120px] md:grid-cols-5 md:gap-4 md:px-10 md:pb-[60px] md:max-w-[1400px] md:mx-auto">
     {products.map((product) => <ProductCard product={product} />)}
 </section>
-
-<style>
-    .product-grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 10px;
-        padding: 0 16px 120px;
-    }
-
-    @media (min-width: 768px) {
-        .product-grid {
-            grid-template-columns: repeat(5, 1fr);
-            gap: 16px;
-            padding: 0 40px 60px;
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-    }
-</style>

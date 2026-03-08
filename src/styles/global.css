@@ -22,17 +22,3 @@
   --radius-lg: 16px;
   --radius-full: 9999px;
 }
-
-@layer base {
-  html {
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-  }
-
-  body {
-    font-family: var(--font-sans);
-    background-color: var(--color-bg);
-    color: var(--color-text-primary);
-    min-height: 100dvh;
-  }
-}

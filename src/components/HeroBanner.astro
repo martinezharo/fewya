@@ -15,9 +15,9 @@ const showWebBanner = showBanner && !isPwa;
 
 {
   showPwaBanner && (
-    <section class="hero-pwa">
-      <p class="hero-pwa__text">{strings.pwaSignupMessage}</p>
-      <button class="hero-pwa__cta" disabled>
+    <section class="flex items-center justify-between gap-3 mx-4 mb-2 p-[14px_18px] bg-surface border border-border-light rounded-lg">
+      <p class="text-[13px] text-text-secondary leading-[1.4] m-0">{strings.pwaSignupMessage}</p>
+      <button class="shrink-0 px-4 py-2 text-[13px] font-semibold font-sans text-white bg-accent border-none rounded-full cursor-pointer transition-colors duration-150 hover:bg-accent-hover" disabled>
         {strings.pwaSignupCta}
       </button>
     </section>
@@ -26,92 +26,11 @@ const showWebBanner = showBanner && !isPwa;
 
 {
   showWebBanner && (
-    <section class="hero-web">
-      <div class="hero-web__content">
-        <h1 class="hero-web__title">{strings.heroTitle}</h1>
-        <p class="hero-web__subtitle">{strings.heroSubtitle}</p>
+    <section class="px-4 pt-8 pb-6 md:px-10 md:pt-12 md:pb-8 md:max-w-[1400px] md:mx-auto">
+      <div class="max-w-[560px]">
+        <h1 class="text-[26px] md:text-4xl font-bold tracking-[-0.5px] leading-[1.15] mb-2.5 text-text-primary">{strings.heroTitle}</h1>
+        <p class="text-[15px] md:text-[17px] leading-[1.5] text-text-secondary m-0">{strings.heroSubtitle}</p>
       </div>
     </section>
   )
 }
-
-<style>
-  /* PWA banner */
-  .hero-pwa {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    margin: 0 16px 8px;
-    padding: 14px 18px;
-    background-color: var(--color-surface);
-    border: 1px solid var(--color-border-light);
-    border-radius: var(--radius-lg);
-  }
-
-  .hero-pwa__text {
-    font-size: 13px;
-    color: var(--color-text-secondary);
-    line-height: 1.4;
-    margin: 0;
-  }
-
-  .hero-pwa__cta {
-    flex-shrink: 0;
-    padding: 8px 16px;
-    font-size: 13px;
-    font-weight: 600;
-    font-family: var(--font-sans);
-    color: white;
-    background-color: var(--color-accent);
-    border: none;
-    border-radius: var(--radius-full);
-    cursor: pointer;
-    transition: background-color 0.15s ease;
-  }
-
-  .hero-pwa__cta:hover {
-    background-color: var(--color-accent-hover);
-  }
-
-  /* Web SEO section */
-  .hero-web {
-    padding: 32px 16px 24px;
-  }
-
-  .hero-web__content {
-    max-width: 560px;
-  }
-
-  .hero-web__title {
-    font-size: 26px;
-    font-weight: 700;
-    letter-spacing: -0.5px;
-    line-height: 1.15;
-    margin: 0 0 10px;
-    color: var(--color-text-primary);
-  }
-
-  .hero-web__subtitle {
-    font-size: 15px;
-    line-height: 1.5;
-    color: var(--color-text-secondary);
-    margin: 0;
-  }
-
-  @media (min-width: 768px) {
-    .hero-web {
-      padding: 48px 40px 32px;
-      max-width: 1400px;
-      margin: 0 auto;
-    }
-
-    .hero-web__title {
-      font-size: 36px;
-    }
-
-    .hero-web__subtitle {
-      font-size: 17px;
-    }
-  }
-</style>

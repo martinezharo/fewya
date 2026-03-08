@@ -3,49 +3,13 @@ import Icon from "./icons/Icon.astro";
 import { strings } from "../lib/strings";
 ---
 
-<div class="search-bar">
-    <Icon name="search" size={18} class="search-bar__icon" />
+<div class="flex items-center gap-2 w-full px-[14px] py-[10px] bg-border-light rounded-full transition-colors duration-200 focus-within:bg-border">
+    <Icon name="search" size={18} class="shrink-0 text-text-tertiary" />
     <input
         type="text"
         placeholder={strings.searchPlaceholder}
-        class="search-bar__input"
+        class="flex-1 border-none bg-transparent text-[15px] font-sans text-text-primary outline-none placeholder:text-text-tertiary"
         aria-label={strings.searchPlaceholder}
         disabled
     />
 </div>
-
-<style>
-    .search-bar {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        width: 100%;
-        padding: 10px 14px;
-        background-color: var(--color-border-light);
-        border-radius: var(--radius-full);
-        transition: background-color 0.2s ease;
-    }
-
-    .search-bar:focus-within {
-        background-color: var(--color-border);
-    }
-
-    .search-bar__icon {
-        flex-shrink: 0;
-        color: var(--color-text-tertiary);
-    }
-
-    .search-bar__input {
-        flex: 1;
-        border: none;
-        background: transparent;
-        font-size: 15px;
-        font-family: var(--font-sans);
-        color: var(--color-text-primary);
-        outline: none;
-    }
-
-    .search-bar__input::placeholder {
-        color: var(--color-text-tertiary);
-    }
-</style>
