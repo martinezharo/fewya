@@ -17,7 +17,7 @@ const showWebBanner = showBanner && !isPwa;
   showPwaBanner && (
     <section class="flex items-center justify-between gap-3 mx-4 mb-2 p-[14px_18px] bg-surface border border-border-light rounded-lg">
       <p class="text-[13px] text-text-secondary leading-[1.4] m-0">{strings.pwaSignupMessage}</p>
-      <button class="shrink-0 px-4 py-2 text-[13px] font-semibold font-sans text-white bg-accent border-none rounded-full cursor-pointer transition-colors duration-150 hover:bg-accent-hover" disabled>
+      <button class="shrink-0 px-4 py-2 text-[13px] font-semibold font-sans text-bg bg-accent border-none rounded-full cursor-pointer transition-colors duration-150 hover:bg-accent-hover" disabled>
         {strings.pwaSignupCta}
       </button>
     </section>
