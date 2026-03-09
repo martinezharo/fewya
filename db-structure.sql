@@ -95,13 +95,37 @@ CREATE TABLE public.wishlist (
 
 -- Functions
 
-begin
-  insert into public.profiles (id, email, full_name, avatar_url)
-  values (
-    new.id, 
-    new.email, 
-    new.raw_user_meta_data->>'full_name', 
-    new.raw_user_meta_data->>'avatar_url'
-  );
-  return new;
-end;
+/*
+
+[
+  {
+    "function_name": "handle_new_product",
+    "type": "FUNCTION",
+    "return_type": "trigger",
+    "definition": "\r\nBEGIN\r\n  INSERT INTO public.product_variants (product_id, price, stock, attributes)\r\n  VALUES (NEW.id, 0, 0, '{\"default\": \"true\"}'::jsonb);\r\n  RETURN NEW;\r\nEND;\r\n"
+  },
+  {
+    "function_name": "handle_new_user",
+    "type": "FUNCTION",
+    "return_type": "trigger",
+    "definition": "\r\nbegin\r\n  insert into public.profiles (id, email, full_name, avatar_url)\r\n  values (\r\n    new.id, \r\n    new.email, \r\n    new.raw_user_meta_data->>'full_name', \r\n    new.raw_user_meta_data->>'avatar_url'\r\n  );\r\n  return new;\r\nend;\r\n"
+  }
+]
+
+*/
+
+-- Triggers
+
+/*
+
+[
+  {
+    "trigger_name": "on_product_created",
+    "table_name": "products",
+    "function_called": "handle_new_product",
+    "action_timing": "AFTER",
+    "event_type": "INSERT"
+  }
+]
+
+*/
