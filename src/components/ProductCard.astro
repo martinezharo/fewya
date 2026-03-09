@@ -14,10 +14,18 @@ const price = product.variants?.[0]?.price ?? 0;
 const formattedPrice = `${price.toFixed(2)}${strings.currency}`;
 const shopName = product.shop?.name ?? "";
 const shopSlug = product.shop?.slug ?? "";
+const shopAccentColor = product.shop?.accent_color;
 ---
 
 <article class="flex flex-col bg-surface rounded-md overflow-hidden transition-shadow duration-200 hover:shadow-[0_2px_16px_rgba(0,0,0,0.06)] group">
-    <a href={`/product/${product.id}`} class="block aspect-square overflow-hidden">
+    <a 
+        href={`/product/${product.id}`} 
+        class:list={[
+            "block aspect-square overflow-hidden",
+            { "border-b-4": !!shopAccentColor }
+        ]}
+        style={shopAccentColor ? { borderBottomColor: shopAccentColor } : {}}
+    >
         <img
             src={imageUrl}
             alt={product.title}

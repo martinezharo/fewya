@@ -10,6 +10,7 @@ export interface Shop {
     whatsapp: string | null;
     is_active: boolean;
     created_at: string;
+    accent_color: string | null;
 }
 
 export interface Product {
