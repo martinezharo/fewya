@@ -9,7 +9,7 @@ import type { Product } from "../lib/types";
 
 const { data, error } = await supabase
 	.from("products")
-	.select("*, shop:shops(*)")
+	.select("*, shop:shops(*), variants:product_variants(*)")
 	.eq("is_active", true)
 	.order("created_at", { ascending: false });
 

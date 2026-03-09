@@ -18,10 +18,22 @@ export interface Product {
     title: string;
     description: string | null;
     category: string | null;
-    price: number;
-    stock: number;
-    images: string[];
+    gallery_images: string[];
     is_active: boolean;
     created_at: string;
+    brand: string | null;
+    specifications: Record<string, any>;
     shop?: Shop;
+    variants?: ProductVariant[];
+}
+
+export interface ProductVariant {
+    id: string;
+    product_id: string;
+    sku: string | null;
+    price: number;
+    stock: number;
+    attributes: Record<string, any>;
+    variant_image: string | null;
+    created_at: string;
 }
