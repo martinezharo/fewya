@@ -42,7 +42,7 @@ CREATE TABLE public.products (
   created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
   brand text,
   specifications jsonb DEFAULT '{}'::jsonb,
-  slug text NOT NULL UNIQUE,
+  slug text NOT NULL,
   CONSTRAINT products_pkey PRIMARY KEY (id),
   CONSTRAINT products_shop_id_fkey FOREIGN KEY (shop_id) REFERENCES public.shops(id)
 );
