@@ -1,0 +1,64 @@
+---
+import Icon from '../icons/Icon.astro';
+import { strings } from '../../lib/strings';
+import type { Review } from '../../lib/types';
+
+interface Props {
+  reviews: Review[];
+}
+
+const { reviews } = Astro.props;
+const avgRating = reviews.length > 0
+  ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
+  : 0;
+---
+
+<section>
+  <div class="flex items-center gap-2 mb-4">
+    <h3 class="text-base font-semibold text-text-primary">{strings.productReviews}</h3>
+    {reviews.length > 0 && (
+      <div class="flex items-center gap-1">
+        <Icon name="star-filled" size={16} class="text-amber-400" />
+        <span class="text-sm font-medium text-text-secondary">
+          {avgRating.toFixed(1)} ({reviews.length})
+        </span>
+      </div>
+    )}
+  </div>
+
+  {reviews.length === 0 ? (
+    <p class="text-sm text-text-tertiary">{strings.productNoReviews}</p>
+  ) : (
+    <div class="space-y-4">
+      {reviews.map(review => (
+        <div class="flex gap-3">
+          <img
+            src={review.profile?.avatar_url ?? '/placeholder-avatar.svg'}
+            alt=""
+            class="w-8 h-8 rounded-full object-cover flex-none"
+            loading="lazy"
+          />
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 mb-0.5">
+              <span class="text-sm font-medium text-text-primary">
+                {review.profile?.full_name ?? strings.productAnonymous}
+              </span>
+              <div class="flex gap-0.5">
+                {[1, 2, 3, 4, 5].map(star => (
+                  <Icon
+                    name={star <= review.rating ? 'star-filled' : 'star'}
+                    size={12}
+                    class={star <= review.rating ? 'text-amber-400' : 'text-text-tertiary'}
+                  />
+                ))}
+              </div>
+            </div>
+            {review.comment && (
+              <p class="text-sm text-text-secondary leading-relaxed">{review.comment}</p>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  )}
+</section>

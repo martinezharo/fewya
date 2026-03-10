@@ -6,6 +6,7 @@ import AstroPWA from '@vite-pwa/astro';
 
 // https://astro.build/config
 export default defineConfig({
+  output: 'server',
   vite: {
     plugins: [
       tailwindcss(),

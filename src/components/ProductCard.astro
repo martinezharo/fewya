@@ -15,10 +15,11 @@ const formattedPrice = `${price.toFixed(2)}${strings.currency}`;
 const shopName = product.shop?.name ?? "";
 const shopSlug = product.shop?.slug ?? "";
 const shopAccentColor = product.shop?.accent_color;
+const productUrl = (shopSlug && product.slug) ? `/${shopSlug}/${product.slug}` : '#';
 ---
 
 <article class="flex flex-col bg-surface rounded-md overflow-hidden transition-shadow duration-200 hover:shadow-[0_2px_16px_rgba(0,0,0,0.06)] group">
-    <a href={`/product/${product.id}`} class="block aspect-square overflow-hidden">
+    <a href={productUrl} class="block aspect-square overflow-hidden">
         <img
             src={imageUrl}
             alt={product.title}
@@ -40,7 +41,7 @@ const shopAccentColor = product.shop?.accent_color;
             </button>
         </div>
 
-        <a href={`/product/${product.id}`} class="text-[13px] font-medium text-text-primary no-underline leading-[1.35] line-clamp-2 hover:underline">
+        <a href={productUrl} class="text-[13px] font-medium text-text-primary no-underline leading-[1.35] line-clamp-2 hover:underline">
             {product.title}
         </a>
 

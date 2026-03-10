@@ -28,4 +28,26 @@ export const strings = {
 
     // General
     currency: '€',
+
+    // Product Page
+    productShipping: '+2,99€ envío',
+    productVariantsTitle: 'Variante',
+    productInStock: 'en stock',
+    productOutOfStock: 'Sin stock',
+    productAddToCart: 'Añadir al carrito',
+    productCategory: 'Categoría',
+    productBrand: 'Marca',
+    productDescription: 'Descripción',
+    productReviews: 'Reseñas',
+    productNoReviews: 'Aún no hay reseñas',
+    productReport: 'Reportar producto',
+    productShare: 'Compartir',
+    productBack: 'Volver',
+    productContactEmail: 'Email',
+    productContactWhatsapp: 'WhatsApp',
+    productClose: 'Cerrar',
+    productAnonymous: 'Anónimo',
+    productImage: 'Imagen',
+    productQtyDecrease: 'Reducir cantidad',
+    productQtyIncrease: 'Aumentar cantidad',
 } as const;

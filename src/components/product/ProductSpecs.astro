@@ -1,0 +1,37 @@
+---
+import { strings } from '../../lib/strings';
+
+interface Props {
+  category: string | null;
+  brand: string | null;
+  specifications: Record<string, string>;
+}
+
+const { category, brand, specifications } = Astro.props;
+const hasSpecs = category || brand || Object.keys(specifications).length > 0;
+---
+
+{hasSpecs && (
+  <div class="rounded-lg border border-border-light overflow-hidden">
+    <dl class="divide-y divide-border-light">
+      {category && (
+        <div class="flex justify-between px-4 py-3">
+          <dt class="text-sm text-text-secondary">{strings.productCategory}</dt>
+          <dd class="text-sm font-medium text-text-primary">{category}</dd>
+        </div>
+      )}
+      {brand && (
+        <div class="flex justify-between px-4 py-3">
+          <dt class="text-sm text-text-secondary">{strings.productBrand}</dt>
+          <dd class="text-sm font-medium text-text-primary">{brand}</dd>
+        </div>
+      )}
+      {Object.entries(specifications).map(([key, value]) => (
+        <div class="flex justify-between px-4 py-3">
+          <dt class="text-sm text-text-secondary">{key}</dt>
+          <dd class="text-sm font-medium text-text-primary">{String(value)}</dd>
+        </div>
+      ))}
+    </dl>
+  </div>
+)}

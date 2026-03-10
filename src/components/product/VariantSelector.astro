@@ -1,0 +1,71 @@
+---
+import { strings } from '../../lib/strings';
+import type { ProductVariant } from '../../lib/types';
+
+interface Props {
+  variants: ProductVariant[];
+  defaultImage: string;
+}
+
+const { variants, defaultImage } = Astro.props;
+const displayVariants = variants.filter(v => !v.attributes?.default);
+const firstVariant = displayVariants[0];
+const firstStock = firstVariant?.stock ?? 0;
+---
+
+{displayVariants.length > 0 && (
+  <div>
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="text-sm font-semibold text-text-primary">{strings.productVariantsTitle}</h3>
+      <span class="text-sm text-text-secondary" data-variant-stock-display>
+        {firstStock > 0 ? `${firstStock} ${strings.productInStock}` : strings.productOutOfStock}
+      </span>
+    </div>
+    <div class="flex gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none] pb-1">
+      {displayVariants.map((v, i) => (
+        <button
+          type="button"
+          class={`flex flex-col items-center gap-1.5 p-2 rounded-lg border-2 transition-all min-w-[72px] ${i === 0 ? 'border-accent' : 'border-border-light'}`}
+          data-variant-btn
+          data-variant-price={v.price}
+          data-variant-stock={v.stock}
+        >
+          <img
+            src={v.variant_image ?? defaultImage}
+            alt={v.variant_name ?? ''}
+            class="w-12 h-12 rounded object-cover"
+            loading="lazy"
+          />
+          {v.variant_name && (
+            <span class="text-xs font-medium text-text-primary truncate max-w-[64px]">{v.variant_name}</span>
+          )}
+        </button>
+      ))}
+    </div>
+  </div>
+)}
+
+<script>
+  import { strings } from '../../lib/strings';
+
+  document.querySelectorAll<HTMLElement>('[data-variant-btn]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll<HTMLElement>('[data-variant-btn]').forEach(b => {
+        b.classList.remove('border-accent');
+        b.classList.add('border-border-light');
+      });
+      btn.classList.add('border-accent');
+      btn.classList.remove('border-border-light');
+
+      const price = parseFloat(btn.dataset.variantPrice ?? '0');
+      document.querySelectorAll('[data-product-price]').forEach(el => {
+        el.textContent = `${price.toFixed(2)}${strings.currency}`;
+      });
+
+      const stock = parseInt(btn.dataset.variantStock ?? '0');
+      document.querySelectorAll('[data-variant-stock-display]').forEach(el => {
+        el.textContent = stock > 0 ? `${stock} ${strings.productInStock}` : strings.productOutOfStock;
+      });
+    });
+  });
+</script>

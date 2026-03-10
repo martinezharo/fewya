@@ -1,0 +1,202 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import BottomNav from '../../components/BottomNav.astro';
+import Icon from '../../components/icons/Icon.astro';
+import ProductHeader from '../../components/product/ProductHeader.astro';
+import ProductGallery from '../../components/product/ProductGallery.astro';
+import ShopCard from '../../components/product/ShopCard.astro';
+import VariantSelector from '../../components/product/VariantSelector.astro';
+import ProductSpecs from '../../components/product/ProductSpecs.astro';
+import ProductReviews from '../../components/product/ProductReviews.astro';
+import ShopContact from '../../components/product/ShopContact.astro';
+import ReportButton from '../../components/product/ReportButton.astro';
+import { supabase } from '../../lib/supabase';
+import { strings } from '../../lib/strings';
+import type { Product, Review, Shop } from '../../lib/types';
+
+const { shopSlug, productSlug } = Astro.params;
+
+const { data: shop } = await supabase
+  .from('shops')
+  .select('*')
+  .eq('slug', shopSlug!)
+  .eq('is_active', true)
+  .single();
+
+if (!shop) return Astro.redirect('/');
+
+const { data: productData } = await supabase
+  .from('products')
+  .select('*, variants:product_variants(*)')
+  .eq('slug', productSlug!)
+  .eq('shop_id', shop.id)
+  .eq('is_active', true)
+  .single();
+
+if (!productData) return Astro.redirect('/');
+
+const product = { ...productData, shop: shop as Shop } as Product;
+
+const { data: reviewsData } = await supabase
+  .from('reviews')
+  .select('*, profile:profiles(full_name, avatar_url)')
+  .eq('product_id', product.id)
+  .order('created_at', { ascending: false });
+
+const reviews = (reviewsData ?? []) as Review[];
+const images = product.gallery_images?.length > 0 ? product.gallery_images : ['/placeholder.svg'];
+const hasRealVariants = product.variants?.some(v => !v.attributes?.default) ?? false;
+const activeVariant = hasRealVariants
+  ? product.variants?.find(v => !v.attributes?.default)
+  : product.variants?.[0];
+const price = activeVariant?.price ?? 0;
+---
+
+<Layout title={`${product.title} — ${shop.name}`}>
+  <!-- Mobile: product-specific header -->
+  <ProductHeader />
+
+  <!-- Desktop: common header -->
+  <div class="hidden md:block">
+    <Header />
+  </div>
+
+  <main>
+    <!-- Two-column grid on desktop, stacked on mobile -->
+    <div class="md:max-w-[1200px] md:mx-auto md:px-10 md:py-8 md:grid md:grid-cols-[1fr_420px] md:gap-12">
+      <!-- Gallery -->
+      <div class="md:sticky md:top-24 md:self-start">
+        <ProductGallery images={images} title={product.title} />
+      </div>
+
+      <!-- Product info -->
+      <div class="px-4 md:px-0 flex flex-col gap-5 mt-4 md:mt-0">
+        <!-- Price row (mobile: 1st, desktop: 2nd) -->
+        <div class="flex items-center justify-between order-1 md:order-2">
+          <div class="flex items-baseline gap-2">
+            <span class="text-xl md:text-2xl font-bold text-text-primary" data-product-price>
+              {price.toFixed(2)}{strings.currency}
+            </span>
+            <span class="text-xs md:text-sm text-text-secondary">{strings.productShipping}</span>
+          </div>
+          <button
+            type="button"
+            class="flex items-center justify-center w-10 h-10 rounded-full text-text-tertiary transition-colors hover:text-wishlist"
+            aria-label={strings.addToWishlist}
+          >
+            <Icon name="heart" size={22} />
+          </button>
+        </div>
+
+        <!-- Title (mobile: 2nd, desktop: 1st) -->
+        <h1 class="text-lg md:text-2xl font-semibold md:font-bold text-text-primary leading-tight order-2 md:order-1">
+          {product.title}
+        </h1>
+
+        <!-- Shop card -->
+        <div class="order-3">
+          <ShopCard shop={shop as Shop} />
+        </div>
+
+        <!-- Variants -->
+        {hasRealVariants && product.variants && (
+          <div class="order-4">
+            <VariantSelector variants={product.variants} defaultImage={images[0]} />
+          </div>
+        )}
+
+        <!-- Add to cart -->
+        <div class="flex gap-3 order-5">
+          <div class="flex items-center border border-border-light rounded-lg overflow-hidden" data-qty-selector>
+            <button
+              type="button"
+              class="w-10 h-11 flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors"
+              data-qty-minus
+              aria-label={strings.productQtyDecrease}
+            >
+              <Icon name="minus" size={18} />
+            </button>
+            <span class="w-10 text-center text-sm font-medium text-text-primary select-none" data-qty-value>1</span>
+            <button
+              type="button"
+              class="w-10 h-11 flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors"
+              data-qty-plus
+              aria-label={strings.productQtyIncrease}
+            >
+              <Icon name="plus" size={18} />
+            </button>
+          </div>
+          <button
+            type="button"
+            class="flex-1 bg-accent text-bg font-semibold text-sm py-3 rounded-lg transition-colors hover:bg-accent-hover active:scale-[0.98]"
+          >
+            {strings.productAddToCart}
+          </button>
+        </div>
+
+        <!-- Specs -->
+        <div class="order-6">
+          <ProductSpecs
+            category={product.category}
+            brand={product.brand}
+            specifications={product.specifications ?? {}}
+          />
+        </div>
+      </div>
+    </div>
+
+    <!-- Full-width sections below the grid -->
+    <div class="px-4 md:px-10 md:max-w-[1200px] md:mx-auto mt-8 md:mt-12 space-y-8 pb-24 md:pb-16">
+      <!-- Description -->
+      {product.description && (
+        <div>
+          <h3 class="text-base md:text-lg font-semibold text-text-primary mb-2 md:mb-3">
+            {strings.productDescription}
+          </h3>
+          <p class="text-sm md:text-[15px] text-text-secondary leading-relaxed whitespace-pre-line md:max-w-[720px]">
+            {product.description}
+          </p>
+        </div>
+      )}
+
+      <!-- Contact -->
+      <div class="md:max-w-[480px]">
+        <ShopContact email={shop.contact_email} whatsapp={shop.whatsapp} />
+      </div>
+
+      <!-- Reviews -->
+      <div class="md:max-w-[720px]">
+        <ProductReviews reviews={reviews} />
+      </div>
+
+      <!-- Report -->
+      <div class="md:max-w-[240px]">
+        <ReportButton />
+      </div>
+    </div>
+  </main>
+
+  <BottomNav />
+</Layout>
+
+<script>
+  document.querySelectorAll('[data-qty-selector]').forEach(selector => {
+    const minus = selector.querySelector('[data-qty-minus]');
+    const plus = selector.querySelector('[data-qty-plus]');
+    const value = selector.querySelector('[data-qty-value]');
+    let qty = 1;
+
+    minus?.addEventListener('click', () => {
+      if (qty > 1) {
+        qty--;
+        if (value) value.textContent = String(qty);
+      }
+    });
+
+    plus?.addEventListener('click', () => {
+      qty++;
+      if (value) value.textContent = String(qty);
+    });
+  });
+</script>

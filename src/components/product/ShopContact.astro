@@ -1,0 +1,37 @@
+---
+import Icon from '../icons/Icon.astro';
+import { strings } from '../../lib/strings';
+
+interface Props {
+  email: string | null;
+  whatsapp: string | null;
+}
+
+const { email, whatsapp } = Astro.props;
+const sanitizedWhatsapp = whatsapp?.replace(/[^0-9]/g, '');
+---
+
+{(email || whatsapp) && (
+  <div class="flex gap-3">
+    {email && (
+      <a
+        href={`mailto:${email}`}
+        class="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border border-border-light text-text-primary text-sm font-medium transition-colors hover:bg-surface"
+      >
+        <Icon name="mail" size={18} />
+        {strings.productContactEmail}
+      </a>
+    )}
+    {sanitizedWhatsapp && (
+      <a
+        href={`https://wa.me/${sanitizedWhatsapp}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        class="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border border-border-light text-text-primary text-sm font-medium transition-colors hover:bg-surface"
+      >
+        <Icon name="message-circle" size={18} />
+        {strings.productContactWhatsapp}
+      </a>
+    )}
+  </div>
+)}

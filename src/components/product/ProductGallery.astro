@@ -1,0 +1,170 @@
+---
+import Icon from '../icons/Icon.astro';
+import { strings } from '../../lib/strings';
+
+interface Props {
+  images: string[];
+  title: string;
+}
+
+const { images, title } = Astro.props;
+const hasMultiple = images.length > 1;
+---
+
+<!-- Mobile: horizontal scroll carousel -->
+<div class="md:hidden relative" data-gallery>
+  <div class="flex overflow-x-auto snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [scrollbar-width:none]" data-gallery-scroll>
+    {images.map((img, i) => (
+      <div class="w-full flex-none snap-center">
+        <img
+          src={img}
+          alt={`${title} — ${i + 1}`}
+          class="w-full aspect-square object-cover"
+          loading={i === 0 ? 'eager' : 'lazy'}
+          decoding="async"
+          data-gallery-img
+        />
+      </div>
+    ))}
+  </div>
+  {hasMultiple && (
+    <div class="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5" data-gallery-dots>
+      {images.map((_, i) => (
+        <button
+          type="button"
+          class="rounded-full transition-all duration-200"
+          style={i === 0 ? 'width:8px;height:8px;background:white' : 'width:6px;height:6px;background:rgba(255,255,255,0.5)'}
+          data-dot={i}
+          aria-label={`${strings.productImage} ${i + 1}`}
+        />
+      ))}
+    </div>
+  )}
+</div>
+
+<!-- Desktop: main image + thumbnails -->
+<div class="hidden md:block" data-gallery-desktop>
+  <div class="aspect-square rounded-lg overflow-hidden bg-surface cursor-zoom-in">
+    <img
+      src={images[0]}
+      alt={title}
+      class="w-full h-full object-cover"
+      data-desktop-main
+    />
+  </div>
+  {hasMultiple && (
+    <div class="flex gap-2 mt-3 overflow-x-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
+      {images.map((img, i) => (
+        <button
+          type="button"
+          class={`w-16 h-16 rounded-md overflow-hidden flex-none border-2 transition-all ${i === 0 ? 'border-accent' : 'border-transparent opacity-60 hover:opacity-100'}`}
+          data-thumb={i}
+        >
+          <img src={img} alt={`${title} — ${i + 1}`} class="w-full h-full object-cover" />
+        </button>
+      ))}
+    </div>
+  )}
+</div>
+
+<!-- Fullscreen overlay -->
+<div class="fixed inset-0 z-[100] bg-black/95 hidden items-center justify-center" data-fullscreen>
+  <button
+    type="button"
+    class="absolute top-4 right-4 text-white p-2 z-10"
+    data-fullscreen-close
+    aria-label={strings.productClose}
+  >
+    <Icon name="x" size={28} />
+  </button>
+  <img class="max-w-full max-h-full object-contain p-4" data-fullscreen-img alt="" />
+</div>
+
+<script>
+  const fs = document.querySelector<HTMLElement>('[data-fullscreen]');
+  const fsImg = document.querySelector<HTMLImageElement>('[data-fullscreen-img]');
+
+  function openFullscreen(src: string) {
+    if (fs && fsImg) {
+      fsImg.src = src;
+      fs.classList.remove('hidden');
+      fs.classList.add('flex');
+      document.body.style.overflow = 'hidden';
+    }
+  }
+
+  function closeFullscreen() {
+    if (fs) {
+      fs.classList.add('hidden');
+      fs.classList.remove('flex');
+      document.body.style.overflow = '';
+    }
+  }
+
+  // Mobile carousel
+  document.querySelectorAll<HTMLElement>('[data-gallery]').forEach(gallery => {
+    const scroll = gallery.querySelector<HTMLElement>('[data-gallery-scroll]');
+    const dots = gallery.querySelectorAll<HTMLElement>('[data-dot]');
+
+    if (scroll && dots.length) {
+      let ticking = false;
+      scroll.addEventListener('scroll', () => {
+        if (!ticking) {
+          requestAnimationFrame(() => {
+            const idx = Math.round(scroll.scrollLeft / scroll.clientWidth);
+            dots.forEach((dot, i) => {
+              const active = i === idx;
+              dot.style.width = active ? '8px' : '6px';
+              dot.style.height = active ? '8px' : '6px';
+              dot.style.background = active ? 'white' : 'rgba(255,255,255,0.5)';
+            });
+            ticking = false;
+          });
+          ticking = true;
+        }
+      });
+
+      dots.forEach(dot => {
+        dot.addEventListener('click', () => {
+          const idx = parseInt(dot.dataset.dot ?? '0');
+          scroll.scrollTo({ left: idx * scroll.clientWidth, behavior: 'smooth' });
+        });
+      });
+    }
+
+    gallery.querySelectorAll<HTMLImageElement>('[data-gallery-img]').forEach(img => {
+      img.addEventListener('click', () => openFullscreen(img.src));
+    });
+  });
+
+  // Desktop thumbnails
+  document.querySelectorAll<HTMLElement>('[data-gallery-desktop]').forEach(gallery => {
+    const main = gallery.querySelector<HTMLImageElement>('[data-desktop-main]');
+    const thumbs = gallery.querySelectorAll<HTMLElement>('[data-thumb]');
+
+    thumbs.forEach(thumb => {
+      thumb.addEventListener('click', () => {
+        const img = thumb.querySelector('img');
+        if (main && img) {
+          main.src = img.src;
+          main.alt = img.alt;
+          thumbs.forEach(t => {
+            t.classList.remove('border-accent');
+            t.classList.add('border-transparent', 'opacity-60');
+          });
+          thumb.classList.add('border-accent');
+          thumb.classList.remove('border-transparent', 'opacity-60');
+        }
+      });
+    });
+
+    main?.addEventListener('click', () => {
+      if (main) openFullscreen(main.src);
+    });
+  });
+
+  // Close fullscreen
+  document.querySelector('[data-fullscreen-close]')?.addEventListener('click', closeFullscreen);
+  fs?.addEventListener('click', e => { if (e.target === fs) closeFullscreen(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeFullscreen(); });
+</script>

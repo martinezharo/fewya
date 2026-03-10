@@ -1,0 +1,64 @@
+---
+import Icon from '../icons/Icon.astro';
+import { strings } from '../../lib/strings';
+---
+
+<header class="fixed top-0 left-0 right-0 z-50 md:hidden transition-[background-color,box-shadow] duration-200" data-product-header>
+  <div class="flex items-center justify-between px-3 pt-[calc(12px+env(safe-area-inset-top,0px))] pb-3">
+    <button
+      type="button"
+      class="flex items-center justify-center w-9 h-9 rounded-full bg-black/20 backdrop-blur-md text-white transition-colors duration-200"
+      aria-label={strings.productBack}
+      data-header-btn
+      data-back-btn
+    >
+      <Icon name="arrow-left" size={20} />
+    </button>
+    <button
+      type="button"
+      class="flex items-center justify-center w-9 h-9 rounded-full bg-black/20 backdrop-blur-md text-white transition-colors duration-200"
+      aria-label={strings.productShare}
+      data-header-btn
+      data-share-btn
+    >
+      <Icon name="share" size={20} />
+    </button>
+  </div>
+</header>
+
+<script>
+  const header = document.querySelector<HTMLElement>('[data-product-header]');
+  const gallery = document.querySelector('[data-gallery]');
+
+  if (header && gallery) {
+    const btns = header.querySelectorAll<HTMLElement>('[data-header-btn]');
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        const scrolled = !entry.isIntersecting;
+        header.style.backgroundColor = scrolled ? 'var(--color-bg-val)' : 'transparent';
+        header.style.boxShadow = scrolled ? '0 1px 2px rgba(0,0,0,0.05)' : 'none';
+
+        btns.forEach(btn => {
+          btn.style.backgroundColor = scrolled ? 'var(--color-border-light-val)' : 'rgba(0,0,0,0.2)';
+          btn.style.color = scrolled ? 'var(--color-text-primary-val)' : 'white';
+          btn.style.backdropFilter = scrolled ? 'none' : 'blur(12px)';
+        });
+      },
+      { threshold: 0, rootMargin: '-56px 0px 0px 0px' }
+    );
+    observer.observe(gallery);
+  }
+
+  document.querySelector('[data-back-btn]')?.addEventListener('click', () => history.back());
+
+  document.querySelector('[data-share-btn]')?.addEventListener('click', async () => {
+    try {
+      if (navigator.share) {
+        await navigator.share({ url: window.location.href, title: document.title });
+      } else {
+        await navigator.clipboard.writeText(window.location.href);
+      }
+    } catch { /* user cancelled */ }
+  });
+</script>

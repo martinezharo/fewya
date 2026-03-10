@@ -1,0 +1,33 @@
+---
+import type { Shop } from '../../lib/types';
+
+interface Props {
+  shop: Shop;
+}
+
+const { shop } = Astro.props;
+---
+
+<a href={`/${shop.slug}`} class="flex items-center gap-3 p-3 rounded-lg border border-border-light no-underline transition-colors hover:bg-border-light/30">
+  {shop.profile_img ? (
+    <img
+      src={shop.profile_img}
+      alt={shop.name}
+      class="w-10 h-10 rounded-full object-cover flex-none"
+      loading="lazy"
+    />
+  ) : (
+    <div
+      class="w-10 h-10 rounded-full flex items-center justify-center flex-none bg-border-light"
+      style={shop.accent_color ? { backgroundColor: `${shop.accent_color}20` } : undefined}
+    >
+      <span
+        class="text-sm font-bold text-text-secondary"
+        style={shop.accent_color ? { color: shop.accent_color } : undefined}
+      >
+        {shop.name.charAt(0).toUpperCase()}
+      </span>
+    </div>
+  )}
+  <span class="text-sm font-medium text-text-primary truncate">{shop.name}</span>
+</a>

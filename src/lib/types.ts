@@ -24,6 +24,7 @@ export interface Product {
     created_at: string;
     brand: string | null;
     specifications: Record<string, any>;
+    slug: string;
     shop?: Shop;
     variants?: ProductVariant[];
 }
@@ -31,10 +32,23 @@ export interface Product {
 export interface ProductVariant {
     id: string;
     product_id: string;
-    sku: string | null;
+    variant_name: string | null;
     price: number;
     stock: number;
     attributes: Record<string, any>;
     variant_image: string | null;
     created_at: string;
+}
+
+export interface Review {
+    id: string;
+    product_id: string;
+    profile_id: string;
+    rating: number;
+    comment: string | null;
+    created_at: string;
+    profile?: {
+        full_name: string | null;
+        avatar_url: string | null;
+    };
 }

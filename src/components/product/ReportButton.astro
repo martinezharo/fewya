@@ -1,0 +1,12 @@
+---
+import Icon from '../icons/Icon.astro';
+import { strings } from '../../lib/strings';
+---
+
+<button
+  type="button"
+  class="flex items-center justify-center gap-2 w-full py-3 text-sm text-text-tertiary transition-colors hover:text-text-secondary"
+>
+  <Icon name="flag" size={16} />
+  {strings.productReport}
+</button>

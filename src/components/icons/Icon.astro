@@ -8,7 +8,19 @@ interface Props {
         | "shopping-cart"
         | "store"
         | "search"
-        | "tag";
+        | "tag"
+        | "arrow-left"
+        | "share"
+        | "star"
+        | "star-filled"
+        | "mail"
+        | "message-circle"
+        | "flag"
+        | "minus"
+        | "plus"
+        | "chevron-left"
+        | "chevron-right"
+        | "x";
     size?: number;
     class?: string;
 }
@@ -90,6 +102,85 @@ const { name, size = 24, class: className = "" } = Astro.props;
             <Fragment>
                 <path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z" />
                 <circle cx="7.5" cy="7.5" r=".5" fill="currentColor" />
+            </Fragment>
+        )
+    }
+    {
+        name === "arrow-left" && (
+            <Fragment>
+                <path d="m12 19-7-7 7-7" />
+                <path d="M19 12H5" />
+            </Fragment>
+        )
+    }
+    {
+        name === "share" && (
+            <Fragment>
+                <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+                <polyline points="16 6 12 2 8 6" />
+                <line x1="12" x2="12" y1="2" y2="15" />
+            </Fragment>
+        )
+    }
+    {
+        name === "star" && (
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+        )
+    }
+    {
+        name === "star-filled" && (
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" fill="currentColor" stroke="none" />
+        )
+    }
+    {
+        name === "mail" && (
+            <Fragment>
+                <rect width="20" height="16" x="2" y="4" rx="2" />
+                <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+            </Fragment>
+        )
+    }
+    {
+        name === "message-circle" && (
+            <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" />
+        )
+    }
+    {
+        name === "flag" && (
+            <Fragment>
+                <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+                <line x1="4" x2="4" y1="22" y2="15" />
+            </Fragment>
+        )
+    }
+    {
+        name === "minus" && (
+            <path d="M5 12h14" />
+        )
+    }
+    {
+        name === "plus" && (
+            <Fragment>
+                <path d="M5 12h14" />
+                <path d="M12 5v14" />
+            </Fragment>
+        )
+    }
+    {
+        name === "chevron-left" && (
+            <path d="m15 18-6-6 6-6" />
+        )
+    }
+    {
+        name === "chevron-right" && (
+            <path d="m9 18 6-6-6-6" />
+        )
+    }
+    {
+        name === "x" && (
+            <Fragment>
+                <path d="M18 6 6 18" />
+                <path d="m6 6 12 12" />
             </Fragment>
         )
     }
