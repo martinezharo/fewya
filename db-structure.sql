@@ -1,3 +1,6 @@
+-- WARNING: This schema is for context only and is not meant to be run.
+-- Table order and constraints may not be valid for execution.
+
 CREATE TABLE public.order_items (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   order_id uuid NOT NULL,
@@ -22,7 +25,7 @@ CREATE TABLE public.orders (
 CREATE TABLE public.product_variants (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   product_id uuid NOT NULL,
-  sku text UNIQUE,
+  variant_name text,
   price numeric NOT NULL,
   stock integer DEFAULT 0,
   attributes jsonb DEFAULT '{}'::jsonb,
