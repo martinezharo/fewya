@@ -21,3 +21,4 @@ trigger: always_on
 
 ## Diseño
 El diseño del marketplace debe ser extremadamente profesional y ultramoderno. Tiene que tener una estética minimalista y moderna a la altura de Notion, OpenAI, Revolut o Apple.
+Haz siempre versiones para modo claro y modo oscuro.
