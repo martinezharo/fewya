@@ -18,14 +18,7 @@ const shopAccentColor = product.shop?.accent_color;
 ---
 
 <article class="flex flex-col bg-surface rounded-md overflow-hidden transition-shadow duration-200 hover:shadow-[0_2px_16px_rgba(0,0,0,0.06)] group">
-    <a 
-        href={`/product/${product.id}`} 
-        class:list={[
-            "block aspect-square overflow-hidden",
-            { "border-b-4": !!shopAccentColor }
-        ]}
-        style={shopAccentColor ? { borderBottomColor: shopAccentColor } : {}}
-    >
+    <a href={`/product/${product.id}`} class="block aspect-square overflow-hidden">
         <img
             src={imageUrl}
             alt={product.title}
@@ -53,8 +46,11 @@ const shopAccentColor = product.shop?.accent_color;
 
         {
             shopName && (
-                <a href={`/shop/${shopSlug}`} class="text-xs text-text-tertiary no-underline mt-0.5 hover:text-text-secondary hover:underline">
-                    {shopName}
+                <a href={`/shop/${shopSlug}`} class="flex items-center gap-1.5 text-xs text-text-tertiary no-underline mt-0.5 hover:text-text-secondary hover:underline">
+                    {shopAccentColor && (
+                        <span class="w-[8px] h-[8px] rounded-full inline-block shrink-0" style={{ backgroundColor: shopAccentColor }}></span>
+                    )}
+                    <span class="truncate">{shopName}</span>
                 </a>
             )
         }
