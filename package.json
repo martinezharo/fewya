@@ -9,6 +9,7 @@
     "astro": "astro"
   },
   "dependencies": {
+    "@astrojs/cloudflare": "^12.6.13",
     "@supabase/supabase-js": "^2.98.0",
     "astro": "^5.17.1",
     "workbox-window": "^7.4.0"
