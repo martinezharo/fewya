@@ -96,7 +96,7 @@ CREATE TABLE public.wishlist (
 
 -- Views
 
-CREATE VIEW public.profiles_public AS
+CREATE VIEW public.public_profiles AS
 SELECT 
     id, 
     full_name, 

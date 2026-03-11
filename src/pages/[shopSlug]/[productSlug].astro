@@ -40,7 +40,7 @@ const product = { ...productData, shop: shop as Shop } as Product;
 
 const { data: reviewsData } = await supabase
   .from('reviews')
-  .select('*, profile:profiles(full_name, avatar_url)')
+  .select('*, profile:public_profiles(full_name, avatar_url)')
   .eq('product_id', product.id)
   .order('created_at', { ascending: false });
 
