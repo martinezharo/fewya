@@ -94,6 +94,15 @@ CREATE TABLE public.wishlist (
   CONSTRAINT wishlist_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.products(id)
 );
 
+-- Views
+
+CREATE VIEW public.profiles_public AS
+SELECT 
+    id, 
+    full_name, 
+    avatar_url 
+FROM public.profiles;
+
 -- Functions
 
 /*
