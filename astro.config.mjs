@@ -1,5 +1,5 @@
 // @ts-check
-import { defineConfig } from 'astro/config';
+import { defineConfig, envField } from 'astro/config';
 
 import tailwindcss from '@tailwindcss/vite';
 import AstroPWA from '@vite-pwa/astro';
@@ -9,6 +9,12 @@ import cloudflare from '@astrojs/cloudflare';
 export default defineConfig({
   output: 'server',
   adapter: cloudflare(),
+  env: {
+    schema: {
+      SUPABASE_URL: envField.string({ context: 'server', access: 'secret' }),
+      SUPABASE_KEY: envField.string({ context: 'server', access: 'secret' }),
+    }
+  },
   vite: {
     plugins: [
       tailwindcss(),
