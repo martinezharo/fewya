@@ -8,64 +8,128 @@ interface Props {
 }
 
 const { variants, defaultImage } = Astro.props;
-const displayVariants = variants.filter(v => !v.attributes?.default);
-const firstVariant = displayVariants[0];
-const firstStock = firstVariant?.stock ?? 0;
 ---
 
-{displayVariants.length > 0 && (
+{variants.length > 0 && (
   <div>
-    <div class="flex items-center justify-between mb-3">
-      <h3 class="text-sm font-semibold text-text-primary">{strings.productVariantsTitle}</h3>
-      <span class="text-sm text-text-secondary" data-variant-stock-display>
-        {firstStock > 0 ? `${firstStock} ${strings.productInStock}` : strings.productOutOfStock}
-      </span>
-    </div>
-    <div class="flex gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none] pb-1">
-      {displayVariants.map((v, i) => (
-        <button
-          type="button"
-          class={`flex flex-col items-center gap-1.5 p-2 rounded-lg border-2 transition-all min-w-[72px] ${i === 0 ? 'border-accent' : 'border-border-light'}`}
-          data-variant-btn
-          data-variant-price={v.price}
-          data-variant-stock={v.stock}
-        >
-          <img
-            src={v.variant_image ?? defaultImage}
-            alt={v.variant_name ?? ''}
-            class="w-12 h-12 rounded object-cover"
-            loading="lazy"
-          />
-          {v.variant_name && (
-            <span class="text-xs font-medium text-text-primary truncate max-w-[64px]">{v.variant_name}</span>
-          )}
-        </button>
-      ))}
+    <div class="flex gap-4 overflow-x-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none] pb-1">
+      {variants.map((v, i) => {
+        const displayName = v.variant_name || (v.is_default ? 'Estándar' : `Variante ${i + 1}`);
+        return (
+          <button
+            type="button"
+            class="flex flex-col items-center gap-1.5 shrink-0"
+            data-variant-btn
+            data-variant-price={v.price}
+            data-variant-stock={v.stock}
+            data-variant-image={v.variant_image || defaultImage}
+          >
+            <div class={`w-14 h-14 rounded-full overflow-hidden border-[2.5px] transition-all ${i === 0 ? 'border-accent' : 'border-border-light'}`} data-variant-ring>
+              <img
+                src={v.variant_image ?? defaultImage}
+                alt={displayName}
+                class="w-full h-full object-cover"
+                loading="lazy"
+              />
+            </div>
+            <div class="w-16 overflow-hidden">
+              <span
+                class={`block text-[11px] font-medium whitespace-nowrap text-center transition-colors ${i === 0 ? 'text-accent' : 'text-text-secondary'}`}
+                data-variant-name
+              >
+                {displayName}
+              </span>
+            </div>
+          </button>
+        );
+      })}
     </div>
   </div>
 )}
 
+<style>
+  [data-variant-name].scrolling {
+    animation: scroll-text var(--scroll-duration, 5s) ease-in-out infinite;
+    width: max-content;
+    text-align: left;
+  }
+
+  @keyframes scroll-text {
+    0%, 15% { transform: translateX(0); }
+    42.5%, 57.5% { transform: translateX(var(--scroll-distance, 0px)); }
+    85%, 100% { transform: translateX(0); }
+  }
+</style>
+
 <script>
   import { strings } from '../../lib/strings';
 
+  // Detect overflow and add scroll animation
+  document.querySelectorAll<HTMLElement>('[data-variant-name]').forEach(name => {
+    const container = name.parentElement;
+    if (!container) return;
+
+    if (name.scrollWidth > container.clientWidth) {
+      const distance = -(name.scrollWidth - container.clientWidth);
+      name.style.setProperty('--scroll-distance', `${distance}px`);
+      name.classList.add('scrolling');
+    }
+  });
+
   document.querySelectorAll<HTMLElement>('[data-variant-btn]').forEach(btn => {
     btn.addEventListener('click', () => {
+      // Update active state for all buttons
       document.querySelectorAll<HTMLElement>('[data-variant-btn]').forEach(b => {
-        b.classList.remove('border-accent');
-        b.classList.add('border-border-light');
+        const ring = b.querySelector<HTMLElement>('[data-variant-ring]');
+        const nameEl = b.querySelector<HTMLElement>('[data-variant-name]');
+        if (ring) {
+          ring.classList.remove('border-accent');
+          ring.classList.add('border-border-light');
+        }
+        if (nameEl) {
+          nameEl.classList.remove('text-accent');
+          nameEl.classList.add('text-text-secondary');
+        }
       });
-      btn.classList.add('border-accent');
-      btn.classList.remove('border-border-light');
 
+      const ring = btn.querySelector<HTMLElement>('[data-variant-ring]');
+      const nameEl = btn.querySelector<HTMLElement>('[data-variant-name]');
+      if (ring) {
+        ring.classList.add('border-accent');
+        ring.classList.remove('border-border-light');
+      }
+      if (nameEl) {
+        nameEl.classList.add('text-accent');
+        nameEl.classList.remove('text-text-secondary');
+      }
+
+      // Update price
       const price = parseFloat(btn.dataset.variantPrice ?? '0');
       document.querySelectorAll('[data-product-price]').forEach(el => {
         el.textContent = `${price.toFixed(2)}${strings.currency}`;
       });
 
+      // Update stock
       const stock = parseInt(btn.dataset.variantStock ?? '0');
-      document.querySelectorAll('[data-variant-stock-display]').forEach(el => {
-        el.textContent = stock > 0 ? `${stock} ${strings.productInStock}` : strings.productOutOfStock;
+      document.querySelectorAll('[data-variant-stock-global]').forEach(el => {
+        const inStock = stock > 0;
+        el.textContent = inStock ? strings.productInStock : strings.productOutOfStock;
+        if (inStock) {
+          el.classList.add('text-green-600', 'dark:text-green-400');
+          el.classList.remove('text-red-500', 'dark:text-red-400');
+        } else {
+          el.classList.add('text-red-500', 'dark:text-red-400');
+          el.classList.remove('text-green-600', 'dark:text-green-400');
+        }
       });
+
+      // Dispatch variant image change event for gallery
+      const variantImage = btn.dataset.variantImage;
+      if (variantImage) {
+        document.dispatchEvent(new CustomEvent('variant:change', {
+          detail: { image: variantImage }
+        }));
+      }
     });
   });
 </script>

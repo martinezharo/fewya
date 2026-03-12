@@ -167,4 +167,24 @@ const hasMultiple = images.length > 1;
   document.querySelector('[data-fullscreen-close]')?.addEventListener('click', closeFullscreen);
   fs?.addEventListener('click', e => { if (e.target === fs) closeFullscreen(); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeFullscreen(); });
+
+  // Listen for variant image changes
+  document.addEventListener('variant:change', ((e: CustomEvent<{ image: string }>) => {
+    const { image } = e.detail;
+    if (!image) return;
+
+    // Mobile: update first image and scroll to it
+    const mobileScroll = document.querySelector<HTMLElement>('[data-gallery-scroll]');
+    const firstMobileImg = mobileScroll?.querySelector<HTMLImageElement>('[data-gallery-img]');
+    if (firstMobileImg) {
+      firstMobileImg.src = image;
+      mobileScroll?.scrollTo({ left: 0, behavior: 'smooth' });
+    }
+
+    // Desktop: update main image
+    const desktopMain = document.querySelector<HTMLImageElement>('[data-desktop-main]');
+    if (desktopMain) {
+      desktopMain.src = image;
+    }
+  }) as EventListener);
 </script>

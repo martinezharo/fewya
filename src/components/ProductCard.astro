@@ -10,7 +10,8 @@ interface Props {
 const { product } = Astro.props;
 
 const imageUrl = product.gallery_images?.[0] ?? "/placeholder.svg";
-const price = product.variants?.[0]?.price ?? 0;
+const defaultVariant = product.variants?.find(v => v.is_default);
+const price = defaultVariant?.price ?? product.variants?.[0]?.price ?? 0;
 const formattedPrice = `${price.toFixed(2)}${strings.currency}`;
 const shopName = product.shop?.name ?? "";
 const shopSlug = product.shop?.slug ?? "";

@@ -32,8 +32,8 @@ export const strings = {
     // Product Page
     productShipping: '+2,99€ envío',
     productVariantsTitle: 'Variante',
-    productInStock: 'en stock',
-    productOutOfStock: 'Sin stock',
+    productInStock: 'En Stock',
+    productOutOfStock: 'Agotado',
     productAddToCart: 'Añadir al carrito',
     productCategory: 'Categoría',
     productBrand: 'Marca',

@@ -38,6 +38,7 @@ export interface ProductVariant {
     attributes: Record<string, any>;
     variant_image: string | null;
     created_at: string;
+    is_default: boolean;
 }
 
 export interface Review {

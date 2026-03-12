@@ -46,11 +46,14 @@ const { data: reviewsData } = await supabase
 
 const reviews = (reviewsData ?? []) as Review[];
 const images = product.gallery_images?.length > 0 ? product.gallery_images : ['/placeholder.svg'];
-const hasRealVariants = product.variants?.some(v => !v.attributes?.default) ?? false;
-const activeVariant = hasRealVariants
-  ? product.variants?.find(v => !v.attributes?.default)
-  : product.variants?.[0];
+
+// Sort variants: default first
+const sortedVariants = [...(product.variants ?? [])].sort((a, b) =>
+  (b.is_default ? 1 : 0) - (a.is_default ? 1 : 0)
+);
+const activeVariant = sortedVariants[0];
 const price = activeVariant?.price ?? 0;
+const hasVariants = sortedVariants.length > 1;
 ---
 
 <Layout title={`${product.title} — ${shop.name}`}>
@@ -99,12 +102,21 @@ const price = activeVariant?.price ?? 0;
           <ShopCard shop={shop as Shop} />
         </div>
 
-        <!-- Variants -->
-        {hasRealVariants && product.variants && (
-          <div class="order-4">
-            <VariantSelector variants={product.variants} defaultImage={images[0]} />
+        <!-- Stock and Variants -->
+        <div class="order-4 flex flex-col gap-3">
+          <div class="flex items-center justify-between">
+            {hasVariants && (
+              <h3 class="text-sm font-semibold text-text-primary">{strings.productVariantsTitle}</h3>
+            )}
+            <span class={`text-[13px] font-medium ${(activeVariant?.stock ?? 0) > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'} ${!hasVariants ? 'ml-auto' : ''}`} data-variant-stock-global>
+              {(activeVariant?.stock ?? 0) > 0 ? strings.productInStock : strings.productOutOfStock}
+            </span>
           </div>
-        )}
+
+          {hasVariants && (
+            <VariantSelector variants={sortedVariants} defaultImage={images[0]} />
+          )}
+        </div>
 
         <!-- Add to cart -->
         <div class="flex gap-3 order-5">
