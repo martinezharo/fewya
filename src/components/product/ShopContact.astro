@@ -12,26 +12,94 @@ const sanitizedWhatsapp = whatsapp?.replace(/[^0-9]/g, '');
 ---
 
 {(email || whatsapp) && (
-  <div class="flex gap-3">
-    {email && (
-      <a
-        href={`mailto:${email}`}
-        class="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border border-border-light text-text-primary text-sm font-medium transition-colors hover:bg-surface"
-      >
-        <Icon name="mail" size={18} />
-        {strings.productContactEmail}
-      </a>
-    )}
-    {sanitizedWhatsapp && (
-      <a
-        href={`https://wa.me/${sanitizedWhatsapp}`}
-        target="_blank"
-        rel="noopener noreferrer"
-        class="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border border-border-light text-text-primary text-sm font-medium transition-colors hover:bg-surface"
-      >
-        <Icon name="message-circle" size={18} />
-        {strings.productContactWhatsapp}
-      </a>
-    )}
+  <div class="fixed bottom-20 right-4 md:bottom-8 md:right-8 z-40 flex flex-col items-end gap-3" data-contact-fab>
+    {/* Expandable sub-buttons */}
+    <div
+      class="flex flex-col items-end gap-3 opacity-0 scale-90 pointer-events-none transition-all duration-200 origin-bottom"
+      data-contact-options
+    >
+      {email && (
+        <a
+          href={`mailto:${email}`}
+          class="w-12 h-12 flex items-center justify-center rounded-full bg-surface shadow-lg border border-border-light text-text-primary transition-colors hover:bg-bg-secondary"
+          aria-label={strings.productContactEmail}
+        >
+          <Icon name="mail" size={20} />
+        </a>
+      )}
+      {sanitizedWhatsapp && (
+        <a
+          href={`https://wa.me/${sanitizedWhatsapp}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="w-12 h-12 flex items-center justify-center rounded-full bg-[#25D366] shadow-lg text-white transition-colors hover:bg-[#20bd5a]"
+          aria-label={strings.productContactWhatsapp}
+        >
+          <Icon name="whatsapp" size={24} />
+        </a>
+      )}
+    </div>
+
+    {/* Main FAB */}
+    <button
+      type="button"
+      class="relative w-14 h-14 rounded-full bg-accent text-bg shadow-lg flex items-center justify-center transition-all duration-300 hover:bg-accent-hover active:scale-95 group"
+      aria-label={strings.productContact}
+      data-contact-toggle
+    >
+      <Icon name="message-circle" size={26} class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 transition-all duration-300 opacity-100 rotate-0 scale-100" data-fab-icon-open />
+      <Icon name="chevron-down" size={28} class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 transition-all duration-300 opacity-0 -rotate-180 scale-50" data-fab-icon-close />
+    </button>
   </div>
 )}
+
+<script>
+  document.querySelectorAll('[data-contact-fab]').forEach(fab => {
+    const toggle = fab.querySelector('[data-contact-toggle]');
+    const options = fab.querySelector('[data-contact-options]');
+    const iconOpen = fab.querySelector('[data-fab-icon-open]');
+    const iconClose = fab.querySelector('[data-fab-icon-close]');
+    let open = false;
+
+    toggle?.addEventListener('click', () => {
+      open = !open;
+      if (options) {
+        options.classList.toggle('opacity-0', !open);
+        options.classList.toggle('scale-90', !open);
+        options.classList.toggle('pointer-events-none', !open);
+        options.classList.toggle('opacity-100', open);
+        options.classList.toggle('scale-100', open);
+      }
+      
+      if (iconOpen && iconClose) {
+        iconOpen.classList.toggle('opacity-100', !open);
+        iconOpen.classList.toggle('scale-100', !open);
+        iconOpen.classList.toggle('rotate-0', !open);
+        iconOpen.classList.toggle('opacity-0', open);
+        iconOpen.classList.toggle('scale-50', open);
+        iconOpen.classList.toggle('rotate-180', open);
+
+        iconClose.classList.toggle('opacity-0', !open);
+        iconClose.classList.toggle('scale-50', !open);
+        iconClose.classList.toggle('-rotate-180', !open);
+        iconClose.classList.toggle('opacity-100', open);
+        iconClose.classList.toggle('scale-100', open);
+        iconClose.classList.toggle('rotate-0', open);
+      }
+    });
+
+    document.addEventListener('click', (e) => {
+      if (open && !fab.contains(e.target as Node)) {
+        open = false;
+        options?.classList.add('opacity-0', 'scale-90', 'pointer-events-none');
+        options?.classList.remove('opacity-100', 'scale-100');
+        
+        iconOpen?.classList.add('opacity-100', 'rotate-0', 'scale-100');
+        iconOpen?.classList.remove('opacity-0', 'rotate-180', 'scale-50');
+
+        iconClose?.classList.add('opacity-0', '-rotate-180', 'scale-50');
+        iconClose?.classList.remove('opacity-100', 'rotate-0', 'scale-100');
+      }
+    });
+  });
+</script>

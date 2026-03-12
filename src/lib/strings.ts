@@ -50,4 +50,5 @@ export const strings = {
     productImage: 'Imagen',
     productQtyDecrease: 'Reducir cantidad',
     productQtyIncrease: 'Aumentar cantidad',
+    productContact: 'Contactar',
 } as const;

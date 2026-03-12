@@ -160,10 +160,7 @@ const price = activeVariant?.price ?? 0;
         </div>
       )}
 
-      <!-- Contact -->
-      <div class="md:max-w-[480px]">
-        <ShopContact email={shop.contact_email} whatsapp={shop.whatsapp} />
-      </div>
+
 
       <!-- Reviews -->
       <div class="md:max-w-[720px]">
@@ -176,6 +173,9 @@ const price = activeVariant?.price ?? 0;
       </div>
     </div>
   </main>
+
+  <!-- Floating contact FAB -->
+  <ShopContact email={shop.contact_email} whatsapp={shop.whatsapp} />
 
   <BottomNav />
 </Layout>
