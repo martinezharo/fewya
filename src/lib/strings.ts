@@ -51,4 +51,11 @@ export const strings = {
     productQtyDecrease: 'Reducir cantidad',
     productQtyIncrease: 'Aumentar cantidad',
     productContact: 'Contactar',
+
+    // Shop Page
+    shopAbout: 'Acerca de la tienda',
+    shopLocation: 'Ubicación',
+    shopProducts: 'Todos los productos',
+    shopProductsCount: 'productos',
+    shopNoDescription: 'Sin descripción disponible.',
 } as const;

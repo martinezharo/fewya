@@ -1,0 +1,156 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import BottomNav from '../../components/BottomNav.astro';
+import ProductHeader from '../../components/product/ProductHeader.astro';
+import ProductGrid from '../../components/ProductGrid.astro';
+import ShopContact from '../../components/product/ShopContact.astro';
+import Icon from '../../components/icons/Icon.astro';
+import { supabase } from '../../lib/supabase';
+import { strings } from '../../lib/strings';
+import type { Shop, Product } from '../../lib/types';
+
+const { shopSlug } = Astro.params;
+
+// Fetch shop details
+const { data: shopData } = await supabase
+  .from('shops')
+  .select('*')
+  .eq('slug', shopSlug!)
+  .eq('is_active', true)
+  .single();
+
+if (!shopData) return Astro.redirect('/');
+// Temporary cast until we add location to Shop type if necessary
+const shop = shopData as Shop & { location?: string | null };
+
+// Fetch shop products
+const { data: productsData } = await supabase
+  .from('products')
+  .select('*, variants:product_variants(*)')
+  .eq('shop_id', shop.id)
+  .eq('is_active', true)
+  .order('created_at', { ascending: false });
+
+const products = (productsData ?? []).map((p: any) => ({ ...p, shop })) as Product[];
+
+// Calculate average rating of shop's products
+// Optional optimizations could be done via a Postgres view
+const productIds = products.map((p: Product) => p.id);
+let avgRating = 0;
+let totalReviews = 0;
+
+if (productIds.length > 0) {
+  const { data: reviewsData } = await supabase
+    .from('reviews')
+    .select('rating')
+    .in('product_id', productIds);
+
+  if (reviewsData && reviewsData.length > 0) {
+    totalReviews = reviewsData.length;
+    avgRating = reviewsData.reduce((acc: number, curr: any) => acc + curr.rating, 0) / totalReviews;
+  }
+}
+
+const profileImg = shop.profile_img || '/placeholder.svg';
+---
+
+<Layout title={`${shop.name} — ${strings.siteTitle}`}>
+  <!-- Mobile Header (same as product page) -->
+  <ProductHeader />
+
+  <!-- Desktop Header -->
+  <div class="hidden md:block sticky top-0 z-50">
+    <Header />
+  </div>
+
+  <main class="pb-[120px] md:pb-[60px]" data-gallery>
+    <!-- Desktop Layout Wrapper -->
+    <div class="md:max-w-[1200px] md:mx-auto md:px-10 md:py-8">
+      
+      <!-- Shop Header Section -->
+      <div class="bg-bg md:rounded-2xl md:overflow-hidden md:border md:border-border-light md:mb-12">
+        
+        <!-- Banner -->
+        <div class="relative w-full h-32 md:h-64 bg-border-light">
+          {shop.banner_img ? (
+            <img 
+              src={shop.banner_img} 
+              alt={shop.name} 
+              class="w-full h-full object-cover"
+            />
+          ) : (
+            <div class="w-full h-full bg-gradient-to-r from-accent/20 to-accent/40"></div>
+          )}
+        </div>
+
+        <!-- Shop Info -->
+        <div class="px-4 pb-6 md:px-8 md:pb-8 relative">
+          <!-- Profile Image & Name (Mobile: Right integrated, Name Left) -->
+          <div class="flex justify-between items-end -mt-10 md:-mt-16 mb-4">
+            <div class="pt-12 md:pt-20 flex-1">
+              <h1 class="text-2xl md:text-4xl font-bold text-text-primary leading-tight">
+                {shop.name}
+              </h1>
+            </div>
+            
+            <div class="relative w-24 h-24 md:w-32 md:h-32 rounded-full border-4 border-bg overflow-hidden bg-bg shadow-sm shrink-0 ml-4">
+              <img 
+                src={profileImg} 
+                alt={shop.name}
+                class="w-full h-full object-cover"
+              />
+            </div>
+          </div>
+
+          <!-- Ratings & Stats -->
+          <div class="flex items-center gap-4 mb-6">
+            <div class="flex items-center gap-1.5">
+              <Icon name="star" size={18} class="text-yellow-400 fill-current" />
+              <span class="text-sm font-semibold text-text-primary">{avgRating.toFixed(1)}</span>
+              <span class="text-sm text-text-tertiary">({totalReviews})</span>
+            </div>
+            <!-- More stats if available -->
+            <div class="text-sm text-text-secondary">
+              {products.length} {strings.shopProductsCount}
+            </div>
+          </div>
+
+          <!-- About & Location -->
+          <div class="grid md:grid-cols-2 gap-6">
+            <div>
+              <h2 class="text-lg font-semibold text-text-primary mb-2">{strings.shopAbout}</h2>
+              <p class="text-sm text-text-secondary leading-relaxed whitespace-pre-line">
+                {shop.description || strings.shopNoDescription}
+              </p>
+            </div>
+            {shop.location && (
+              <div class="flex flex-col gap-2">
+                <h2 class="text-lg font-semibold text-text-primary mb-2">{strings.shopLocation}</h2>
+                <div class="flex items-center gap-2 text-sm text-text-secondary">
+                  <Icon name="map-pin" size={18} />
+                  <span>{shop.location}</span>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <!-- Products Grid -->
+      <div class="mt-8 md:mt-0">
+        <div class="px-4 md:px-0 mb-6 flex items-center justify-between">
+          <h2 class="text-xl md:text-2xl font-bold text-text-primary">
+            {strings.shopProducts}
+          </h2>
+        </div>
+        
+        <ProductGrid products={products} />
+      </div>
+    </div>
+  </main>
+
+  <!-- Sticky Bottom Controls (Same as product page) -->
+  <ShopContact email={shop.contact_email} whatsapp={shop.whatsapp} />
+  <BottomNav />
+</Layout>

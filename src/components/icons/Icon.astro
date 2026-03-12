@@ -16,6 +16,7 @@ interface Props {
         | "mail"
         | "message-circle"
         | "flag"
+        | "map-pin"
         | "minus"
         | "plus"
         | "chevron-left"
@@ -154,6 +155,14 @@ const { name, size = 24, class: className = "", ...rest } = Astro.props;
             <Fragment>
                 <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
                 <line x1="4" x2="4" y1="22" y2="15" />
+            </Fragment>
+        )
+    }
+    {
+        name === "map-pin" && (
+            <Fragment>
+                <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
+                <circle cx="12" cy="10" r="3" />
             </Fragment>
         )
     }
