@@ -27,6 +27,7 @@ CREATE TABLE public.product_variants (
   stock integer DEFAULT 0,
   variant_image text,
   created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
+  is_default boolean DEFAULT false,
   CONSTRAINT product_variants_pkey PRIMARY KEY (id),
   CONSTRAINT product_variants_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.products(id)
 );
@@ -107,8 +108,8 @@ FROM public.profiles;
 CREATE OR REPLACE FUNCTION public.handle_new_product()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.product_variants (product_id, price, stock, variant_name)
-  VALUES (NEW.id, 0, 0, NULL);
+  INSERT INTO public.product_variants (product_id, price, stock, variant_name, is_default)
+  VALUES (NEW.id, 0, 0, NULL, true);
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
