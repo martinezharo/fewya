@@ -81,6 +81,7 @@ CREATE TABLE public.shops (
   is_active boolean DEFAULT true,
   created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
   accent_color text,
+  location text,
   CONSTRAINT shops_pkey PRIMARY KEY (id),
   CONSTRAINT shops_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES public.profiles(id)
 );
