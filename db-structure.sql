@@ -25,7 +25,6 @@ CREATE TABLE public.product_variants (
   variant_name text,
   price numeric NOT NULL,
   stock integer DEFAULT 0,
-  attributes jsonb DEFAULT '{}'::jsonb,
   variant_image text,
   created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
   CONSTRAINT product_variants_pkey PRIMARY KEY (id),
