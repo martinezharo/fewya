@@ -84,6 +84,11 @@ const hasMultiple = images.length > 1;
   const fs = document.querySelector<HTMLElement>('[data-fullscreen]');
   const fsImg = document.querySelector<HTMLImageElement>('[data-fullscreen-img]');
 
+  if (fs) {
+    // Move fullscreen overlay to body to avoid stacking context issues
+    document.body.appendChild(fs);
+  }
+
   function openFullscreen(src: string) {
     if (fs && fsImg) {
       fsImg.src = src;
