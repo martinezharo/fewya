@@ -104,15 +104,18 @@ FROM public.profiles;
 
 -- Functions
 
+CREATE OR REPLACE FUNCTION public.handle_new_product()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.product_variants (product_id, price, stock, variant_name)
+  VALUES (NEW.id, 0, 0, NULL);
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 /*
 
 [
-  {
-    "function_name": "handle_new_product",
-    "type": "FUNCTION",
-    "return_type": "trigger",
-    "definition": "\r\nBEGIN\r\n  INSERT INTO public.product_variants (product_id, price, stock, attributes)\r\n  VALUES (NEW.id, 0, 0, '{\"default\": \"true\"}'::jsonb);\r\n  RETURN NEW;\r\nEND;\r\n"
-  },
   {
     "function_name": "handle_new_user",
     "type": "FUNCTION",
