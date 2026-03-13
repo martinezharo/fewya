@@ -13,6 +13,7 @@ const imageUrl = product.gallery_images?.[0] ?? "/placeholder.svg";
 const defaultVariant = product.variants?.find(v => v.is_default);
 const price = defaultVariant?.price ?? product.variants?.[0]?.price ?? 0;
 const formattedPrice = `${price.toFixed(2)}${strings.currency}`;
+const isOutOfStock = product.variants?.every(v => (v.stock ?? 0) <= 0) ?? true;
 const shopName = product.shop?.name ?? "";
 const shopSlug = product.shop?.slug ?? "";
 const shopAccentColor = product.shop?.accent_color;
@@ -32,7 +33,13 @@ const productUrl = (shopSlug && product.slug) ? `/${shopSlug}/${product.slug}` :
 
     <div class="flex flex-col gap-1 p-[10px_12px_14px]">
         <div class="flex items-center justify-between">
-            <span class="text-base font-bold text-text-primary tracking-[-0.3px]">{formattedPrice}</span>
+            {
+                isOutOfStock ? (
+                    <span class="text-[13px] font-medium text-red-500 dark:text-red-400">{strings.productOutOfStock}</span>
+                ) : (
+                    <span class="text-base font-bold text-text-primary tracking-[-0.3px]">{formattedPrice}</span>
+                )
+            }
             <button
                 class="flex items-center justify-center w-8 h-8 border-none bg-transparent text-text-tertiary cursor-pointer rounded-full transition-colors duration-150 hover:text-wishlist hover:bg-border-light [-webkit-tap-highlight-color:transparent]"
                 aria-label={strings.addToWishlist}
