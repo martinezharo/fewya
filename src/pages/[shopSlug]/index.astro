@@ -117,7 +117,7 @@ const profileImg = shop.profile_img || '/placeholder.svg';
           </div>
 
           <!-- About & Location -->
-          <div class="grid md:grid-cols-2 gap-6">
+          <div class="flex flex-col gap-6">
             <div>
               <h2 class="text-lg font-semibold text-text-primary mb-2">{strings.shopAbout}</h2>
               <p class="text-sm text-text-secondary leading-relaxed whitespace-pre-line">
@@ -126,7 +126,6 @@ const profileImg = shop.profile_img || '/placeholder.svg';
             </div>
             {shop.location && (
               <div class="flex flex-col gap-2">
-                <h2 class="text-lg font-semibold text-text-primary mb-2">{strings.shopLocation}</h2>
                 <div class="flex items-center gap-2 text-sm text-text-secondary">
                   <Icon name="map-pin" size={18} />
                   <span>{shop.location}</span>
