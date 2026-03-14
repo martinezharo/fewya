@@ -1,0 +1,85 @@
+---
+import Icon from "../icons/Icon.astro";
+import { strings } from "../../lib/strings";
+import type { SearchParams } from "../../lib/search";
+import { DEFAULT_SORT, DEFAULT_DIR, buildSearchUrl } from "../../lib/search";
+
+interface Props {
+    params: SearchParams;
+    currentUrl: string;
+}
+
+const { params, currentUrl } = Astro.props;
+
+const options = [
+    { value: 'relevance', label: strings.searchSortRelevance },
+    { value: 'alpha', label: strings.searchSortAlpha },
+    { value: 'price', label: strings.searchSortPrice },
+    { value: 'date', label: strings.searchSortDate },
+] as const;
+
+---
+
+<dialog id="sort-modal" class="m-0 max-w-none w-full max-h-[85vh] h-auto top-auto bottom-0 mt-auto bg-surface rounded-t-[20px] shadow-[0_-8px_30px_rgba(0,0,0,0.12)] border-0 md:max-w-[400px] md:right-0 md:left-auto md:top-auto md:bottom-auto md:rounded-xl md:m-4 backdrop:bg-bg/60 backdrop:backdrop-blur-sm open:flex flex-col slide-up md:fade-in pointer-events-auto">
+    <div class="flex items-center justify-between p-4 pb-3">
+        <h2 class="text-[18px] font-bold text-text-primary m-0 tracking-[-0.3px]">{strings.searchSort}</h2>
+        <button type="button" class="w-8 h-8 flex items-center justify-center border-none bg-transparent rounded-full cursor-pointer text-text-secondary hover:bg-border-light transition-colors" onclick="document.getElementById('sort-modal')?.close()">
+            <Icon name="x" size={20} />
+        </button>
+    </div>
+    
+    <div class="px-4 pb-8 overflow-y-auto">
+        <div class="flex flex-col gap-2">
+            {options.map(opt => {
+                const isActive = params.sort === opt.value;
+                const nextDir = isActive && params.dir === 'asc' ? 'desc' : 'asc';
+                const url = buildSearchUrl(currentUrl, { sort: opt.value as any, dir: isActive ? nextDir : 'desc' });
+                
+                return (
+                    <a href={url} class={`flex items-center justify-between px-4 py-3 rounded-xl no-underline transition-colors ${isActive ? 'bg-border-light text-text-primary font-semibold' : 'text-text-secondary hover:bg-border-light'}`}>
+                        <span>{opt.label}</span>
+                        {isActive && (
+                            <Icon name={params.dir === 'asc' ? 'chevron-left' : 'chevron-down'} size={18} class={params.dir === 'asc' ? 'rotate-90' : ''} />
+                        )}
+                    </a>
+                );
+            })}
+        </div>
+    </div>
+</dialog>
+
+<style>
+    dialog::backdrop {
+        background: rgba(0, 0, 0, 0.4);
+        backdrop-filter: blur(4px);
+    }
+    .slide-up {
+        animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    @keyframes slideUp {
+        from { transform: translateY(100%); }
+        to { transform: translateY(0); }
+    }
+    @media (min-width: 768px) {
+        .md\:fade-in {
+            animation: fadeIn 0.2s ease-out forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+    }
+</style>
+
+<script>
+    // Close dialog on backdrop click
+    document.addEventListener('click', (e) => {
+        const dialog = document.getElementById('sort-modal') as HTMLDialogElement;
+        if (!dialog || !dialog.open) return;
+        const rect = dialog.getBoundingClientRect();
+        const isInDialog = (rect.top <= e.clientY && e.clientY <= rect.bottom && rect.left <= e.clientX && e.clientX <= rect.right);
+        if (!isInDialog && e.target === dialog) {
+            dialog.close();
+        }
+    });
+</script>

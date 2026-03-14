@@ -1,0 +1,233 @@
+---
+import Icon from "../icons/Icon.astro";
+import { strings } from "../../lib/strings";
+import type { SearchParams } from "../../lib/search";
+import { buildSearchUrl } from "../../lib/search";
+
+interface Props {
+    params: SearchParams;
+    currentUrl: string;
+}
+
+const { params, currentUrl } = Astro.props;
+
+const clearUrl = buildSearchUrl(currentUrl, { minPrice: null, maxPrice: null, showOos: false });
+---
+
+<dialog id="filter-modal" class="m-0 max-w-none w-full max-h-[85vh] h-auto top-auto bottom-0 mt-auto bg-surface rounded-t-[20px] shadow-[0_-8px_30px_rgba(0,0,0,0.12)] border-0 md:max-w-[400px] md:h-[100dvh] md:max-h-none md:right-0 md:left-auto md:rounded-l-[20px] md:rounded-tr-none backdrop:bg-bg/60 backdrop:backdrop-blur-sm open:flex flex-col slide-up md:slide-left pointer-events-auto">
+    <form action="/search" method="get" class="flex flex-col h-full m-0" onsubmit="
+        // Cleanup empty inputs before submitting to keep URL clean
+        const formData = new FormData(this);
+        for (const [key, value] of Array.from(formData.entries())) {
+            if (!value) this.elements[key].disabled = true;
+        }
+    ">
+        <!-- Preserve other params -->
+        <input type="hidden" name="q" value={params.q} />
+        {params.sort !== 'relevance' && <input type="hidden" name="sort" value={params.sort} />}
+        {params.dir !== 'desc' && <input type="hidden" name="dir" value={params.dir} />}
+
+        <div class="flex items-center justify-between p-4 pb-3 border-b border-border-light">
+            <h2 class="text-[18px] font-bold text-text-primary m-0 tracking-[-0.3px]">{strings.searchFilters}</h2>
+            <button type="button" class="w-8 h-8 flex items-center justify-center border-none bg-transparent rounded-full cursor-pointer text-text-secondary hover:bg-border-light transition-colors" onclick="document.getElementById('filter-modal')?.close()">
+                <Icon name="x" size={20} />
+            </button>
+        </div>
+        
+        <div class="p-5 flex-1 overflow-y-auto flex flex-col gap-8">
+            <!-- Price Range -->
+            <div class="flex flex-col gap-4">
+                <div class="flex items-center justify-between">
+                    <span class="text-[15px] font-semibold text-text-primary">{strings.searchPriceRange}</span>
+                    <div class="text-[14px] font-medium text-text-secondary font-mono tracking-tight">
+                        <span id="price-min-display">{params.minPrice || 0}</span>{strings.currency} - <span id="price-max-display">{params.maxPrice || 500}</span>{strings.currency}+
+                    </div>
+                </div>
+                
+                <div class="relative w-full h-8 flex items-center">
+                    <div class="absolute left-0 right-0 h-1.5 bg-border rounded-full overflow-hidden">
+                        <div id="price-track" class="absolute h-full bg-text-primary"></div>
+                    </div>
+                    
+                    <input 
+                        type="range" 
+                        name="min_price" 
+                        id="price-min"
+                        min="0" 
+                        max="500" 
+                        step="5"
+                        value={params.minPrice || 0}
+                        class="range-slider absolute w-full pointer-events-none appearance-none bg-transparent z-20"
+                    />
+                    <input 
+                        type="range" 
+                        name="max_price" 
+                        id="price-max"
+                        min="0" 
+                        max="500" 
+                        step="5"
+                        value={params.maxPrice || 500}
+                        class="range-slider absolute w-full pointer-events-none appearance-none bg-transparent z-30"
+                    />
+                </div>
+                
+                <div class="flex items-center justify-between gap-4 mt-2">
+                    <div class="flex-1 flex items-center gap-2 px-3 py-2 bg-border-light rounded-lg">
+                        <span class="text-text-tertiary text-[13px]">Min</span>
+                        <input type="number" id="price-min-num" value={params.minPrice || ''} placeholder="0" class="w-full bg-transparent border-none text-[14px] text-text-primary font-medium outline-none text-right placeholder:text-text-tertiary" />
+                    </div>
+                    <div class="flex-1 flex items-center gap-2 px-3 py-2 bg-border-light rounded-lg">
+                        <span class="text-text-tertiary text-[13px]">Max</span>
+                        <input type="number" id="price-max-num" value={params.maxPrice || ''} placeholder="500" class="w-full bg-transparent border-none text-[14px] text-text-primary font-medium outline-none text-right placeholder:text-text-tertiary" />
+                    </div>
+                </div>
+            </div>
+
+            <!-- Out of Stock Toggle -->
+            <div class="flex items-center justify-between py-1">
+                <div class="flex flex-col gap-0.5">
+                    <span class="text-[15px] font-semibold text-text-primary">{strings.searchShowOos}</span>
+                </div>
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" name="show_oos" value="true" class="sr-only peer" checked={params.showOos} />
+                    <div class="w-11 h-6 bg-border peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-surface after:border-border after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-text-primary"></div>
+                </label>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-3 p-4 border-t border-border-light bg-surface pb-[calc(16px+env(safe-area-inset-bottom,0px))]">
+            <a href={clearUrl} class="flex-1 flex justify-center items-center h-12 bg-border-light text-text-primary font-semibold text-[15px] rounded-xl no-underline transition-colors hover:bg-border active:scale-[0.98]">
+                {strings.searchClearFilters}
+            </a>
+            <button type="submit" class="flex-[2] flex justify-center items-center h-12 bg-accent text-bg font-semibold text-[15px] rounded-xl border-none cursor-pointer transition-colors hover:bg-accent-hover active:scale-[0.98]">
+                {strings.searchApply}
+            </button>
+        </div>
+    </form>
+</dialog>
+
+<style>
+    dialog::backdrop {
+        background: rgba(0, 0, 0, 0.4);
+        backdrop-filter: blur(4px);
+    }
+    .slide-up {
+        animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    @keyframes slideUp {
+        from { transform: translateY(100%); }
+        to { transform: translateY(0); }
+    }
+    @media (min-width: 768px) {
+        .md\:slide-left {
+            animation: slideLeft 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        @keyframes slideLeft {
+            from { transform: translateX(100%); }
+            to { transform: translateX(0); }
+        }
+    }
+    
+    /* Range Slider Styling */
+    .range-slider::-webkit-slider-thumb {
+        pointer-events: auto;
+        appearance: none;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: var(--color-surface);
+        border: 2px solid var(--color-text-primary);
+        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        cursor: grab;
+    }
+    .range-slider::-moz-range-thumb {
+        pointer-events: auto;
+        appearance: none;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: var(--color-surface);
+        border: 2px solid var(--color-text-primary);
+        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        cursor: grab;
+    }
+</style>
+
+<script>
+    document.addEventListener('astro:page-load', initFilterSlider);
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initFilterSlider);
+    } else {
+        initFilterSlider();
+    }
+
+    function initFilterSlider() {
+        const minSlider = document.getElementById('price-min') as HTMLInputElement;
+        const maxSlider = document.getElementById('price-max') as HTMLInputElement;
+        const track = document.getElementById('price-track');
+        const minDisp = document.getElementById('price-min-display');
+        const maxDisp = document.getElementById('price-max-display');
+        const minNum = document.getElementById('price-min-num') as HTMLInputElement;
+        const maxNum = document.getElementById('price-max-num') as HTMLInputElement;
+        
+        if (!minSlider || !maxSlider || !track) return;
+        
+        const MAX_VAL = parseInt(maxSlider.max);
+        
+        function updateUI() {
+            let minVal = parseInt(minSlider.value);
+            let maxVal = parseInt(maxSlider.value);
+            
+            if (minVal >= maxVal) {
+                minVal = maxVal;
+                minSlider.value = minVal.toString();
+            }
+            
+            const minPercent = (minVal / MAX_VAL) * 100;
+            const maxPercent = (maxVal / MAX_VAL) * 100;
+            
+            track!.style.left = `${minPercent}%`;
+            track!.style.width = `${maxPercent - minPercent}%`;
+            
+            if (minDisp) minDisp.textContent = minVal.toString();
+            if (maxDisp) maxDisp.textContent = maxVal === MAX_VAL ? `${maxVal}+` : maxVal.toString();
+            
+            if (minNum && document.activeElement !== minNum) minNum.value = minVal.toString();
+            if (maxNum && document.activeElement !== maxNum) maxNum.value = maxVal === MAX_VAL ? '' : maxVal.toString();
+        }
+
+        minSlider.addEventListener('input', updateUI);
+        maxSlider.addEventListener('input', updateUI);
+        
+        // Handle number inputs
+        if (minNum && maxNum) {
+            minNum.addEventListener('change', () => {
+                let val = parseInt(minNum.value) || 0;
+                if (val < 0) val = 0;
+                if (val > MAX_VAL) val = MAX_VAL;
+                minSlider.value = val.toString();
+                updateUI();
+            });
+            
+            maxNum.addEventListener('change', () => {
+                let val = parseInt(maxNum.value);
+                if (!val || val > MAX_VAL) val = MAX_VAL;
+                maxSlider.value = val.toString();
+                updateUI();
+            });
+        }
+        
+        updateUI();
+    }
+
+    // Close dialog on backdrop click
+    document.addEventListener('click', (e) => {
+        const dialog = document.getElementById('filter-modal') as HTMLDialogElement;
+        if (!dialog || !dialog.open) return;
+        const rect = dialog.getBoundingClientRect();
+        const isInDialog = (rect.top <= e.clientY && e.clientY <= rect.bottom && rect.left <= e.clientX && e.clientX <= rect.right);
+        if (!isInDialog && e.target === dialog) {
+            dialog.close();
+        }
+    });
+</script>

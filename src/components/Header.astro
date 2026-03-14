@@ -4,14 +4,16 @@ import Icon from "./icons/Icon.astro";
 import { strings } from "../lib/strings";
 ---
 
-<header class="sticky top-0 z-50 bg-bg">
+<header class="sticky top-0 z-50 bg-bg" id="main-header">
+    <div id="search-overlay" class="fixed inset-0 top-[100%] h-[100dvh] bg-bg/70 backdrop-blur-md z-[40] opacity-0 pointer-events-none transition-opacity duration-300"></div>
+
     <!-- Mobile: only search bar -->
-    <div class="flex p-3 px-4 pt-[calc(12px+env(safe-area-inset-top,0px))] md:hidden">
+    <div class="flex p-3 px-4 pt-[calc(12px+env(safe-area-inset-top,0px))] md:hidden relative z-[50] bg-bg">
         <SearchBar />
     </div>
 
     <!-- Desktop: logo + search + nav icons -->
-    <div class="hidden md:flex items-center gap-6 px-10 py-4 max-w-[1400px] mx-auto">
+    <div class="hidden md:flex items-center gap-6 px-10 py-3 max-w-[1400px] mx-auto relative z-[50] bg-bg">
         <a href="/" class="text-[22px] font-bold text-text-primary no-underline tracking-[-0.5px] shrink-0" aria-label={strings.logoText}>
             {strings.logoText}
         </a>
@@ -57,3 +59,40 @@ import { strings } from "../lib/strings";
         </nav>
     </div>
 </header>
+
+<script>
+    document.addEventListener('astro:page-load', initOverlay);
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initOverlay);
+    } else {
+        initOverlay();
+    }
+
+    function initOverlay() {
+        const overlay = document.getElementById('search-overlay');
+        
+        if (!overlay) return;
+
+        const showOverlay = () => {
+            overlay.classList.remove('opacity-0', 'pointer-events-none');
+            overlay.classList.add('opacity-100');
+            // Prevent scrolling on body
+            document.body.style.overflow = 'hidden';
+        };
+
+        const hideOverlay = () => {
+            overlay.classList.remove('opacity-100');
+            overlay.classList.add('opacity-0', 'pointer-events-none');
+            document.body.style.overflow = '';
+        };
+
+        document.addEventListener('search-focus', showOverlay);
+        document.addEventListener('search-blur', hideOverlay);
+        
+        // Remove event listeners on component unmount to prevent duplicates
+        document.addEventListener('astro:before-swap', () => {
+            document.removeEventListener('search-focus', showOverlay);
+            document.removeEventListener('search-blur', hideOverlay);
+        }, { once: true });
+    }
+</script>

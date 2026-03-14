@@ -1,0 +1,98 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import Header from "../../components/Header.astro";
+import BottomNav from "../../components/BottomNav.astro";
+import ProductGrid from "../../components/ProductGrid.astro";
+import SearchToolbar from "../../components/search/SearchToolbar.astro";
+import SortModal from "../../components/search/SortModal.astro";
+import FilterModal from "../../components/search/FilterModal.astro";
+import { supabase } from "../../lib/supabase";
+import { parseSearchParams } from "../../lib/search";
+import { strings } from "../../lib/strings";
+import type { Product } from "../../lib/types";
+
+const url = new URL(Astro.request.url);
+const params = parseSearchParams(url);
+
+let query = supabase
+    .from("products")
+    .select("*, shop:shops(*), variants:product_variants(*)")
+    .eq("is_active", true);
+
+if (params.q) {
+    // Basic ilike search on title or description
+    query = query.or(`title.ilike.%${params.q}%,description.ilike.%${params.q}%`);
+}
+
+const { data, error } = await query;
+let products: Product[] = data ?? [];
+
+// Post-fetch JS filters
+products = products.filter(product => {
+    const defaultVariant = product.variants?.find(v => v.is_default) || product.variants?.[0];
+    const price = defaultVariant?.price ?? 0;
+    
+    // Price filter
+    if (params.minPrice !== null && price < params.minPrice) return false;
+    // We treat 500 as "unlimited" (max price on slider) so ONLY filter if it's less than 500
+    if (params.maxPrice !== null && params.maxPrice < 500 && price > params.maxPrice) return false;
+
+    // Out of stock filter
+    if (!params.showOos) {
+        const hasStock = product.variants?.some(v => (v.stock ?? 0) > 0);
+        if (!hasStock) return false;
+    }
+    
+    return true;
+});
+
+// Sorting
+products.sort((a, b) => {
+    const pA = a.variants?.find(v => v.is_default)?.price ?? a.variants?.[0]?.price ?? 0;
+    const pB = b.variants?.find(v => v.is_default)?.price ?? b.variants?.[0]?.price ?? 0;
+    const d1 = params.dir === 'asc' ? 1 : -1;
+    
+    switch (params.sort) {
+        case 'price':
+            return (pA - pB) * d1;
+        case 'alpha':
+            return a.title.localeCompare(b.title) * d1;
+        case 'date':
+            return (new Date(a.created_at).getTime() - new Date(b.created_at).getTime()) * d1;
+        case 'relevance':
+        default:
+            // Default to newer first as a proxy for relevance if no text query scores are used
+            return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    }
+});
+
+const currentUrl = url.pathname + url.search;
+---
+
+<Layout title={`Buscar: ${params.q} | ${strings.siteTitle}`}>
+    <Header />
+    <SearchToolbar params={params} />
+    
+    <main class="min-h-[50vh]">
+        {products.length > 0 ? (
+            <div class="pt-4">
+                <ProductGrid products={products} />
+            </div>
+        ) : (
+            <div class="flex flex-col items-center justify-center text-center px-6 py-20">
+                <div class="w-16 h-16 mb-4 text-text-tertiary bg-border-light rounded-full flex items-center justify-center">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" class="text-text-secondary"><circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="1.75"/><path d="m21 21-4.3-4.3" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+                </div>
+                <h2 class="text-[18px] font-semibold text-text-primary mb-2">
+                    {strings.searchNoResults} {params.q && `"${params.q}"`}
+                </h2>
+                <p class="text-[14px] text-text-secondary">Intenta con otros términos o ajusta los filtros.</p>
+            </div>
+        )}
+    </main>
+    
+    <FilterModal params={params} currentUrl={currentUrl} />
+    <SortModal params={params} currentUrl={currentUrl} />
+    
+    <BottomNav />
+</Layout>

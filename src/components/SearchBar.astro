@@ -1,15 +1,164 @@
 ---
 import Icon from "./icons/Icon.astro";
 import { strings } from "../lib/strings";
+
+interface Props {
+    value?: string;
+    autofocus?: boolean;
+}
+
+const { value = '', autofocus = false } = Astro.props;
 ---
 
-<div class="flex items-center gap-2 w-full px-[14px] py-[10px] bg-border-light rounded-full transition-colors duration-200 focus-within:bg-border">
-    <Icon name="search" size={18} class="shrink-0 text-text-tertiary" />
-    <input
-        type="text"
-        placeholder={strings.searchPlaceholder}
-        class="flex-1 border-none bg-transparent text-[15px] font-sans text-text-primary outline-none placeholder:text-text-tertiary"
-        aria-label={strings.searchPlaceholder}
-        disabled
-    />
+<div class="search-container relative w-full">
+    <form action="/search" method="get" class="search-form flex items-center gap-2 w-full px-[14px] py-[10px] bg-border-light rounded-full transition-colors duration-200 focus-within:bg-border focus-within:ring-2 focus-within:ring-border relative z-[60]">
+        <Icon name="search" size={18} class="shrink-0 text-text-tertiary" />
+        <input
+            type="search"
+            name="q"
+            value={value}
+            autofocus={autofocus}
+            placeholder={strings.searchPlaceholder}
+            class="search-input flex-1 border-none bg-transparent text-[15px] font-sans text-text-primary outline-none placeholder:text-text-tertiary w-full"
+            aria-label={strings.searchPlaceholder}
+            autocomplete="off"
+        />
+        <button type="button" class="search-clear hidden shrink-0 text-text-tertiary hover:text-text-primary p-0.5 cursor-pointer" aria-label={strings.searchClear}>
+            <Icon name="x" size={16} />
+        </button>
+    </form>
+    
+    <div class="search-dropdown absolute top-[calc(100%+8px)] left-0 right-0 bg-surface rounded-xl shadow-[0_4px_24px_rgba(0,0,0,0.1)] border border-border-light hidden flex-col overflow-hidden z-[60] max-h-[300px] overflow-y-auto">
+        <div class="flex items-center justify-between px-4 py-3 border-b border-border-light">
+            <span class="text-[13px] font-semibold text-text-primary">{strings.searchRecent}</span>
+            <button type="button" class="search-clear-all text-[12px] font-medium text-text-secondary hover:text-text-primary cursor-pointer border-none bg-transparent">
+                {strings.searchClearFilters}
+            </button>
+        </div>
+        <ul class="search-recent-list m-0 p-0 list-none">
+            <!-- Populated via JS -->
+        </ul>
+    </div>
 </div>
+
+<script>
+    import { RECENT_SEARCHES_KEY, MAX_RECENT_SEARCHES } from "../lib/search";
+
+    document.addEventListener('astro:page-load', initSearchBars);
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initSearchBars);
+    } else {
+        initSearchBars();
+    }
+
+    function initSearchBars() {
+        const containers = document.querySelectorAll('.search-container');
+        
+        containers.forEach(container => {
+            const form = container.querySelector('.search-form') as HTMLFormElement;
+            const input = container.querySelector('.search-input') as HTMLInputElement;
+            const clearBtn = container.querySelector('.search-clear') as HTMLButtonElement;
+            const dropdown = container.querySelector('.search-dropdown') as HTMLDivElement;
+            const recentList = container.querySelector('.search-recent-list') as HTMLUListElement;
+            const clearAllBtn = container.querySelector('.search-clear-all') as HTMLButtonElement;
+
+            if (!input || !form) return;
+
+            const updateClearBtn = () => {
+                if (input.value.length > 0) {
+                    clearBtn.classList.remove('hidden');
+                } else {
+                    clearBtn.classList.add('hidden');
+                }
+            };
+
+            const getRecentSearches = (): string[] => {
+                try {
+                    const item = localStorage.getItem(RECENT_SEARCHES_KEY);
+                    return item ? JSON.parse(item) : [];
+                } catch {
+                    return [];
+                }
+            };
+
+            const saveRecentSearch = (query: string) => {
+                const trimmed = query.trim();
+                if (!trimmed) return;
+                let searches = getRecentSearches();
+                searches = searches.filter(s => s.toLowerCase() !== trimmed.toLowerCase());
+                searches.unshift(trimmed);
+                if (searches.length > MAX_RECENT_SEARCHES) {
+                    searches = searches.slice(0, MAX_RECENT_SEARCHES);
+                }
+                localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(searches));
+            };
+
+            const clearRecentSearches = () => {
+                localStorage.removeItem(RECENT_SEARCHES_KEY);
+                renderRecentSearches();
+            };
+
+            const renderRecentSearches = () => {
+                const searches = getRecentSearches();
+                if (searches.length === 0) {
+                    dropdown.classList.add('hidden');
+                    return;
+                }
+
+                recentList.innerHTML = searches.map(s => `
+                    <li>
+                        <a href="/search?q=${encodeURIComponent(s)}" class="flex items-center gap-3 px-4 py-3 text-[14px] text-text-primary no-underline hover:bg-border-light transition-colors">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" class="text-text-tertiary"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.75"/><polyline points="12 6 12 12 16 14" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            <span class="flex-1 truncate">${s}</span>
+                        </a>
+                    </li>
+                `).join('');
+                
+                if (document.activeElement === input) {
+                    dropdown.classList.remove('hidden');
+                }
+            };
+
+            // Event Listeners
+            input.addEventListener('input', updateClearBtn);
+            
+            clearBtn.addEventListener('click', () => {
+                input.value = '';
+                updateClearBtn();
+                input.focus();
+            });
+
+            input.addEventListener('focus', () => {
+                renderRecentSearches();
+                document.dispatchEvent(new CustomEvent('search-focus'));
+            });
+
+            // Handle blur with a small delay so clicks on dropdown items can register
+            input.addEventListener('blur', () => {
+                setTimeout(() => {
+                    dropdown.classList.add('hidden');
+                    document.dispatchEvent(new CustomEvent('search-blur'));
+                }, 200);
+            });
+
+            form.addEventListener('submit', (e) => {
+                if (!input.value.trim()) {
+                    e.preventDefault();
+                    return;
+                }
+                saveRecentSearch(input.value);
+            });
+
+            if (clearAllBtn) {
+                clearAllBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    clearRecentSearches();
+                });
+            }
+
+            // Initialization
+            updateClearBtn();
+        });
+    }
+</script>

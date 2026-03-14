@@ -58,4 +58,19 @@ export const strings = {
     shopProducts: 'Todos los productos',
     shopProductsCount: 'productos',
     shopNoDescription: 'Sin descripción disponible.',
+
+    // Search
+    searchRecent: 'Búsquedas recientes',
+    searchClear: 'Borrar',
+    searchNoResults: 'No se encontraron resultados para',
+    searchFilters: 'Filtros',
+    searchSort: 'Ordenar por',
+    searchApply: 'Aplicar',
+    searchClearFilters: 'Limpiar',
+    searchPriceRange: 'Rango de precio',
+    searchShowOos: 'Mostrar stock agotado',
+    searchSortRelevance: 'Relevancia',
+    searchSortAlpha: 'Alfabético',
+    searchSortPrice: 'Precio',
+    searchSortDate: 'Fecha',
 } as const;
