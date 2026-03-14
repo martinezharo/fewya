@@ -20,14 +20,12 @@ const authClient = createSupabaseAuthClient(Astro.cookies, Astro.request);
 const { data: { user } } = await authClient.auth.getUser();
 const isLoggedIn = !!user;
 
-// PWA detection is done client-side via CSS media query; server defaults to false
-const isPwa = false;
 ---
 
 <Layout>
 	<Header />
 	<main>
-		<HeroBanner isPwa={isPwa} isLoggedIn={isLoggedIn} />
+		<HeroBanner isLoggedIn={isLoggedIn} />
 		<ProductGrid products={products} />
 	</main>
 	<BottomNav />
