@@ -59,6 +59,14 @@ export const strings = {
     shopProductsCount: 'productos',
     shopNoDescription: 'Sin descripción disponible.',
 
+    // Auth
+    heroGoogleSignIn: 'Continuar con Google',
+
+    // Profile Page
+    profilePageTitle: 'Mi perfil — EWYA',
+    profileAnonymous: 'Usuario',
+    profileSignOut: 'Cerrar sesión',
+
     // Search
     searchRecent: 'Búsquedas recientes',
     searchClear: 'Borrar',

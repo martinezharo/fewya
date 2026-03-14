@@ -5,6 +5,7 @@ import HeroBanner from "../components/HeroBanner.astro";
 import ProductGrid from "../components/ProductGrid.astro";
 import BottomNav from "../components/BottomNav.astro";
 import { supabase } from "../lib/supabase";
+import { createSupabaseAuthClient } from "../lib/auth";
 import type { Product } from "../lib/types";
 
 const { data, error } = await supabase
@@ -15,8 +16,9 @@ const { data, error } = await supabase
 
 const products: Product[] = data ?? [];
 
-// TODO: Replace with real auth check when auth is implemented
-const isLoggedIn = false;
+const authClient = createSupabaseAuthClient(Astro.cookies, Astro.request);
+const { data: { user } } = await authClient.auth.getUser();
+const isLoggedIn = !!user;
 
 // PWA detection is done client-side via CSS media query; server defaults to false
 const isPwa = false;

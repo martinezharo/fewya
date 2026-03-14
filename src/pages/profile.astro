@@ -1,0 +1,50 @@
+---
+import Layout from "../layouts/Layout.astro";
+import Header from "../components/Header.astro";
+import BottomNav from "../components/BottomNav.astro";
+import { createSupabaseAuthClient } from "../lib/auth";
+import { strings } from "../lib/strings";
+
+const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
+const { data: { user } } = await supabase.auth.getUser();
+
+if (!user) {
+    return Astro.redirect('/');
+}
+
+const displayName = user.user_metadata?.full_name ?? user.user_metadata?.name ?? user.email ?? strings.profileAnonymous;
+const avatarUrl = user.user_metadata?.avatar_url as string | undefined;
+---
+
+<Layout title={strings.profilePageTitle}>
+    <Header />
+    <main class="max-w-[480px] mx-auto px-4 pt-10 pb-24 md:pb-10">
+        <div class="flex flex-col items-center gap-5 py-10">
+            {avatarUrl ? (
+                <img
+                    src={avatarUrl}
+                    alt={displayName}
+                    class="w-20 h-20 rounded-full object-cover border border-border-light"
+                    referrerpolicy="no-referrer"
+                />
+            ) : (
+                <div class="w-20 h-20 rounded-full bg-surface border border-border-light flex items-center justify-center text-[32px] font-semibold text-text-secondary">
+                    {displayName.charAt(0).toUpperCase()}
+                </div>
+            )}
+
+            <div class="text-center">
+                <h1 class="text-2xl font-bold text-text-primary tracking-[-0.5px]">{displayName}</h1>
+                {user.email && <p class="text-[15px] text-text-secondary mt-1">{user.email}</p>}
+            </div>
+
+            <a
+                href="/api/auth/logout"
+                class="mt-4 px-5 py-2.5 text-[14px] font-semibold rounded-full border border-border-light text-text-secondary no-underline transition-colors duration-150 hover:bg-surface hover:text-text-primary"
+            >
+                {strings.profileSignOut}
+            </a>
+        </div>
+    </main>
+    <BottomNav />
+</Layout>
