@@ -10,7 +10,9 @@ export function createSupabaseAuthClient(cookies: AstroCookies, request: Request
     return createServerClient(SUPABASE_URL, SUPABASE_KEY, {
         cookies: {
             getAll() {
-                return parseCookieHeader(request.headers.get('Cookie') ?? '');
+                const cookieHeader = request.headers.get('Cookie') ?? '';
+                const cookies = parseCookieHeader(cookieHeader);
+                return cookies.map(c => ({ name: c.name, value: c.value ?? '' }));
             },
             setAll(cookiesToSet) {
                 cookiesToSet.forEach(({ name, value, options }) => {
