@@ -44,6 +44,7 @@ function initWishlistButtons() {
 
                 const { wishlisted } = await res.json();
                 applyWishState(btn, wishlisted, size);
+                window.dispatchEvent(new CustomEvent('wishlist-updated', { detail: { wishlisted } }));
             } catch {
                 applyWishState(btn, wasWished, size);
             }

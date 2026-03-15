@@ -43,5 +43,25 @@ const {
     <script>
       import '../lib/wishlist-client';
     </script>
+    <script>
+      function initWishlistBadge() {
+        window.addEventListener('wishlist-updated', (e: Event) => {
+          const { wishlisted } = (e as CustomEvent<{ wishlisted: boolean }>).detail;
+          document.querySelectorAll<HTMLElement>('[data-wishlist-badge]').forEach(badge => {
+            const current = parseInt(badge.textContent ?? '0') || 0;
+            const next = wishlisted ? current + 1 : Math.max(0, current - 1);
+            if (next === 0) {
+              badge.style.display = 'none';
+            } else {
+              badge.style.display = '';
+              badge.textContent = String(next);
+            }
+          });
+        });
+      }
+      document.addEventListener('astro:page-load', initWishlistBadge);
+      if (document.readyState !== 'loading') initWishlistBadge();
+      else document.addEventListener('DOMContentLoaded', initWishlistBadge);
+    </script>
   </body>
 </html>
