@@ -1,46 +1,32 @@
 ---
 import Icon from "./icons/Icon.astro";
-import { strings } from "../lib/strings";
 import { createSupabaseAuthClient } from "../lib/auth";
+import { getWishlistCount } from "../lib/wishlist";
+import { navItems } from "../lib/nav";
 
 const currentPath = Astro.url.pathname;
 
 const authClient = createSupabaseAuthClient(Astro.cookies, Astro.request);
 const { data: { user } } = await authClient.auth.getUser();
-
-let wishlistCount = 0;
-if (user) {
-    const { count } = await authClient
-        .from('wishlist')
-        .select('*', { count: 'exact', head: true })
-        .eq('profile_id', user.id);
-    wishlistCount = count ?? 0;
-}
-
-const navItems = [
-    { href: '/', label: strings.navHome, icon: 'home' as const },
-    { href: '/wishlist', label: strings.navWishlist, icon: 'heart' as const, badge: wishlistCount > 0 ? wishlistCount : null },
-    { href: '/profile', label: strings.navProfile, icon: 'user' as const },
-    { href: '/cart', label: strings.navCart, icon: 'shopping-cart' as const },
-    { href: '/sell', label: strings.navSell, icon: 'tag' as const },
-];
+const wishlistCount = user ? await getWishlistCount(authClient, user.id) : 0;
 ---
 
 <nav class="fixed bottom-0 left-0 right-0 z-50 flex justify-around items-center bg-surface border-t border-border-light py-2 pb-[calc(8px+env(safe-area-inset-bottom,0px))] md:hidden" aria-label="Navegación móvil">
-    {navItems.map(({ href, label, icon, badge }) => {
+    {navItems.map(({ href, label, icon, showBadge }) => {
         const isActive = href === '/' ? currentPath === '/' : currentPath.startsWith(href);
+        const badge = showBadge && wishlistCount > 0 ? wishlistCount : null;
         return (
             <a
                 href={href}
                 class:list={[
-                    'flex flex-col items-center gap-0.5 px-3 py-1 no-underline transition-colors duration-150 active:scale-92 [-webkit-tap-highlight-color:transparent] relative',
+                    'flex flex-col items-center gap-0.5 px-3 py-1 no-underline transition-colors duration-150 active:scale-92 [-webkit-tap-highlight-color:transparent]',
                     isActive ? 'text-text-primary' : 'text-text-tertiary'
                 ]}
                 aria-label={label}
             >
                 <div class="relative">
                     <Icon name={icon} size={22} />
-                    {badge !== undefined && badge !== null && (
+                    {badge && (
                         <span class="absolute -top-1.5 -right-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold text-bg ring-2 ring-surface">
                             {badge}
                         </span>

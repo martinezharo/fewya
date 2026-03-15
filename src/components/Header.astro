@@ -1,7 +1,15 @@
 ---
 import SearchBar from "./SearchBar.astro";
 import Icon from "./icons/Icon.astro";
+import { createSupabaseAuthClient } from "../lib/auth";
+import { getWishlistCount } from "../lib/wishlist";
+import { navItems } from "../lib/nav";
 import { strings } from "../lib/strings";
+
+const currentPath = Astro.url.pathname;
+const authClient = createSupabaseAuthClient(Astro.cookies, Astro.request);
+const { data: { user } } = await authClient.auth.getUser();
+const wishlistCount = user ? await getWishlistCount(authClient, user.id) : 0;
 ---
 
 <header class="sticky top-0 z-50 bg-bg" id="main-header">
@@ -21,41 +29,27 @@ import { strings } from "../lib/strings";
             <SearchBar />
         </div>
         <nav class="flex items-center gap-1 ml-auto" aria-label="Navegación principal">
-            <a
-                href="/"
-                class="flex items-center justify-center w-10 h-10 rounded-md text-text-secondary no-underline transition-colors duration-150 hover:text-text-primary hover:bg-border-light text-text-primary"
-                aria-label={strings.navHome}
-            >
-                <Icon name="home" size={22} />
-            </a>
-            <a
-                href="/wishlist"
-                class="flex items-center justify-center w-10 h-10 rounded-md text-text-secondary no-underline transition-colors duration-150 hover:text-text-primary hover:bg-border-light"
-                aria-label={strings.navWishlist}
-            >
-                <Icon name="heart" size={22} />
-            </a>
-            <a
-                href="/profile"
-                class="flex items-center justify-center w-10 h-10 rounded-md text-text-secondary no-underline transition-colors duration-150 hover:text-text-primary hover:bg-border-light"
-                aria-label={strings.navProfile}
-            >
-                <Icon name="user" size={22} />
-            </a>
-            <a
-                href="/cart"
-                class="flex items-center justify-center w-10 h-10 rounded-md text-text-secondary no-underline transition-colors duration-150 hover:text-text-primary hover:bg-border-light"
-                aria-label={strings.navCart}
-            >
-                <Icon name="shopping-cart" size={22} />
-            </a>
-            <a
-                href="/sell"
-                class="flex items-center justify-center w-10 h-10 rounded-md text-text-secondary no-underline transition-colors duration-150 hover:text-text-primary hover:bg-border-light"
-                aria-label={strings.navSell}
-            >
-                <Icon name="tag" size={22} />
-            </a>
+            {navItems.map(({ href, label, icon, showBadge }) => {
+                const isActive = href === '/' ? currentPath === '/' : currentPath.startsWith(href);
+                const badge = showBadge && wishlistCount > 0 ? wishlistCount : null;
+                return (
+                    <a
+                        href={href}
+                        class:list={[
+                            'relative flex items-center justify-center w-10 h-10 rounded-md no-underline transition-colors duration-150 hover:text-text-primary hover:bg-border-light',
+                            isActive ? 'text-text-primary' : 'text-text-secondary'
+                        ]}
+                        aria-label={label}
+                    >
+                        <Icon name={icon} size={22} />
+                        {badge && (
+                            <span class="absolute top-0.5 right-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold text-bg ring-2 ring-bg">
+                                {badge}
+                            </span>
+                        )}
+                    </a>
+                );
+            })}
         </nav>
     </div>
 </header>
