@@ -56,11 +56,11 @@ function applyWishState(btn: HTMLButtonElement, wished: boolean, size: number) {
     btn.innerHTML = getHeartSvg(wished, size);
 
     if (wished) {
-        btn.classList.remove('text-text-tertiary', 'hover:text-wishlist', 'hover:bg-border-light');
+        btn.classList.remove('text-text-tertiary');
         btn.classList.add('text-wishlist');
     } else {
         btn.classList.remove('text-wishlist');
-        btn.classList.add('text-text-tertiary', 'hover:text-wishlist', 'hover:bg-border-light');
+        btn.classList.add('text-text-tertiary');
     }
 }
 
