@@ -67,6 +67,14 @@ export const strings = {
     profileAnonymous: 'Usuario',
     profileSignOut: 'Cerrar sesión',
 
+    // Wishlist
+    wishlistPageTitle: 'Mis favoritos — EWYA',
+    wishlistEmpty: 'Aún no tienes favoritos',
+    wishlistEmptySub: 'Explora productos y guarda los que más te gusten.',
+    wishlistExploreCta: 'Explorar productos',
+    removeFromWishlist: 'Quitar de favoritos',
+    loginToWishlist: 'Inicia sesión para guardar favoritos',
+
     // Search
     searchRecent: 'Búsquedas recientes',
     searchClear: 'Borrar',

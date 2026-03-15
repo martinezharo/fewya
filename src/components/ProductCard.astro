@@ -5,9 +5,10 @@ import type { Product } from "../lib/types";
 
 interface Props {
     product: Product;
+    isWished?: boolean;
 }
 
-const { product } = Astro.props;
+const { product, isWished = false } = Astro.props;
 
 const imageUrl = product.gallery_images?.[0] ?? "/placeholder.svg";
 const defaultVariant = product.variants?.find(v => v.is_default);
@@ -41,11 +42,17 @@ const productUrl = (shopSlug && product.slug) ? `/${shopSlug}/${product.slug}` :
                 )
             }
             <button
-                class="flex items-center justify-center w-8 h-8 border-none bg-transparent text-text-tertiary cursor-pointer rounded-full transition-colors duration-150 hover:text-wishlist hover:bg-border-light [-webkit-tap-highlight-color:transparent]"
-                aria-label={strings.addToWishlist}
+                class:list={[
+                    'wishlist-btn flex items-center justify-center w-8 h-8 border-none bg-transparent cursor-pointer rounded-full transition-colors duration-150 [-webkit-tap-highlight-color:transparent]',
+                    isWished ? 'text-wishlist' : 'text-text-tertiary hover:text-wishlist hover:bg-border-light'
+                ]}
+                aria-label={isWished ? strings.removeFromWishlist : strings.addToWishlist}
+                data-product-id={product.id}
+                data-wished={isWished ? 'true' : 'false'}
+                data-icon-size="18"
                 type="button"
             >
-                <Icon name="heart" size={18} />
+                <Icon name={isWished ? 'heart-filled' : 'heart'} size={18} />
             </button>
         </div>
 

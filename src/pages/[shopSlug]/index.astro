@@ -7,6 +7,7 @@ import ProductGrid from '../../components/ProductGrid.astro';
 import ShopContact from '../../components/product/ShopContact.astro';
 import Icon from '../../components/icons/Icon.astro';
 import { supabase } from '../../lib/supabase';
+import { createSupabaseAuthClient } from '../../lib/auth';
 import { strings } from '../../lib/strings';
 import type { Shop, Product } from '../../lib/types';
 
@@ -53,6 +54,17 @@ if (productIds.length > 0) {
 }
 
 const profileImg = shop.profile_img || '/placeholder.svg';
+
+const authClient = createSupabaseAuthClient(Astro.cookies, Astro.request);
+const { data: { user } } = await authClient.auth.getUser();
+let wishedProductIds = new Set<string>();
+if (user) {
+  const { data: wishData } = await authClient
+    .from('wishlist')
+    .select('product_id')
+    .eq('profile_id', user.id);
+  wishedProductIds = new Set((wishData ?? []).map((w: any) => w.product_id));
+}
 ---
 
 <Layout title={`${shop.name} — ${strings.siteTitle}`}>
@@ -144,7 +156,7 @@ const profileImg = shop.profile_img || '/placeholder.svg';
           </h2>
         </div>
         
-        <ProductGrid products={products} />
+        <ProductGrid products={products} wishedProductIds={wishedProductIds} />
       </div>
     </div>
   </main>

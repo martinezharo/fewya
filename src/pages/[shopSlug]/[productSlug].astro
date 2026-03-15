@@ -12,6 +12,7 @@ import ProductReviews from '../../components/product/ProductReviews.astro';
 import ShopContact from '../../components/product/ShopContact.astro';
 import ReportButton from '../../components/product/ReportButton.astro';
 import { supabase } from '../../lib/supabase';
+import { createSupabaseAuthClient } from '../../lib/auth';
 import { strings } from '../../lib/strings';
 import type { Product, Review, Shop } from '../../lib/types';
 
@@ -54,6 +55,20 @@ const sortedVariants = [...(product.variants ?? [])].sort((a, b) =>
 const activeVariant = sortedVariants[0];
 const price = activeVariant?.price ?? 0;
 const hasVariants = sortedVariants.length > 1;
+
+// Check wishlist status
+const authClient = createSupabaseAuthClient(Astro.cookies, Astro.request);
+const { data: { user } } = await authClient.auth.getUser();
+let isWished = false;
+if (user) {
+  const { data: wishEntry } = await authClient
+    .from('wishlist')
+    .select('id')
+    .eq('profile_id', user.id)
+    .eq('product_id', product.id)
+    .maybeSingle();
+  isWished = !!wishEntry;
+}
 ---
 
 <Layout title={`${product.title} — ${shop.name}`}>
@@ -85,10 +100,16 @@ const hasVariants = sortedVariants.length > 1;
           </div>
           <button
             type="button"
-            class="flex items-center justify-center w-10 h-10 rounded-full text-text-tertiary transition-colors hover:text-wishlist"
-            aria-label={strings.addToWishlist}
+            class:list={[
+              'wishlist-btn flex items-center justify-center w-10 h-10 rounded-full transition-colors',
+              isWished ? 'text-wishlist' : 'text-text-tertiary hover:text-wishlist'
+            ]}
+            aria-label={isWished ? strings.removeFromWishlist : strings.addToWishlist}
+            data-product-id={product.id}
+            data-wished={isWished ? 'true' : 'false'}
+            data-icon-size="22"
           >
-            <Icon name="heart" size={22} />
+            <Icon name={isWished ? 'heart-filled' : 'heart'} size={22} />
           </button>
         </div>
 

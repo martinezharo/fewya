@@ -1,35 +1,33 @@
 ---
 import Icon from "./icons/Icon.astro";
 import { strings } from "../lib/strings";
+
+const currentPath = Astro.url.pathname;
+
+const navItems = [
+    { href: '/', label: strings.navHome, icon: 'home' as const },
+    { href: '/wishlist', label: strings.navWishlist, icon: 'heart' as const },
+    { href: '/profile', label: strings.navProfile, icon: 'user' as const },
+    { href: '/cart', label: strings.navCart, icon: 'shopping-cart' as const },
+    { href: '/sell', label: strings.navSell, icon: 'tag' as const },
+];
 ---
 
 <nav class="fixed bottom-0 left-0 right-0 z-50 flex justify-around items-center bg-surface border-t border-border-light py-2 pb-[calc(8px+env(safe-area-inset-bottom,0px))] md:hidden" aria-label="Navegación móvil">
-    <a
-        href="/"
-        class="flex flex-col items-center gap-0.5 px-3 py-1 text-text-tertiary no-underline transition-colors duration-150 active:scale-92 [-webkit-tap-highlight-color:transparent] text-text-primary"
-        aria-label={strings.navHome}
-    >
-        <Icon name="home" size={22} />
-        <span class="text-[10px] font-medium tracking-[0.01em]">{strings.navHome}</span>
-    </a>
-    <a
-        href="/wishlist"
-        class="flex flex-col items-center gap-0.5 px-3 py-1 text-text-tertiary no-underline transition-colors duration-150 active:scale-92 [-webkit-tap-highlight-color:transparent]"
-        aria-label={strings.navWishlist}
-    >
-        <Icon name="heart" size={22} />
-        <span class="text-[10px] font-medium tracking-[0.01em]">{strings.navWishlist}</span>
-    </a>
-    <a href="/profile" class="flex flex-col items-center gap-0.5 px-3 py-1 text-text-tertiary no-underline transition-colors duration-150 active:scale-92 [-webkit-tap-highlight-color:transparent]" aria-label={strings.navProfile}>
-        <Icon name="user" size={22} />
-        <span class="text-[10px] font-medium tracking-[0.01em]">{strings.navProfile}</span>
-    </a>
-    <a href="/cart" class="flex flex-col items-center gap-0.5 px-3 py-1 text-text-tertiary no-underline transition-colors duration-150 active:scale-92 [-webkit-tap-highlight-color:transparent]" aria-label={strings.navCart}>
-        <Icon name="shopping-cart" size={22} />
-        <span class="text-[10px] font-medium tracking-[0.01em]">{strings.navCart}</span>
-    </a>
-    <a href="/sell" class="flex flex-col items-center gap-0.5 px-3 py-1 text-text-tertiary no-underline transition-colors duration-150 active:scale-92 [-webkit-tap-highlight-color:transparent]" aria-label={strings.navSell}>
-        <Icon name="tag" size={22} />
-        <span class="text-[10px] font-medium tracking-[0.01em]">{strings.navSell}</span>
-    </a>
+    {navItems.map(({ href, label, icon }) => {
+        const isActive = href === '/' ? currentPath === '/' : currentPath.startsWith(href);
+        return (
+            <a
+                href={href}
+                class:list={[
+                    'flex flex-col items-center gap-0.5 px-3 py-1 no-underline transition-colors duration-150 active:scale-92 [-webkit-tap-highlight-color:transparent]',
+                    isActive ? 'text-text-primary' : 'text-text-tertiary'
+                ]}
+                aria-label={label}
+            >
+                <Icon name={icon} size={22} />
+                <span class="text-[10px] font-medium tracking-[0.01em]">{label}</span>
+            </a>
+        );
+    })}
 </nav>

@@ -20,13 +20,22 @@ const authClient = createSupabaseAuthClient(Astro.cookies, Astro.request);
 const { data: { user } } = await authClient.auth.getUser();
 const isLoggedIn = !!user;
 
+let wishedProductIds = new Set<string>();
+if (user) {
+	const { data: wishData } = await authClient
+		.from('wishlist')
+		.select('product_id')
+		.eq('profile_id', user.id);
+	wishedProductIds = new Set((wishData ?? []).map((w: any) => w.product_id));
+}
+
 ---
 
 <Layout>
 	<Header />
 	<main>
 		<HeroBanner isLoggedIn={isLoggedIn} />
-		<ProductGrid products={products} />
+		<ProductGrid products={products} wishedProductIds={wishedProductIds} />
 	</main>
 	<BottomNav />
 </Layout>
