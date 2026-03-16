@@ -8,6 +8,7 @@ import ShopContact from '../../components/product/ShopContact.astro';
 import Icon from '../../components/icons/Icon.astro';
 import { supabase } from '../../lib/supabase';
 import { createSupabaseAuthClient } from '../../lib/auth';
+import { enrichProductsWithRatings } from '../../lib/productUtils';
 import { strings } from '../../lib/strings';
 import type { Shop, Product } from '../../lib/types';
 
@@ -34,6 +35,7 @@ const { data: productsData } = await supabase
   .order('created_at', { ascending: false });
 
 const products = (productsData ?? []).map((p: any) => ({ ...p, shop })) as Product[];
+await enrichProductsWithRatings(products, supabase);
 
 // Calculate average rating of shop's products
 // Optional optimizations could be done via a Postgres view

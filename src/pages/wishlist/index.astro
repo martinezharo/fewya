@@ -6,6 +6,7 @@ import ProductGrid from "../../components/ProductGrid.astro";
 import Icon from "../../components/icons/Icon.astro";
 import { createSupabaseAuthClient } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
+import { enrichProductsWithRatings } from "../../lib/productUtils";
 import { strings } from "../../lib/strings";
 import type { Product } from "../../lib/types";
 
@@ -33,6 +34,7 @@ if (productIds.length > 0) {
     // Preserve wishlist order
     const byId = Object.fromEntries((productsData ?? []).map((p: any) => [p.id, p]));
     products = productIds.map((id: string) => byId[id]).filter(Boolean) as Product[];
+    await enrichProductsWithRatings(products, supabase);
 }
 
 const wishedProductIds = new Set(productIds);

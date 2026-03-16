@@ -8,6 +8,7 @@ import SortModal from "../../components/search/SortModal.astro";
 import FilterModal from "../../components/search/FilterModal.astro";
 import { supabase } from "../../lib/supabase";
 import { createSupabaseAuthClient } from "../../lib/auth";
+import { enrichProductsWithRatings } from "../../lib/productUtils";
 import { parseSearchParams } from "../../lib/search";
 import { strings } from "../../lib/strings";
 import type { Product } from "../../lib/types";
@@ -66,6 +67,8 @@ products.sort((a, b) => {
             return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     }
 });
+
+await enrichProductsWithRatings(products, supabase);
 
 const currentUrl = url.pathname + url.search;
 

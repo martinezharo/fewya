@@ -17,58 +17,168 @@ const formattedPrice = `${price.toFixed(2)}${strings.currency}`;
 const isOutOfStock = product.variants?.every(v => (v.stock ?? 0) <= 0) ?? true;
 const shopName = product.shop?.name ?? "";
 const shopSlug = product.shop?.slug ?? "";
-const shopAccentColor = product.shop?.accent_color;
+const shopAccentColor = product.shop?.accent_color ?? "#888";
 const productUrl = (shopSlug && product.slug) ? `/${shopSlug}/${product.slug}` : '#';
+const reviewCount = product.review_count ?? 0;
+const reviewAvg = product.review_avg ?? 0;
 ---
 
-<article class="flex flex-col bg-surface rounded-md overflow-hidden transition-shadow duration-200 hover:shadow-[0_2px_16px_rgba(0,0,0,0.06)] group">
-    <a href={productUrl} class="block aspect-square overflow-hidden">
-        <img
-            src={imageUrl}
-            alt={product.title}
-            class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
-            loading="lazy"
-            decoding="async"
-        />
-    </a>
+{/* ─── MOBILE: Horizontal layout ─── */}
+<article class="md:hidden flex bg-surface rounded-lg overflow-hidden transition-shadow duration-200 hover:shadow-[0_2px_16px_rgba(0,0,0,0.08)] group">
+    {/* Left — Image */}
+    <div class="relative shrink-0 w-[140px]">
+        <a href={productUrl} class="block h-full">
+            <div class="py-3 h-full">
+                <img
+                    src={imageUrl}
+                    alt={product.title}
+                    class="w-full h-full object-cover aspect-square rounded-md transition-transform duration-300 group-hover:scale-[1.03]"
+                    loading="lazy"
+                    decoding="async"
+                />
+            </div>
+        </a>
+        <button
+            class:list={[
+                'wishlist-btn absolute bottom-4 right-2 flex items-center justify-center w-8 h-8 border-none bg-surface/80 backdrop-blur-sm cursor-pointer rounded-full transition-colors duration-150 [-webkit-tap-highlight-color:transparent]',
+                isWished ? 'text-wishlist' : 'text-text-tertiary hover:text-wishlist'
+            ]}
+            aria-label={isWished ? strings.removeFromWishlist : strings.addToWishlist}
+            data-product-id={product.id}
+            data-wished={isWished ? 'true' : 'false'}
+            data-icon-size="16"
+            type="button"
+        >
+            <Icon name={isWished ? 'heart-filled' : 'heart'} size={16} />
+        </button>
+    </div>
 
-    <div class="flex flex-col gap-1 p-[10px_12px_14px]">
-        <div class="flex items-center justify-between">
-            {
-                isOutOfStock ? (
-                    <span class="text-[13px] font-medium text-red-500 dark:text-red-400">{strings.productOutOfStock}</span>
-                ) : (
-                    <span class="text-base font-bold text-text-primary tracking-[-0.3px]">{formattedPrice}</span>
-                )
-            }
-            <button
-                class:list={[
-                    'wishlist-btn flex items-center justify-center w-8 h-8 border-none bg-transparent cursor-pointer rounded-full transition-colors duration-150 [-webkit-tap-highlight-color:transparent]',
-                    isWished ? 'text-wishlist' : 'text-text-tertiary hover:text-wishlist hover:bg-border-light'
-                ]}
-                aria-label={isWished ? strings.removeFromWishlist : strings.addToWishlist}
-                data-product-id={product.id}
-                data-wished={isWished ? 'true' : 'false'}
-                data-icon-size="18"
-                type="button"
-            >
-                <Icon name={isWished ? 'heart-filled' : 'heart'} size={18} />
-            </button>
+    {/* Right — Info */}
+    <div class="flex flex-col justify-between flex-1 min-w-0 p-3 gap-1.5">
+        <div class="flex flex-col gap-1.5">
+            {shopName && (
+                <a href={`/${shopSlug}`} class="flex items-center gap-1.5 text-xs text-text-tertiary no-underline hover:text-text-secondary hover:underline">
+                    <span class="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: shopAccentColor }}></span>
+                    <span class="truncate">{shopName}</span>
+                </a>
+            )}
+            <a href={productUrl} class="text-sm font-medium text-text-primary no-underline leading-snug line-clamp-2 hover:underline">
+                {product.title}
+            </a>
+            <div class="flex items-center justify-between gap-2">
+                <div class="flex items-center gap-1 text-xs text-text-secondary">
+                    {reviewCount > 0 ? (
+                        <>
+                            <Icon name="star-filled" size={13} class="text-amber-400" />
+                            <span>{reviewAvg.toFixed(1)}</span>
+                            <span class="text-text-tertiary">({reviewCount})</span>
+                        </>
+                    ) : (
+                        <span class="text-text-tertiary">{strings.noRatings}</span>
+                    )}
+                </div>
+                <span class="text-base font-bold text-text-primary tracking-tight">{formattedPrice}</span>
+            </div>
         </div>
+        <button
+            class="w-full py-2 text-sm font-medium rounded-md bg-accent text-surface cursor-pointer border-none transition-colors duration-150 hover:bg-accent-hover disabled:bg-border-light disabled:text-text-tertiary disabled:cursor-not-allowed"
+            disabled={isOutOfStock}
+            type="button"
+        >
+            <span class="flex items-center justify-center gap-1.5">
+                {isOutOfStock ? (
+                    <span>{strings.productOutOfStock}</span>
+                ) : (
+                    <>
+                        <Icon name="shopping-cart" size={15} />
+                        {strings.addToCart}
+                    </>
+                )}
+            </span>
+        </button>
+    </div>
+</article>
 
-        <a href={productUrl} class="text-[13px] font-medium text-text-primary no-underline leading-[1.35] line-clamp-2 hover:underline">
+{/* ─── DESKTOP: Vertical card layout ─── */}
+<article class="hidden md:flex flex-col bg-surface rounded-xl overflow-hidden transition-all duration-300 hover:shadow-[0_8px_32px_rgba(0,0,0,0.1)] dark:hover:shadow-[0_8px_32px_rgba(0,0,0,0.3)] group border border-transparent hover:border-border-light/60">
+    {/* Image — full width, square */}
+    <div class="relative aspect-square overflow-hidden bg-border-light/20">
+        <a href={productUrl} class="block w-full h-full">
+            <img
+                src={imageUrl}
+                alt={product.title}
+                class="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.06]"
+                loading="lazy"
+                decoding="async"
+            />
+        </a>
+
+        {/* Wishlist button — top right overlay */}
+        <button
+            class:list={[
+                'wishlist-btn absolute top-3 right-3 flex items-center justify-center w-8 h-8 border-none backdrop-blur-md cursor-pointer rounded-full transition-all duration-200 [-webkit-tap-highlight-color:transparent] shadow-md',
+                isWished
+                    ? 'bg-white/90 dark:bg-black/60 text-red-500'
+                    : 'bg-white/70 dark:bg-black/40 text-text-tertiary hover:text-red-500 hover:bg-white/90 dark:hover:bg-black/60 opacity-0 group-hover:opacity-100'
+            ]}
+            aria-label={isWished ? strings.removeFromWishlist : strings.addToWishlist}
+            data-product-id={product.id}
+            data-wished={isWished ? 'true' : 'false'}
+            data-icon-size="16"
+            type="button"
+        >
+            <Icon name={isWished ? 'heart-filled' : 'heart'} size={16} />
+        </button>
+
+        {/* Out-of-stock badge */}
+        {isOutOfStock && (
+            <span class="absolute top-3 left-3 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-black/60 text-white dark:bg-white/20 dark:text-white backdrop-blur-sm">
+                {strings.productOutOfStock}
+            </span>
+        )}
+    </div>
+
+    {/* Info */}
+    <div class="flex flex-col gap-2 p-3 flex-1">
+        {/* Shop */}
+        {shopName && (
+            <a href={`/${shopSlug}`} class="flex items-center gap-1.5 text-[11px] text-text-tertiary no-underline hover:text-text-secondary transition-colors">
+                <span class="w-[7px] h-[7px] rounded-full shrink-0" style={{ backgroundColor: shopAccentColor }}></span>
+                <span class="truncate font-medium">{shopName}</span>
+            </a>
+        )}
+
+        {/* Title */}
+        <a href={productUrl} class="text-[13px] font-semibold text-text-primary no-underline leading-snug line-clamp-2 hover:underline tracking-[-0.1px] flex-1">
             {product.title}
         </a>
 
-        {
-            shopName && (
-                <a href={`/${shopSlug}`} class="flex items-center gap-1.5 text-xs text-text-tertiary no-underline mt-0.5 hover:text-text-secondary hover:underline">
-                    {shopAccentColor && (
-                        <span class="w-[8px] h-[8px] rounded-full inline-block shrink-0" style={{ backgroundColor: shopAccentColor }}></span>
-                    )}
-                    <span class="truncate">{shopName}</span>
-                </a>
-            )
-        }
+        {/* Rating */}
+        <div class="flex items-center gap-1 text-[11px] text-text-secondary">
+            {reviewCount > 0 ? (
+                <>
+                    <Icon name="star-filled" size={12} class="text-amber-400" />
+                    <span class="font-medium">{reviewAvg.toFixed(1)}</span>
+                    <span class="text-text-tertiary">({reviewCount})</span>
+                </>
+            ) : (
+                <span class="text-text-tertiary">{strings.noRatings}</span>
+            )}
+        </div>
+
+        {/* Price + Cart */}
+        <div class="flex items-center justify-between gap-2 mt-auto pt-1">
+            <span class="text-[15px] font-bold text-text-primary tracking-tight">
+                {formattedPrice}
+            </span>
+            <button
+                class="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold rounded-lg bg-accent text-bg cursor-pointer border-none transition-all duration-200 hover:bg-accent-hover active:scale-[0.97] disabled:bg-border-light disabled:text-text-tertiary disabled:cursor-not-allowed [-webkit-tap-highlight-color:transparent]"
+                disabled={isOutOfStock}
+                type="button"
+            >
+                {!isOutOfStock && <Icon name="shopping-cart" size={13} />}
+                {isOutOfStock ? strings.productOutOfStock : strings.addToCart}
+            </button>
+        </div>
     </div>
 </article>

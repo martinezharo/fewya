@@ -10,6 +10,6 @@ interface Props {
 const { products, wishedProductIds = new Set() } = Astro.props;
 ---
 
-<section class="grid grid-cols-2 gap-2.5 px-4 pb-[120px] md:grid-cols-5 md:gap-4 md:px-10 md:pb-[60px] md:max-w-[1400px] md:mx-auto">
+<section class="grid grid-cols-1 gap-3 px-4 pb-[120px] md:grid-cols-4 lg:grid-cols-5 md:gap-3 md:px-10 md:pb-[60px] md:max-w-[1400px] md:mx-auto">
     {products.map((product) => <ProductCard product={product} isWished={wishedProductIds.has(product.id)} />)}
 </section>

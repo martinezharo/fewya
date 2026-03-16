@@ -27,6 +27,8 @@ export interface Product {
     slug: string;
     shop?: Shop;
     variants?: ProductVariant[];
+    review_avg?: number;
+    review_count?: number;
 }
 
 export interface ProductVariant {

@@ -25,6 +25,8 @@ export const strings = {
 
     // Product Card
     addToWishlist: 'Añadir a favoritos',
+    addToCart: 'Añadir',
+    noRatings: 'Sin reseñas',
 
     // General
     currency: '€',

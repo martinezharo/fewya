@@ -6,6 +6,7 @@ import ProductGrid from "../components/ProductGrid.astro";
 import BottomNav from "../components/BottomNav.astro";
 import { supabase } from "../lib/supabase";
 import { createSupabaseAuthClient } from "../lib/auth";
+import { enrichProductsWithRatings } from "../lib/productUtils";
 import type { Product } from "../lib/types";
 
 const { data, error } = await supabase
@@ -15,6 +16,7 @@ const { data, error } = await supabase
 	.order("created_at", { ascending: false });
 
 const products: Product[] = data ?? [];
+await enrichProductsWithRatings(products, supabase);
 
 const authClient = createSupabaseAuthClient(Astro.cookies, Astro.request);
 const { data: { user } } = await authClient.auth.getUser();
