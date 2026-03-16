@@ -25,5 +25,12 @@
     "eslint-plugin-astro": "^1.6.0",
     "tailwindcss": "^4.2.1",
     "vite-plugin-pwa": "^1.2.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "sharp",
+      "workerd"
+    ]
   }
 }
