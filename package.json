@@ -29,6 +29,7 @@
   "pnpm": {
     "onlyBuiltDependencies": [
       "esbuild",
+      "miniflare",
       "sharp",
       "workerd"
     ]
