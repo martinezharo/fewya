@@ -7,6 +7,9 @@ import { SUPABASE_URL, SUPABASE_KEY } from 'astro:env/server';
  * Pass Astro.cookies and Astro.request from any page or API route.
  */
 export function createSupabaseAuthClient(cookies: AstroCookies, request: Request) {
+    if (!SUPABASE_URL || !SUPABASE_KEY) {
+        throw new Error('Variables de entorno SUPABASE_URL o SUPABASE_KEY no encontradas en Cloudflare');
+    }
     return createServerClient(SUPABASE_URL, SUPABASE_KEY, {
         cookies: {
             getAll() {

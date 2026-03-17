@@ -15,6 +15,10 @@ const { data, error } = await supabase
 	.eq("is_active", true)
 	.order("created_at", { ascending: false });
 
+if (error) {
+	console.error("Error al obtener productos:", error);
+}
+
 const products: Product[] = data ?? [];
 await enrichProductsWithRatings(products, supabase);
 
