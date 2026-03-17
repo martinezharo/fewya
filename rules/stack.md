@@ -10,7 +10,7 @@ trigger: always_on
 - **Estilos:** Tailwind CSS
 
 ## Infraestructura y Backend
-- **Despliegue:** Cloudflare Pages.
+- **Despliegue:** Cloudflare Workers.
 - **Base de Datos:** Supabase (PostgreSQL).
 - **Autenticación:** Supabase Auth (Inicialmente solo Google).
 
