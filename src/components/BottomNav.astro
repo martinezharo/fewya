@@ -11,7 +11,7 @@ const { data: { user } } = await authClient.auth.getUser();
 const wishlistCount = user ? await getWishlistCount(authClient, user.id) : 0;
 ---
 
-<nav class="fixed bottom-0 left-0 right-0 z-50 flex justify-around items-center bg-surface border-t border-border-light py-2 pb-[calc(8px+env(safe-area-inset-bottom,0px))] md:hidden" aria-label="Navegación móvil">
+<nav class="fixed bottom-0 left-0 right-0 z-50 flex justify-around items-center bg-surface border-t border-border-light py-2 pb-[calc(11px+env(safe-area-inset-bottom,0px))] md:hidden" aria-label="Navegación móvil">
     {navItems.map(({ href, label, icon, showBadge, badgeType }) => {
         const isActive = href === '/' ? currentPath === '/' : currentPath.startsWith(href);
         const isWishlistBadge = badgeType === 'wishlist';

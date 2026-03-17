@@ -57,7 +57,7 @@ const reviewAvg = product.review_avg ?? 0;
     <div class="flex flex-col justify-between flex-1 min-w-0 p-3 gap-1.5">
         <div class="flex flex-col gap-1.5">
             {shopName && (
-                <a href={`/${shopSlug}`} class="flex items-center gap-1.5 text-xs text-text-tertiary no-underline hover:text-text-secondary hover:underline">
+                <a href={`/${shopSlug}`} class="flex items-center gap-1.5 text-xs text-text-secondary no-underline hover:text-text-primary hover:underline">
                     <span class="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: shopAccentColor }}></span>
                     <span class="truncate">{shopName}</span>
                 </a>
@@ -71,10 +71,10 @@ const reviewAvg = product.review_avg ?? 0;
                         <>
                             <Icon name="star-filled" size={13} class="text-amber-400" />
                             <span>{reviewAvg.toFixed(1)}</span>
-                            <span class="text-text-tertiary">({reviewCount})</span>
+                            <span>({reviewCount})</span>
                         </>
                     ) : (
-                        <span class="text-text-tertiary">{strings.noRatings}</span>
+                        <span>{strings.noRatings}</span>
                     )}
                 </div>
                 <span class="text-base font-bold text-text-primary tracking-tight">{formattedPrice}</span>
@@ -154,7 +154,7 @@ const reviewAvg = product.review_avg ?? 0;
     <div class="flex flex-col gap-2 p-3 flex-1">
         {/* Shop */}
         {shopName && (
-            <a href={`/${shopSlug}`} class="flex items-center gap-1.5 text-[11px] text-text-tertiary no-underline hover:text-text-secondary transition-colors">
+            <a href={`/${shopSlug}`} class="flex items-center gap-1.5 text-[11px] text-text-secondary no-underline hover:text-text-primary transition-colors">
                 <span class="w-[7px] h-[7px] rounded-full shrink-0" style={{ backgroundColor: shopAccentColor }}></span>
                 <span class="truncate font-medium">{shopName}</span>
             </a>
@@ -171,10 +171,10 @@ const reviewAvg = product.review_avg ?? 0;
                 <>
                     <Icon name="star-filled" size={12} class="text-amber-400" />
                     <span class="font-medium">{reviewAvg.toFixed(1)}</span>
-                    <span class="text-text-tertiary">({reviewCount})</span>
+                    <span>({reviewCount})</span>
                 </>
             ) : (
-                <span class="text-text-tertiary">{strings.noRatings}</span>
+                <span>{strings.noRatings}</span>
             )}
         </div>
 

@@ -62,7 +62,7 @@ const productUrl = (shopSlug && product.slug) ? `/${shopSlug}/${product.slug}` :
 
         {
             shopName && (
-                <a href={`/${shopSlug}`} class="flex items-center gap-1.5 text-xs text-text-tertiary no-underline mt-0.5 hover:text-text-secondary hover:underline">
+                <a href={`/${shopSlug}`} class="flex items-center gap-1.5 text-xs text-text-secondary no-underline mt-0.5 hover:text-text-primary hover:underline">
                     {shopAccentColor && (
                         <span class="w-[8px] h-[8px] rounded-full inline-block shrink-0" style={{ backgroundColor: shopAccentColor }}></span>
                     )}
