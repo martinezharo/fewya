@@ -11,8 +11,8 @@ interface Props {
 const { product, isWished = false } = Astro.props;
 
 const imageUrl = product.gallery_images?.[0] ?? "/placeholder.svg";
-const defaultVariant = product.variants?.find(v => v.is_default);
-const price = defaultVariant?.price ?? product.variants?.[0]?.price ?? 0;
+const defaultVariant = product.variants?.find(v => v.is_default) ?? product.variants?.[0];
+const price = defaultVariant?.price ?? 0;
 const formattedPrice = `${price.toFixed(2)}${strings.currency}`;
 const isOutOfStock = product.variants?.every(v => (v.stock ?? 0) <= 0) ?? true;
 const shopName = product.shop?.name ?? "";
@@ -84,6 +84,18 @@ const reviewAvg = product.review_avg ?? 0;
             class="w-full py-2 text-sm font-medium rounded-md bg-accent text-surface cursor-pointer border-none transition-colors duration-150 hover:bg-accent-hover disabled:bg-border-light disabled:text-text-tertiary disabled:cursor-not-allowed"
             disabled={isOutOfStock}
             type="button"
+            data-add-to-cart
+            data-cart-product-id={product.id}
+            data-cart-variant-id={defaultVariant?.id ?? ''}
+            data-cart-title={product.title}
+            data-cart-image={imageUrl}
+            data-cart-price={String(price)}
+            data-cart-stock={String(defaultVariant?.stock ?? 0)}
+            data-cart-variant-name={defaultVariant?.variant_name ?? ''}
+            data-cart-shop-id={product.shop?.id ?? ''}
+            data-cart-shop-name={shopName}
+            data-cart-shop-slug={shopSlug}
+            data-cart-product-slug={product.slug}
         >
             <span class="flex items-center justify-center gap-1.5">
                 {isOutOfStock ? (
@@ -175,6 +187,18 @@ const reviewAvg = product.review_avg ?? 0;
                 class="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold rounded-lg bg-accent text-bg cursor-pointer border-none transition-all duration-200 hover:bg-accent-hover active:scale-[0.97] disabled:bg-border-light disabled:text-text-tertiary disabled:cursor-not-allowed [-webkit-tap-highlight-color:transparent]"
                 disabled={isOutOfStock}
                 type="button"
+                data-add-to-cart
+                data-cart-product-id={product.id}
+                data-cart-variant-id={defaultVariant?.id ?? ''}
+                data-cart-title={product.title}
+                data-cart-image={imageUrl}
+                data-cart-price={String(price)}
+                data-cart-stock={String(defaultVariant?.stock ?? 0)}
+                data-cart-variant-name={defaultVariant?.variant_name ?? ''}
+                data-cart-shop-id={product.shop?.id ?? ''}
+                data-cart-shop-name={shopName}
+                data-cart-shop-slug={shopSlug}
+                data-cart-product-slug={product.slug}
             >
                 {!isOutOfStock && <Icon name="shopping-cart" size={13} />}
                 {isOutOfStock ? strings.productOutOfStock : strings.addToCart}

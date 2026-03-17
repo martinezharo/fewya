@@ -1,0 +1,283 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import BottomNav from '../../components/BottomNav.astro';
+import Icon from '../../components/icons/Icon.astro';
+import { strings } from '../../lib/strings';
+---
+
+<Layout title={strings.cartPageTitle}>
+  <Header />
+
+  <main class="min-h-[60dvh] pb-36 md:pb-16">
+    <div class="max-w-[960px] mx-auto px-4 md:px-10 py-4 md:py-8">
+      <!-- Empty state -->
+      <div id="cart-empty" class="hidden flex-col items-center justify-center gap-4 pt-20 text-center">
+        <Icon name="shopping-cart" size={48} class="text-text-tertiary" />
+        <h2 class="text-lg font-semibold text-text-primary">{strings.cartEmpty}</h2>
+        <p class="text-sm text-text-secondary">{strings.cartEmptySub}</p>
+        <a href="/" class="mt-2 px-6 py-2.5 bg-accent text-bg text-sm font-semibold rounded-lg no-underline hover:bg-accent-hover transition-colors">
+          {strings.cartExploreCta}
+        </a>
+      </div>
+
+      <!-- Cart content (populated by JS) -->
+      <div id="cart-content" class="hidden">
+        <!-- Desktop header -->
+        <div class="hidden md:flex items-center justify-between mb-6">
+          <h1 class="text-xl font-bold text-text-primary">{strings.navCart}</h1>
+        </div>
+
+        <!-- Shop groups container -->
+        <div id="cart-shops" class="flex flex-col gap-6"></div>
+
+        <!-- Desktop checkout bar -->
+        <div class="hidden md:flex items-center justify-end gap-6 mt-8 pt-6 border-t border-border-light">
+          <div class="flex items-center gap-2">
+            <span class="text-sm text-text-secondary">{strings.cartTotal}:</span>
+            <span id="cart-total-desktop" class="text-xl font-bold text-text-primary"></span>
+          </div>
+          <button
+            type="button"
+            id="checkout-btn-desktop"
+            class="px-8 py-3 bg-accent text-bg font-semibold text-sm rounded-lg transition-colors hover:bg-accent-hover active:scale-[0.98]"
+          >
+            {strings.cartCheckout}
+          </button>
+        </div>
+      </div>
+
+      <!-- Order success message -->
+      <div id="cart-success" class="hidden flex-col items-center justify-center gap-4 pt-20 text-center">
+        <div class="w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+          <span class="text-3xl">✓</span>
+        </div>
+        <h2 class="text-lg font-semibold text-text-primary">{strings.cartOrderSuccess}</h2>
+        <a href="/" class="mt-2 px-6 py-2.5 bg-accent text-bg text-sm font-semibold rounded-lg no-underline hover:bg-accent-hover transition-colors">
+          {strings.cartExploreCta}
+        </a>
+      </div>
+    </div>
+  </main>
+
+  <!-- Mobile fixed checkout bar -->
+  <div id="cart-checkout-mobile" class="hidden fixed bottom-[calc(56px+env(safe-area-inset-bottom,0px))] left-0 right-0 z-40 md:hidden bg-surface border-t border-border-light px-4 py-3">
+    <div class="flex items-center justify-between gap-3">
+      <button
+        type="button"
+        id="checkout-btn-mobile"
+        class="flex-1 py-3 bg-accent text-bg font-semibold text-sm rounded-lg transition-colors hover:bg-accent-hover active:scale-[0.98]"
+      >
+        {strings.cartCheckout}
+      </button>
+      <span id="cart-total-mobile" class="text-lg font-bold text-text-primary shrink-0"></span>
+    </div>
+  </div>
+
+  <BottomNav />
+</Layout>
+
+<script>
+  import { cart, type CartItem } from '../../lib/cart';
+  import { strings } from '../../lib/strings';
+
+  const SHIPPING_PER_SHOP = 2.99;
+
+  function renderCart() {
+    const items = cart.get();
+    const emptyEl = document.getElementById('cart-empty');
+    const contentEl = document.getElementById('cart-content');
+    const checkoutMobile = document.getElementById('cart-checkout-mobile');
+    const successEl = document.getElementById('cart-success');
+
+    if (successEl && !successEl.classList.contains('hidden')) return;
+
+    if (items.length === 0) {
+      emptyEl?.classList.remove('hidden');
+      emptyEl?.classList.add('flex');
+      contentEl?.classList.add('hidden');
+      contentEl?.classList.remove('block');
+      checkoutMobile?.classList.add('hidden');
+      return;
+    }
+
+    emptyEl?.classList.add('hidden');
+    emptyEl?.classList.remove('flex');
+    contentEl?.classList.remove('hidden');
+    contentEl?.classList.add('block');
+    checkoutMobile?.classList.remove('hidden');
+
+    const grouped = cart.groupedByShop();
+    const shopsContainer = document.getElementById('cart-shops');
+    if (!shopsContainer) return;
+    shopsContainer.innerHTML = '';
+
+    let grandTotal = 0;
+
+    grouped.forEach(({ shopName, shopSlug, items: shopItems }, shopId) => {
+      const shopTotal = shopItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+      const shopTotalWithShipping = shopTotal + SHIPPING_PER_SHOP;
+      grandTotal += shopTotalWithShipping;
+
+      const shopSection = document.createElement('div');
+      shopSection.className = 'bg-surface rounded-xl border border-border-light overflow-hidden';
+
+      // Shop header
+      const header = document.createElement('div');
+      header.className = 'flex items-center justify-between px-4 py-3 border-b border-border-light';
+      header.innerHTML = `
+        <a href="/${escapeHtml(shopSlug)}" class="text-sm font-semibold text-text-primary no-underline hover:underline">${escapeHtml(shopName)}</a>
+        <div class="flex items-center gap-1.5 text-xs text-text-secondary">
+          <span>${strings.cartShipping}</span>
+          <span class="font-semibold text-text-primary">${strings.cartShippingPrice}</span>
+        </div>
+      `;
+      shopSection.appendChild(header);
+
+      // Items
+      shopItems.forEach(item => {
+        shopSection.appendChild(createItemRow(item));
+      });
+
+      // Shop footer — subtotal
+      const footer = document.createElement('div');
+      footer.className = 'flex items-center justify-between px-4 py-3 border-t border-border-light bg-border-light/30';
+      footer.innerHTML = `
+        <span class="text-xs text-text-tertiary">${shopItems.reduce((s, i) => s + i.quantity, 0)} producto${shopItems.reduce((s, i) => s + i.quantity, 0) === 1 ? '' : 's'} · ${strings.cartShipping} incluido</span>
+        <span class="text-sm font-bold text-text-primary">${shopTotalWithShipping.toFixed(2)}${strings.currency}</span>
+      `;
+      shopSection.appendChild(footer);
+
+      shopsContainer.appendChild(shopSection);
+    });
+
+    // Update totals
+    const totalStr = `${grandTotal.toFixed(2)}${strings.currency}`;
+    const totalDesktop = document.getElementById('cart-total-desktop');
+    const totalMobile = document.getElementById('cart-total-mobile');
+    if (totalDesktop) totalDesktop.textContent = totalStr;
+    if (totalMobile) totalMobile.textContent = totalStr;
+  }
+
+  function createItemRow(item: CartItem): HTMLElement {
+    const row = document.createElement('div');
+    row.className = 'flex items-center gap-3 px-4 py-3 border-b border-border-light last:border-b-0';
+    row.dataset.cartItemVariant = item.variantId;
+
+    const productUrl = `/${item.shopSlug}/${item.productSlug}`;
+    const inStock = item.stock > 0;
+    const lineTotal = (item.price * item.quantity).toFixed(2);
+
+    row.innerHTML = `
+      <a href="${escapeHtml(productUrl)}" class="shrink-0 w-16 h-16 md:w-20 md:h-20 rounded-lg overflow-hidden">
+        <img src="${escapeHtml(item.image)}" alt="${escapeAttr(item.title)}" class="w-full h-full object-cover" loading="lazy" />
+      </a>
+      <div class="flex-1 min-w-0 flex flex-col gap-1">
+        <a href="${escapeHtml(productUrl)}" class="text-sm font-medium text-text-primary no-underline hover:underline line-clamp-1">${escapeHtml(item.title)}</a>
+        ${item.variantName ? `<span class="text-xs text-text-tertiary">${escapeHtml(item.variantName)}</span>` : ''}
+        <span class="text-xs font-medium ${inStock ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}">${inStock ? strings.productInStock : strings.productOutOfStock}</span>
+        <div class="flex items-center gap-0.5 mt-0.5">
+          <button type="button" data-cart-minus="${item.variantId}" class="w-7 h-7 flex items-center justify-center rounded-md text-text-secondary hover:text-text-primary hover:bg-border-light transition-colors" aria-label="${strings.productQtyDecrease}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg>
+          </button>
+          <span class="w-8 text-center text-sm font-medium text-text-primary select-none">${item.quantity}</span>
+          <button type="button" data-cart-plus="${item.variantId}" class="w-7 h-7 flex items-center justify-center rounded-md text-text-secondary hover:text-text-primary hover:bg-border-light transition-colors" aria-label="${strings.productQtyIncrease}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+          </button>
+          <button type="button" data-cart-remove="${item.variantId}" class="w-7 h-7 flex items-center justify-center rounded-md text-text-tertiary hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors ml-1" aria-label="${strings.cartRemove}">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+          </button>
+        </div>
+      </div>
+      <span class="text-sm font-bold text-text-primary shrink-0">${lineTotal}${strings.currency}</span>
+    `;
+
+    // Event listeners for quantity buttons
+    row.querySelector(`[data-cart-minus="${item.variantId}"]`)?.addEventListener('click', () => {
+      cart.updateQuantity(item.variantId, item.quantity - 1);
+      renderCart();
+    });
+
+    row.querySelector(`[data-cart-plus="${item.variantId}"]`)?.addEventListener('click', () => {
+      cart.updateQuantity(item.variantId, item.quantity + 1);
+      renderCart();
+    });
+
+    row.querySelector(`[data-cart-remove="${item.variantId}"]`)?.addEventListener('click', () => {
+      cart.remove(item.variantId);
+      renderCart();
+    });
+
+    return row;
+  }
+
+  function escapeHtml(str: string): string {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  function escapeAttr(str: string): string {
+    return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  async function handleCheckout() {
+    const items = cart.get();
+    if (items.length === 0) return;
+
+    const checkoutBtnMobile = document.getElementById('checkout-btn-mobile') as HTMLButtonElement | null;
+    const checkoutBtnDesktop = document.getElementById('checkout-btn-desktop') as HTMLButtonElement | null;
+
+    // Disable buttons during request
+    if (checkoutBtnMobile) checkoutBtnMobile.disabled = true;
+    if (checkoutBtnDesktop) checkoutBtnDesktop.disabled = true;
+
+    try {
+      const res = await fetch('/api/cart/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: items.map(i => ({
+            variantId: i.variantId,
+            quantity: i.quantity,
+            priceAtPurchase: i.price,
+          })),
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (res.status === 401) {
+          alert(strings.cartLoginRequired);
+        } else {
+          alert(data.error || 'Error al procesar el pedido');
+        }
+        return;
+      }
+
+      cart.clear();
+
+      // Show success state
+      document.getElementById('cart-content')?.classList.add('hidden');
+      document.getElementById('cart-checkout-mobile')?.classList.add('hidden');
+      const successEl = document.getElementById('cart-success');
+      if (successEl) {
+        successEl.classList.remove('hidden');
+        successEl.classList.add('flex');
+      }
+    } finally {
+      if (checkoutBtnMobile) checkoutBtnMobile.disabled = false;
+      if (checkoutBtnDesktop) checkoutBtnDesktop.disabled = false;
+    }
+  }
+
+  function init() {
+    renderCart();
+    document.getElementById('checkout-btn-mobile')?.addEventListener('click', handleCheckout);
+    document.getElementById('checkout-btn-desktop')?.addEventListener('click', handleCheckout);
+  }
+
+  document.addEventListener('astro:page-load', init);
+  if (document.readyState !== 'loading') init();
+  else document.addEventListener('DOMContentLoaded', init);
+</script>

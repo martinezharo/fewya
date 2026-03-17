@@ -29,9 +29,10 @@ const wishlistCount = user ? await getWishlistCount(authClient, user.id) : 0;
             <SearchBar />
         </div>
         <nav class="flex items-center gap-1 ml-auto" aria-label="Navegación principal">
-            {navItems.map(({ href, label, icon, showBadge }) => {
+            {navItems.map(({ href, label, icon, showBadge, badgeType }) => {
                 const isActive = href === '/' ? currentPath === '/' : currentPath.startsWith(href);
-                const badge = showBadge && wishlistCount > 0 ? wishlistCount : null;
+                const isWishlistBadge = badgeType === 'wishlist';
+                const isCartBadge = badgeType === 'cart';
                 return (
                     <a
                         href={href}
@@ -42,13 +43,22 @@ const wishlistCount = user ? await getWishlistCount(authClient, user.id) : 0;
                         aria-label={label}
                     >
                         <Icon name={icon} size={22} />
-                        {(showBadge) && (
+                        {isWishlistBadge && (
                             <span 
                                 data-wishlist-badge 
                                 class="absolute top-0.5 right-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold text-bg ring-2 ring-bg"
                                 style={wishlistCount === 0 ? "display: none" : ""}
                             >
                                 {wishlistCount}
+                            </span>
+                        )}
+                        {isCartBadge && (
+                            <span 
+                                data-cart-badge 
+                                class="absolute top-0.5 right-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold text-bg ring-2 ring-bg"
+                                style="display: none"
+                            >
+                                0
                             </span>
                         )}
                     </a>

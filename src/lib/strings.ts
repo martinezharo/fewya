@@ -91,4 +91,17 @@ export const strings = {
     searchSortAlpha: 'Alfabético',
     searchSortPrice: 'Precio',
     searchSortDate: 'Fecha',
+
+    // Cart
+    cartPageTitle: 'Mi carrito — EWYA',
+    cartEmpty: 'Tu carrito está vacío',
+    cartEmptySub: 'Añade productos de las tiendas que más te gusten.',
+    cartExploreCta: 'Explorar productos',
+    cartShipping: 'Envío',
+    cartShippingPrice: '2,99€',
+    cartCheckout: 'Tramitar pedido',
+    cartTotal: 'Total',
+    cartOrderSuccess: 'Pedido realizado con éxito',
+    cartLoginRequired: 'Inicia sesión para tramitar tu pedido',
+    cartRemove: 'Eliminar del carrito',
 } as const;

@@ -44,6 +44,9 @@ const {
       import '../lib/wishlist-client';
     </script>
     <script>
+      import '../lib/cart-client';
+    </script>
+    <script>
       function initWishlistBadge() {
         window.addEventListener('wishlist-updated', (e: Event) => {
           const { wishlisted } = (e as CustomEvent<{ wishlisted: boolean }>).detail;

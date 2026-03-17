@@ -163,6 +163,18 @@ if (user) {
           <button
             type="button"
             class="flex-1 bg-accent text-bg font-semibold text-sm py-3 rounded-lg transition-colors hover:bg-accent-hover active:scale-[0.98]"
+            data-add-to-cart
+            data-cart-product-id={product.id}
+            data-cart-variant-id={activeVariant?.id ?? ''}
+            data-cart-title={product.title}
+            data-cart-image={images[0]}
+            data-cart-price={String(price)}
+            data-cart-stock={String(activeVariant?.stock ?? 0)}
+            data-cart-variant-name={activeVariant?.variant_name ?? ''}
+            data-cart-shop-id={shop.id}
+            data-cart-shop-name={shop.name}
+            data-cart-shop-slug={shop.slug}
+            data-cart-product-slug={product.slug}
           >
             {strings.productAddToCart}
           </button>
@@ -214,6 +226,9 @@ if (user) {
 </Layout>
 
 <script>
+  import { cart } from '../../lib/cart';
+  import { strings } from '../../lib/strings';
+
   document.querySelectorAll('[data-qty-selector]').forEach(selector => {
     const minus = selector.querySelector('[data-qty-minus]');
     const plus = selector.querySelector('[data-qty-plus]');
@@ -230,6 +245,63 @@ if (user) {
     plus?.addEventListener('click', () => {
       qty++;
       if (value) value.textContent = String(qty);
+    });
+
+    // Handle add-to-cart with quantity
+    const addBtn = document.querySelector<HTMLButtonElement>('[data-add-to-cart]');
+    if (addBtn) {
+      addBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const stock = parseInt(addBtn.dataset.cartStock ?? '0', 10);
+        if (stock <= 0) return;
+
+        cart.add({
+          productId: addBtn.dataset.cartProductId ?? '',
+          variantId: addBtn.dataset.cartVariantId ?? '',
+          title: addBtn.dataset.cartTitle ?? '',
+          image: addBtn.dataset.cartImage ?? '',
+          price: parseFloat(addBtn.dataset.cartPrice ?? '0'),
+          stock,
+          variantName: addBtn.dataset.cartVariantName || null,
+          shopId: addBtn.dataset.cartShopId ?? '',
+          shopName: addBtn.dataset.cartShopName ?? '',
+          shopSlug: addBtn.dataset.cartShopSlug ?? '',
+          productSlug: addBtn.dataset.cartProductSlug ?? '',
+        }, qty);
+
+        const original = addBtn.innerHTML;
+        addBtn.textContent = '✓';
+        addBtn.disabled = true;
+        setTimeout(() => {
+          addBtn.innerHTML = original;
+          addBtn.disabled = false;
+        }, 800);
+      });
+    }
+  });
+
+  // Update add-to-cart data when variant changes
+  document.addEventListener('variant:change', () => {});
+  document.querySelectorAll<HTMLElement>('[data-variant-btn]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const addBtn = document.querySelector<HTMLButtonElement>('[data-add-to-cart]');
+      if (!addBtn) return;
+      const price = btn.dataset.variantPrice ?? '0';
+      const stock = btn.dataset.variantStock ?? '0';
+      const variantImage = btn.dataset.variantImage ?? '';
+
+      // Find variant id from the button's parent context
+      // The variant buttons are rendered with data attributes, we need to find the variant id
+      // We'll pass it via a new data attribute on VariantSelector
+      if (btn.dataset.variantId) {
+        addBtn.dataset.cartVariantId = btn.dataset.variantId;
+      }
+      addBtn.dataset.cartPrice = price;
+      addBtn.dataset.cartStock = stock;
+      if (variantImage) addBtn.dataset.cartImage = variantImage;
+      if (btn.querySelector('[data-variant-name]')) {
+        addBtn.dataset.cartVariantName = btn.querySelector('[data-variant-name]')?.textContent?.trim() ?? '';
+      }
     });
   });
 </script>

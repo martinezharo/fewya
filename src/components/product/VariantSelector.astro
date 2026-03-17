@@ -20,6 +20,7 @@ const { variants, defaultImage } = Astro.props;
             type="button"
             class="flex flex-col items-center gap-1.5 shrink-0"
             data-variant-btn
+            data-variant-id={v.id}
             data-variant-price={v.price}
             data-variant-stock={v.stock}
             data-variant-image={v.variant_image || defaultImage}

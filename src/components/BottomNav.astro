@@ -12,8 +12,10 @@ const wishlistCount = user ? await getWishlistCount(authClient, user.id) : 0;
 ---
 
 <nav class="fixed bottom-0 left-0 right-0 z-50 flex justify-around items-center bg-surface border-t border-border-light py-2 pb-[calc(8px+env(safe-area-inset-bottom,0px))] md:hidden" aria-label="Navegación móvil">
-    {navItems.map(({ href, label, icon, showBadge }) => {
+    {navItems.map(({ href, label, icon, showBadge, badgeType }) => {
         const isActive = href === '/' ? currentPath === '/' : currentPath.startsWith(href);
+        const isWishlistBadge = badgeType === 'wishlist';
+        const isCartBadge = badgeType === 'cart';
         return (
             <a
                 href={href}
@@ -25,13 +27,22 @@ const wishlistCount = user ? await getWishlistCount(authClient, user.id) : 0;
             >
                 <div class="relative">
                     <Icon name={icon} size={22} />
-                    {(showBadge) && (
+                    {isWishlistBadge && (
                         <span 
                             data-wishlist-badge 
                             class="absolute -top-1.5 -right-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold text-bg ring-2 ring-surface"
                             style={wishlistCount === 0 ? "display: none" : ""}
                         >
                             {wishlistCount}
+                        </span>
+                    )}
+                    {isCartBadge && (
+                        <span 
+                            data-cart-badge 
+                            class="absolute -top-1.5 -right-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold text-bg ring-2 ring-surface"
+                            style="display: none"
+                        >
+                            0
                         </span>
                     )}
                 </div>
