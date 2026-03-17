@@ -8,7 +8,11 @@ import cloudflare from '@astrojs/cloudflare';
 // https://astro.build/config
 export default defineConfig({
   output: 'server',
-  adapter: cloudflare(),
+  adapter: cloudflare({
+    platformProxy: {
+      enabled: true
+    }
+  }),
   env: {
     schema: {
       SUPABASE_URL: envField.string({ context: 'server', access: 'secret' }),
