@@ -235,49 +235,21 @@ if (user) {
     const value = selector.querySelector('[data-qty-value]');
     let qty = 1;
 
+    plus?.addEventListener('click', () => {
+      qty++;
+      if (value) value.textContent = String(qty);
+      const addBtn = document.querySelector<HTMLButtonElement>('[data-add-to-cart]');
+      if (addBtn) addBtn.dataset.cartQty = String(qty);
+    });
+
     minus?.addEventListener('click', () => {
       if (qty > 1) {
         qty--;
         if (value) value.textContent = String(qty);
+        const addBtn = document.querySelector<HTMLButtonElement>('[data-add-to-cart]');
+        if (addBtn) addBtn.dataset.cartQty = String(qty);
       }
     });
-
-    plus?.addEventListener('click', () => {
-      qty++;
-      if (value) value.textContent = String(qty);
-    });
-
-    // Handle add-to-cart with quantity
-    const addBtn = document.querySelector<HTMLButtonElement>('[data-add-to-cart]');
-    if (addBtn) {
-      addBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        const stock = parseInt(addBtn.dataset.cartStock ?? '0', 10);
-        if (stock <= 0) return;
-
-        cart.add({
-          productId: addBtn.dataset.cartProductId ?? '',
-          variantId: addBtn.dataset.cartVariantId ?? '',
-          title: addBtn.dataset.cartTitle ?? '',
-          image: addBtn.dataset.cartImage ?? '',
-          price: parseFloat(addBtn.dataset.cartPrice ?? '0'),
-          stock,
-          variantName: addBtn.dataset.cartVariantName || null,
-          shopId: addBtn.dataset.cartShopId ?? '',
-          shopName: addBtn.dataset.cartShopName ?? '',
-          shopSlug: addBtn.dataset.cartShopSlug ?? '',
-          productSlug: addBtn.dataset.cartProductSlug ?? '',
-        }, qty);
-
-        const original = addBtn.innerHTML;
-        addBtn.textContent = '✓';
-        addBtn.disabled = true;
-        setTimeout(() => {
-          addBtn.innerHTML = original;
-          addBtn.disabled = false;
-        }, 800);
-      });
-    }
   });
 
   // Update add-to-cart data when variant changes

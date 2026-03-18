@@ -1,7 +1,8 @@
 import { cart } from './cart';
 
 function initCartButtons() {
-    document.querySelectorAll<HTMLButtonElement>('[data-add-to-cart]').forEach(btn => {
+    document.querySelectorAll<HTMLButtonElement>('[data-add-to-cart]:not([data-cart-listener])').forEach(btn => {
+        btn.setAttribute('data-cart-listener', 'true');
         btn.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -17,6 +18,7 @@ function initCartButtons() {
             const shopName = btn.dataset.cartShopName ?? '';
             const shopSlug = btn.dataset.cartShopSlug ?? '';
             const productSlug = btn.dataset.cartProductSlug ?? '';
+            const qty = parseInt(btn.dataset.cartQty ?? '1', 10);
 
             if (!variantId || stock <= 0) return;
 
@@ -32,7 +34,7 @@ function initCartButtons() {
                 shopName,
                 shopSlug,
                 productSlug,
-            });
+            }, qty);
 
             // Visual feedback
             const original = btn.innerHTML;
