@@ -8,7 +8,7 @@ export const strings = {
     searchPlaceholder: 'Buscar productos...',
 
     // Hero Banner — Web (no registrado)
-    heroTitle: 'Compra directamente a quien lo crea',
+    heroTitle: 'Compra a vendedores profesionales',
     heroSubtitle: 'Productos únicos de vendedores independientes. Sin intermediarios, sin complicaciones.',
     heroCta: 'Explorar productos',
 
