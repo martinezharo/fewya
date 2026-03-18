@@ -32,7 +32,7 @@ export const strings = {
     currency: '€',
 
     // Product Page
-    productShipping: '+2,99€ envío',
+    productShipping: '+3,49€ envío',
     productVariantsTitle: 'Variante',
     productInStock: 'En Stock',
     productOutOfStock: 'Agotado',
