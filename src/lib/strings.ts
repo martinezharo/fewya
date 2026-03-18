@@ -7,12 +7,12 @@ export const strings = {
     logoText: 'ewya',
     searchPlaceholder: 'Buscar productos...',
 
-    // Hero Banner — Web (no registrado)
+    // Hero Banner — Web (unregistered)
     heroTitle: 'Compra a vendedores profesionales',
     heroSubtitle: 'Productos únicos de vendedores independientes. Sin intermediarios, sin complicaciones.',
     heroCta: 'Explorar productos',
 
-    // Hero Banner — PWA (no registrado)
+    // Hero Banner — PWA (unregistered)
     pwaSignupMessage: 'Regístrate para guardar favoritos y hacer seguimiento de tus pedidos.',
     pwaSignupCta: 'Crear cuenta',
 
