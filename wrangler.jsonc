@@ -1,0 +1,12 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "ewya-mvp",
+	"compatibility_date": "2024-09-23",
+	"compatibility_flags": [
+		"nodejs_compat_v2"
+	],
+	"vars": {
+		"SUPABASE_URL": "https://wzdrcmnningmsifdxilj.supabase.co",
+		"SUPABASE_KEY": "sb_publishable_GbQw2wOLaPP285lMbRICdw_SBviGgiD"
+	}
+}
