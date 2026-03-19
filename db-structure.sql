@@ -115,11 +115,19 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-/*
+CREATE OR REPLACE FUNCTION public.order_belongs_to_user(p_order_id uuid)
+RETURNS boolean AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.orders
+    WHERE id = p_order_id AND buyer_id = auth.uid()
+  );
+$$ LANGUAGE sql SECURITY DEFINER;
 
-[
-  {
-    "function_name": "handle_new_user",
+-- Recrear las políticas eliminadas por el CASCADE
+CREATE POLICY "Permitir insertar items si el pedido es propio" ON public.order_items FOR INSERT TO authenticated WITH CHECK (order_belongs_to_user(order_id));
+CREATE POLICY "Ver items si tienes acceso al pedido" ON public.order_items FOR SELECT TO authenticated USING (order_belongs_to_user(order_id));
+
+/*
     "type": "FUNCTION",
     "return_type": "trigger",
     "definition": "\r\nbegin\r\n  insert into public.profiles (id, email, full_name, avatar_url)\r\n  values (\r\n    new.id, \r\n    new.email, \r\n    new.raw_user_meta_data->>'full_name', \r\n    new.raw_user_meta_data->>'avatar_url'\r\n  );\r\n  return new;\r\nend;\r\n"
@@ -148,7 +156,9 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 CREATE POLICY "Users can manage own profile" ON public.profiles FOR ALL TO public USING ((auth.uid() = id)) WITH CHECK ((auth.uid() = id));                                                                                                                                                                                                                                                    |
 CREATE POLICY "Permitir lectura pública de productos" ON public.products FOR SELECT TO anon USING (true);                                                                                                                                                                                                                                                                                      |
+CREATE POLICY "Permitir lectura autenticada de productos" ON public.products FOR SELECT TO authenticated USING (true);                                                                                                                                                                                                                                                                         |
 CREATE POLICY "Permitir lectura pública de tiendas" ON public.shops FOR SELECT TO anon USING (true);                                                                                                                                                                                                                                                                                           |
+CREATE POLICY "Permitir lectura autenticada de tiendas" ON public.shops FOR SELECT TO authenticated USING (true);                                                                                                                                                                                                                                                                                           |
 CREATE POLICY "Permitir lectura pública de variantes" ON public.product_variants FOR SELECT TO public USING (true);                                                                                                                                                                                                                                                                            |
 CREATE POLICY "Los compradores pueden ver sus pedidos" ON public.orders FOR SELECT TO authenticated USING ((auth.uid() = buyer_id));                                                                                                                                                                                                                                                           |
 null                                                                                                                                                                                                                                                                                                                                                                                           |
