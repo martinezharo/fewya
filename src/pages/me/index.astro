@@ -4,7 +4,6 @@ import Header from "../../components/Header.astro";
 import BottomNav from "../../components/BottomNav.astro";
 import Icon from "../../components/icons/Icon.astro";
 import { strings } from "../../lib/strings";
-import { MOCK_LAST_PURCHASES } from "../../components/me/mockPurchases";
 import { createSupabaseAuthClient } from "../../lib/auth";
 
 // Auth Server-Side Verification:
@@ -16,8 +15,81 @@ if (!user) {
     return Astro.redirect('/');
 }
 
+// Fetch real orders data
+const { data: ordersData } = await supabase
+    .from('orders')
+    .select(`
+        id,
+        created_at,
+        order_items (
+            quantity,
+            product_variants (
+                variant_image,
+                products (
+                    title,
+                    gallery_images,
+                    shops (
+                        id,
+                        name
+                    )
+                )
+            )
+        )
+    `)
+    .eq('buyer_id', user.id)
+    .order('created_at', { ascending: false });
+
+interface PurchaseGroup {
+    orderId: string;
+    shopId: string;
+    shopName: string;
+    date: Date;
+    items: { imageUrl: string, productName: string }[];
+}
+
+// Group order items by shop and handle quantity
+const purchaseGroups: PurchaseGroup[] = [];
+if (ordersData) {
+    for (const order of ordersData) {
+        const itemsByShop = new Map<string, PurchaseGroup>();
+        
+        for (const item of order.order_items || []) {
+            const variant = item.product_variants;
+            if (!variant) continue;
+            const product = Array.isArray(variant) ? variant[0]?.products : variant.products;
+            if (!product) continue;
+            
+            const shop = Array.isArray(product.shops) ? product.shops[0] : (product.shops || {id:'unknown', name: 'Tienda'});
+            if (!shop) continue;
+
+            const imageUrl = (!Array.isArray(variant) && variant.variant_image) 
+                                ? variant.variant_image 
+                                : (product.gallery_images?.[0] || '');
+            const productName = product.title || 'Producto';
+            const quantity = item.quantity || 1;
+
+            if (!itemsByShop.has(shop.id)) {
+                itemsByShop.set(shop.id, {
+                    orderId: order.id,
+                    shopId: shop.id,
+                    shopName: shop.name,
+                    date: new Date(order.created_at),
+                    items: []
+                });
+            }
+            
+            // Add item 'quantity' times to represent actual count of products bought
+            for (let i = 0; i < quantity; i++) {
+                itemsByShop.get(shop.id)!.items.push({ imageUrl, productName });
+            }
+        }
+        
+        purchaseGroups.push(...Array.from(itemsByShop.values()));
+    }
+}
+
 // Ensure maximum 5 purchases are displayed
-const recentPurchases = MOCK_LAST_PURCHASES.slice(0, 5);
+const recentPurchases = purchaseGroups.slice(0, 5);
 ---
 
 <Layout title={strings.mePageTitle}>
@@ -39,7 +111,7 @@ const recentPurchases = MOCK_LAST_PURCHASES.slice(0, 5);
                 </header>
 
                 {/* Slider horizontal de compras */}
-                <div class="w-[100vw] -ml-4 md:w-full md:ml-0 overflow-x-auto scrollbar-hide snap-x snap-mandatory">
+                <div id="purchases-slider" class="w-[100vw] -ml-4 md:w-full md:ml-0 overflow-x-auto scrollbar-hide snap-x snap-mandatory cursor-grab active:cursor-grabbing select-none">
                     <div class="flex gap-4 px-4 md:px-0 min-w-max pb-4">
                         {recentPurchases.map(purchase => (
                             <article class="flex-shrink-0 w-32 md:w-40 flex flex-col snap-start">
@@ -48,14 +120,16 @@ const recentPurchases = MOCK_LAST_PURCHASES.slice(0, 5);
                                         <img 
                                             src={purchase.items[0].imageUrl} 
                                             alt={purchase.items[0].productName} 
-                                            class="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+                                            class="w-full h-full object-cover transition-transform duration-300 hover:scale-105 pointer-events-none"
+                                            draggable="false"
                                         />
                                     ) : (
                                         <>
                                             <img 
                                                 src={purchase.items[0].imageUrl} 
                                                 alt={purchase.items[0].productName} 
-                                                class="w-full h-full object-cover brightness-[0.4]"
+                                                class="w-full h-full object-cover brightness-[0.4] pointer-events-none"
+                                                draggable="false"
                                             />
                                             <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
                                                 <span class="text-white text-2xl font-bold tracking-tight drop-shadow-md">
@@ -66,10 +140,10 @@ const recentPurchases = MOCK_LAST_PURCHASES.slice(0, 5);
                                     )}
                                 </div>
                                 <div>
-                                    <h3 class="text-[14px] font-semibold leading-tight text-text-primary truncate" title={purchase.shopName}>
+                                    <h3 class="text-[14px] font-semibold leading-tight text-text-primary truncate pointer-events-none" title={purchase.shopName}>
                                         {purchase.shopName}
                                     </h3>
-                                    <time class="text-[12px] text-text-secondary mt-1 block">
+                                    <time class="text-[12px] text-text-secondary mt-1 block pointer-events-none">
                                         {purchase.date.toLocaleDateString()}
                                     </time>
                                 </div>
@@ -78,7 +152,7 @@ const recentPurchases = MOCK_LAST_PURCHASES.slice(0, 5);
 
                         {/* Tarjeta de Ver Todos */}
                         <div class="flex-shrink-0 w-32 md:w-40 flex flex-col snap-start pr-4 md:pr-0">
-                            <a href="/me/pedidos" class="group relative aspect-square w-full rounded-2xl flex flex-col items-center justify-center bg-surface border-2 border-dashed border-border-default hover:border-text-primary transition-all duration-200 cursor-pointer mb-3">
+                            <a href="/me/pedidos" draggable="false" class="group relative aspect-square w-full rounded-2xl flex flex-col items-center justify-center bg-surface border-2 border-dashed border-border-default hover:border-text-primary transition-all duration-200 cursor-pointer mb-3 select-none">
                                 <div class="w-10 h-10 rounded-full bg-border-light/50 group-hover:bg-text-primary/10 flex items-center justify-center transition-colors mb-2">
                                     <Icon name="chevron-right" class="w-5 h-5 text-text-secondary group-hover:text-text-primary transition-colors" />
                                 </div>
@@ -142,3 +216,58 @@ const recentPurchases = MOCK_LAST_PURCHASES.slice(0, 5);
         scrollbar-width: none; /* Firefox */
     }
 </style>
+
+<script>
+    // Lógica para permitir el drag en desktop simulando móvil
+    const slider = document.getElementById('purchases-slider');
+    let isDown = false;
+    let startX: number;
+    let scrollLeft: number;
+
+    if (slider) {
+        slider.addEventListener('mousedown', (e) => {
+            isDown = true;
+            slider.style.scrollSnapType = 'none'; // Desactivamos snap al arrastrar
+            startX = e.pageX - slider.offsetLeft;
+            scrollLeft = slider.scrollLeft;
+        });
+
+        slider.addEventListener('mouseleave', () => {
+            isDown = false;
+            slider.style.scrollSnapType = 'x mandatory';
+        });
+
+        slider.addEventListener('mouseup', () => {
+            isDown = false;
+            slider.style.scrollSnapType = 'x mandatory';
+        });
+
+        slider.addEventListener('mousemove', (e) => {
+            if (!isDown) return;
+            e.preventDefault();
+            const x = e.pageX - slider.offsetLeft;
+            const walk = (x - startX) * 2; // Velocidad de arrastre
+            slider.scrollLeft = scrollLeft - walk;
+        });
+
+        // Previene la navegación si se hizo un drag largo (para no provocar clicks accidentales)
+        const links = slider.querySelectorAll('a');
+        let isDragging = false;
+
+        slider.addEventListener('mousemove', () => {
+            if (isDown) isDragging = true;
+        });
+
+        slider.addEventListener('mousedown', () => {
+            isDragging = false;
+        });
+
+        links.forEach(link => {
+            link.addEventListener('click', (e) => {
+                if (isDragging) {
+                    e.preventDefault();
+                }
+            });
+        });
+    }
+</script>
