@@ -104,4 +104,13 @@ export const strings = {
     cartOrderSuccess: 'Pedido realizado con éxito',
     cartLoginRequired: 'Inicia sesión para tramitar tu pedido',
     cartRemove: 'Eliminar del carrito',
+
+    // Me / Profile Dashboard
+    mePageTitle: 'Mi cuenta — EWYA',
+    meLastPurchases: 'Últimas compras',
+    meViewAllOrders: 'Ver todos',
+    meMyOrders: 'Mis pedidos',
+    meMyData: 'Mis datos',
+    meSettings: 'Ajustes',
+    meItemsCount: '+{count}',
 } as const;

@@ -1,0 +1,144 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import Header from "../../components/Header.astro";
+import BottomNav from "../../components/BottomNav.astro";
+import Icon from "../../components/icons/Icon.astro";
+import { strings } from "../../lib/strings";
+import { MOCK_LAST_PURCHASES } from "../../components/me/mockPurchases";
+import { createSupabaseAuthClient } from "../../lib/auth";
+
+// Auth Server-Side Verification:
+const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
+const { data: { user } } = await supabase.auth.getUser();
+
+// If unauthorized, redirect to home (which will probably prompt login via PWA)
+if (!user) {
+    return Astro.redirect('/');
+}
+
+// Ensure maximum 5 purchases are displayed
+const recentPurchases = MOCK_LAST_PURCHASES.slice(0, 5);
+---
+
+<Layout title={strings.mePageTitle}>
+    <Header />
+    
+    <main class="w-full max-w-5xl mx-auto px-4 pt-[80px] pb-24 md:pt-[100px] md:pb-16 min-h-screen">
+        <h1 class="text-[28px] font-bold text-text-primary tracking-[-0.02em] mb-8">
+            {strings.mePageTitle}
+        </h1>
+
+        <div class="flex flex-col md:grid md:grid-cols-12 gap-8 md:gap-12">
+            
+            {/* Sección de Compras (Izquierda en Desktop / Top en Móvil) */}
+            <section class="col-span-12 md:col-span-7 lg:col-span-8">
+                <header class="flex items-center justify-between mb-4">
+                    <h2 class="text-[17px] font-semibold text-text-primary">
+                        {strings.meLastPurchases}
+                    </h2>
+                </header>
+
+                {/* Slider horizontal de compras */}
+                <div class="w-[100vw] -ml-4 md:w-full md:ml-0 overflow-x-auto scrollbar-hide snap-x snap-mandatory">
+                    <div class="flex gap-4 px-4 md:px-0 min-w-max pb-4">
+                        {recentPurchases.map(purchase => (
+                            <article class="flex-shrink-0 w-32 md:w-40 flex flex-col snap-start">
+                                <div class="relative aspect-square w-full rounded-2xl overflow-hidden bg-surface border border-border-light shadow-sm mb-3">
+                                    {purchase.items.length === 1 ? (
+                                        <img 
+                                            src={purchase.items[0].imageUrl} 
+                                            alt={purchase.items[0].productName} 
+                                            class="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+                                        />
+                                    ) : (
+                                        <>
+                                            <img 
+                                                src={purchase.items[0].imageUrl} 
+                                                alt={purchase.items[0].productName} 
+                                                class="w-full h-full object-cover brightness-[0.4]"
+                                            />
+                                            <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                                <span class="text-white text-2xl font-bold tracking-tight drop-shadow-md">
+                                                    +{purchase.items.length - 1}
+                                                </span>
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                                <div>
+                                    <h3 class="text-[14px] font-semibold leading-tight text-text-primary truncate" title={purchase.shopName}>
+                                        {purchase.shopName}
+                                    </h3>
+                                    <time class="text-[12px] text-text-secondary mt-1 block">
+                                        {purchase.date.toLocaleDateString()}
+                                    </time>
+                                </div>
+                            </article>
+                        ))}
+
+                        {/* Tarjeta de Ver Todos */}
+                        <div class="flex-shrink-0 w-32 md:w-40 flex flex-col snap-start pr-4 md:pr-0">
+                            <a href="/me/pedidos" class="group relative aspect-square w-full rounded-2xl flex flex-col items-center justify-center bg-surface border-2 border-dashed border-border-default hover:border-text-primary transition-all duration-200 cursor-pointer mb-3">
+                                <div class="w-10 h-10 rounded-full bg-border-light/50 group-hover:bg-text-primary/10 flex items-center justify-center transition-colors mb-2">
+                                    <Icon name="chevron-right" class="w-5 h-5 text-text-secondary group-hover:text-text-primary transition-colors" />
+                                </div>
+                                <span class="text-[13px] font-medium text-text-secondary group-hover:text-text-primary transition-colors px-2 text-center">
+                                    {strings.meViewAllOrders}
+                                </span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* Sección de Menú (Derecha en Desktop / Bottom en Móvil) */}
+            <aside class="col-span-12 md:col-span-5 lg:col-span-4 flex flex-col gap-2 relative">
+                <nav class="flex flex-col gap-[2px]">
+                    <a href="/me/pedidos" class="flex items-center gap-4 py-4 rounded-xl hover:bg-surface transition-colors cursor-pointer group px-2 -mx-2">
+                        <div class="w-9 h-9 rounded-full bg-surface border border-border-light flex items-center justify-center text-text-secondary group-hover:text-text-primary group-hover:bg-text-primary/5 transition-colors">
+                            <Icon name="shopping-cart" size={18} strokeWidth={2} />
+                        </div>
+                        <span class="flex-1 font-medium text-text-primary text-[15px]">
+                            {strings.meMyOrders}
+                        </span>
+                        <Icon name="chevron-right" size={18} class="text-text-secondary/50 group-hover:text-text-primary transition-colors" />
+                    </a>
+
+                    <a href="/me/datos" class="flex items-center gap-4 py-4 rounded-xl hover:bg-surface transition-colors cursor-pointer group px-2 -mx-2">
+                        <div class="w-9 h-9 rounded-full bg-surface border border-border-light flex items-center justify-center text-text-secondary group-hover:text-text-primary group-hover:bg-text-primary/5 transition-colors">
+                            <Icon name="user" size={18} strokeWidth={2} />
+                        </div>
+                        <span class="flex-1 font-medium text-text-primary text-[15px]">
+                            {strings.meMyData}
+                        </span>
+                        <Icon name="chevron-right" size={18} class="text-text-secondary/50 group-hover:text-text-primary transition-colors" />
+                    </a>
+
+                    <a href="/me/ajustes" class="flex items-center gap-4 py-4 rounded-xl hover:bg-surface transition-colors cursor-pointer group px-2 -mx-2">
+                        <div class="w-9 h-9 rounded-full bg-surface border border-border-light flex items-center justify-center text-text-secondary group-hover:text-text-primary group-hover:bg-text-primary/5 transition-colors">
+                            <Icon name="sliders" size={18} strokeWidth={2} />
+                        </div>
+                        <span class="flex-1 font-medium text-text-primary text-[15px]">
+                            {strings.meSettings}
+                        </span>
+                        <Icon name="chevron-right" size={18} class="text-text-secondary/50 group-hover:text-text-primary transition-colors" />
+                    </a>
+                </nav>
+            </aside>
+            
+        </div>
+    </main>
+
+    <BottomNav />
+</Layout>
+
+<style>
+    /* Utilidad para esconder el scrollbar */
+    .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+    }
+    .scrollbar-hide {
+        -ms-overflow-style: none; /* IE and Edge */
+        scrollbar-width: none; /* Firefox */
+    }
+</style>
