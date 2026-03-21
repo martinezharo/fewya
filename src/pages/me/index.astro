@@ -21,6 +21,7 @@ const { data: ordersData } = await supabase
     .select(`
         id,
         created_at,
+        status,
         order_items (
             quantity,
             product_variants (
@@ -44,8 +45,18 @@ interface PurchaseGroup {
     shopId: string;
     shopName: string;
     date: Date;
+    status: string;
     items: { imageUrl: string, productName: string }[];
 }
+
+const statusMap: Record<string, string> = {
+    'pending': 'Pendiente',
+    'paid': 'Pagado',
+    'processing': 'Procesando',
+    'shipped': 'Enviado',
+    'delivered': 'Entregado',
+    'cancelled': 'Cancelado'
+};
 
 // Group order items by shop and handle quantity
 const purchaseGroups: PurchaseGroup[] = [];
@@ -74,6 +85,7 @@ if (ordersData) {
                     shopId: shop.id,
                     shopName: shop.name,
                     date: new Date(order.created_at),
+                    status: order.status,
                     items: []
                 });
             }
@@ -143,15 +155,15 @@ const recentPurchases = purchaseGroups.slice(0, 5);
                                     <h3 class="text-[14px] font-semibold leading-tight text-text-primary truncate pointer-events-none" title={purchase.shopName}>
                                         {purchase.shopName}
                                     </h3>
-                                    <time class="text-[12px] text-text-secondary mt-1 block pointer-events-none">
-                                        {purchase.date.toLocaleDateString()}
-                                    </time>
+                                    <span class="text-[12px] font-medium text-text-secondary mt-1 block pointer-events-none">
+                                        {statusMap[purchase.status?.toLowerCase()] || purchase.status || 'Pendiente'}
+                                    </span>
                                 </div>
                             </article>
                         ))}
 
                         {/* Tarjeta de Ver Todos */}
-                        <div class="flex-shrink-0 w-32 md:w-40 flex flex-col snap-start pr-4 md:pr-0">
+                        <div class="flex-shrink-0 w-32 md:w-40 flex flex-col snap-start">
                             <a href="/me/pedidos" draggable="false" class="group relative aspect-square w-full rounded-2xl flex flex-col items-center justify-center bg-surface border-2 border-dashed border-border-default hover:border-text-primary transition-all duration-200 cursor-pointer mb-3 select-none">
                                 <div class="w-10 h-10 rounded-full bg-border-light/50 group-hover:bg-text-primary/10 flex items-center justify-center transition-colors mb-2">
                                     <Icon name="chevron-right" class="w-5 h-5 text-text-secondary group-hover:text-text-primary transition-colors" />
