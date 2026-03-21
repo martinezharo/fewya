@@ -52,6 +52,7 @@ CREATE TABLE public.profiles (
   full_name text,
   avatar_url text,
   address text,
+  phone text,
   is_seller boolean DEFAULT false,
   created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
   CONSTRAINT profiles_pkey PRIMARY KEY (id),
