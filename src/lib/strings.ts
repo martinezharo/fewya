@@ -113,4 +113,17 @@ export const strings = {
     meMyData: 'Mis datos',
     meSettings: 'Ajustes',
     meItemsCount: '+{count}',
+
+    // Me / Mis datos
+    meDataPageTitle: 'Mis datos',
+    meDataName: 'Nombre',
+    meDataEmail: 'Correo electrónico',
+    meDataPhone: 'Teléfono',
+    meDataAddress: 'Dirección de envío',
+    meDataAddressPlaceholder: 'Calle, número, piso, ciudad, código postal…',
+    meDataSave: 'Guardar cambios',
+    meDataSaving: 'Guardando…',
+    meDataSaveSuccess: 'Cambios guardados correctamente',
+    meDataSaveError: 'No se pudieron guardar los cambios',
+    meDataAvatarNote: 'Foto de perfil',
 } as const;

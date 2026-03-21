@@ -1,0 +1,186 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import Header from "../../components/Header.astro";
+import BottomNav from "../../components/BottomNav.astro";
+import Icon from "../../components/icons/Icon.astro";
+import { strings } from "../../lib/strings";
+import { createSupabaseAuthClient } from "../../lib/auth";
+
+const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
+const { data: { user } } = await supabase.auth.getUser();
+
+if (!user) {
+    return Astro.redirect('/');
+}
+
+const { data: profile } = await supabase
+    .from('profiles')
+    .select('full_name, email, avatar_url, address, phone')
+    .eq('id', user.id)
+    .single();
+---
+
+<Layout title={`${strings.meDataPageTitle} — EWYA`}>
+    <Header />
+
+    <main class="w-full max-w-lg mx-auto px-4 pt-[80px] pb-28 md:pt-[100px] md:pb-16 min-h-screen">
+
+        {/* Back button + title */}
+        <div class="flex items-center gap-3 mb-8">
+            <a href="/me" class="w-9 h-9 rounded-full flex items-center justify-center hover:bg-surface transition-colors -ml-1 text-text-secondary hover:text-text-primary">
+                <Icon name="arrow-left" size={20} />
+            </a>
+            <h1 class="text-[22px] font-bold text-text-primary tracking-[-0.02em]">
+                {strings.meDataPageTitle}
+            </h1>
+        </div>
+
+        {/* Avatar */}
+        <div class="flex flex-col items-center mb-8">
+            <div class="relative">
+                {profile?.avatar_url ? (
+                    <img
+                        src={profile.avatar_url}
+                        alt={profile?.full_name ?? strings.meDataAvatarNote}
+                        class="w-24 h-24 rounded-full object-cover border-2 border-border-light"
+                    />
+                ) : (
+                    <div class="w-24 h-24 rounded-full bg-surface border-2 border-border-light flex items-center justify-center text-text-tertiary">
+                        <Icon name="user" size={40} />
+                    </div>
+                )}
+            </div>
+            <p class="mt-2 text-[13px] text-text-tertiary">{strings.meDataAvatarNote}</p>
+        </div>
+
+        {/* Form */}
+        <form id="profile-form" class="flex flex-col gap-5" novalidate>
+
+            {/* Nombre */}
+            <div class="flex flex-col gap-1.5">
+                <label for="full_name" class="text-[13px] font-medium text-text-secondary">
+                    {strings.meDataName}
+                </label>
+                <input
+                    id="full_name"
+                    name="full_name"
+                    type="text"
+                    value={profile?.full_name ?? ''}
+                    autocomplete="name"
+                    class="w-full rounded-xl border border-border bg-surface px-4 py-3 text-[15px] text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-text-primary transition-colors"
+                />
+            </div>
+
+            {/* Email (read-only) */}
+            <div class="flex flex-col gap-1.5">
+                <label for="email" class="text-[13px] font-medium text-text-secondary flex items-center gap-2">
+                    {strings.meDataEmail}
+                </label>
+                <input
+                    id="email"
+                    type="email"
+                    value={profile?.email ?? user.email ?? ''}
+                    disabled
+                    class="w-full rounded-xl border border-border-light bg-surface/50 px-4 py-3 text-[15px] text-text-tertiary cursor-not-allowed select-none"
+                />
+            </div>
+
+            {/* Teléfono */}
+            <div class="flex flex-col gap-1.5">
+                <label for="phone" class="text-[13px] font-medium text-text-secondary">
+                    {strings.meDataPhone}
+                </label>
+                <input
+                    id="phone"
+                    name="phone"
+                    type="tel"
+                    value={(profile as any)?.phone ?? ''}
+                    autocomplete="tel"
+                    placeholder="+34 600 000 000"
+                    class="w-full rounded-xl border border-border bg-surface px-4 py-3 text-[15px] text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-text-primary transition-colors"
+                />
+            </div>
+
+            {/* Dirección */}
+            <div class="flex flex-col gap-1.5">
+                <label for="address" class="text-[13px] font-medium text-text-secondary">
+                    {strings.meDataAddress}
+                </label>
+                <textarea
+                    id="address"
+                    name="address"
+                    rows={3}
+                    autocomplete="street-address"
+                    placeholder={strings.meDataAddressPlaceholder}
+                    class="w-full rounded-xl border border-border bg-surface px-4 py-3 text-[15px] text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-text-primary transition-colors resize-none"
+                >{profile?.address ?? ''}</textarea>
+            </div>
+
+            {/* Feedback */}
+            <p id="form-feedback" class="hidden text-[13px] font-medium text-center rounded-xl py-2 px-4"></p>
+
+            {/* Submit */}
+            <button
+                type="submit"
+                id="save-btn"
+                class="w-full rounded-xl bg-accent text-bg font-semibold text-[15px] py-3.5 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed mt-1"
+            >
+                {strings.meDataSave}
+            </button>
+
+        </form>
+    </main>
+
+    <BottomNav />
+</Layout>
+
+<script>
+    import { strings } from '../../lib/strings';
+
+    const form = document.getElementById('profile-form') as HTMLFormElement;
+    const btn = document.getElementById('save-btn') as HTMLButtonElement;
+    const feedback = document.getElementById('form-feedback') as HTMLParagraphElement;
+
+    function showFeedback(message: string, isError: boolean) {
+        feedback.textContent = message;
+        feedback.className = [
+            'text-[13px] font-medium text-center rounded-xl py-2 px-4',
+            isError
+                ? 'bg-red-500/10 text-red-500'
+                : 'bg-green-500/10 text-green-600 dark:text-green-400'
+        ].join(' ');
+        feedback.classList.remove('hidden');
+        setTimeout(() => feedback.classList.add('hidden'), 4000);
+    }
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        btn.disabled = true;
+        btn.textContent = strings.meDataSaving;
+
+        const data = {
+            full_name: (form.querySelector<HTMLInputElement>('#full_name')!).value,
+            phone: (form.querySelector<HTMLInputElement>('#phone')!).value,
+            address: (form.querySelector<HTMLTextAreaElement>('#address')!).value,
+        };
+
+        try {
+            const res = await fetch('/api/profile/update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data),
+            });
+
+            if (res.ok) {
+                showFeedback(strings.meDataSaveSuccess, false);
+            } else {
+                showFeedback(strings.meDataSaveError, true);
+            }
+        } catch {
+            showFeedback(strings.meDataSaveError, true);
+        } finally {
+            btn.disabled = false;
+            btn.textContent = strings.meDataSave;
+        }
+    });
+</script>
