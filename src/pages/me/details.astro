@@ -1,7 +1,5 @@
 ---
-import Layout from "../../layouts/Layout.astro";
-import Header from "../../components/Header.astro";
-import BottomNav from "../../components/BottomNav.astro";
+import BuyerAppLayout from "../../layouts/BuyerAppLayout.astro";
 import Icon from "../../components/icons/Icon.astro";
 import { strings } from "../../lib/i18n";
 import { createSupabaseAuthClient } from "../../lib/auth";
@@ -20,9 +18,7 @@ const { data: profile } = await supabase
     .single();
 ---
 
-<Layout title={`${strings.meDataPageTitle} — ${strings.siteTitle}`}>
-    <Header />
-
+<BuyerAppLayout title={`${strings.meDataPageTitle} — ${strings.siteTitle}`}>
     <main class="w-full max-w-lg mx-auto px-4 pt-6 pb-28 md:pb-16 min-h-[50vh]">
 
         {/* Back button + title */}
@@ -130,9 +126,7 @@ const { data: profile } = await supabase
 
         </form>
     </main>
-
-    <BottomNav />
-</Layout>
+</BuyerAppLayout>
 
 <script>
     import { strings } from '../../lib/i18n';

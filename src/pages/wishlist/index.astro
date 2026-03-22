@@ -1,7 +1,5 @@
 ---
-import Layout from "../../layouts/Layout.astro";
-import Header from "../../components/Header.astro";
-import BottomNav from "../../components/BottomNav.astro";
+import BuyerAppLayout from "../../layouts/BuyerAppLayout.astro";
 import ProductGrid from "../../components/ProductGrid.astro";
 import Icon from "../../components/icons/Icon.astro";
 import { createSupabaseAuthClient } from "../../lib/auth";
@@ -15,7 +13,7 @@ const { data: { user } } = await authClient.auth.getUser();
 
 if (!user) return Astro.redirect('/api/auth/login');
 
-const { data: wishlistData, error: wishlistError } = await authClient
+const { data: wishlistData } = await authClient
     .from('wishlist')
     .select('product_id')
     .eq('profile_id', user.id)
@@ -40,8 +38,7 @@ if (productIds.length > 0) {
 const wishedProductIds = new Set(productIds);
 ---
 
-<Layout title={strings.wishlistPageTitle}>
-    <Header />
+<BuyerAppLayout title={strings.wishlistPageTitle}>
 
     <main class="min-h-[50vh]">
         <div class="px-4 md:px-10 md:max-w-[1400px] md:mx-auto pt-6 pb-4">
@@ -68,6 +65,4 @@ const wishedProductIds = new Set(productIds);
             </div>
         )}
     </main>
-
-    <BottomNav />
-</Layout>
+</BuyerAppLayout>

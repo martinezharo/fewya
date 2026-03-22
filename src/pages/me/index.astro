@@ -1,7 +1,5 @@
 ---
-import Layout from "../../layouts/Layout.astro";
-import Header from "../../components/Header.astro";
-import BottomNav from "../../components/BottomNav.astro";
+import BuyerAppLayout from "../../layouts/BuyerAppLayout.astro";
 import Icon from "../../components/icons/Icon.astro";
 import { strings } from "../../lib/i18n";
 import { createSupabaseAuthClient } from "../../lib/auth";
@@ -106,9 +104,7 @@ if (ordersData) {
 const recentPurchases = purchaseGroups.slice(0, 5);
 ---
 
-<Layout title={strings.mePageTitle}>
-    <Header />
-    
+<BuyerAppLayout title={strings.mePageTitle}>
     <main class="w-full max-w-[1400px] mx-auto px-4 md:px-10 pt-6 pb-24 md:pb-16 min-h-[50vh]">
         <h1 class="text-xl md:text-2xl font-bold text-text-primary mb-8">
             {strings.mePageTitle}
@@ -216,9 +212,7 @@ const recentPurchases = purchaseGroups.slice(0, 5);
             
         </div>
     </main>
-
-    <BottomNav />
-</Layout>
+</BuyerAppLayout>
 
 <style>
     /* Utilidad para esconder el scrollbar */

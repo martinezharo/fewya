@@ -1,7 +1,5 @@
 ---
-import Layout from "../../layouts/Layout.astro";
-import Header from "../../components/Header.astro";
-import BottomNav from "../../components/BottomNav.astro";
+import BuyerAppLayout from "../../layouts/BuyerAppLayout.astro";
 import ProductGrid from "../../components/ProductGrid.astro";
 import SearchToolbar from "../../components/search/SearchToolbar.astro";
 import SortModal from "../../components/search/SortModal.astro";
@@ -26,7 +24,7 @@ if (params.q) {
     query = query.or(`title.ilike.%${params.q}%,description.ilike.%${params.q}%`);
 }
 
-const { data, error } = await query;
+const { data } = await query;
 let products: Product[] = data ?? [];
 
 // Post-fetch JS filters
@@ -84,9 +82,8 @@ if (user) {
 }
 ---
 
-<Layout title={`${strings.searchPageTitlePrefix}: ${params.q} | ${strings.siteTitle}`}>
-    <Header />
-    <SearchToolbar params={params} />
+<BuyerAppLayout title={`${strings.searchPageTitlePrefix}: ${params.q} | ${strings.siteTitle}`}>
+    <SearchToolbar slot="afterHeader" params={params} />
     
     <main class="min-h-[50vh]">
         {products.length > 0 ? (
@@ -108,6 +105,4 @@ if (user) {
     
     <FilterModal params={params} currentUrl={currentUrl} />
     <SortModal params={params} currentUrl={currentUrl} />
-    
-    <BottomNav />
-</Layout>
+</BuyerAppLayout>

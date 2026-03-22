@@ -1,9 +1,6 @@
 ---
-import Layout from '../../layouts/Layout.astro';
-import Header from '../../components/Header.astro';
-import BottomNav from '../../components/BottomNav.astro';
+import BuyerDetailLayout from '../../layouts/BuyerDetailLayout.astro';
 import Icon from '../../components/icons/Icon.astro';
-import ProductHeader from '../../components/product/ProductHeader.astro';
 import ProductGallery from '../../components/product/ProductGallery.astro';
 import ShopCard from '../../components/product/ShopCard.astro';
 import VariantSelector from '../../components/product/VariantSelector.astro';
@@ -71,15 +68,7 @@ if (user) {
 }
 ---
 
-<Layout title={`${product.title} — ${shop.name}`}>
-  <!-- Mobile: product-specific header -->
-  <ProductHeader />
-
-  <!-- Desktop: common header -->
-  <div class="hidden md:block sticky top-0 z-50">
-    <Header />
-  </div>
-
+<BuyerDetailLayout title={`${product.title} — ${shop.name}`}>
   <main>
     <!-- Two-column grid on desktop, stacked on mobile -->
     <div class="md:max-w-[1200px] md:mx-auto md:px-10 md:py-8 md:grid md:grid-cols-[1fr_420px] md:gap-12">
@@ -219,16 +208,10 @@ if (user) {
     </div>
   </main>
 
-  <!-- Floating contact FAB -->
-  <ShopContact email={shop.contact_email} whatsapp={shop.whatsapp} />
-
-  <BottomNav />
-</Layout>
+  <ShopContact slot="floating" email={shop.contact_email} whatsapp={shop.whatsapp} />
+</BuyerDetailLayout>
 
 <script>
-  import { cart } from '../../lib/cart';
-  import { strings } from '../../lib/i18n';
-
   document.querySelectorAll('[data-qty-selector]').forEach(selector => {
     const minus = selector.querySelector('[data-qty-minus]');
     const plus = selector.querySelector('[data-qty-plus]');

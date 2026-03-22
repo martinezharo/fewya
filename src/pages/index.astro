@@ -1,9 +1,7 @@
 ---
-import Layout from "../layouts/Layout.astro";
-import Header from "../components/Header.astro";
+import BuyerAppLayout from "../layouts/BuyerAppLayout.astro";
 import HeroBanner from "../components/HeroBanner.astro";
 import ProductGrid from "../components/ProductGrid.astro";
-import BottomNav from "../components/BottomNav.astro";
 import { supabase } from "../lib/supabase";
 import { createSupabaseAuthClient } from "../lib/auth";
 import { enrichProductsWithRatings } from "../lib/productUtils";
@@ -37,11 +35,9 @@ if (user) {
 
 ---
 
-<Layout>
-	<Header />
+<BuyerAppLayout>
 	<main>
 		<HeroBanner isLoggedIn={isLoggedIn} />
 		<ProductGrid products={products} wishedProductIds={wishedProductIds} />
 	</main>
-	<BottomNav />
-</Layout>
+</BuyerAppLayout>

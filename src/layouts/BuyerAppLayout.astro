@@ -1,0 +1,22 @@
+---
+import Header from '../components/Header.astro';
+import BottomNav from '../components/BottomNav.astro';
+import { getBuyerShellState } from '../lib/buyerShell';
+import Layout from './Layout.astro';
+
+interface Props {
+    title?: string;
+    description?: string;
+}
+
+const { title, description } = Astro.props;
+const { wishlistCount } = await getBuyerShellState(Astro.cookies, Astro.request);
+const currentPath = Astro.url.pathname;
+---
+
+<Layout title={title} description={description}>
+    <Header currentPath={currentPath} wishlistCount={wishlistCount} />
+    <slot name="afterHeader" />
+    <slot />
+    <BottomNav currentPath={currentPath} wishlistCount={wishlistCount} />
+</Layout>

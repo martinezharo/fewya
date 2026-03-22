@@ -1,19 +1,21 @@
 ---
 import Icon from "./icons/Icon.astro";
-import { createSupabaseAuthClient } from "../lib/auth";
-import { getWishlistCount } from "../lib/wishlist";
 import { navItems } from "../lib/nav";
 import { strings } from "../lib/i18n";
 
-const currentPath = Astro.url.pathname;
+interface Props {
+    currentPath?: string;
+    wishlistCount?: number;
+}
 
-const authClient = createSupabaseAuthClient(Astro.cookies, Astro.request);
-const { data: { user } } = await authClient.auth.getUser();
-const wishlistCount = user ? await getWishlistCount(authClient, user.id) : 0;
+const {
+    currentPath = Astro.url.pathname,
+    wishlistCount = 0,
+} = Astro.props;
 ---
 
 <nav class="fixed bottom-0 left-0 right-0 z-50 flex justify-around items-center bg-surface border-t border-border-light py-2 pb-[calc(11px+env(safe-area-inset-bottom,0px))] md:hidden" aria-label={strings.navMobileAria}>
-    {navItems.map(({ href, label, icon, showBadge, badgeType }) => {
+    {navItems.map(({ href, label, icon, badgeType }) => {
         const isActive = href === '/' ? currentPath === '/' : currentPath.startsWith(href);
         const isWishlistBadge = badgeType === 'wishlist';
         const isCartBadge = badgeType === 'cart';

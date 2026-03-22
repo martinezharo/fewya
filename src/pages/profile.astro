@@ -1,7 +1,5 @@
 ---
-import Layout from "../layouts/Layout.astro";
-import Header from "../components/Header.astro";
-import BottomNav from "../components/BottomNav.astro";
+import BuyerAppLayout from "../layouts/BuyerAppLayout.astro";
 import { createSupabaseAuthClient } from "../lib/auth";
 import { strings } from "../lib/i18n";
 
@@ -16,8 +14,7 @@ const displayName = user.user_metadata?.full_name ?? user.user_metadata?.name ??
 const avatarUrl = user.user_metadata?.avatar_url as string | undefined;
 ---
 
-<Layout title={strings.profilePageTitle}>
-    <Header />
+<BuyerAppLayout title={strings.profilePageTitle}>
     <main class="max-w-[480px] mx-auto px-4 pt-10 pb-24 md:pb-10">
         <div class="flex flex-col items-center gap-5 py-10">
             {avatarUrl ? (
@@ -46,5 +43,4 @@ const avatarUrl = user.user_metadata?.avatar_url as string | undefined;
             </a>
         </div>
     </main>
-    <BottomNav />
-</Layout>
+</BuyerAppLayout>

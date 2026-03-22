@@ -1,8 +1,5 @@
 ---
-import Layout from '../../layouts/Layout.astro';
-import Header from '../../components/Header.astro';
-import BottomNav from '../../components/BottomNav.astro';
-import ProductHeader from '../../components/product/ProductHeader.astro';
+import BuyerDetailLayout from '../../layouts/BuyerDetailLayout.astro';
 import ProductGrid from '../../components/ProductGrid.astro';
 import ShopContact from '../../components/product/ShopContact.astro';
 import Icon from '../../components/icons/Icon.astro';
@@ -69,15 +66,7 @@ if (user) {
 }
 ---
 
-<Layout title={`${shop.name} — ${strings.siteTitle}`}>
-  <!-- Mobile Header (same as product page) -->
-  <ProductHeader />
-
-  <!-- Desktop Header -->
-  <div class="hidden md:block sticky top-0 z-50">
-    <Header />
-  </div>
-
+<BuyerDetailLayout title={`${shop.name} — ${strings.siteTitle}`}>
   <main class="pb-[120px] md:pb-[60px]" data-gallery>
     <!-- Desktop Layout Wrapper -->
     <div class="md:max-w-[1200px] md:mx-auto md:px-10 md:py-8">
@@ -163,7 +152,5 @@ if (user) {
     </div>
   </main>
 
-  <!-- Sticky Bottom Controls (Same as product page) -->
-  <ShopContact email={shop.contact_email} whatsapp={shop.whatsapp} />
-  <BottomNav />
-</Layout>
+  <ShopContact slot="floating" email={shop.contact_email} whatsapp={shop.whatsapp} />
+</BuyerDetailLayout>

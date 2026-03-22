@@ -1,6 +1,11 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "ewya",
+	"main": "@astrojs/cloudflare/entrypoints/server",
+	"assets": {
+		"directory": "./dist",
+		"binding": "ASSETS"
+	},
 	"compatibility_date": "2024-09-23",
 	"compatibility_flags": [
 		"nodejs_compat_v2"

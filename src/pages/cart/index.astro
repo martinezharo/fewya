@@ -1,13 +1,10 @@
 ---
-import Layout from '../../layouts/Layout.astro';
-import Header from '../../components/Header.astro';
-import BottomNav from '../../components/BottomNav.astro';
+import BuyerAppLayout from '../../layouts/BuyerAppLayout.astro';
 import Icon from '../../components/icons/Icon.astro';
 import { strings } from '../../lib/i18n';
 ---
 
-<Layout title={strings.cartPageTitle}>
-  <Header />
+<BuyerAppLayout title={strings.cartPageTitle}>
 
   <main class="min-h-[60dvh] pb-36 md:pb-16">
     <div class="max-w-[960px] mx-auto px-4 md:px-10 py-4 md:py-8">
@@ -73,9 +70,7 @@ import { strings } from '../../lib/i18n';
       <span id="cart-total-mobile" class="text-lg font-bold text-text-primary shrink-0"></span>
     </div>
   </div>
-
-  <BottomNav />
-</Layout>
+</BuyerAppLayout>
 
 <script>
   import { cart, type CartItem } from '../../lib/cart';
@@ -114,7 +109,7 @@ import { strings } from '../../lib/i18n';
 
     let grandTotal = 0;
 
-    grouped.forEach(({ shopName, shopSlug, items: shopItems }, shopId) => {
+    grouped.forEach(({ shopName, shopSlug, items: shopItems }) => {
       const shopTotal = shopItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
       const shopTotalWithShipping = shopTotal + SHIPPING_PER_SHOP;
       grandTotal += shopTotalWithShipping;
