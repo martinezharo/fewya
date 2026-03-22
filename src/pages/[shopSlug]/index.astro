@@ -9,7 +9,7 @@ import Icon from '../../components/icons/Icon.astro';
 import { supabase } from '../../lib/supabase';
 import { createSupabaseAuthClient } from '../../lib/auth';
 import { enrichProductsWithRatings } from '../../lib/productUtils';
-import { strings } from '../../lib/strings';
+import { strings } from '../../lib/i18n';
 import type { Shop, Product } from '../../lib/types';
 
 const { shopSlug } = Astro.params;

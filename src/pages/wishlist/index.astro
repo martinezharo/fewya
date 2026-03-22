@@ -7,7 +7,7 @@ import Icon from "../../components/icons/Icon.astro";
 import { createSupabaseAuthClient } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
 import { enrichProductsWithRatings } from "../../lib/productUtils";
-import { strings } from "../../lib/strings";
+import { strings } from "../../lib/i18n";
 import type { Product } from "../../lib/types";
 
 const authClient = createSupabaseAuthClient(Astro.cookies, Astro.request);

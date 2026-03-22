@@ -13,7 +13,7 @@ import ShopContact from '../../components/product/ShopContact.astro';
 import ReportButton from '../../components/product/ReportButton.astro';
 import { supabase } from '../../lib/supabase';
 import { createSupabaseAuthClient } from '../../lib/auth';
-import { strings } from '../../lib/strings';
+import { strings } from '../../lib/i18n';
 import type { Product, Review, Shop } from '../../lib/types';
 
 const { shopSlug, productSlug } = Astro.params;

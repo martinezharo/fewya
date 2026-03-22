@@ -3,7 +3,7 @@ import Layout from "../layouts/Layout.astro";
 import Header from "../components/Header.astro";
 import BottomNav from "../components/BottomNav.astro";
 import { createSupabaseAuthClient } from "../lib/auth";
-import { strings } from "../lib/strings";
+import { strings } from "../lib/i18n";
 
 const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
 const { data: { user } } = await supabase.auth.getUser();

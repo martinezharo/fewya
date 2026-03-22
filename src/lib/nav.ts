@@ -1,4 +1,4 @@
-import { strings } from './strings';
+import { strings } from './i18n';
 
 export const navItems = [
     { href: '/', label: strings.navHome, icon: 'home' as const },

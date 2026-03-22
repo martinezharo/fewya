@@ -3,7 +3,7 @@ import Layout from "../../layouts/Layout.astro";
 import Header from "../../components/Header.astro";
 import BottomNav from "../../components/BottomNav.astro";
 import Icon from "../../components/icons/Icon.astro";
-import { strings } from "../../lib/strings";
+import { strings } from "../../lib/i18n";
 import { createSupabaseAuthClient } from "../../lib/auth";
 
 const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);

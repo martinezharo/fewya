@@ -10,7 +10,7 @@ import { supabase } from "../../lib/supabase";
 import { createSupabaseAuthClient } from "../../lib/auth";
 import { enrichProductsWithRatings } from "../../lib/productUtils";
 import { parseSearchParams } from "../../lib/search";
-import { strings } from "../../lib/strings";
+import { strings } from "../../lib/i18n";
 import type { Product } from "../../lib/types";
 
 const url = new URL(Astro.request.url);
