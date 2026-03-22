@@ -141,13 +141,6 @@ const reviewAvg = product.review_avg ?? 0;
         >
             <Icon name={isWished ? 'heart-filled' : 'heart'} size={16} />
         </button>
-
-        {/* Out-of-stock badge */}
-        {isOutOfStock && (
-            <span class="absolute top-3 left-3 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-black/60 text-white dark:bg-white/20 dark:text-white backdrop-blur-sm">
-                {strings.productOutOfStock}
-            </span>
-        )}
     </div>
 
     {/* Info */}
