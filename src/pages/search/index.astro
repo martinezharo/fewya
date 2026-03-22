@@ -84,7 +84,7 @@ if (user) {
 }
 ---
 
-<Layout title={`Buscar: ${params.q} | ${strings.siteTitle}`}>
+<Layout title={`${strings.searchPageTitlePrefix}: ${params.q} | ${strings.siteTitle}`}>
     <Header />
     <SearchToolbar params={params} />
     
@@ -101,7 +101,7 @@ if (user) {
                 <h2 class="text-[18px] font-semibold text-text-primary mb-2">
                     {strings.searchNoResults} {params.q && `"${params.q}"`}
                 </h2>
-                <p class="text-[14px] text-text-secondary">Intenta con otros términos o ajusta los filtros.</p>
+                <p class="text-[14px] text-text-secondary">{strings.searchTryDifferentTerms}</p>
             </div>
         )}
     </main>

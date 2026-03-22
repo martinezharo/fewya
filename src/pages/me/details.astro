@@ -20,7 +20,7 @@ const { data: profile } = await supabase
     .single();
 ---
 
-<Layout title={`${strings.meDataPageTitle} — EWYA`}>
+<Layout title={`${strings.meDataPageTitle} — ${strings.siteTitle}`}>
     <Header />
 
     <main class="w-full max-w-lg mx-auto px-4 pt-6 pb-28 md:pb-16 min-h-[50vh]">
@@ -96,7 +96,7 @@ const { data: profile } = await supabase
                     type="tel"
                     value={(profile as any)?.phone ?? ''}
                     autocomplete="tel"
-                    placeholder="+34 600 000 000"
+                    placeholder={strings.meDataPhonePlaceholder}
                     class="w-full rounded-xl border border-border bg-surface px-4 py-3 text-[15px] text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-text-primary transition-colors"
                 />
             </div>

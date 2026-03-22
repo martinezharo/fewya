@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { createSupabaseAuthClient } from '../../../lib/auth';
+import { strings } from '../../../lib/i18n';
 
 interface CheckoutItem {
     variantId: string;
@@ -12,7 +13,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     const { data: { user } } = await authClient.auth.getUser();
 
     if (!user) {
-        return new Response(JSON.stringify({ error: 'No autenticado' }), {
+        return new Response(JSON.stringify({ error: strings.apiUnauthorized }), {
             status: 401,
             headers: { 'Content-Type': 'application/json' },
         });
@@ -22,7 +23,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     try {
         body = await request.json();
     } catch {
-        return new Response(JSON.stringify({ error: 'Cuerpo inválido' }), {
+        return new Response(JSON.stringify({ error: strings.apiInvalidBody }), {
             status: 400,
             headers: { 'Content-Type': 'application/json' },
         });
@@ -30,7 +31,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     const { items } = body;
     if (!Array.isArray(items) || items.length === 0) {
-        return new Response(JSON.stringify({ error: 'El carrito está vacío' }), {
+        return new Response(JSON.stringify({ error: strings.apiCartEmpty }), {
             status: 400,
             headers: { 'Content-Type': 'application/json' },
         });
@@ -39,7 +40,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     // Validate items
     for (const item of items) {
         if (!item.variantId || !Number.isInteger(item.quantity) || item.quantity < 1 || typeof item.priceAtPurchase !== 'number' || item.priceAtPurchase < 0) {
-            return new Response(JSON.stringify({ error: 'Datos de producto inválidos' }), {
+            return new Response(JSON.stringify({ error: strings.apiInvalidProductData }), {
                 status: 400,
                 headers: { 'Content-Type': 'application/json' },
             });
@@ -62,7 +63,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         .single();
 
     if (orderError || !order) {
-        return new Response(JSON.stringify({ error: 'Error al crear el pedido' }), {
+        return new Response(JSON.stringify({ error: strings.apiOrderCreateError }), {
             status: 500,
             headers: { 'Content-Type': 'application/json' },
         });
@@ -81,7 +82,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         .insert(orderItems);
 
     if (itemsError) {
-        return new Response(JSON.stringify({ error: 'Error al guardar los productos del pedido' }), {
+        return new Response(JSON.stringify({ error: strings.apiOrderItemsSaveError }), {
             status: 500,
             headers: { 'Content-Type': 'application/json' },
         });

@@ -22,6 +22,8 @@ export const strings = {
     navProfile: 'Yo',
     navCart: 'Carrito',
     navSell: 'Vender',
+    navPrimaryAria: 'Navegacion principal',
+    navMobileAria: 'Navegacion movil',
 
     // Product Card
     addToWishlist: 'Añadir a favoritos',
@@ -80,17 +82,24 @@ export const strings = {
     // Search
     searchRecent: 'Búsquedas recientes',
     searchClear: 'Borrar',
+    searchClearRecent: 'Borrar recientes',
     searchNoResults: 'No se encontraron resultados para',
+    searchTryDifferentTerms: 'Intenta con otros terminos o ajusta los filtros.',
     searchFilters: 'Filtros',
     searchSort: 'Ordenar por',
     searchApply: 'Aplicar',
     searchClearFilters: 'Limpiar',
     searchPriceRange: 'Rango de precio',
+    searchPriceMin: 'Min',
+    searchPriceMax: 'Max',
+    searchPriceMinPlaceholder: '0',
+    searchPriceMaxPlaceholder: '500',
     searchShowOos: 'Mostrar stock agotado',
     searchSortRelevance: 'Relevancia',
     searchSortAlpha: 'Alfabético',
     searchSortPrice: 'Precio',
     searchSortDate: 'Fecha',
+    searchPageTitlePrefix: 'Buscar',
 
     // Cart
     cartPageTitle: 'Mi carrito — EWYA',
@@ -104,6 +113,10 @@ export const strings = {
     cartOrderSuccess: 'Pedido realizado con éxito',
     cartLoginRequired: 'Inicia sesión para tramitar tu pedido',
     cartRemove: 'Eliminar del carrito',
+    cartCheckoutError: 'Error al procesar el pedido',
+    cartProductSingular: 'producto',
+    cartProductPlural: 'productos',
+    cartShippingIncluded: 'Envio incluido',
 
     // Me / Profile Dashboard
     mePageTitle: 'Mi cuenta — EWYA',
@@ -119,6 +132,7 @@ export const strings = {
     meDataName: 'Nombre',
     meDataEmail: 'Correo electrónico',
     meDataPhone: 'Teléfono',
+    meDataPhonePlaceholder: '+34 600 000 000',
     meDataAddress: 'Dirección de envío',
     meDataAddressPlaceholder: 'Calle, número, piso, ciudad, código postal…',
     meDataSave: 'Guardar cambios',
@@ -126,4 +140,30 @@ export const strings = {
     meDataSaveSuccess: 'Cambios guardados correctamente',
     meDataSaveError: 'No se pudieron guardar los cambios',
     meDataAvatarNote: 'Foto de perfil',
+
+    // Orders / states
+    orderStatusPending: 'Pendiente',
+    orderStatusPaid: 'Pagado',
+    orderStatusProcessing: 'Procesando',
+    orderStatusShipped: 'Enviado',
+    orderStatusDelivered: 'Entregado',
+    orderStatusCancelled: 'Cancelado',
+
+    // Variant fallbacks
+    variantDefaultName: 'Estandar',
+    variantFallbackName: 'Variante {index}',
+
+    // Fallback content
+    fallbackShopName: 'Tienda',
+    fallbackProductName: 'Producto',
+
+    // Auth / API / errors
+    authGoogleLoginError: 'Error al iniciar sesion con Google',
+    authMissingSupabaseEnv: 'Variables de entorno SUPABASE_URL o SUPABASE_KEY no encontradas en Cloudflare',
+    apiUnauthorized: 'No autenticado',
+    apiInvalidBody: 'Cuerpo invalido',
+    apiCartEmpty: 'El carrito esta vacio',
+    apiInvalidProductData: 'Datos de producto invalidos',
+    apiOrderCreateError: 'Error al crear el pedido',
+    apiOrderItemsSaveError: 'Error al guardar los productos del pedido',
 } as const;

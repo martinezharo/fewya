@@ -28,7 +28,7 @@ const wishlistCount = user ? await getWishlistCount(authClient, user.id) : 0;
         <div class="flex-1 max-w-[480px]">
             <SearchBar />
         </div>
-        <nav class="flex items-center gap-1 ml-auto" aria-label="Navegación principal">
+        <nav class="flex items-center gap-1 ml-auto" aria-label={strings.navPrimaryAria}>
             {navItems.map(({ href, label, icon, showBadge, badgeType }) => {
                 const isActive = href === '/' ? currentPath === '/' : currentPath.startsWith(href);
                 const isWishlistBadge = badgeType === 'wishlist';

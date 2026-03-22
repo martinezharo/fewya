@@ -142,8 +142,10 @@ import { strings } from '../../lib/i18n';
       // Shop footer — subtotal
       const footer = document.createElement('div');
       footer.className = 'flex items-center justify-between px-4 py-3 border-t border-border-light bg-border-light/30';
+      const itemCount = shopItems.reduce((s, i) => s + i.quantity, 0);
+      const itemLabel = itemCount === 1 ? strings.cartProductSingular : strings.cartProductPlural;
       footer.innerHTML = `
-        <span class="text-xs text-text-secondary">${shopItems.reduce((s, i) => s + i.quantity, 0)} producto${shopItems.reduce((s, i) => s + i.quantity, 0) === 1 ? '' : 's'} · ${strings.cartShipping} incluido</span>
+        <span class="text-xs text-text-secondary">${itemCount} ${itemLabel} · ${strings.cartShippingIncluded}</span>
         <span class="text-sm font-bold text-text-primary">${shopTotalWithShipping.toFixed(2)}${strings.currency}</span>
       `;
       shopSection.appendChild(footer);
@@ -250,7 +252,7 @@ import { strings } from '../../lib/i18n';
         if (res.status === 401) {
           alert(strings.cartLoginRequired);
         } else {
-          alert(data.error || 'Error al procesar el pedido');
+          alert(data.error || strings.cartCheckoutError);
         }
         return;
       }

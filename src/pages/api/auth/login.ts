@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { createSupabaseAuthClient } from '../../../lib/auth';
+import { strings } from '../../../lib/i18n';
 
 export const GET: APIRoute = async ({ cookies, request, redirect, url }) => {
     const supabase = createSupabaseAuthClient(cookies, request);
@@ -12,7 +13,7 @@ export const GET: APIRoute = async ({ cookies, request, redirect, url }) => {
     });
 
     if (error || !data.url) {
-        return new Response('Error al iniciar sesión con Google', { status: 500 });
+        return new Response(strings.authGoogleLoginError, { status: 500 });
     }
 
     return redirect(data.url);

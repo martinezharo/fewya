@@ -1,6 +1,7 @@
 import { createServerClient, parseCookieHeader } from '@supabase/ssr';
 import type { AstroCookies } from 'astro';
 import { SUPABASE_URL, SUPABASE_KEY } from 'astro:env/server';
+import { strings } from './i18n';
 
 /**
  * Creates a Supabase client with cookie-based session management for SSR.
@@ -8,7 +9,7 @@ import { SUPABASE_URL, SUPABASE_KEY } from 'astro:env/server';
  */
 export function createSupabaseAuthClient(cookies: AstroCookies, request: Request) {
     if (!SUPABASE_URL || !SUPABASE_KEY) {
-        throw new Error('Variables de entorno SUPABASE_URL o SUPABASE_KEY no encontradas en Cloudflare');
+        throw new Error(strings.authMissingSupabaseEnv);
     }
     return createServerClient(SUPABASE_URL, SUPABASE_KEY, {
         cookies: {

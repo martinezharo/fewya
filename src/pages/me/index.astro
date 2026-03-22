@@ -50,12 +50,12 @@ interface PurchaseGroup {
 }
 
 const statusMap: Record<string, string> = {
-    'pending': 'Pendiente',
-    'paid': 'Pagado',
-    'processing': 'Procesando',
-    'shipped': 'Enviado',
-    'delivered': 'Entregado',
-    'cancelled': 'Cancelado'
+    'pending': strings.orderStatusPending,
+    'paid': strings.orderStatusPaid,
+    'processing': strings.orderStatusProcessing,
+    'shipped': strings.orderStatusShipped,
+    'delivered': strings.orderStatusDelivered,
+    'cancelled': strings.orderStatusCancelled,
 };
 
 // Group order items by shop and handle quantity
@@ -65,18 +65,20 @@ if (ordersData) {
         const itemsByShop = new Map<string, PurchaseGroup>();
         
         for (const item of order.order_items || []) {
-            const variant = item.product_variants;
+            const rawVariant = item.product_variants as any;
+            const variant = (Array.isArray(rawVariant) ? rawVariant[0] : rawVariant) as any;
             if (!variant) continue;
-            const product = Array.isArray(variant) ? variant[0]?.products : variant.products;
+            const rawProduct = variant.products as any;
+            const product = (Array.isArray(rawProduct) ? rawProduct[0] : rawProduct) as any;
             if (!product) continue;
             
-            const shop = Array.isArray(product.shops) ? product.shops[0] : (product.shops || {id:'unknown', name: 'Tienda'});
+            const shop = Array.isArray(product.shops) ? product.shops[0] : (product.shops || {id:'unknown', name: strings.fallbackShopName});
             if (!shop) continue;
 
-            const imageUrl = (!Array.isArray(variant) && variant.variant_image) 
+            const imageUrl = variant.variant_image 
                                 ? variant.variant_image 
                                 : (product.gallery_images?.[0] || '');
-            const productName = product.title || 'Producto';
+            const productName = product.title || strings.fallbackProductName;
             const quantity = item.quantity || 1;
 
             if (!itemsByShop.has(shop.id)) {
@@ -156,7 +158,7 @@ const recentPurchases = purchaseGroups.slice(0, 5);
                                         {purchase.shopName}
                                     </h3>
                                     <span class="text-[12px] font-medium text-text-secondary mt-1 block pointer-events-none">
-                                        {statusMap[purchase.status?.toLowerCase()] || purchase.status || 'Pendiente'}
+                                        {statusMap[purchase.status?.toLowerCase()] || purchase.status || strings.orderStatusPending}
                                     </span>
                                 </div>
                             </article>

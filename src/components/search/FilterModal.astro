@@ -73,12 +73,12 @@ const clearUrl = buildSearchUrl(currentUrl, { minPrice: null, maxPrice: null, sh
                 
                 <div class="flex items-center justify-between gap-4 mt-2">
                     <div class="flex-1 flex items-center gap-2 px-3 py-2 bg-border-light rounded-lg">
-                        <span class="text-text-tertiary text-[13px]">Min</span>
-                        <input type="number" id="price-min-num" value={params.minPrice || ''} placeholder="0" class="w-full bg-transparent border-none text-[14px] text-text-primary font-medium outline-none text-right placeholder:text-text-tertiary" />
+                        <span class="text-text-tertiary text-[13px]">{strings.searchPriceMin}</span>
+                        <input type="number" id="price-min-num" value={params.minPrice || ''} placeholder={strings.searchPriceMinPlaceholder} class="w-full bg-transparent border-none text-[14px] text-text-primary font-medium outline-none text-right placeholder:text-text-tertiary" />
                     </div>
                     <div class="flex-1 flex items-center gap-2 px-3 py-2 bg-border-light rounded-lg">
-                        <span class="text-text-tertiary text-[13px]">Max</span>
-                        <input type="number" id="price-max-num" value={params.maxPrice || ''} placeholder="500" class="w-full bg-transparent border-none text-[14px] text-text-primary font-medium outline-none text-right placeholder:text-text-tertiary" />
+                        <span class="text-text-tertiary text-[13px]">{strings.searchPriceMax}</span>
+                        <input type="number" id="price-max-num" value={params.maxPrice || ''} placeholder={strings.searchPriceMaxPlaceholder} class="w-full bg-transparent border-none text-[14px] text-text-primary font-medium outline-none text-right placeholder:text-text-tertiary" />
                     </div>
                 </div>
             </div>

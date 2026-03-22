@@ -14,7 +14,7 @@ const { variants, defaultImage } = Astro.props;
   <div>
     <div class="flex gap-4 overflow-x-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none] pb-1">
       {variants.map((v, i) => {
-        const displayName = v.variant_name || (v.is_default ? 'Estándar' : `Variante ${i + 1}`);
+        const displayName = v.variant_name || (v.is_default ? strings.variantDefaultName : strings.variantFallbackName.replace('{index}', String(i + 1)));
         return (
           <button
             type="button"
