@@ -1,6 +1,10 @@
 import type { APIRoute } from 'astro';
 import { createSupabaseAuthClient } from '../../../lib/auth';
 
+type WishlistToggleBody = {
+    productId?: unknown;
+};
+
 export const POST: APIRoute = async ({ cookies, request }) => {
     const authClient = createSupabaseAuthClient(cookies, request);
     const { data: { user } } = await authClient.auth.getUser();
@@ -9,7 +13,7 @@ export const POST: APIRoute = async ({ cookies, request }) => {
         return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401 });
     }
 
-    const body = await request.json();
+    const body = await request.json() as WishlistToggleBody;
     const productId = body?.productId;
 
     if (!productId || typeof productId !== 'string') {

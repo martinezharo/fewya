@@ -1,6 +1,12 @@
 import type { APIRoute } from 'astro';
 import { createSupabaseAuthClient } from '../../../lib/auth';
 
+type ProfileUpdateBody = {
+    full_name?: unknown;
+    phone?: unknown;
+    address?: unknown;
+};
+
 export const POST: APIRoute = async ({ cookies, request }) => {
     const authClient = createSupabaseAuthClient(cookies, request);
     const { data: { user } } = await authClient.auth.getUser();
@@ -9,7 +15,7 @@ export const POST: APIRoute = async ({ cookies, request }) => {
         return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401 });
     }
 
-    const body = await request.json();
+    const body = await request.json() as ProfileUpdateBody;
     const { full_name, phone, address } = body ?? {};
 
     // Validate required fields

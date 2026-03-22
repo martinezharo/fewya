@@ -243,7 +243,7 @@ import { strings } from '../../lib/i18n';
       });
 
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
+        const data = await res.json().catch(() => ({} as { error?: string })) as { error?: string };
         if (res.status === 401) {
           alert(strings.cartLoginRequired);
         } else {

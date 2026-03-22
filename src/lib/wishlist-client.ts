@@ -42,7 +42,8 @@ function initWishlistButtons() {
                     return;
                 }
 
-                const { wishlisted } = await res.json();
+                const payload = await res.json() as { wishlisted?: boolean };
+                const wishlisted = payload.wishlisted === true;
                 applyWishState(btn, wishlisted, size);
                 window.dispatchEvent(new CustomEvent('wishlist-updated', { detail: { wishlisted } }));
             } catch {

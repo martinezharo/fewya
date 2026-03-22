@@ -2,8 +2,8 @@
 import { defineConfig, envField } from 'astro/config';
 
 import tailwindcss from '@tailwindcss/vite';
-import AstroPWA from '@vite-pwa/astro';
 import cloudflare from '@astrojs/cloudflare';
+import { VitePWA } from 'vite-plugin-pwa';
 
 // https://astro.build/config
 export default defineConfig({
@@ -18,10 +18,8 @@ export default defineConfig({
   vite: {
     plugins: [
       tailwindcss(),
-    ]
-  },
-  integrations: [
-    AstroPWA({
+      VitePWA({
+        injectRegister: false,
       registerType: 'autoUpdate',
       manifestFilename: 'manifest.webmanifest',
       manifest: {
@@ -46,6 +44,7 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
         navigateFallback: null
       }
-    })
-  ]
+      })
+    ]
+  }
 });
