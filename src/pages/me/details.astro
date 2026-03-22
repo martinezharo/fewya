@@ -23,14 +23,14 @@ const { data: profile } = await supabase
 <Layout title={`${strings.meDataPageTitle} — EWYA`}>
     <Header />
 
-    <main class="w-full max-w-lg mx-auto px-4 pt-[80px] pb-28 md:pt-[100px] md:pb-16 min-h-screen">
+    <main class="w-full max-w-lg mx-auto px-4 pt-6 pb-28 md:pb-16 min-h-[50vh]">
 
         {/* Back button + title */}
         <div class="flex items-center gap-3 mb-8">
             <a href="/me" class="w-9 h-9 rounded-full flex items-center justify-center hover:bg-surface transition-colors -ml-1 text-text-secondary hover:text-text-primary">
                 <Icon name="arrow-left" size={20} />
             </a>
-            <h1 class="text-[22px] font-bold text-text-primary tracking-[-0.02em]">
+            <h1 class="text-xl md:text-2xl font-bold text-text-primary">
                 {strings.meDataPageTitle}
             </h1>
         </div>
