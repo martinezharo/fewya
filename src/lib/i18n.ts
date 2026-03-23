@@ -141,6 +141,17 @@ export const strings = {
     meDataSaveError: 'No se pudieron guardar los cambios',
     meDataAvatarNote: 'Foto de perfil',
 
+    // Orders page
+    ordersPageTitle: 'Mis pedidos — EWYA',
+    ordersHeading: 'Mis pedidos',
+    ordersEmpty: 'No tienes pedidos aún',
+    ordersEmptySub: 'Cuando realices tu primer pedido aparecerá aquí.',
+    ordersExploreCta: 'Explorar productos',
+    ordersItemsSingular: 'artículo',
+    ordersItemsPlural: 'artículos',
+    ordersTotal: 'Total',
+    ordersOrder: 'Pedido',
+
     // Orders / states
     orderStatusPending: 'Pendiente',
     orderStatusPaid: 'Pagado',

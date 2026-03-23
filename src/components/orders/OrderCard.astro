@@ -1,0 +1,124 @@
+---
+import Icon from "../icons/Icon.astro";
+import { strings } from "../../lib/i18n";
+
+export interface OrderItem {
+    productTitle: string;
+    imageUrl: string;
+    productSlug: string;
+    shopSlug: string;
+    variantName: string | null;
+}
+
+export interface OrderCardData {
+    orderId: string;
+    publicId: string;
+    status: string;
+    totalAmount: number;
+    createdAt: Date;
+    items: OrderItem[];
+}
+
+interface Props {
+    order: OrderCardData;
+}
+
+const { order } = Astro.props;
+
+const statusMap: Record<string, string> = {
+    pending: strings.orderStatusPending,
+    paid: strings.orderStatusPaid,
+    processing: strings.orderStatusProcessing,
+    shipped: strings.orderStatusShipped,
+    delivered: strings.orderStatusDelivered,
+    cancelled: strings.orderStatusCancelled,
+};
+
+const statusColorMap: Record<string, string> = {
+    pending: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
+    paid: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400",
+    processing: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400",
+    shipped: "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-400",
+    delivered: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400",
+    cancelled: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400",
+};
+
+const normalizedStatus = order.status?.toLowerCase() ?? "pending";
+const statusLabel = statusMap[normalizedStatus] ?? order.status;
+const statusColor = statusColorMap[normalizedStatus] ?? statusColorMap.pending;
+
+const firstItem = order.items[0];
+const itemCount = order.items.length;
+const href = firstItem ? `/${firstItem.shopSlug}/${firstItem.productSlug}` : "#";
+
+const dateFormatted = order.createdAt.toLocaleDateString("es-ES", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+});
+
+const priceFormatted = new Intl.NumberFormat("es-ES", {
+    style: "currency",
+    currency: "EUR",
+}).format(order.totalAmount);
+---
+
+<a
+    href={href}
+    class="group flex items-center gap-4 py-4 px-4 md:py-5 md:px-5 bg-surface rounded-2xl border border-border-light hover:border-border-default hover:shadow-sm transition-all duration-200 select-none"
+>
+    {/* Thumbnail */}
+    <div class="relative flex-shrink-0 w-16 h-16 md:w-[72px] md:h-[72px] rounded-xl overflow-hidden bg-border-light">
+        {firstItem?.imageUrl ? (
+            <img
+                src={firstItem.imageUrl}
+                alt={firstItem.productTitle}
+                class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                draggable="false"
+            />
+        ) : (
+            <div class="w-full h-full flex items-center justify-center text-text-tertiary">
+                <Icon name="shopping-cart" size={24} />
+            </div>
+        )}
+        {itemCount > 1 && (
+            <div class="absolute inset-0 bg-black/50 flex items-center justify-center">
+                <span class="text-white text-sm font-bold">+{itemCount - 1}</span>
+            </div>
+        )}
+    </div>
+
+    {/* Content */}
+    <div class="flex-1 min-w-0">
+        <div class="flex items-start justify-between gap-2">
+            <div class="min-w-0">
+                <p class="text-[15px] font-semibold text-text-primary truncate leading-snug">
+                    {itemCount === 1
+                        ? firstItem?.productTitle
+                        : `${itemCount} ${strings.ordersItemsPlural}`}
+                </p>
+                {itemCount === 1 && firstItem?.variantName && (
+                    <p class="text-[12px] text-text-tertiary truncate mt-0.5">
+                        {firstItem.variantName}
+                    </p>
+                )}
+                <p class="text-[13px] text-text-secondary mt-1">{dateFormatted}</p>
+            </div>
+            <div class="flex flex-col items-end gap-1.5 flex-shrink-0">
+                <span class="text-[15px] font-bold text-text-primary tabular-nums">
+                    {priceFormatted}
+                </span>
+                <span class={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${statusColor}`}>
+                    {statusLabel}
+                </span>
+            </div>
+        </div>
+    </div>
+
+    {/* Chevron (desktop only) */}
+    <Icon
+        name="chevron-right"
+        size={18}
+        class="hidden md:block flex-shrink-0 text-text-tertiary group-hover:text-text-primary transition-colors"
+    />
+</a>

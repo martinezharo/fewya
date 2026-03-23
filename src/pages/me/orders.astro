@@ -1,0 +1,122 @@
+---
+import BuyerAppLayout from "../../layouts/BuyerAppLayout.astro";
+import Icon from "../../components/icons/Icon.astro";
+import OrderCard from "../../components/orders/OrderCard.astro";
+import type { OrderCardData } from "../../components/orders/OrderCard.astro";
+import { strings } from "../../lib/i18n";
+import { createSupabaseAuthClient } from "../../lib/auth";
+
+const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
+const {
+    data: { user },
+} = await supabase.auth.getUser();
+
+if (!user) return Astro.redirect("/");
+
+const { data: ordersData } = await supabase
+    .from("orders")
+    .select(`
+        id,
+        public_id,
+        status,
+        total_amount,
+        created_at,
+        order_items (
+            quantity,
+            product_variants (
+                variant_name,
+                variant_image,
+                products (
+                    title,
+                    slug,
+                    gallery_images,
+                    shops (
+                        slug
+                    )
+                )
+            )
+        )
+    `)
+    .eq("buyer_id", user.id)
+    .order("created_at", { ascending: false });
+
+const orders: OrderCardData[] = (ordersData ?? []).map((order: any) => {
+    const items = (order.order_items ?? []).flatMap((oi: any) => {
+        const rawVariant = oi.product_variants;
+        const variant = Array.isArray(rawVariant) ? rawVariant[0] : rawVariant;
+        if (!variant) return [];
+
+        const rawProduct = variant.products;
+        const product = Array.isArray(rawProduct) ? rawProduct[0] : rawProduct;
+        if (!product) return [];
+
+        const rawShop = product.shops;
+        const shop = Array.isArray(rawShop) ? rawShop[0] : rawShop;
+        if (!shop) return [];
+
+        const imageUrl = variant.variant_image || product.gallery_images?.[0] || "";
+
+        return Array.from({ length: oi.quantity ?? 1 }, () => ({
+            productTitle: product.title ?? strings.fallbackProductName,
+            imageUrl,
+            productSlug: product.slug,
+            shopSlug: shop.slug,
+            variantName: variant.variant_name ?? null,
+        }));
+    });
+
+    return {
+        orderId: order.id,
+        publicId: order.public_id,
+        status: order.status ?? "pending",
+        totalAmount: order.total_amount ?? 0,
+        createdAt: new Date(order.created_at),
+        items,
+    };
+});
+---
+
+<BuyerAppLayout title={strings.ordersPageTitle}>
+    <main class="w-full max-w-2xl mx-auto px-4 md:px-6 pt-6 pb-28 md:pb-16 min-h-[50vh]">
+
+        {/* Back + heading */}
+        <div class="flex items-center gap-3 mb-6">
+            <a
+                href="/me"
+                class="w-9 h-9 rounded-full flex items-center justify-center hover:bg-surface transition-colors -ml-1 text-text-secondary hover:text-text-primary"
+                aria-label={strings.productBack}
+            >
+                <Icon name="arrow-left" size={20} />
+            </a>
+            <h1 class="text-xl md:text-2xl font-bold text-text-primary">
+                {strings.ordersHeading}
+            </h1>
+        </div>
+
+        {orders.length > 0 ? (
+            <div class="flex flex-col gap-3">
+                {orders.map((order) => (
+                    <OrderCard order={order} />
+                ))}
+            </div>
+        ) : (
+            <div class="flex flex-col items-center justify-center text-center px-6 py-20">
+                <div class="w-16 h-16 mb-4 rounded-full bg-surface border border-border-light flex items-center justify-center text-text-tertiary">
+                    <Icon name="shopping-cart" size={26} />
+                </div>
+                <h2 class="text-[18px] font-semibold text-text-primary mb-2">
+                    {strings.ordersEmpty}
+                </h2>
+                <p class="text-[14px] text-text-secondary mb-6 max-w-xs">
+                    {strings.ordersEmptySub}
+                </p>
+                <a
+                    href="/"
+                    class="inline-flex items-center px-6 py-2.5 bg-accent text-bg text-sm font-semibold rounded-lg transition-colors hover:bg-accent-hover"
+                >
+                    {strings.ordersExploreCta}
+                </a>
+            </div>
+        )}
+    </main>
+</BuyerAppLayout>
