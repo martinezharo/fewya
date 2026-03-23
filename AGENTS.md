@@ -7,6 +7,7 @@
 - Haz que el código sea escalable.
 - Explica en el chat siempre lo que has hecho y no te cortes en proponer mejoras o reportar malas prácticas o errores que encuentres.
 - No hardcodees texto, crea archivos con variables para facilitar futuros cambios o traducciónes.
+- Las rutas de las páginas deben estar siempre en inglés.
 
 ## EWYA
 
