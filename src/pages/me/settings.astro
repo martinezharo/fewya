@@ -1,0 +1,160 @@
+---
+import BuyerAppLayout from "../../layouts/BuyerAppLayout.astro";
+import Icon from "../../components/icons/Icon.astro";
+import { strings } from "../../lib/i18n";
+import { createSupabaseAuthClient } from "../../lib/auth";
+
+const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
+const { data: { user } } = await supabase.auth.getUser();
+
+if (!user) {
+    return Astro.redirect('/');
+}
+---
+
+<BuyerAppLayout title={strings.settingsPageTitle}>
+    <main class="w-full max-w-lg mx-auto px-4 pt-6 pb-28 md:pb-16 min-h-[50vh]">
+
+        {/* Back button + title */}
+        <div class="flex items-center gap-3 mb-8">
+            <a
+                href="/me"
+                class="w-9 h-9 rounded-full flex items-center justify-center hover:bg-surface transition-colors -ml-1 text-text-secondary hover:text-text-primary"
+                aria-label={strings.productBack}
+            >
+                <Icon name="arrow-left" size={20} />
+            </a>
+            <h1 class="text-xl md:text-2xl font-bold text-text-primary">
+                {strings.settingsTitle}
+            </h1>
+        </div>
+
+        {/* Apariencia */}
+        <section>
+            <h2 class="text-[11px] font-semibold uppercase tracking-widest text-text-tertiary mb-3 px-1">
+                {strings.settingsAppearanceSection}
+            </h2>
+
+            <div class="bg-surface border border-border-light rounded-2xl p-5">
+                <p class="text-[13px] font-medium text-text-secondary mb-4">
+                    {strings.settingsThemeLabel}
+                </p>
+
+                <div class="grid grid-cols-3 gap-2" role="radiogroup" aria-label={strings.settingsThemeLabel}>
+
+                    {/* Sistema */}
+                    <button
+                        type="button"
+                        data-theme-btn="system"
+                        role="radio"
+                        class="theme-btn flex flex-col items-center gap-2.5 rounded-xl border-2 p-3 transition-all duration-150 focus:outline-none"
+                    >
+                        <div class="w-10 h-10 rounded-full bg-bg border border-border flex items-center justify-center">
+                            <Icon name="monitor" size={20} class="text-text-secondary" />
+                        </div>
+                        <span class="text-[13px] font-medium text-text-primary">
+                            {strings.settingsThemeSystem}
+                        </span>
+                    </button>
+
+                    {/* Claro */}
+                    <button
+                        type="button"
+                        data-theme-btn="light"
+                        role="radio"
+                        class="theme-btn flex flex-col items-center gap-2.5 rounded-xl border-2 p-3 transition-all duration-150 focus:outline-none"
+                    >
+                        <div class="w-10 h-10 rounded-full bg-bg border border-border flex items-center justify-center">
+                            <Icon name="sun" size={20} class="text-text-secondary" />
+                        </div>
+                        <span class="text-[13px] font-medium text-text-primary">
+                            {strings.settingsThemeLight}
+                        </span>
+                    </button>
+
+                    {/* Oscuro */}
+                    <button
+                        type="button"
+                        data-theme-btn="dark"
+                        role="radio"
+                        class="theme-btn flex flex-col items-center gap-2.5 rounded-xl border-2 p-3 transition-all duration-150 focus:outline-none"
+                    >
+                        <div class="w-10 h-10 rounded-full bg-bg border border-border flex items-center justify-center">
+                            <Icon name="moon" size={20} class="text-text-secondary" />
+                        </div>
+                        <span class="text-[13px] font-medium text-text-primary">
+                            {strings.settingsThemeDark}
+                        </span>
+                    </button>
+
+                </div>
+            </div>
+        </section>
+
+    </main>
+</BuyerAppLayout>
+
+<style>
+    .theme-btn {
+        border-color: var(--color-border-val);
+        background: transparent;
+        cursor: pointer;
+    }
+    .theme-btn:hover {
+        border-color: var(--color-text-secondary-val);
+    }
+    .theme-btn[aria-checked="true"] {
+        border-color: var(--color-accent-val);
+        background: color-mix(in srgb, var(--color-accent-val) 6%, transparent);
+    }
+    .theme-btn[aria-checked="true"] span {
+        color: var(--color-text-primary-val);
+        font-weight: 600;
+    }
+</style>
+
+<script>
+    type Theme = 'system' | 'light' | 'dark';
+    const STORAGE_KEY = 'ewya-theme';
+
+    function getStoredTheme(): Theme {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored === 'light' || stored === 'dark') return stored;
+        return 'system';
+    }
+
+    function applyTheme(theme: Theme) {
+        if (theme === 'dark') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+        } else if (theme === 'light') {
+            document.documentElement.setAttribute('data-theme', 'light');
+        } else {
+            document.documentElement.removeAttribute('data-theme');
+        }
+        localStorage.setItem(STORAGE_KEY, theme);
+    }
+
+    function updateButtons(active: Theme) {
+        document.querySelectorAll<HTMLButtonElement>('[data-theme-btn]').forEach(btn => {
+            const isActive = btn.dataset.themeBtn === active;
+            btn.setAttribute('aria-checked', String(isActive));
+        });
+    }
+
+    function init() {
+        const current = getStoredTheme();
+        updateButtons(current);
+
+        document.querySelectorAll<HTMLButtonElement>('[data-theme-btn]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const theme = btn.dataset.themeBtn as Theme;
+                applyTheme(theme);
+                updateButtons(theme);
+            });
+        });
+    }
+
+    document.addEventListener('astro:page-load', init);
+    if (document.readyState !== 'loading') init();
+    else document.addEventListener('DOMContentLoaded', init);
+</script>

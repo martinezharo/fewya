@@ -157,6 +157,15 @@ export const strings = {
     fallbackShopName: 'Tienda',
     fallbackProductName: 'Producto',
 
+    // Settings Page
+    settingsPageTitle: 'Ajustes — EWYA',
+    settingsTitle: 'Ajustes',
+    settingsAppearanceSection: 'Apariencia',
+    settingsThemeLabel: 'Tema',
+    settingsThemeSystem: 'Sistema',
+    settingsThemeLight: 'Claro',
+    settingsThemeDark: 'Oscuro',
+
     // Auth / API / errors
     authGoogleLoginError: 'Error al iniciar sesion con Google',
     authMissingSupabaseEnv: 'Variables de entorno SUPABASE_URL o SUPABASE_KEY no encontradas en Cloudflare',

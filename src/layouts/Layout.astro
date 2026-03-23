@@ -16,6 +16,15 @@ const {
 <!doctype html>
 <html lang="es" class="antialiased">
   <head>
+    <!-- Theme init: apply before paint to avoid flash -->
+    <script is:inline>
+      (function () {
+        var t = localStorage.getItem('ewya-theme');
+        if (t === 'dark' || t === 'light') {
+          document.documentElement.setAttribute('data-theme', t);
+        }
+      })();
+    </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
