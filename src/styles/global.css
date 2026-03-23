@@ -5,7 +5,8 @@
   --color-bg-val: #fafafa;
   --color-surface-val: #ffffff;
   --color-border-val: #e5e7eb;
-  --color-border-light-val: #f3f4f6;
+  --color-border-light-val: #d1d1d1;
+  --color-search-bg-val: #f1f1f1;
 
   --color-text-primary-val: #111111;
   --color-text-secondary-val: #6b7280;
@@ -24,6 +25,7 @@
     --color-surface-val: #171717;
     --color-border-val: #262626;
     --color-border-light-val: #404040;
+    --color-search-bg-val: #171717;
 
     --color-text-primary-val: #ededed;
     --color-text-secondary-val: #a1a1aa;
@@ -67,6 +69,8 @@
 
   --color-accent: var(--color-accent-val);
   --color-accent-hover: var(--color-accent-hover-val);
+
+  --color-search-bg: var(--color-search-bg-val);
 
   --color-wishlist: var(--color-wishlist-val);
 
