@@ -17,12 +17,14 @@
     "@supabase/ssr": "^0.9.0",
     "@supabase/supabase-js": "^2.98.0",
     "astro": "^6.0.8",
+    "my-canvas-confetti": "npm:canvas-confetti@^1.9.4",
     "typescript": "^5.9.3",
     "workbox-window": "^7.4.0",
     "wrangler": "^4.73.0"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.2.1",
+    "@types/canvas-confetti": "^1.9.0",
     "@types/node": "^25.3.5",
     "eslint": "^10.0.3",
     "eslint-plugin-astro": "^1.6.0",

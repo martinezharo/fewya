@@ -1,0 +1,74 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { createSupabaseAuthClient } from '../../lib/auth';
+import Icon from '../../components/icons/Icon.astro';
+
+const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
+const { data: sessionData } = await supabase.auth.getSession();
+const user = sessionData?.session?.user;
+
+let isSeller = false;
+let hasShop = false;
+
+if (user) {
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('is_seller')
+        .eq('id', user.id)
+        .single();
+    
+    isSeller = profile?.is_seller || false;
+
+    if (isSeller) {
+        const { data: shop } = await supabase
+            .from('shops')
+            .select('id')
+            .eq('owner_id', user.id)
+            .maybeSingle();
+        
+        hasShop = !!shop;
+    }
+}
+---
+
+<Layout title="EWYA - Vender">
+    <div class="max-w-4xl mx-auto px-4 py-12">
+        {!user ? (
+            <div class="text-center rounded-2xl bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 p-12">
+                <h1 class="text-4xl font-semibold tracking-tight text-neutral-900 dark:text-white mb-4">Vende con nosotros</h1>
+                <p class="text-lg text-neutral-600 dark:text-neutral-400 mb-8 max-w-xl mx-auto">
+                    Abre tu tienda en minutos. Democratizamos el eCommerce para que vendas de una forma más profesional y directa.
+                </p>
+                <a 
+                    href="/api/auth/login?role=seller&redirect_to=/sell" 
+                    class="inline-flex items-center justify-center gap-2 px-6 py-3 bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 font-medium rounded-full shadow-sm hover:scale-105 transition-transform"
+                >
+                    <Icon name="google" class="w-5 h-5"/>
+                    Iniciar sesión con Google
+                </a>
+            </div>
+        ) : !isSeller || !hasShop ? (
+            <div class="text-center rounded-2xl bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 p-12">
+                <h1 class="text-3xl font-semibold tracking-tight text-neutral-900 dark:text-white mb-4">¡Hola, {user.user_metadata?.full_name?.split(' ')[0] || 'Vendedor'}!</h1>
+                <p class="text-lg text-neutral-600 dark:text-neutral-400 mb-8 max-w-xl mx-auto">
+                    Estás a un paso de comenzar a vender. Configura tu tienda para publicar tus productos.
+                </p>
+                <a 
+                    href="/sell/onboarding" 
+                    class="inline-flex items-center justify-center gap-2 px-6 py-3 bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 font-medium rounded-full shadow-sm hover:scale-105 transition-transform"
+                >
+                    Configurar mi tienda
+                </a>
+            </div>
+        ) : (
+            <div>
+                <header class="flex items-center justify-between mb-8">
+                    <h1 class="text-3xl font-semibold tracking-tight text-neutral-900 dark:text-white">Dashboard de vendedor</h1>
+                </header>
+                <div class="p-8 rounded-2xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-center">
+                    <p class="text-green-800 dark:text-green-300 font-medium text-lg">¡Todo correcto! Tu tienda está activa.</p>
+                </div>
+            </div>
+        )}
+    </div>
+</Layout>
