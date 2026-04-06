@@ -177,6 +177,21 @@ export const strings = {
     settingsThemeLight: 'Claro',
     settingsThemeDark: 'Oscuro',
 
+    // Seller sidebar / nav
+    sellerNavDashboard: 'Inicio',
+    sellerNavOrders: 'Pedidos',
+    sellerNavCatalog: 'Catálogo',
+    sellerNavShop: 'Tienda',
+    sellerNavReviews: 'Reseñas',
+    sellerNavClaims: 'Reclamaciones',
+    sellerNavSettings: 'Configuración',
+    sellerSidebarLabel: 'Menú del vendedor',
+    sellerSidebarCollapseLabel: 'Contraer menú',
+    sellerSidebarExpandLabel: 'Expandir menú',
+    sellerSidebarCloseLabel: 'Cerrar menú',
+    sellerSidebarOpenLabel: 'Abrir menú',
+    sellerBrandName: 'ewya seller',
+
     // Auth / API / errors
     authGoogleLoginError: 'Error al iniciar sesion con Google',
     authMissingSupabaseEnv: 'Variables de entorno SUPABASE_URL o SUPABASE_KEY no encontradas en Cloudflare',

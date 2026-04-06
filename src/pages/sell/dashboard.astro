@@ -1,0 +1,35 @@
+---
+import SellerLayout from '../../layouts/SellerLayout.astro';
+import { createSupabaseAuthClient } from '../../lib/auth';
+
+const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
+const { data: sessionData } = await supabase.auth.getSession();
+const user = sessionData?.session?.user;
+
+if (!user) return Astro.redirect('/sell');
+
+const { data: profile } = await supabase
+    .from('profiles')
+    .select('is_seller')
+    .eq('id', user.id)
+    .single();
+
+if (!profile?.is_seller) return Astro.redirect('/sell');
+
+const { data: shop } = await supabase
+    .from('shops')
+    .select('id')
+    .eq('owner_id', user.id)
+    .maybeSingle();
+
+if (!shop) return Astro.redirect('/sell/onboarding');
+---
+
+<SellerLayout title="Dashboard — EWYA Seller">
+    <div class="p-6 lg:p-10">
+        <h1 class="text-2xl font-semibold tracking-tight text-text-primary mb-6">Inicio</h1>
+        <div class="p-8 rounded-2xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-center">
+            <p class="text-green-800 dark:text-green-300 font-medium text-lg">¡Todo correcto! Tu tienda está activa.</p>
+        </div>
+    </div>
+</SellerLayout>

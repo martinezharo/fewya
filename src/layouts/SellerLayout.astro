@@ -1,0 +1,67 @@
+---
+import Layout from './Layout.astro';
+import SellerSidebar from '../components/seller/SellerSidebar.astro';
+import Icon from '../components/icons/Icon.astro';
+import { strings } from '../lib/i18n';
+
+interface Props {
+    title?: string;
+    description?: string;
+}
+
+const { title, description } = Astro.props;
+const currentPath = Astro.url.pathname;
+---
+
+<Layout title={title} description={description}>
+    <div class="flex h-dvh overflow-hidden bg-bg">
+        <SellerSidebar currentPath={currentPath} />
+
+        <div class="flex flex-col flex-1 min-w-0 overflow-hidden">
+            <!-- Mobile top bar (hidden on lg+) -->
+            <header class="flex items-center h-14 px-4 border-b border-border shrink-0 bg-surface lg:hidden">
+                <button
+                    id="seller-mobile-menu-toggle"
+                    class="flex items-center justify-center w-9 h-9 -ml-1.5 rounded-lg text-text-secondary hover:text-text-primary hover:bg-bg transition-colors"
+                    aria-label={strings.sellerSidebarOpenLabel}
+                    aria-expanded="false"
+                    aria-controls="seller-sidebar"
+                >
+                    <Icon name="menu" size={20} />
+                </button>
+                <a href="/sell" class="ml-2 font-semibold text-sm text-text-primary tracking-tight">
+                    {strings.sellerBrandName}
+                </a>
+            </header>
+
+            <!-- Scrollable page content -->
+            <main class="flex-1 overflow-y-auto">
+                <slot />
+            </main>
+        </div>
+    </div>
+</Layout>
+
+<script>
+    function initMobileToggle() {
+        const btn = document.getElementById('seller-mobile-menu-toggle');
+        if (!btn) return;
+
+        btn.addEventListener('click', () => {
+            window.openSellerSidebar?.();
+            btn.setAttribute('aria-expanded', 'true');
+        });
+
+        // Reset aria-expanded when sidebar closes via backdrop/close btn
+        document.getElementById('seller-sidebar-backdrop')?.addEventListener('click', () => {
+            btn.setAttribute('aria-expanded', 'false');
+        });
+        document.getElementById('seller-sidebar-close-btn')?.addEventListener('click', () => {
+            btn.setAttribute('aria-expanded', 'false');
+        });
+    }
+
+    document.addEventListener('astro:page-load', initMobileToggle);
+    if (document.readyState !== 'loading') initMobileToggle();
+    else document.addEventListener('DOMContentLoaded', initMobileToggle);
+</script>

@@ -1,0 +1,244 @@
+---
+import Icon from '../icons/Icon.astro';
+import { sellerNavItems, sellerFooterNavItem } from '../../lib/seller-nav';
+import { strings } from '../../lib/i18n';
+
+interface Props {
+    currentPath: string;
+}
+
+const { currentPath } = Astro.props;
+
+function isActive(href: string) {
+    if (href === '/sell') return currentPath === '/sell';
+    return currentPath === href || currentPath.startsWith(href + '/');
+}
+---
+
+<!-- Mobile backdrop -->
+<div
+    id="seller-sidebar-backdrop"
+    class="fixed inset-0 z-40 bg-black/50 opacity-0 pointer-events-none transition-opacity duration-300 lg:hidden"
+    aria-hidden="true"
+></div>
+
+<aside
+    id="seller-sidebar"
+    aria-label={strings.sellerSidebarLabel}
+    class="
+        fixed inset-y-0 left-0 z-50 flex flex-col shrink-0
+        bg-surface border-r border-border
+        -translate-x-full transition-transform duration-300 ease-in-out
+        lg:sticky lg:top-0 lg:h-dvh lg:translate-x-0
+    "
+>
+    <!-- Header -->
+    <div class="sidebar-header flex items-center h-16 px-4 border-b border-border shrink-0 overflow-hidden">
+        <a
+            href="/sell"
+            class="sidebar-brand flex-1 min-w-0 font-semibold text-sm text-text-primary tracking-tight truncate"
+        >
+            {strings.sellerBrandName}
+        </a>
+
+        <!-- Desktop: collapse/expand toggle -->
+        <button
+            id="seller-sidebar-collapse-btn"
+            class="hidden lg:flex shrink-0 items-center justify-center w-8 h-8 rounded-lg text-text-tertiary hover:text-text-primary hover:bg-bg transition-colors"
+            aria-label={strings.sellerSidebarCollapseLabel}
+        >
+            <Icon name="panel-left" size={16} />
+        </button>
+
+        <!-- Mobile: close button -->
+        <button
+            id="seller-sidebar-close-btn"
+            class="flex lg:hidden shrink-0 items-center justify-center w-8 h-8 rounded-lg text-text-tertiary hover:text-text-primary hover:bg-bg transition-colors"
+            aria-label={strings.sellerSidebarCloseLabel}
+        >
+            <Icon name="x" size={18} />
+        </button>
+    </div>
+
+    <!-- Main navigation -->
+    <nav class="flex-1 overflow-y-auto overflow-x-hidden px-2 py-3" aria-label={strings.sellerSidebarLabel}>
+        <ul class="space-y-0.5" role="list">
+            {sellerNavItems.map(item => (
+                <li>
+                    <a
+                        href={item.href}
+                        class:list={[
+                            'sidebar-link relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent',
+                            isActive(item.href)
+                                ? 'bg-accent text-bg'
+                                : 'text-text-secondary hover:text-text-primary hover:bg-bg',
+                        ]}
+                        aria-current={isActive(item.href) ? 'page' : undefined}
+                    >
+                        <Icon name={item.icon} size={20} class="shrink-0" />
+                        <span class="sidebar-label truncate leading-none">{item.label}</span>
+                        <span class="sidebar-tooltip" role="tooltip" aria-hidden="true">{item.label}</span>
+                    </a>
+                </li>
+            ))}
+        </ul>
+    </nav>
+
+    <!-- Footer: settings -->
+    <div class="px-2 py-3 border-t border-border shrink-0">
+        <a
+            href={sellerFooterNavItem.href}
+            class:list={[
+                'sidebar-link relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent',
+                isActive(sellerFooterNavItem.href)
+                    ? 'bg-accent text-bg'
+                    : 'text-text-secondary hover:text-text-primary hover:bg-bg',
+            ]}
+            aria-current={isActive(sellerFooterNavItem.href) ? 'page' : undefined}
+        >
+            <Icon name={sellerFooterNavItem.icon} size={20} class="shrink-0" />
+            <span class="sidebar-label truncate leading-none">{sellerFooterNavItem.label}</span>
+            <span class="sidebar-tooltip" role="tooltip" aria-hidden="true">{sellerFooterNavItem.label}</span>
+        </a>
+    </div>
+</aside>
+
+<style>
+    /* ─── Desktop: width & collapse transition ─── */
+    @media (min-width: 1024px) {
+        #seller-sidebar {
+            width: 240px;
+            transition: width 220ms cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        #seller-sidebar[data-collapsed] {
+            width: 64px;
+        }
+
+        /* Hide text in collapsed state */
+        #seller-sidebar[data-collapsed] .sidebar-brand,
+        #seller-sidebar[data-collapsed] .sidebar-label {
+            display: none;
+        }
+
+        /* Center header when collapsed */
+        #seller-sidebar[data-collapsed] .sidebar-header {
+            justify-content: center;
+            padding-inline: 0;
+        }
+
+        /* Center nav links when collapsed */
+        #seller-sidebar[data-collapsed] .sidebar-link {
+            justify-content: center;
+            gap: 0;
+            padding-inline: 0;
+            width: 40px;
+            margin-inline: auto;
+        }
+    }
+
+    /* ─── Tooltip: visible only when desktop + collapsed ─── */
+    .sidebar-tooltip {
+        display: none;
+        position: absolute;
+        left: calc(100% + 10px);
+        top: 50%;
+        transform: translateY(-50%);
+        padding: 4px 10px;
+        font-size: 12px;
+        font-weight: 500;
+        white-space: nowrap;
+        border-radius: 6px;
+        pointer-events: none;
+        z-index: 60;
+        background-color: var(--color-text-primary-val);
+        color: var(--color-bg-val);
+        opacity: 0;
+        transition: opacity 120ms ease;
+    }
+
+    @media (min-width: 1024px) {
+        #seller-sidebar[data-collapsed] .sidebar-tooltip {
+            display: block;
+        }
+
+        #seller-sidebar[data-collapsed] .sidebar-link:hover .sidebar-tooltip {
+            opacity: 1;
+        }
+    }
+</style>
+
+<script>
+    declare global {
+        interface Window {
+            openSellerSidebar: () => void;
+            closeSellerSidebar: () => void;
+        }
+    }
+
+    function initSellerSidebar() {
+        const sidebar = document.getElementById('seller-sidebar') as HTMLElement | null;
+        const backdrop = document.getElementById('seller-sidebar-backdrop') as HTMLElement | null;
+        const collapseBtn = document.getElementById('seller-sidebar-collapse-btn');
+        const closeBtn = document.getElementById('seller-sidebar-close-btn');
+
+        if (!sidebar) return;
+
+        // Restore desktop preference
+        if (window.innerWidth >= 1024 && localStorage.getItem('ewya-seller-sidebar') === 'collapsed') {
+            sidebar.dataset.collapsed = '';
+            collapseBtn?.setAttribute('aria-label', 'Expandir menú');
+        }
+
+        // Desktop: toggle collapsed
+        collapseBtn?.addEventListener('click', () => {
+            const isCollapsed = 'collapsed' in sidebar.dataset;
+            if (isCollapsed) {
+                delete sidebar.dataset.collapsed;
+                localStorage.setItem('ewya-seller-sidebar', 'expanded');
+                collapseBtn.setAttribute('aria-label', 'Contraer menú');
+            } else {
+                sidebar.dataset.collapsed = '';
+                localStorage.setItem('ewya-seller-sidebar', 'collapsed');
+                collapseBtn.setAttribute('aria-label', 'Expandir menú');
+            }
+        });
+
+        // Mobile: open
+        window.openSellerSidebar = () => {
+            sidebar.classList.remove('-translate-x-full');
+            if (backdrop) {
+                backdrop.classList.remove('pointer-events-none', 'opacity-0');
+                backdrop.classList.add('opacity-100');
+            }
+        };
+
+        // Mobile: close
+        window.closeSellerSidebar = () => {
+            sidebar.classList.add('-translate-x-full');
+            if (backdrop) {
+                backdrop.classList.add('pointer-events-none', 'opacity-0');
+                backdrop.classList.remove('opacity-100');
+            }
+        };
+
+        closeBtn?.addEventListener('click', window.closeSellerSidebar);
+        backdrop?.addEventListener('click', window.closeSellerSidebar);
+
+        // On resize: reset mobile open state when going to desktop
+        const onResize = () => {
+            if (window.innerWidth >= 1024) {
+                sidebar.classList.remove('-translate-x-full');
+                if (backdrop) {
+                    backdrop.classList.add('pointer-events-none', 'opacity-0');
+                    backdrop.classList.remove('opacity-100');
+                }
+            }
+        };
+        window.addEventListener('resize', onResize, { passive: true });
+    }
+
+    document.addEventListener('astro:page-load', initSellerSidebar);
+    if (document.readyState !== 'loading') initSellerSidebar();
+    else document.addEventListener('DOMContentLoaded', initSellerSidebar);
+</script>
