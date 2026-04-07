@@ -94,25 +94,40 @@ if (Astro.request.method === 'POST') {
 <script>
     import confetti from 'my-canvas-confetti';
 
-    const steps = document.querySelectorAll('.step');
-    const nextBtns = document.querySelectorAll('.next-btn');
-    const prevBtns = document.querySelectorAll('.prev-btn');
+    type OnboardingResponse = {
+        success?: boolean;
+        redirect?: string;
+        error?: string;
+    };
+
+    const steps = document.querySelectorAll<HTMLElement>('.step');
+    const nextBtns = document.querySelectorAll<HTMLButtonElement>('.next-btn');
+    const prevBtns = document.querySelectorAll<HTMLButtonElement>('.prev-btn');
     const progressBar = document.getElementById('progress-bar');
-    
+    const form = document.getElementById('onboarding-form');
+    const submitBtn = document.getElementById('submit-btn');
+    const submitText = document.getElementById('submit-text');
+    const submitSpinner = document.getElementById('submit-spinner');
+    const errorMessage = document.getElementById('error-message');
+
     const updateProgress = (step: number) => {
-        if (progressBar) {
+        if (progressBar instanceof HTMLElement) {
             progressBar.style.width = `${(step / 3) * 100}%`;
         }
     };
 
-    nextBtns.forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            // Basic validation
-            const currentStep = (e.target as HTMLElement).closest('.step');
-            const inputs = currentStep?.querySelectorAll('input[required]');
+    nextBtns.forEach((btn) => {
+        btn.addEventListener('click', (event: Event) => {
+            const currentButton = event.currentTarget;
+            if (!(currentButton instanceof HTMLButtonElement)) {
+                return;
+            }
+
+            const currentStep = currentButton.closest('.step');
+            const inputs = currentStep?.querySelectorAll<HTMLInputElement>('input[required]');
             let isValid = true;
-            
-            inputs?.forEach((input: any) => {
+
+            inputs?.forEach((input) => {
                 if (!input.value.trim()) {
                     input.classList.add('border-red-500');
                     isValid = false;
@@ -121,170 +136,85 @@ if (Astro.request.method === 'POST') {
                 }
             });
 
-            if (!isValid) return;
+            if (!isValid) {
+                return;
+            }
 
-            const nextStepId = (e.target as HTMLElement).dataset.next;
-            steps.forEach(s => s.classList.add('hidden'));
+            const nextStepId = currentButton.dataset.next;
+            steps.forEach((step) => step.classList.add('hidden'));
             document.getElementById(`step-${nextStepId}`)?.classList.remove('hidden');
-            updateProgress(parseInt(nextStepId || '1'));
+            updateProgress(parseInt(nextStepId || '1', 10));
         });
     });
 
-    prevBtns.forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const prevStepId = (e.target as HTMLElement).dataset.prev;
-            steps.forEach(s => s.classList.add('hidden'));
+    prevBtns.forEach((btn) => {
+        btn.addEventListener('click', (event: Event) => {
+            const currentButton = event.currentTarget;
+            if (!(currentButton instanceof HTMLButtonElement)) {
+                return;
+            }
+
+            const prevStepId = currentButton.dataset.prev;
+            steps.forEach((step) => step.classList.add('hidden'));
             document.getElementById(`step-${prevStepId}`)?.classList.remove('hidden');
-            updateProgress(parseInt(prevStepId || '1'));
+            updateProgress(parseInt(prevStepId || '1', 10));
         });
     });
 
-    const form = document.getElementById('onboarding-form') as HTMLFormElement;
-    const submitBtn = document.getElementById('submit-btn') as HTMLButtonElement;
-    const submitText = document.getElementById('submit-text');
-    const submitSpinner = document.getElementById('submit-spinner');
-    const errorMessage = document.getElementById('error-message');
+    if (form instanceof HTMLFormElement) {
+        form.addEventListener('submit', async (event: SubmitEvent) => {
+            event.preventDefault();
 
-    form?.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        
-        if (submitBtn) submitBtn.disabled = true;
-        if (submitText) submitText.classList.add('hidden');
-        if (submitSpinner) submitSpinner.classList.remove('hidden');
-        if (errorMessage) errorMessage.classList.add('hidden');
-
-        try {
-            const formData = new FormData(form);
-            const response = await fetch('/sell/onboarding', {
-                method: 'POST',
-                body: formData
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.error || 'Algo salió mal');
+            if (submitBtn instanceof HTMLButtonElement) {
+                submitBtn.disabled = true;
             }
+            submitText?.classList.add('hidden');
+            submitSpinner?.classList.remove('hidden');
+            errorMessage?.classList.add('hidden');
 
-            // Success
-            confetti({
-                particleCount: 100,
-                spread: 70,
-                origin: { y: 0.6 },
-                colors: ['#000000', '#ffffff', '#666666']
-            });
-
-            setTimeout(() => {
-                window.location.href = data.redirect;
-            }, 1500);
-
-        } catch (error: any) {
-            if (errorMessage) {
-                errorMessage.textContent = error.message;
-                errorMessage.classList.remove('hidden');
-            }
-            if (submitBtn) submitBtn.disabled = false;
-            if (submitText) submitText.classList.remove('hidden');
-            if (submitSpinner) submitSpinner.classList.add('hidden');
-        }
-    });
-
-    // Remove highlight on input
-    document.querySelectorAll('input[required]').forEach(input => {
-        input.addEventListener('input', (e) => {
-            (e.target as HTMLElement).classList.remove('border-red-500');
-        });
-    });
-</script>
-            progressBar.style.width = `${(step / 3) * 100}%`;
-        }
-    };
-
-    nextBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            const currentStep = btn.closest('.step') as HTMLElement;
-            
-            // Validation
-            if (currentStep.id === 'step-1') {
-                if (!nameInput.value || !slugInput.value) {
-                    nameInput.reportValidity();
-                    slugInput.reportValidity();
-                    return;
-                }
-            }
-
-            const nextStepId = `step-${btn.getAttribute('data-next')}`;
-            steps.forEach(s => s.classList.add('hidden'));
-            document.getElementById(nextStepId)?.classList.remove('hidden');
-            updateProgress(parseInt(btn.getAttribute('data-next') || '1'));
-        });
-    });
-
-    prevBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            const prevStepId = `step-${btn.getAttribute('data-prev')}`;
-            steps.forEach(s => s.classList.add('hidden'));
-            document.getElementById(prevStepId)?.classList.remove('hidden');
-            updateProgress(parseInt(btn.getAttribute('data-prev') || '1'));
-        });
-    });
-
-    // Form Submit Override for client-side fetch + confetti
-    const form = document.getElementById('onboarding-form') as HTMLFormElement;
-    const errMsg = document.getElementById('error-message');
-    const submitBtn = document.getElementById('submit-btn') as HTMLButtonElement;
-    const submitText = document.getElementById('submit-text');
-    const submitSpinner = document.getElementById('submit-spinner');
-
-    if (form) {
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            // Loading state
-            submitBtn.disabled = true;
-            if(submitText && submitSpinner) {
-                submitText.classList.add('hidden');
-                submitSpinner.classList.remove('hidden');
-            }
-            if(errMsg) errMsg.classList.add('hidden');
-
-            const formData = new FormData(form);
             try {
-                const response = await fetch(window.location.href, {
+                const formData = new FormData(form);
+                const response = await fetch('/sell/onboarding', {
                     method: 'POST',
-                    body: formData,
+                    body: formData
+                });
+                const data = await response.json() as OnboardingResponse;
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Algo salió mal');
+                }
+
+                confetti({
+                    particleCount: 100,
+                    spread: 70,
+                    origin: { y: 0.6 },
+                    colors: ['#000000', '#ffffff', '#666666']
                 });
 
-                const data = await response.json() as { success?: boolean; redirect?: string; error?: string };
+                setTimeout(() => {
+                    window.location.href = data.redirect || '/sell?success=1';
+                }, 1500);
+            } catch (error: unknown) {
+                if (errorMessage instanceof HTMLElement) {
+                    errorMessage.textContent = error instanceof Error ? error.message : 'Algo salió mal';
+                    errorMessage.classList.remove('hidden');
+                }
 
-                if (response.ok && data.success) {
-                    // Success! Show confetti
-                    confetti({
-                        particleCount: 150,
-                        spread: 80,
-                        origin: { y: 0.6 },
-                        colors: [formData.get('accent_color') as string || '#000000', '#ffffff', '#aaaaaa']
-                    });
-                    
-                    setTimeout(() => {
-                        window.location.href = data.redirect || '/sell?success=1';
-                    }, 1800);
-                } else {
-                    throw new Error(data.error || 'Error al crear la tienda.');
+                if (submitBtn instanceof HTMLButtonElement) {
+                    submitBtn.disabled = false;
                 }
-            } catch (err: any) {
-                if(errMsg) {
-                    errMsg.textContent = err.message || 'Hubo un error al procesar tu solicitud.';
-                    errMsg.classList.remove('hidden');
-                }
-                
-                // Reset loading state
-                submitBtn.disabled = false;
-                if(submitText && submitSpinner) {
-                    submitText.classList.remove('hidden');
-                    submitSpinner.classList.add('hidden');
-                }
+                submitText?.classList.remove('hidden');
+                submitSpinner?.classList.add('hidden');
             }
         });
     }
+
+    document.querySelectorAll<HTMLInputElement>('input[required]').forEach((input) => {
+        input.addEventListener('input', (event: Event) => {
+            const target = event.currentTarget;
+            if (target instanceof HTMLInputElement) {
+                target.classList.remove('border-red-500');
+            }
+        });
+    });
 </script>
