@@ -2,6 +2,7 @@
 import SellerLayout from '../../../layouts/SellerLayout.astro';
 import { createSupabaseAuthClient } from '../../../lib/auth';
 import ShopForm from '../../../components/seller/ShopForm.astro';
+import { strings } from '../../../lib/i18n';
 
 const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
 const { data: sessionData } = await supabase.auth.getSession();
@@ -36,7 +37,7 @@ if (Astro.request.method === 'POST') {
     if (slug !== shop.slug) {
         const { data: slugCheck } = await supabase.from('shops').select('id').eq('slug', slug).maybeSingle();
         if (slugCheck) {
-            return new Response(JSON.stringify({ error: 'La URL ya está en uso' }), { status: 400 });
+            return new Response(JSON.stringify({ error: strings.sellerOnboardingUrlInUse }), { status: 400 });
         }
     }
 
@@ -61,9 +62,15 @@ if (Astro.request.method === 'POST') {
 }
 ---
 
-<SellerLayout title="Editar Tienda - EWYA Seller">
+<SellerLayout title={`${strings.sellerShopEditTitle} - EWYA Seller`}>
     <div class="max-w-4xl mx-auto px-4 py-8 lg:py-12">
-        <h1 class="text-2xl font-semibold tracking-tight text-neutral-900 dark:text-white mb-8">Información de la tienda</h1>
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+            <h1 class="text-2xl font-semibold tracking-tight text-neutral-900 dark:text-white">{strings.sellerShopEditTitle}</h1>
+            <a href={`/${shop.slug}`} target="_blank" class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-neutral-700 dark:text-neutral-300 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-full hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                {strings.sellerShopEditViewPublic}
+            </a>
+        </div>
         
         <form id="edit-shop-form" method="POST" class="bg-white dark:bg-neutral-900 p-6 md:p-8 rounded-3xl border border-neutral-200 dark:border-neutral-800 shadow-sm">
             <ShopForm mode="edit" shopData={shop} />
@@ -71,13 +78,15 @@ if (Astro.request.method === 'POST') {
             <!-- Messages -->
             <div id="error-message" class="text-red-500 font-medium text-sm mt-6 hidden p-4 bg-red-50 dark:bg-red-900/20 rounded-xl"></div>
             <div id="success-message" class="text-green-600 font-medium text-sm mt-6 hidden p-4 bg-green-50 dark:bg-green-900/20 rounded-xl">
-                Cambios guardados correctamente.
+                {strings.sellerShopEditSuccess}
             </div>
         </form>
     </div>
 </SellerLayout>
 
 <script>
+    import { strings } from '../../../lib/i18n';
+
     type ShopUpdateResponse = {
         success?: boolean;
         error?: string;
@@ -109,7 +118,7 @@ if (Astro.request.method === 'POST') {
             const data = await response.json() as ShopUpdateResponse;
 
             if (!response.ok) {
-                throw new Error(data.error || 'Algo salió mal al guardar la tienda');
+                throw new Error(data.error || strings.sellerShopEditError);
             }
 
             // Success
@@ -121,7 +130,7 @@ if (Astro.request.method === 'POST') {
 
         } catch (error: unknown) {
             if (errorMessage) {
-                errorMessage.textContent = error instanceof Error ? error.message : 'Algo salió mal al guardar la tienda';
+                errorMessage.textContent = error instanceof Error ? error.message : strings.sellerShopEditError;
                 errorMessage.classList.remove('hidden');
             }
         } finally {
