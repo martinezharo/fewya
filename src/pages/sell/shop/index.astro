@@ -1,0 +1,136 @@
+---
+import SellerLayout from '../../../layouts/SellerLayout.astro';
+import { createSupabaseAuthClient } from '../../../lib/auth';
+import ShopForm from '../../../components/seller/ShopForm.astro';
+
+const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
+const { data: sessionData } = await supabase.auth.getSession();
+const user = sessionData?.session?.user;
+
+if (!user) {
+    return Astro.redirect('/sell');
+}
+
+// Get the shop of the current seller
+const { data: shop } = await supabase
+    .from('shops')
+    .select('*')
+    .eq('owner_id', user.id)
+    .single();
+
+if (!shop) {
+    return Astro.redirect('/sell/onboarding');
+}
+
+if (Astro.request.method === 'POST') {
+    const formData = await Astro.request.formData();
+    const name = formData.get('name')?.toString() || '';
+    const slug = formData.get('slug')?.toString() || '';
+    const description = formData.get('description')?.toString() || '';
+    const accent_color = formData.get('accent_color')?.toString() || '#000000';
+    const contact_email = formData.get('contact_email')?.toString() || '';
+    const whatsapp = formData.get('whatsapp')?.toString() || '';
+    const location = formData.get('location')?.toString() || '';
+
+    // Check slug uniqueness if it changed
+    if (slug !== shop.slug) {
+        const { data: slugCheck } = await supabase.from('shops').select('id').eq('slug', slug).maybeSingle();
+        if (slugCheck) {
+            return new Response(JSON.stringify({ error: 'La URL ya está en uso' }), { status: 400 });
+        }
+    }
+
+    const { error } = await supabase
+        .from('shops')
+        .update({
+            name,
+            slug,
+            description,
+            accent_color,
+            contact_email,
+            whatsapp,
+            location
+        })
+        .eq('id', shop.id);
+
+    if (error) {
+        return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+    }
+
+    return new Response(JSON.stringify({ success: true }), { status: 200 });
+}
+---
+
+<SellerLayout title="Editar Tienda - EWYA Seller">
+    <div class="max-w-4xl mx-auto px-4 py-8 lg:py-12">
+        <h1 class="text-2xl font-semibold tracking-tight text-neutral-900 dark:text-white mb-8">Información de la tienda</h1>
+        
+        <form id="edit-shop-form" method="POST" class="bg-white dark:bg-neutral-900 p-6 md:p-8 rounded-3xl border border-neutral-200 dark:border-neutral-800 shadow-sm">
+            <ShopForm mode="edit" shopData={shop} />
+
+            <!-- Messages -->
+            <div id="error-message" class="text-red-500 font-medium text-sm mt-6 hidden p-4 bg-red-50 dark:bg-red-900/20 rounded-xl"></div>
+            <div id="success-message" class="text-green-600 font-medium text-sm mt-6 hidden p-4 bg-green-50 dark:bg-green-900/20 rounded-xl">
+                Cambios guardados correctamente.
+            </div>
+        </form>
+    </div>
+</SellerLayout>
+
+<script>
+    const form = document.getElementById('edit-shop-form') as HTMLFormElement;
+    const submitBtn = document.getElementById('submit-btn') as HTMLButtonElement;
+    const submitText = document.getElementById('submit-text');
+    const submitSpinner = document.getElementById('submit-spinner');
+    const errorMessage = document.getElementById('error-message');
+    const successMessage = document.getElementById('success-message');
+
+    form?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        if (submitBtn) submitBtn.disabled = true;
+        if (submitText) submitText.classList.add('hidden');
+        if (submitSpinner) submitSpinner.classList.remove('hidden');
+        if (errorMessage) errorMessage.classList.add('hidden');
+        if (successMessage) successMessage.classList.add('hidden');
+
+        try {
+            const formData = new FormData(form);
+            const response = await fetch('/sell/shop', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Algo salió mal al guardar la tienda');
+            }
+
+            // Success
+            if (successMessage) successMessage.classList.remove('hidden');
+
+            setTimeout(() => {
+                if (successMessage) successMessage.classList.add('hidden');
+            }, 5000);
+
+        } catch (error: any) {
+            if (errorMessage) {
+                errorMessage.textContent = error.message;
+                errorMessage.classList.remove('hidden');
+            }
+        } finally {
+             // Reset UI
+             if (submitBtn) submitBtn.disabled = false;
+             if (submitText) submitText.classList.remove('hidden');
+             if (submitSpinner) submitSpinner.classList.add('hidden');
+        }
+    });
+
+    // Remove highlight on input
+    document.querySelectorAll('input[required]').forEach(input => {
+        input.addEventListener('input', (e) => {
+            (e.target as HTMLElement).classList.remove('border-red-500');
+        });
+    });
+</script>

@@ -1,6 +1,7 @@
 ---
 import Layout from '../../../layouts/Layout.astro';
 import { createSupabaseAuthClient } from '../../../lib/auth';
+import ShopForm from '../../../components/seller/ShopForm.astro';
 
 const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
 const { data: sessionData } = await supabase.auth.getSession();
@@ -82,80 +83,7 @@ if (Astro.request.method === 'POST') {
                 <div id="progress-bar" class="h-full bg-neutral-900 dark:bg-white w-1/3 transition-all duration-300"></div>
             </div>
 
-            <!-- Step 1 -->
-            <div id="step-1" class="step w-full pt-4">
-                <h2 class="text-xl font-medium mb-6 text-neutral-900 dark:text-white">1. Información principal</h2>
-                <div class="space-y-6">
-                    <div>
-                        <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">Nombre de la tienda <span class="text-red-500">*</span></label>
-                        <input type="text" name="name" id="shop-name" required class="w-full px-4 py-3 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-transparent dark:text-white focus:ring-2 focus:ring-neutral-900 dark:focus:ring-white outline-none transition" placeholder="P.ej. Awesome Shop" />
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">Identificador (URL) <span class="text-red-500">*</span></label>
-                        <div class="flex items-center relative">
-                            <span class="absolute left-4 text-neutral-500 bg-transparent pointer-events-none">ewya.com/</span>
-                            <input type="text" name="slug" id="shop-slug" required class="w-full pl-24 pr-4 py-3 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-transparent dark:text-white focus:ring-2 focus:ring-neutral-900 dark:focus:ring-white outline-none transition" placeholder="awesome-shop" />
-                        </div>
-                        <p class="text-xs text-neutral-500 mt-2">Este será tu enlace de tienda único. Usa letras minúsculas, números y guiones.</p>
-                    </div>
-                </div>
-                <div class="mt-8 flex justify-end">
-                    <button type="button" class="next-btn px-6 py-2.5 bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 font-medium rounded-full shadow-sm hover:scale-105 transition-transform" data-next="2">Siguiente</button>
-                </div>
-            </div>
-
-            <!-- Step 2 -->
-            <div id="step-2" class="step hidden w-full pt-4">
-                <h2 class="text-xl font-medium mb-1 text-neutral-900 dark:text-white">2. Personalización</h2>
-                <p class="text-sm text-neutral-500 mb-6 font-normal">Puedes cambiar esto más tarde. (Opcional)</p>
-                <div class="space-y-6">
-                    <div>
-                        <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">Descripción</label>
-                        <textarea name="description" rows="3" class="w-full px-4 py-3 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-transparent dark:text-white focus:ring-2 focus:ring-neutral-900 dark:focus:ring-white outline-none transition resize-none" placeholder="¿Qué vendes? Cuéntale a tus clientes..."></textarea>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">Color destacado</label>
-                        <div class="flex items-center gap-3">
-                            <input type="color" name="accent_color" id="accent-color" value="#000000" class="h-10 w-20 rounded cursor-pointer border-0 bg-transparent p-0" />
-                            <span class="text-sm text-neutral-500" id="color-hex">#000000</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="mt-8 flex justify-between">
-                    <button type="button" class="prev-btn px-6 py-2.5 bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 font-medium rounded-full hover:bg-neutral-200 dark:hover:bg-neutral-700 transition" data-prev="1">Volver</button>
-                    <button type="button" class="next-btn px-6 py-2.5 bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 font-medium rounded-full shadow-sm hover:scale-105 transition-transform" data-next="3">Siguiente</button>
-                </div>
-            </div>
-
-            <!-- Step 3 -->
-            <div id="step-3" class="step hidden w-full pt-4">
-                <h2 class="text-xl font-medium mb-1 text-neutral-900 dark:text-white">3. Contacto público</h2>
-                <p class="text-sm text-neutral-500 mb-6 font-normal">Esta información será visible para tus compradores. (Opcional)</p>
-                <div class="space-y-6">
-                    <div>
-                        <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">Email de contacto</label>
-                        <input type="email" name="contact_email" value={user.email} class="w-full px-4 py-3 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-transparent dark:text-white focus:ring-2 focus:ring-neutral-900 dark:focus:ring-white outline-none transition" placeholder="contacto@tuempresa.com"/>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">WhatsApp</label>
-                        <input type="tel" name="whatsapp" class="w-full px-4 py-3 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-transparent dark:text-white focus:ring-2 focus:ring-neutral-900 dark:focus:ring-white outline-none transition" placeholder="+34 600 000 000" />
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">Ubicación</label>
-                        <input type="text" name="location" class="w-full px-4 py-3 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-transparent dark:text-white focus:ring-2 focus:ring-neutral-900 dark:focus:ring-white outline-none transition" placeholder="Madrid, España" />
-                    </div>
-                </div>
-                <div class="mt-8 flex justify-between">
-                    <button type="button" class="prev-btn px-6 py-2.5 bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 font-medium rounded-full hover:bg-neutral-200 dark:hover:bg-neutral-700 transition" data-prev="2">Volver</button>
-                    <button type="submit" id="submit-btn" class="px-6 py-2.5 bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 font-medium rounded-full shadow-sm hover:scale-105 transition-transform flex items-center justify-center min-w-35">
-                        <span id="submit-text">Crear tienda</span>
-                        <svg id="submit-spinner" class="animate-spin -ml-1 mr-2 h-5 w-5 text-white dark:text-neutral-900 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                    </button>
-                </div>
-            </div>
+            <ShopForm mode="onboarding" shopData={{ contact_email: user.email }} />
 
             <!-- Messages -->
             <div id="error-message" class="text-red-500 font-medium text-sm mt-6 hidden p-4 bg-red-50 dark:bg-red-900/20 rounded-xl"></div>
@@ -171,33 +99,103 @@ if (Astro.request.method === 'POST') {
     const prevBtns = document.querySelectorAll('.prev-btn');
     const progressBar = document.getElementById('progress-bar');
     
-    // Auto slugify
-    const nameInput = document.getElementById('shop-name') as HTMLInputElement;
-    const slugInput = document.getElementById('shop-slug') as HTMLInputElement;
-    const accentColorInput = document.getElementById('accent-color') as HTMLInputElement;
-    const colorHex = document.getElementById('color-hex');
-
-    if (nameInput && slugInput) {
-        nameInput.addEventListener('input', (e) => {
-            const val = (e.target as HTMLInputElement).value;
-            slugInput.value = val.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
-        });
-        
-        // Prevent typing invalid characters in slug
-        slugInput.addEventListener('input', (e) => {
-            const val = (e.target as HTMLInputElement).value;
-            slugInput.value = val.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-        });
-    }
-
-    if (accentColorInput && colorHex) {
-        accentColorInput.addEventListener('input', (e) => {
-            colorHex.textContent = (e.target as HTMLInputElement).value.toUpperCase();
-        });
-    }
-
     const updateProgress = (step: number) => {
         if (progressBar) {
+            progressBar.style.width = `${(step / 3) * 100}%`;
+        }
+    };
+
+    nextBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            // Basic validation
+            const currentStep = (e.target as HTMLElement).closest('.step');
+            const inputs = currentStep?.querySelectorAll('input[required]');
+            let isValid = true;
+            
+            inputs?.forEach((input: any) => {
+                if (!input.value.trim()) {
+                    input.classList.add('border-red-500');
+                    isValid = false;
+                } else {
+                    input.classList.remove('border-red-500');
+                }
+            });
+
+            if (!isValid) return;
+
+            const nextStepId = (e.target as HTMLElement).dataset.next;
+            steps.forEach(s => s.classList.add('hidden'));
+            document.getElementById(`step-${nextStepId}`)?.classList.remove('hidden');
+            updateProgress(parseInt(nextStepId || '1'));
+        });
+    });
+
+    prevBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const prevStepId = (e.target as HTMLElement).dataset.prev;
+            steps.forEach(s => s.classList.add('hidden'));
+            document.getElementById(`step-${prevStepId}`)?.classList.remove('hidden');
+            updateProgress(parseInt(prevStepId || '1'));
+        });
+    });
+
+    const form = document.getElementById('onboarding-form') as HTMLFormElement;
+    const submitBtn = document.getElementById('submit-btn') as HTMLButtonElement;
+    const submitText = document.getElementById('submit-text');
+    const submitSpinner = document.getElementById('submit-spinner');
+    const errorMessage = document.getElementById('error-message');
+
+    form?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        if (submitBtn) submitBtn.disabled = true;
+        if (submitText) submitText.classList.add('hidden');
+        if (submitSpinner) submitSpinner.classList.remove('hidden');
+        if (errorMessage) errorMessage.classList.add('hidden');
+
+        try {
+            const formData = new FormData(form);
+            const response = await fetch('/sell/onboarding', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Algo salió mal');
+            }
+
+            // Success
+            confetti({
+                particleCount: 100,
+                spread: 70,
+                origin: { y: 0.6 },
+                colors: ['#000000', '#ffffff', '#666666']
+            });
+
+            setTimeout(() => {
+                window.location.href = data.redirect;
+            }, 1500);
+
+        } catch (error: any) {
+            if (errorMessage) {
+                errorMessage.textContent = error.message;
+                errorMessage.classList.remove('hidden');
+            }
+            if (submitBtn) submitBtn.disabled = false;
+            if (submitText) submitText.classList.remove('hidden');
+            if (submitSpinner) submitSpinner.classList.add('hidden');
+        }
+    });
+
+    // Remove highlight on input
+    document.querySelectorAll('input[required]').forEach(input => {
+        input.addEventListener('input', (e) => {
+            (e.target as HTMLElement).classList.remove('border-red-500');
+        });
+    });
+</script>
             progressBar.style.width = `${(step / 3) * 100}%`;
         }
     };
