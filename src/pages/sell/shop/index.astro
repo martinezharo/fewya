@@ -78,6 +78,11 @@ if (Astro.request.method === 'POST') {
 </SellerLayout>
 
 <script>
+    type ShopUpdateResponse = {
+        success?: boolean;
+        error?: string;
+    };
+
     const form = document.getElementById('edit-shop-form') as HTMLFormElement;
     const submitBtn = document.getElementById('submit-btn') as HTMLButtonElement;
     const submitText = document.getElementById('submit-text');
@@ -85,8 +90,8 @@ if (Astro.request.method === 'POST') {
     const errorMessage = document.getElementById('error-message');
     const successMessage = document.getElementById('success-message');
 
-    form?.addEventListener('submit', async (e) => {
-        e.preventDefault();
+    form?.addEventListener('submit', async (event: SubmitEvent) => {
+        event.preventDefault();
         
         if (submitBtn) submitBtn.disabled = true;
         if (submitText) submitText.classList.add('hidden');
@@ -101,7 +106,7 @@ if (Astro.request.method === 'POST') {
                 body: formData
             });
 
-            const data = await response.json();
+            const data = await response.json() as ShopUpdateResponse;
 
             if (!response.ok) {
                 throw new Error(data.error || 'Algo salió mal al guardar la tienda');
@@ -114,9 +119,9 @@ if (Astro.request.method === 'POST') {
                 if (successMessage) successMessage.classList.add('hidden');
             }, 5000);
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             if (errorMessage) {
-                errorMessage.textContent = error.message;
+                errorMessage.textContent = error instanceof Error ? error.message : 'Algo salió mal al guardar la tienda';
                 errorMessage.classList.remove('hidden');
             }
         } finally {
@@ -128,9 +133,12 @@ if (Astro.request.method === 'POST') {
     });
 
     // Remove highlight on input
-    document.querySelectorAll('input[required]').forEach(input => {
-        input.addEventListener('input', (e) => {
-            (e.target as HTMLElement).classList.remove('border-red-500');
+    document.querySelectorAll<HTMLInputElement>('input[required]').forEach(input => {
+        input.addEventListener('input', (event: Event) => {
+            const target = event.currentTarget;
+            if (target instanceof HTMLInputElement) {
+                target.classList.remove('border-red-500');
+            }
         });
     });
 </script>
