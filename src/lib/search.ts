@@ -12,7 +12,7 @@ export type SortDirection = 'asc' | 'desc';
 
 export const DEFAULT_SORT: SortOption = 'relevance';
 export const DEFAULT_DIR: SortDirection = 'desc';
-export const RECENT_SEARCHES_KEY = 'ewya-recent-searches';
+export const RECENT_SEARCHES_KEY = 'shopenn-recent-searches';
 export const MAX_RECENT_SEARCHES = 5;
 
 export function parseSearchParams(url: URL): SearchParams {

@@ -23,8 +23,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       manifestFilename: 'manifest.webmanifest',
       manifest: {
-        name: 'EWYA Marketplace',
-        short_name: 'EWYA',
+        name: 'Shopenn Marketplace',
+        short_name: 'Shopenn',
         description: 'Marketplace moderno para pequeños negocios',
         theme_color: '#ffffff',
         icons: [

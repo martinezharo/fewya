@@ -14,7 +14,7 @@ export interface CartItem {
     productSlug: string;
 }
 
-const CART_KEY = 'ewya_cart';
+const CART_KEY = 'shopenn_cart';
 
 function getCart(): CartItem[] {
     try {

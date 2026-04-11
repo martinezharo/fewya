@@ -1,10 +1,10 @@
 export const strings = {
     // Meta / SEO
-    siteTitle: 'EWYA — Marketplace de pequeños negocios',
+    siteTitle: 'Shopenn — Marketplace de pequeños negocios',
     siteDescription: 'Descubre productos únicos de vendedores independientes. Compra directamente, sin intermediarios.',
 
     // Header
-    logoText: 'ewya',
+    logoText: 'shopenn',
     searchPlaceholder: 'Buscar productos...',
 
     // Hero Banner — Web (unregistered)
@@ -67,12 +67,12 @@ export const strings = {
     heroGoogleSignIn: 'Continuar con Google',
 
     // Profile Page
-    profilePageTitle: 'Mi perfil — EWYA',
+    profilePageTitle: 'Mi perfil — Shopenn',
     profileAnonymous: 'Usuario',
     profileSignOut: 'Cerrar sesión',
 
     // Wishlist
-    wishlistPageTitle: 'Mis favoritos — EWYA',
+    wishlistPageTitle: 'Mis favoritos — Shopenn',
     wishlistEmpty: 'Aún no tienes favoritos',
     wishlistEmptySub: 'Explora productos y guarda los que más te gusten.',
     wishlistExploreCta: 'Explorar productos',
@@ -102,7 +102,7 @@ export const strings = {
     searchPageTitlePrefix: 'Buscar',
 
     // Cart
-    cartPageTitle: 'Mi carrito — EWYA',
+    cartPageTitle: 'Mi carrito — Shopenn',
     cartEmpty: 'Tu carrito está vacío',
     cartEmptySub: 'Añade productos de las tiendas que más te gusten.',
     cartExploreCta: 'Explorar productos',
@@ -119,7 +119,7 @@ export const strings = {
     cartShippingIncluded: 'Envio incluido',
 
     // Me / Profile Dashboard
-    mePageTitle: 'Mi cuenta — EWYA',
+    mePageTitle: 'Mi cuenta — Shopenn',
     meLastPurchases: 'Últimas compras',
     meViewAllOrders: 'Ver todos',
     meMyOrders: 'Mis pedidos',
@@ -142,7 +142,7 @@ export const strings = {
     meDataAvatarNote: 'Foto de perfil',
 
     // Orders page
-    ordersPageTitle: 'Mis pedidos — EWYA',
+    ordersPageTitle: 'Mis pedidos — Shopenn',
     ordersHeading: 'Mis pedidos',
     ordersEmpty: 'No tienes pedidos aún',
     ordersEmptySub: 'Cuando realices tu primer pedido aparecerá aquí.',
@@ -169,7 +169,7 @@ export const strings = {
     fallbackProductName: 'Producto',
 
     // Settings Page
-    settingsPageTitle: 'Ajustes — EWYA',
+    settingsPageTitle: 'Ajustes — Shopenn',
     settingsTitle: 'Ajustes',
     settingsAppearanceSection: 'Apariencia',
     settingsThemeLabel: 'Tema',
@@ -190,7 +190,7 @@ export const strings = {
     sellerSidebarExpandLabel: 'Expandir menú',
     sellerSidebarCloseLabel: 'Cerrar menú',
     sellerSidebarOpenLabel: 'Abrir menú',
-    sellerBrandName: 'ewya seller',
+    sellerBrandName: 'shopenn seller',
 
     // Auth / API / errors
     authGoogleLoginError: 'Error al iniciar sesion con Google',

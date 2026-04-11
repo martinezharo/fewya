@@ -9,7 +9,7 @@
 - No hardcodees texto, crea archivos con variables para facilitar futuros cambios o traducciónes.
 - Las rutas de las páginas deben estar siempre en inglés.
 
-## EWYA
+## Shopenn
 
 ### Producto
 - Será una PWA Mobile First en la sección de compras, actua más cómo si estuvieses desarrollando una app móvil nativa que una web.
