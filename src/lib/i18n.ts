@@ -4,7 +4,7 @@ export const strings = {
     siteDescription: 'Descubre productos únicos de vendedores independientes. Compra directamente, sin intermediarios.',
 
     // Header
-    logoText: 'shopenn',
+    logoText: 'Shopenn',
     searchPlaceholder: 'Buscar productos...',
 
     // Hero Banner — Web (unregistered)
@@ -190,7 +190,7 @@ export const strings = {
     sellerSidebarExpandLabel: 'Expandir menú',
     sellerSidebarCloseLabel: 'Cerrar menú',
     sellerSidebarOpenLabel: 'Abrir menú',
-    sellerBrandName: 'shopenn seller',
+    sellerBrandName: 'Shopenn seller',
 
     // Auth / API / errors
     authGoogleLoginError: 'Error al iniciar sesion con Google',
