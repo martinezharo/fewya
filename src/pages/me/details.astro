@@ -16,6 +16,9 @@ const { data: profile } = await supabase
     .select('full_name, email, avatar_url, address, phone')
     .eq('id', user.id)
     .single();
+
+const returnTo = Astro.url.searchParams.get('return_to');
+const fromCheckout = Astro.url.searchParams.get('checkout') === '1' && returnTo === '/cart';
 ---
 
 <BuyerAppLayout title={`${strings.meDataPageTitle} — ${strings.siteTitle}`}>
@@ -30,6 +33,13 @@ const { data: profile } = await supabase
                 {strings.meDataPageTitle}
             </h1>
         </div>
+
+        {fromCheckout && (
+            <div class="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
+                <p class="text-sm font-semibold">{strings.meDataCheckoutNoticeTitle}</p>
+                <p class="mt-1 text-sm">{strings.meDataCheckoutNoticeSubtitle}</p>
+            </div>
+        )}
 
         {/* Avatar */}
         <div class="flex flex-col items-center mb-8">
@@ -134,6 +144,9 @@ const { data: profile } = await supabase
     const form = document.getElementById('profile-form') as HTMLFormElement;
     const btn = document.getElementById('save-btn') as HTMLButtonElement;
     const feedback = document.getElementById('form-feedback') as HTMLParagraphElement;
+    const currentUrl = new URL(window.location.href);
+    const returnTo = currentUrl.searchParams.get('return_to');
+    const fromCheckout = currentUrl.searchParams.get('checkout') === '1' && returnTo === '/cart';
 
     function showFeedback(message: string, isError: boolean) {
         feedback.textContent = message;
@@ -166,7 +179,13 @@ const { data: profile } = await supabase
             });
 
             if (res.ok) {
-                showFeedback(strings.meDataSaveSuccess, false);
+                showFeedback(fromCheckout ? strings.meDataSaveAndReturnSuccess : strings.meDataSaveSuccess, false);
+
+                if (fromCheckout && returnTo) {
+                    window.setTimeout(() => {
+                        window.location.href = returnTo;
+                    }, 900);
+                }
             } else {
                 showFeedback(strings.meDataSaveError, true);
             }
@@ -177,4 +196,11 @@ const { data: profile } = await supabase
             btn.textContent = strings.meDataSave;
         }
     });
+
+    if (fromCheckout) {
+        const fullNameInput = form.querySelector<HTMLInputElement>('#full_name');
+        const addressInput = form.querySelector<HTMLTextAreaElement>('#address');
+        const firstMissingField = fullNameInput?.value.trim() ? addressInput : fullNameInput;
+        firstMissingField?.focus();
+    }
 </script>
