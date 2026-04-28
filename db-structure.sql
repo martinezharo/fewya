@@ -159,6 +159,7 @@ CREATE POLICY "Allow authenticated read access to products" ON public.products F
 CREATE POLICY "Allow public read access to shops" ON public.shops FOR SELECT TO anon USING (true);
 CREATE POLICY "Allow authenticated read access to shops" ON public.shops FOR SELECT TO authenticated USING (true);
 CREATE POLICY "Allow public read access to variants" ON public.product_variants FOR SELECT TO public USING (true);
+CREATE POLICY "Buyers can create their own orders" ON public.orders FOR INSERT TO authenticated WITH CHECK ((auth.uid() = buyer_id));
 CREATE POLICY "Buyers can view their own orders" ON public.orders FOR SELECT TO authenticated USING ((auth.uid() = buyer_id));
 CREATE POLICY "Sellers can view orders from their shop" ON public.orders FOR SELECT TO authenticated USING ((EXISTS ( SELECT 1
    FROM (((order_items oi
