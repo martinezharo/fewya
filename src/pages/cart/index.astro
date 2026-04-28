@@ -44,16 +44,6 @@ import { strings } from '../../lib/i18n';
         </div>
       </div>
 
-      <!-- Order success message -->
-      <div id="cart-success" class="hidden flex-col items-center justify-center gap-4 pt-20 text-center">
-        <div class="w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-          <span class="text-3xl">✓</span>
-        </div>
-        <h2 class="text-lg font-semibold text-text-primary">{strings.cartOrderSuccess}</h2>
-        <a href="/" class="mt-2 px-6 py-2.5 bg-accent text-bg text-sm font-semibold rounded-lg no-underline hover:bg-accent-hover transition-colors">
-          {strings.cartExploreCta}
-        </a>
-      </div>
     </div>
   </main>
 
@@ -74,18 +64,19 @@ import { strings } from '../../lib/i18n';
 
 <script>
   import { cart, type CartItem } from '../../lib/cart';
+  import { SHOP_SHIPPING_EUR } from '../../lib/checkout';
   import { strings } from '../../lib/i18n';
 
-  const SHIPPING_PER_SHOP = 3.49;
+  const currencyFormatter = new Intl.NumberFormat('es-ES', {
+    style: 'currency',
+    currency: 'EUR',
+  });
 
   function renderCart() {
     const items = cart.get();
     const emptyEl = document.getElementById('cart-empty');
     const contentEl = document.getElementById('cart-content');
     const checkoutMobile = document.getElementById('cart-checkout-mobile');
-    const successEl = document.getElementById('cart-success');
-
-    if (successEl && !successEl.classList.contains('hidden')) return;
 
     if (items.length === 0) {
       emptyEl?.classList.remove('hidden');
@@ -111,7 +102,7 @@ import { strings } from '../../lib/i18n';
 
     grouped.forEach(({ shopName, shopSlug, items: shopItems }) => {
       const shopTotal = shopItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-      const shopTotalWithShipping = shopTotal + SHIPPING_PER_SHOP;
+      const shopTotalWithShipping = shopTotal + SHOP_SHIPPING_EUR;
       grandTotal += shopTotalWithShipping;
 
       const shopSection = document.createElement('div');
@@ -124,7 +115,7 @@ import { strings } from '../../lib/i18n';
         <a href="/${escapeHtml(shopSlug)}" class="text-sm font-semibold text-text-primary no-underline hover:underline">${escapeHtml(shopName)}</a>
         <div class="flex items-center gap-1.5 text-xs text-text-secondary">
           <span>${strings.cartShipping}</span>
-          <span class="font-semibold text-text-primary">${strings.cartShippingPrice}</span>
+          <span class="font-semibold text-text-primary">${currencyFormatter.format(SHOP_SHIPPING_EUR)}</span>
         </div>
       `;
       shopSection.appendChild(header);
@@ -237,41 +228,61 @@ import { strings } from '../../lib/i18n';
           items: items.map(i => ({
             variantId: i.variantId,
             quantity: i.quantity,
-            priceAtPurchase: i.price,
           })),
         }),
       });
 
       if (!res.ok) {
-        const data = await res.json().catch(() => ({} as { error?: string })) as { error?: string };
+        const data = await res.json().catch(() => ({} as { error?: string; redirectTo?: string })) as {
+          error?: string;
+          redirectTo?: string;
+        };
         if (res.status === 401) {
           alert(strings.cartLoginRequired);
+        } else if (data.redirectTo) {
+          window.location.href = data.redirectTo;
         } else {
           alert(data.error || strings.cartCheckoutError);
         }
         return;
       }
 
-      cart.clear();
+      const data = await res.json().catch(() => ({} as { checkoutUrl?: string; error?: string })) as {
+        checkoutUrl?: string;
+        error?: string;
+      };
 
-      // Show success state
-      document.getElementById('cart-content')?.classList.add('hidden');
-      document.getElementById('cart-checkout-mobile')?.classList.add('hidden');
-      const successEl = document.getElementById('cart-success');
-      if (successEl) {
-        successEl.classList.remove('hidden');
-        successEl.classList.add('flex');
+      if (!data.checkoutUrl) {
+        alert(data.error || strings.cartCheckoutError);
+        return;
       }
+
+      if (checkoutBtnMobile) checkoutBtnMobile.textContent = strings.cartCheckoutRedirecting;
+      if (checkoutBtnDesktop) checkoutBtnDesktop.textContent = strings.cartCheckoutRedirecting;
+
+      window.location.href = data.checkoutUrl;
     } finally {
       if (checkoutBtnMobile) checkoutBtnMobile.disabled = false;
       if (checkoutBtnDesktop) checkoutBtnDesktop.disabled = false;
+      if (checkoutBtnMobile) checkoutBtnMobile.textContent = strings.cartCheckout;
+      if (checkoutBtnDesktop) checkoutBtnDesktop.textContent = strings.cartCheckout;
     }
   }
 
   function init() {
     renderCart();
-    document.getElementById('checkout-btn-mobile')?.addEventListener('click', handleCheckout);
-    document.getElementById('checkout-btn-desktop')?.addEventListener('click', handleCheckout);
+
+    const checkoutBtnMobile = document.getElementById('checkout-btn-mobile');
+    if (checkoutBtnMobile && !checkoutBtnMobile.hasAttribute('data-checkout-listener')) {
+      checkoutBtnMobile.setAttribute('data-checkout-listener', 'true');
+      checkoutBtnMobile.addEventListener('click', handleCheckout);
+    }
+
+    const checkoutBtnDesktop = document.getElementById('checkout-btn-desktop');
+    if (checkoutBtnDesktop && !checkoutBtnDesktop.hasAttribute('data-checkout-listener')) {
+      checkoutBtnDesktop.setAttribute('data-checkout-listener', 'true');
+      checkoutBtnDesktop.addEventListener('click', handleCheckout);
+    }
   }
 
   document.addEventListener('astro:page-load', init);
