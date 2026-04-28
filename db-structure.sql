@@ -107,6 +107,20 @@ FROM public.profiles;
 
 -- Functions
 
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.profiles (id, email, full_name, avatar_url)
+  VALUES (
+    NEW.id, 
+    NEW.email, 
+    NEW.raw_user_meta_data->>'full_name', 
+    NEW.raw_user_meta_data->>'avatar_url'
+  );
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 CREATE OR REPLACE FUNCTION public.handle_new_product()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -124,54 +138,47 @@ RETURNS boolean AS $$
   );
 $$ LANGUAGE sql SECURITY DEFINER;
 
--- Recrear las políticas eliminadas por el CASCADE
-CREATE POLICY "Permitir insertar items si el pedido es propio" ON public.order_items FOR INSERT TO authenticated WITH CHECK (order_belongs_to_user(order_id));
-CREATE POLICY "Ver items si tienes acceso al pedido" ON public.order_items FOR SELECT TO authenticated USING (order_belongs_to_user(order_id));
-
-/*
-    "type": "FUNCTION",
-    "return_type": "trigger",
-    "definition": "\r\nbegin\r\n  insert into public.profiles (id, email, full_name, avatar_url)\r\n  values (\r\n    new.id, \r\n    new.email, \r\n    new.raw_user_meta_data->>'full_name', \r\n    new.raw_user_meta_data->>'avatar_url'\r\n  );\r\n  return new;\r\nend;\r\n"
-  }
-]
-
-*/
+-- Recreate policies deleted by CASCADE
+CREATE POLICY "Allow inserting items if order is own" ON public.order_items FOR INSERT TO authenticated WITH CHECK (order_belongs_to_user(order_id));
+CREATE POLICY "View items if you have access to the order" ON public.order_items FOR SELECT TO authenticated USING (order_belongs_to_user(order_id));
 
 -- Triggers
 
-/*
+CREATE TRIGGER on_product_created
+  AFTER INSERT ON public.products
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_product();
 
-[
-  {
-    "trigger_name": "on_product_created",
-    "table_name": "products",
-    "function_called": "handle_new_product",
-    "action_timing": "AFTER",
-    "event_type": "INSERT"
-  }
-]
-
-*/
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- Policies
 
-CREATE POLICY "Users can manage own profile" ON public.profiles FOR ALL TO public USING ((auth.uid() = id)) WITH CHECK ((auth.uid() = id));                                                                                                                                                                                                                                                    |
-CREATE POLICY "Permitir lectura pública de productos" ON public.products FOR SELECT TO anon USING (true);                                                                                                                                                                                                                                                                                      |
-CREATE POLICY "Permitir lectura autenticada de productos" ON public.products FOR SELECT TO authenticated USING (true);                                                                                                                                                                                                                                                                         |
-CREATE POLICY "Permitir lectura pública de tiendas" ON public.shops FOR SELECT TO anon USING (true);                                                                                                                                                                                                                                                                                           |
-CREATE POLICY "Permitir lectura autenticada de tiendas" ON public.shops FOR SELECT TO authenticated USING (true);                                                                                                                                                                                                                                                                                           |
-CREATE POLICY "Permitir lectura pública de variantes" ON public.product_variants FOR SELECT TO public USING (true);                                                                                                                                                                                                                                                                            |
-CREATE POLICY "Los compradores pueden ver sus pedidos" ON public.orders FOR SELECT TO authenticated USING ((auth.uid() = buyer_id));                                                                                                                                                                                                                                                           |
-null                                                                                                                                                                                                                                                                                                                                                                                           |
-CREATE POLICY "Los vendedores pueden ver pedidos de su tienda" ON public.orders FOR SELECT TO authenticated USING ((EXISTS ( SELECT 1
+CREATE POLICY "Users can manage own profile" ON public.profiles FOR ALL TO public USING ((auth.uid() = id)) WITH CHECK ((auth.uid() = id));
+CREATE POLICY "Allow public read access to products" ON public.products FOR SELECT TO anon USING (true);
+CREATE POLICY "Allow authenticated read access to products" ON public.products FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Allow public read access to shops" ON public.shops FOR SELECT TO anon USING (true);
+CREATE POLICY "Allow authenticated read access to shops" ON public.shops FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Allow public read access to variants" ON public.product_variants FOR SELECT TO public USING (true);
+CREATE POLICY "Buyers can view their own orders" ON public.orders FOR SELECT TO authenticated USING ((auth.uid() = buyer_id));
+CREATE POLICY "Sellers can view orders from their shop" ON public.orders FOR SELECT TO authenticated USING ((EXISTS ( SELECT 1
    FROM (((order_items oi
      JOIN product_variants pv ON ((oi.variant_id = pv.id)))
      JOIN products p ON ((pv.product_id = p.id)))
      JOIN shops s ON ((p.shop_id = s.id)))
-  WHERE ((oi.order_id = orders.id) AND (s.owner_id = auth.uid()))))); |
-null                                                                                                                                                                                                                                                                                                                                                                                           |
-CREATE POLICY "Ver items si tienes acceso al pedido" ON public.order_items FOR SELECT TO authenticated USING (order_belongs_to_user(order_id));                                                                                                                                                                                                                                                |
-CREATE POLICY "Users can delete own wishlist" ON public.wishlist FOR DELETE TO authenticated USING ((auth.uid() = profile_id));                                                                                                                                                                                                                                                                |
-null                                                                                                                                                                                                                                                                                                                                                                                           |
-CREATE POLICY "Users can view own wishlist" ON public.wishlist FOR SELECT TO authenticated USING ((auth.uid() = profile_id));                                                                                                                                                                                                                                                                  |
-CREATE POLICY "Cualquiera puede leer reviews" ON public.reviews FOR SELECT TO public USING (true);                                                                                                                                                                                                                                                                                             |
+  WHERE ((oi.order_id = orders.id) AND (s.owner_id = auth.uid())))));
+CREATE POLICY "View items if you have access to the order" ON public.order_items FOR SELECT TO authenticated USING (order_belongs_to_user(order_id));
+CREATE POLICY "Users can delete own wishlist" ON public.wishlist FOR DELETE TO authenticated USING ((auth.uid() = profile_id));
+CREATE POLICY "Users can view own wishlist" ON public.wishlist FOR SELECT TO authenticated USING ((auth.uid() = profile_id));
+CREATE POLICY "Allow public read access to reviews" ON public.reviews FOR SELECT TO public USING (true);
+CREATE POLICY "Allow shop owners to insert products" ON public.products FOR INSERT TO authenticated WITH CHECK (EXISTS (SELECT 1 FROM public.shops WHERE id = shop_id AND owner_id = auth.uid()));
+CREATE POLICY "Allow shop owners to update products" ON public.products FOR UPDATE TO authenticated USING (EXISTS (SELECT 1 FROM public.shops WHERE id = shop_id AND owner_id = auth.uid()));
+CREATE POLICY "Allow authenticated users to insert shops" ON public.shops FOR INSERT TO authenticated WITH CHECK (auth.uid() = owner_id);
+CREATE POLICY "Allow owners to update their shops" ON public.shops FOR UPDATE TO authenticated USING (auth.uid() = owner_id);
+CREATE POLICY "Allow inserting into own wishlist" ON public.wishlist FOR INSERT TO authenticated WITH CHECK (auth.uid() = profile_id);
+CREATE POLICY "Allow inserting reviews if product was purchased" ON public.reviews FOR INSERT TO authenticated WITH CHECK (EXISTS (
+  SELECT 1 FROM public.orders o
+  JOIN public.order_items oi ON o.id = oi.order_id
+  JOIN public.product_variants pv ON oi.variant_id = pv.id
+  WHERE o.buyer_id = auth.uid() AND pv.product_id = public.reviews.product_id
+));
