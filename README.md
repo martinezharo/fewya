@@ -4,4 +4,4 @@ Shopenn es el nombre en clave de un marketplace donde pequeños negocios pueden 
 
 Para desarrollo local, usa un archivo `.env` con `SUPABASE_URL` y `SUPABASE_KEY`.
 
-En Cloudflare, configura esas mismas claves como variables del Worker desde el dashboard. `wrangler.jsonc` ya no las incluye para evitar duplicar configuracion en texto plano dentro del repositorio.
+Estas dos variables se resuelven en build desde `.env` o `process.env`, por lo que no dependen de bindings runtime del Worker en Cloudflare. Si despliegas desde CI, define `SUPABASE_URL` y `SUPABASE_KEY` en el entorno de build.
