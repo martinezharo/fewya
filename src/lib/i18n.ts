@@ -194,7 +194,7 @@ export const strings = {
 
     // Auth / API / errors
     authGoogleLoginError: 'Error al iniciar sesion con Google',
-    authMissingSupabaseEnv: 'Variables de entorno SUPABASE_URL o SUPABASE_KEY no encontradas en Cloudflare',
+    authMissingSupabaseEnv: 'Variables de entorno SUPABASE_URL o SUPABASE_KEY no configuradas',
     apiUnauthorized: 'No autenticado',
     apiInvalidBody: 'Cuerpo invalido',
     apiCartEmpty: 'El carrito esta vacio',
