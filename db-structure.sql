@@ -338,6 +338,7 @@ CREATE TRIGGER on_auth_user_created
 
 -- Policies
 
+ALTER TABLE public.order_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.shop_payment_accounts ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Users can manage own profile" ON public.profiles FOR ALL TO public USING ((auth.uid() = id)) WITH CHECK ((auth.uid() = id));
@@ -356,6 +357,11 @@ CREATE POLICY "Sellers can view orders from their shop" ON public.orders FOR SEL
      JOIN shops s ON ((p.shop_id = s.id)))
   WHERE ((oi.order_id = orders.id) AND (s.owner_id = auth.uid())))));
 CREATE POLICY "View items if you have access to the order" ON public.order_items FOR SELECT TO authenticated USING (order_belongs_to_user(order_id));
+  CREATE POLICY "Sellers can view order items from their shop" ON public.order_items FOR SELECT TO authenticated USING ((EXISTS ( SELECT 1
+    FROM ((product_variants pv
+      JOIN products p ON ((pv.product_id = p.id)))
+      JOIN shops s ON ((p.shop_id = s.id)))
+    WHERE ((pv.id = order_items.variant_id) AND (s.owner_id = auth.uid())))));
 CREATE POLICY "Users can delete own wishlist" ON public.wishlist FOR DELETE TO authenticated USING ((auth.uid() = profile_id));
 CREATE POLICY "Users can view own wishlist" ON public.wishlist FOR SELECT TO authenticated USING ((auth.uid() = profile_id));
 CREATE POLICY "Allow public read access to reviews" ON public.reviews FOR SELECT TO public USING (true);

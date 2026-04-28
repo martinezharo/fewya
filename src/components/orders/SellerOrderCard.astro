@@ -1,0 +1,194 @@
+---
+import Icon from '../icons/Icon.astro';
+import { strings } from '../../lib/i18n';
+
+export interface SellerOrderItem {
+    productTitle: string;
+    imageUrl: string;
+    productSlug: string | null;
+    variantName: string | null;
+    quantity: number;
+    unitPrice: number;
+}
+
+export interface SellerOrderCardData {
+    orderId: string;
+    publicId: string;
+    status: string;
+    createdAt: Date;
+    buyerEmail: string | null;
+    shippingFullName: string | null;
+    shippingPhone: string | null;
+    shippingAddress: string | null;
+    subtotal: number;
+    itemsSold: number;
+    items: SellerOrderItem[];
+    shopSlug: string;
+}
+
+interface Props {
+    order: SellerOrderCardData;
+}
+
+const { order } = Astro.props;
+
+const statusMap: Record<string, string> = {
+    pending: strings.orderStatusPending,
+    paid: strings.orderStatusPaid,
+    processing: strings.orderStatusProcessing,
+    shipped: strings.orderStatusShipped,
+    delivered: strings.orderStatusDelivered,
+    cancelled: strings.orderStatusCancelled,
+};
+
+const statusColorMap: Record<string, string> = {
+    pending: 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400',
+    paid: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400',
+    processing: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400',
+    shipped: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-400',
+    delivered: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400',
+    cancelled: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400',
+};
+
+const normalizedStatus = order.status?.toLowerCase() ?? 'pending';
+const statusLabel = statusMap[normalizedStatus] ?? order.status;
+const statusColor = statusColorMap[normalizedStatus] ?? statusColorMap.pending;
+const dateFormatted = order.createdAt.toLocaleDateString('es-ES', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+});
+const currencyFormatter = new Intl.NumberFormat('es-ES', {
+    style: 'currency',
+    currency: 'EUR',
+});
+const customerName = order.shippingFullName || order.buyerEmail || strings.profileAnonymous;
+---
+
+<article class="rounded-[28px] border border-border bg-surface p-5 shadow-sm sm:p-6">
+    <div class="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+        <div class="min-w-0">
+            <div class="flex flex-wrap items-center gap-2">
+                <span class="inline-flex items-center rounded-full bg-bg px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">
+                    {strings.ordersOrder} #{order.publicId}
+                </span>
+                <span class={`inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold ${statusColor}`}>
+                    {statusLabel}
+                </span>
+            </div>
+            <p class="mt-3 text-lg font-semibold text-text-primary">{customerName}</p>
+            <p class="mt-1 text-sm text-text-secondary">{dateFormatted}</p>
+        </div>
+
+        <div class="grid gap-3 sm:grid-cols-2 lg:min-w-[320px] lg:max-w-[360px] lg:flex-1">
+            <div class="rounded-2xl border border-border bg-bg px-4 py-3">
+                <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">
+                    {strings.sellerOrdersItemsSoldLabel}
+                </p>
+                <p class="mt-2 text-xl font-semibold tracking-tight text-text-primary tabular-nums">
+                    {order.itemsSold}
+                </p>
+            </div>
+            <div class="rounded-2xl border border-border bg-bg px-4 py-3">
+                <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">
+                    {strings.sellerOrdersSubtotalLabel}
+                </p>
+                <p class="mt-2 text-xl font-semibold tracking-tight text-text-primary tabular-nums">
+                    {currencyFormatter.format(order.subtotal)}
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-6 grid gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.8fr)]">
+        <section class="rounded-2xl border border-border bg-bg p-4 sm:p-5">
+            <div class="flex items-center gap-2 text-sm font-semibold text-text-primary">
+                <Icon name="package" size={16} class="text-text-secondary" />
+                <span>{strings.sellerOrdersProductsLabel}</span>
+            </div>
+
+            <div class="mt-4 space-y-3">
+                {order.items.map((item) => (
+                    <div class="flex items-center gap-3 rounded-2xl border border-border-light bg-surface px-3 py-3">
+                        <div class="h-14 w-14 shrink-0 overflow-hidden rounded-2xl bg-border-light">
+                            {item.imageUrl ? (
+                                <img
+                                    src={item.imageUrl}
+                                    alt={item.productTitle}
+                                    class="h-full w-full object-cover"
+                                    loading="lazy"
+                                />
+                            ) : (
+                                <div class="flex h-full w-full items-center justify-center text-text-tertiary">
+                                    <Icon name="package" size={18} />
+                                </div>
+                            )}
+                        </div>
+
+                        <div class="min-w-0 flex-1">
+                            {item.productSlug ? (
+                                <a
+                                    href={`/${order.shopSlug}/${item.productSlug}`}
+                                    class="block truncate text-sm font-medium text-text-primary transition-colors hover:text-accent"
+                                >
+                                    {item.productTitle}
+                                </a>
+                            ) : (
+                                <p class="truncate text-sm font-medium text-text-primary">{item.productTitle}</p>
+                            )}
+
+                            {item.variantName && (
+                                <p class="mt-0.5 truncate text-xs text-text-tertiary">{item.variantName}</p>
+                            )}
+
+                            <p class="mt-1 text-xs text-text-secondary">
+                                x{item.quantity} · {currencyFormatter.format(item.unitPrice)}
+                            </p>
+                        </div>
+
+                        <div class="shrink-0 text-right text-sm font-semibold text-text-primary tabular-nums">
+                            {currencyFormatter.format(item.quantity * item.unitPrice)}
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </section>
+
+        <section class="rounded-2xl border border-border bg-bg p-4 sm:p-5">
+            <div class="flex items-center gap-2 text-sm font-semibold text-text-primary">
+                <Icon name="user" size={16} class="text-text-secondary" />
+                <span>{strings.sellerOrdersCustomerLabel}</span>
+            </div>
+
+            <div class="mt-4 space-y-4 text-sm text-text-secondary">
+                <div class="flex items-start gap-3">
+                    <div class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-surface text-text-secondary">
+                        <Icon name="user" size={14} />
+                    </div>
+                    <div class="min-w-0">
+                        <p class="font-medium text-text-primary">{customerName}</p>
+                        {order.buyerEmail && <p class="mt-1 break-all">{order.buyerEmail}</p>}
+                    </div>
+                </div>
+
+                {order.shippingPhone && (
+                    <div class="flex items-start gap-3">
+                        <div class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-surface text-text-secondary">
+                            <Icon name="message-circle" size={14} />
+                        </div>
+                        <p>{order.shippingPhone}</p>
+                    </div>
+                )}
+
+                {order.shippingAddress && (
+                    <div class="flex items-start gap-3">
+                        <div class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-surface text-text-secondary">
+                            <Icon name="map-pin" size={14} />
+                        </div>
+                        <p class="whitespace-pre-line">{order.shippingAddress}</p>
+                    </div>
+                )}
+            </div>
+        </section>
+    </div>
+</article>
