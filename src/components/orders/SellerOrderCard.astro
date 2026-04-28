@@ -65,42 +65,44 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', {
 const customerName = order.shippingFullName || order.buyerEmail || strings.profileAnonymous;
 ---
 
-<article class="rounded-[28px] border border-border bg-surface p-5 shadow-sm sm:p-6">
-    <div class="flex items-start justify-between gap-6">
+<article class="rounded-3xl border border-border bg-surface p-5 sm:p-6 shadow-sm overflow-hidden flex flex-col gap-6">
+    <div class="flex items-start justify-between gap-4">
         <div class="min-w-0 flex-1">
-            <div class="flex flex-wrap items-center gap-2">
-                <span class="inline-flex items-center rounded-full bg-bg px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">
-                    {strings.ordersOrder} #{order.publicId}
-                </span>
-                <span class={`inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold ${statusColor}`}>
+            <div class="flex items-center gap-3">
+                <span class={`shrink-0 inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${statusColor}`}>
                     {statusLabel}
                 </span>
+                <span class="text-[11px] font-bold uppercase tracking-[0.12em] text-text-tertiary truncate block">
+                    #{order.publicId}
+                </span>
             </div>
-            <p class="mt-3 text-base font-semibold text-text-primary">{customerName}</p>
+            <p class="mt-3 text-base md:text-lg font-semibold text-text-primary truncate">{customerName}</p>
             <p class="mt-0.5 text-sm text-text-secondary">{dateFormatted}</p>
         </div>
 
         <div class="shrink-0 text-right">
-            <p class="text-xl font-semibold tracking-tight text-text-primary tabular-nums">
+            <p class="text-xl md:text-2xl font-bold tracking-tight text-text-primary tabular-nums">
                 {currencyFormatter.format(order.subtotal)}
             </p>
-            <p class="mt-1 text-xs text-text-tertiary tabular-nums">
-                {order.itemsSold}&nbsp;{order.itemsSold === 1 ? strings.ordersItemsSingular : strings.ordersItemsPlural}
+            <p class="mt-1.5 text-xs font-medium text-text-tertiary tabular-nums">
+                {order.itemsSold} {order.itemsSold === 1 ? strings.ordersItemsSingular : strings.ordersItemsPlural}
             </p>
         </div>
     </div>
 
-    <div class="mt-5 border-t border-border pt-5 grid gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.8fr)]">
-        <section class="rounded-2xl p-4 sm:p-5">
-            <div class="flex items-center gap-2 text-sm font-semibold text-text-primary">
-                <Icon name="package" size={16} class="text-text-secondary" />
+    <hr class="border-border" />
+
+    <div class="grid gap-8 xl:grid-cols-[minmax(0,1.4fr)_minmax(320px,1fr)]">
+        <section>
+            <div class="flex items-center gap-2 text-[13px] font-bold uppercase tracking-wider text-text-primary mb-5">
+                <Icon name="package" size={16} class="text-text-tertiary" />
                 <span>{strings.sellerOrdersProductsLabel}</span>
             </div>
 
-            <div class="mt-4 space-y-3">
+            <div class="flex flex-col gap-5">
                 {order.items.map((item) => (
-                    <div class="flex items-center gap-3 rounded-2xl bg-bg px-3 py-3">
-                        <div class="h-14 w-14 shrink-0 overflow-hidden rounded-2xl bg-border-light">
+                    <div class="flex items-start gap-4">
+                        <div class="h-16 w-16 md:h-20 md:w-20 shrink-0 overflow-hidden rounded-2xl border border-border-light bg-bg/50">
                             {item.imageUrl ? (
                                 <img
                                     src={item.imageUrl}
@@ -110,75 +112,75 @@ const customerName = order.shippingFullName || order.buyerEmail || strings.profi
                                 />
                             ) : (
                                 <div class="flex h-full w-full items-center justify-center text-text-tertiary">
-                                    <Icon name="package" size={18} />
+                                    <Icon name="package" size={20} />
                                 </div>
                             )}
                         </div>
 
-                        <div class="min-w-0 flex-1">
-                            {item.productSlug ? (
-                                <a
-                                    href={`/${order.shopSlug}/${item.productSlug}`}
-                                    class="block truncate text-sm font-medium text-text-primary transition-colors hover:text-accent"
-                                >
-                                    {item.productTitle}
-                                </a>
-                            ) : (
-                                <p class="truncate text-sm font-medium text-text-primary">{item.productTitle}</p>
-                            )}
+                        <div class="min-w-0 flex-1 pt-0.5">
+                            <div class="flex items-start justify-between gap-3">
+                                {item.productSlug ? (
+                                    <a
+                                        href={`/${order.shopSlug}/${item.productSlug}`}
+                                        class="block font-semibold text-text-primary transition-colors hover:text-accent leading-tight line-clamp-2"
+                                    >
+                                        {item.productTitle}
+                                    </a>
+                                ) : (
+                                    <p class="font-semibold text-text-primary leading-tight line-clamp-2">{item.productTitle}</p>
+                                )}
+
+                                <span class="shrink-0 text-sm font-bold text-text-primary tabular-nums pt-0.5">
+                                    {currencyFormatter.format(item.quantity * item.unitPrice)}
+                                </span>
+                            </div>
 
                             {item.variantName && (
-                                <p class="mt-0.5 truncate text-xs text-text-tertiary">{item.variantName}</p>
+                                <p class="mt-1 truncate text-[13px] text-text-secondary">{item.variantName}</p>
                             )}
 
-                            <p class="mt-1 text-xs text-text-secondary">
-                                x{item.quantity} · {currencyFormatter.format(item.unitPrice)}
+                            <p class="mt-1.5 text-[12px] font-semibold text-text-tertiary bg-bg inline-flex px-2 py-0.5 rounded-md">
+                                {item.quantity} x {currencyFormatter.format(item.unitPrice)}
                             </p>
-                        </div>
-
-                        <div class="shrink-0 text-right text-sm font-semibold text-text-primary tabular-nums">
-                            {currencyFormatter.format(item.quantity * item.unitPrice)}
                         </div>
                     </div>
                 ))}
             </div>
         </section>
 
-        <section class="rounded-2xl p-4 sm:p-5">
-            <div class="flex items-center gap-2 text-sm font-semibold text-text-primary">
-                <Icon name="user" size={16} class="text-text-secondary" />
+        <section>
+            <div class="flex items-center gap-2 text-[13px] font-bold uppercase tracking-wider text-text-primary mb-5">
+                <Icon name="user" size={16} class="text-text-tertiary" />
                 <span>{strings.sellerOrdersCustomerLabel}</span>
             </div>
 
-            <div class="mt-4 space-y-4 text-sm text-text-secondary">
-                <div class="flex items-start gap-3">
-                    <div class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-surface text-text-secondary">
-                        <Icon name="user" size={14} />
-                    </div>
-                    <div class="min-w-0">
-                        <p class="font-medium text-text-primary">{customerName}</p>
-                        {order.buyerEmail && <p class="mt-1 break-all">{order.buyerEmail}</p>}
-                    </div>
-                </div>
+            <ul class="flex flex-col gap-4 text-[14px]">
+                <li class="flex items-start gap-3">
+                    <Icon name="user" size={18} class="shrink-0 text-text-tertiary mt-0.5" />
+                    <span class="font-medium text-text-primary">{customerName}</span>
+                </li>
+
+                {order.buyerEmail && (
+                    <li class="flex items-start gap-3">
+                        <Icon name="mail" size={18} class="shrink-0 text-text-tertiary mt-0.5" />
+                        <span class="break-all text-text-secondary">{order.buyerEmail}</span>
+                    </li>
+                )}
 
                 {order.shippingPhone && (
-                    <div class="flex items-start gap-3">
-                        <div class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-surface text-text-secondary">
-                            <Icon name="message-circle" size={14} />
-                        </div>
-                        <p>{order.shippingPhone}</p>
-                    </div>
+                    <li class="flex items-start gap-3">
+                        <Icon name="whatsapp" size={18} class="shrink-0 text-text-tertiary mt-0.5" />
+                        <span class="text-text-secondary">{order.shippingPhone}</span>
+                    </li>
                 )}
 
                 {order.shippingAddress && (
-                    <div class="flex items-start gap-3">
-                        <div class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-surface text-text-secondary">
-                            <Icon name="map-pin" size={14} />
-                        </div>
-                        <p class="whitespace-pre-line">{order.shippingAddress}</p>
-                    </div>
+                    <li class="flex items-start gap-3">
+                        <Icon name="map-pin" size={18} class="shrink-0 text-text-tertiary mt-0.5" />
+                        <span class="text-text-secondary whitespace-pre-line leading-relaxed">{order.shippingAddress}</span>
+                    </li>
                 )}
-            </div>
+            </ul>
         </section>
     </div>
 </article>
