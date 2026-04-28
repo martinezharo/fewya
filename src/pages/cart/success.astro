@@ -1,0 +1,129 @@
+---
+import BuyerAppLayout from '../../layouts/BuyerAppLayout.astro';
+import { strings } from '../../lib/i18n';
+---
+
+<BuyerAppLayout title={strings.cartSuccessPageTitle}>
+    <main class="min-h-[60dvh] px-4 py-8 md:py-12">
+        <div class="max-w-xl mx-auto rounded-3xl border border-border-light bg-surface p-6 md:p-8 text-center">
+            <div id="checkout-success-loading" class="flex flex-col items-center gap-4">
+                <div class="h-12 w-12 rounded-full border-4 border-border-light border-t-accent animate-spin"></div>
+                <div class="space-y-2">
+                    <h1 class="text-xl font-semibold text-text-primary">{strings.cartSuccessLoading}</h1>
+                    <p class="text-sm text-text-secondary">{strings.cartSuccessSubtitle}</p>
+                </div>
+            </div>
+
+            <div id="checkout-success-done" class="hidden flex-col items-center gap-4">
+                <div class="w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                    <span class="text-3xl">✓</span>
+                </div>
+                <div class="space-y-2">
+                    <h1 class="text-2xl font-semibold text-text-primary">{strings.cartSuccessTitle}</h1>
+                    <p class="text-sm text-text-secondary">{strings.cartSuccessSubtitle}</p>
+                </div>
+                <div class="rounded-2xl border border-border-light bg-border-light/30 px-4 py-3 min-w-56">
+                    <p class="text-xs uppercase tracking-[0.18em] text-text-tertiary">{strings.cartSuccessOrderNumber}</p>
+                    <p id="checkout-success-order-id" class="mt-1 text-lg font-semibold text-text-primary"></p>
+                </div>
+                <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                    <a href="/me/orders" class="inline-flex items-center justify-center px-6 py-3 rounded-lg bg-accent text-bg font-semibold text-sm no-underline hover:bg-accent-hover transition-colors">
+                        {strings.cartSuccessOrdersCta}
+                    </a>
+                    <a href="/" class="inline-flex items-center justify-center px-6 py-3 rounded-lg border border-border-light text-text-primary font-semibold text-sm no-underline hover:bg-border-light transition-colors">
+                        {strings.cartSuccessContinueCta}
+                    </a>
+                </div>
+            </div>
+
+            <div id="checkout-success-error" class="hidden flex-col items-center gap-4">
+                <div class="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                    <span class="text-3xl">!</span>
+                </div>
+                <div class="space-y-2">
+                    <h1 class="text-2xl font-semibold text-text-primary">{strings.cartSuccessErrorTitle}</h1>
+                    <p id="checkout-success-error-text" class="text-sm text-text-secondary">{strings.cartSuccessErrorSubtitle}</p>
+                </div>
+                <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                    <a href="/me/orders" class="inline-flex items-center justify-center px-6 py-3 rounded-lg bg-accent text-bg font-semibold text-sm no-underline hover:bg-accent-hover transition-colors">
+                        {strings.cartSuccessOrdersCta}
+                    </a>
+                    <a href="/cart" class="inline-flex items-center justify-center px-6 py-3 rounded-lg border border-border-light text-text-primary font-semibold text-sm no-underline hover:bg-border-light transition-colors">
+                        {strings.cartCancelReturnCta}
+                    </a>
+                </div>
+            </div>
+        </div>
+    </main>
+</BuyerAppLayout>
+
+<script>
+    import { cart } from '../../lib/cart';
+    import { strings } from '../../lib/i18n';
+
+    let confirmationStarted = false;
+
+    function showState(state: 'loading' | 'success' | 'error', message?: string, publicId?: string) {
+        const loadingEl = document.getElementById('checkout-success-loading');
+        const successEl = document.getElementById('checkout-success-done');
+        const errorEl = document.getElementById('checkout-success-error');
+        const orderIdEl = document.getElementById('checkout-success-order-id');
+        const errorTextEl = document.getElementById('checkout-success-error-text');
+
+        loadingEl?.classList.toggle('hidden', state !== 'loading');
+        loadingEl?.classList.toggle('flex', state === 'loading');
+        successEl?.classList.toggle('hidden', state !== 'success');
+        successEl?.classList.toggle('flex', state === 'success');
+        errorEl?.classList.toggle('hidden', state !== 'error');
+        errorEl?.classList.toggle('flex', state === 'error');
+
+        if (publicId && orderIdEl) {
+            orderIdEl.textContent = publicId;
+        }
+
+        if (message && errorTextEl) {
+            errorTextEl.textContent = message;
+        }
+    }
+
+    async function confirmCheckout() {
+        if (confirmationStarted) {
+            return;
+        }
+
+        confirmationStarted = true;
+        showState('loading');
+
+        const currentUrl = new URL(window.location.href);
+        const sessionId = currentUrl.searchParams.get('session_id');
+
+        if (!sessionId) {
+            showState('error', strings.apiCheckoutConfirmationError);
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/cart/checkout/confirm?session_id=${encodeURIComponent(sessionId)}`);
+            const data = await response.json().catch(() => ({} as { error?: string; publicId?: string })) as {
+                error?: string;
+                publicId?: string;
+            };
+
+            if (!response.ok) {
+                throw new Error(data.error || strings.apiCheckoutConfirmationError);
+            }
+
+            cart.clear();
+            currentUrl.searchParams.delete('session_id');
+            window.history.replaceState({}, '', currentUrl.pathname + currentUrl.search + currentUrl.hash);
+            showState('success', undefined, data.publicId);
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : strings.apiCheckoutConfirmationError;
+            showState('error', message);
+        }
+    }
+
+    document.addEventListener('astro:page-load', confirmCheckout);
+    if (document.readyState !== 'loading') confirmCheckout();
+    else document.addEventListener('DOMContentLoaded', confirmCheckout);
+</script>
