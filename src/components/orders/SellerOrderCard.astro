@@ -65,16 +65,29 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', {
 const customerName = order.shippingFullName || order.buyerEmail || strings.profileAnonymous;
 ---
 
-<article class="rounded-3xl border border-border bg-surface p-5 sm:p-6 shadow-sm overflow-hidden flex flex-col gap-6">
+<article class="rounded-3xl border border-border bg-surface p-5 sm:p-6 shadow-sm flex flex-col gap-6">
     <div class="flex items-start justify-between gap-4">
         <div class="min-w-0 flex-1">
             <div class="flex items-center gap-3">
                 <span class={`shrink-0 inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${statusColor}`}>
                     {statusLabel}
                 </span>
-                <span class="text-[11px] font-bold uppercase tracking-[0.12em] text-text-tertiary truncate block">
-                    #{order.publicId}
-                </span>
+                <order-id-popover class="relative inline-flex min-w-0 max-w-full" data-id={order.publicId}>
+                    <button type="button" class="trigger-btn group inline-flex items-center gap-1.5 truncate rounded-md bg-neutral-100 dark:bg-neutral-800 px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.12em] text-text-secondary hover:bg-neutral-200 dark:hover:bg-neutral-700 hover:text-text-primary transition-all focus:outline-none ring-accent focus:ring-2">
+                        #{order.publicId}
+                        <Icon name="copy" size={11} class="shrink-0 opacity-50 group-hover:opacity-100 transition-opacity" />
+                    </button>
+                    <!-- Popover -->
+                    <div class="popover hidden absolute bottom-full left-0 sm:left-auto sm:right-0 mb-2.5 z-[60] flex items-center bg-neutral-950 dark:bg-neutral-100 rounded-xl shadow-[0_12px_40px_rgb(0,0,0,0.25)] dark:shadow-[0_12px_40px_rgb(0,0,0,0.6)] p-1.5 gap-2 min-w-max">
+                        <span class="text-[12px] font-bold text-neutral-100 dark:text-neutral-900 tracking-[0.12em] uppercase select-all pl-2">
+                            #{order.publicId}
+                        </span>
+                        <button type="button" class="copy-btn shrink-0 p-1.5 rounded-lg bg-neutral-800 dark:bg-neutral-200 hover:bg-neutral-700 dark:hover:bg-neutral-300 text-neutral-300 dark:text-neutral-700 hover:text-white dark:hover:text-neutral-900 transition-colors focus:outline-none">
+                            <Icon name="copy" size={13} class="icon-copy block" />
+                            <Icon name="check" size={13} class="icon-check hidden text-green-400 dark:text-green-600" />
+                        </button>
+                    </div>
+                </order-id-popover>
             </div>
             <p class="mt-3 text-base md:text-lg font-semibold text-text-primary truncate">{customerName}</p>
             <p class="mt-0.5 text-sm text-text-secondary">{dateFormatted}</p>
@@ -184,3 +197,63 @@ const customerName = order.shippingFullName || order.buyerEmail || strings.profi
         </section>
     </div>
 </article>
+
+<script>
+    class OrderIdPopover extends HTMLElement {
+        constructor() {
+            super();
+            
+            const btn = this.querySelector('.trigger-btn');
+            const popover = this.querySelector('.popover');
+            const copyBtn = this.querySelector('.copy-btn');
+            const iconCopy = this.querySelector('.icon-copy');
+            const iconCheck = this.querySelector('.icon-check');
+            const id = this.dataset.id || '';
+
+            if (!btn || !popover || !copyBtn || !iconCopy || !iconCheck) return;
+
+            // Toggle visibility
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                
+                // Close all other popovers
+                document.querySelectorAll('order-id-popover .popover:not(.hidden)').forEach(el => {
+                    if (el !== popover) el.classList.add('hidden');
+                });
+
+                popover.classList.toggle('hidden');
+            });
+
+            // Close when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!this.contains(e.target as Node) && !popover.classList.contains('hidden')) {
+                    popover.classList.add('hidden');
+                }
+            });
+
+            // Copy logic
+            copyBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                try {
+                    await navigator.clipboard.writeText(id);
+                    
+                    // Show checkmark
+                    iconCopy.classList.replace('block', 'hidden');
+                    iconCheck.classList.replace('hidden', 'block');
+                    
+                    // Revert after 2 seconds
+                    setTimeout(() => {
+                        iconCheck.classList.replace('block', 'hidden');
+                        iconCopy.classList.replace('hidden', 'block');
+                    }, 2000);
+                } catch (err) {
+                    console.error('Failed to copy text: ', err);
+                }
+            });
+        }
+    }
+
+    if (!customElements.get('order-id-popover')) {
+        customElements.define('order-id-popover', OrderIdPopover);
+    }
+</script>
