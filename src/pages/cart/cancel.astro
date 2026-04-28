@@ -1,0 +1,26 @@
+---
+import BuyerAppLayout from '../../layouts/BuyerAppLayout.astro';
+import { strings } from '../../lib/i18n';
+---
+
+<BuyerAppLayout title={strings.cartCancelPageTitle}>
+    <main class="min-h-[60dvh] px-4 py-8 md:py-12">
+        <div class="max-w-xl mx-auto rounded-3xl border border-border-light bg-surface p-6 md:p-8 text-center flex flex-col items-center gap-5">
+            <div class="w-16 h-16 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                <span class="text-3xl">↺</span>
+            </div>
+            <div class="space-y-2">
+                <h1 class="text-2xl font-semibold text-text-primary">{strings.cartCancelTitle}</h1>
+                <p class="text-sm text-text-secondary">{strings.cartCancelSubtitle}</p>
+            </div>
+            <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                <a href="/cart" class="inline-flex items-center justify-center px-6 py-3 rounded-lg bg-accent text-bg font-semibold text-sm no-underline hover:bg-accent-hover transition-colors">
+                    {strings.cartCancelReturnCta}
+                </a>
+                <a href="/" class="inline-flex items-center justify-center px-6 py-3 rounded-lg border border-border-light text-text-primary font-semibold text-sm no-underline hover:bg-border-light transition-colors">
+                    {strings.cartSuccessContinueCta}
+                </a>
+            </div>
+        </div>
+    </main>
+</BuyerAppLayout>
