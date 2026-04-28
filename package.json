@@ -18,6 +18,7 @@
     "@supabase/supabase-js": "^2.98.0",
     "astro": "^6.0.8",
     "my-canvas-confetti": "npm:canvas-confetti@^1.9.4",
+    "stripe": "^22.1.0",
     "typescript": "^5.9.3",
     "workbox-window": "^7.4.0",
     "wrangler": "^4.73.0"
