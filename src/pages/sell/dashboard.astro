@@ -21,6 +21,7 @@ const { data: shop } = await supabase
     .from('shops')
     .select(`
         id,
+        slug,
         shop_payment_accounts (
             stripe_account_id,
             charges_enabled,
@@ -45,7 +46,7 @@ const isStripeReady = Boolean(
 );
 ---
 
-<SellerLayout title="Dashboard — Shopenn Seller">
+<SellerLayout title="Dashboard — Shopenn Seller" shopSlug={shop?.slug}>
     <div class="p-6 lg:p-10">
         <h1 class="text-2xl font-semibold tracking-tight text-text-primary mb-6">{strings.sellerNavDashboard}</h1>
         {isStripeReady ? (

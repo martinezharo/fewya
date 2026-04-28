@@ -207,6 +207,7 @@ export const strings = {
     sellerSidebarExpandLabel: 'Expandir menú',
     sellerSidebarCloseLabel: 'Cerrar menú',
     sellerSidebarOpenLabel: 'Abrir menú',
+    sellerSidebarViewShop: 'Ver tienda',
     sellerBrandName: 'Shopenn seller',
 
     // Auth / API / errors

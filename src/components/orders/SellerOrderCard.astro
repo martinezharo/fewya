@@ -66,8 +66,8 @@ const customerName = order.shippingFullName || order.buyerEmail || strings.profi
 ---
 
 <article class="rounded-[28px] border border-border bg-surface p-5 shadow-sm sm:p-6">
-    <div class="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-        <div class="min-w-0">
+    <div class="flex items-start justify-between gap-6">
+        <div class="min-w-0 flex-1">
             <div class="flex flex-wrap items-center gap-2">
                 <span class="inline-flex items-center rounded-full bg-bg px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">
                     {strings.ordersOrder} #{order.publicId}
@@ -76,32 +76,22 @@ const customerName = order.shippingFullName || order.buyerEmail || strings.profi
                     {statusLabel}
                 </span>
             </div>
-            <p class="mt-3 text-lg font-semibold text-text-primary">{customerName}</p>
-            <p class="mt-1 text-sm text-text-secondary">{dateFormatted}</p>
+            <p class="mt-3 text-base font-semibold text-text-primary">{customerName}</p>
+            <p class="mt-0.5 text-sm text-text-secondary">{dateFormatted}</p>
         </div>
 
-        <div class="grid gap-3 sm:grid-cols-2 lg:min-w-[320px] lg:max-w-[360px] lg:flex-1">
-            <div class="rounded-2xl border border-border bg-bg px-4 py-3">
-                <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">
-                    {strings.sellerOrdersItemsSoldLabel}
-                </p>
-                <p class="mt-2 text-xl font-semibold tracking-tight text-text-primary tabular-nums">
-                    {order.itemsSold}
-                </p>
-            </div>
-            <div class="rounded-2xl border border-border bg-bg px-4 py-3">
-                <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">
-                    {strings.sellerOrdersSubtotalLabel}
-                </p>
-                <p class="mt-2 text-xl font-semibold tracking-tight text-text-primary tabular-nums">
-                    {currencyFormatter.format(order.subtotal)}
-                </p>
-            </div>
+        <div class="shrink-0 text-right">
+            <p class="text-xl font-semibold tracking-tight text-text-primary tabular-nums">
+                {currencyFormatter.format(order.subtotal)}
+            </p>
+            <p class="mt-1 text-xs text-text-tertiary tabular-nums">
+                {order.itemsSold}&nbsp;{order.itemsSold === 1 ? strings.ordersItemsSingular : strings.ordersItemsPlural}
+            </p>
         </div>
     </div>
 
-    <div class="mt-6 grid gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.8fr)]">
-        <section class="rounded-2xl border border-border bg-bg p-4 sm:p-5">
+    <div class="mt-5 border-t border-border pt-5 grid gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.8fr)]">
+        <section class="rounded-2xl p-4 sm:p-5">
             <div class="flex items-center gap-2 text-sm font-semibold text-text-primary">
                 <Icon name="package" size={16} class="text-text-secondary" />
                 <span>{strings.sellerOrdersProductsLabel}</span>
@@ -109,7 +99,7 @@ const customerName = order.shippingFullName || order.buyerEmail || strings.profi
 
             <div class="mt-4 space-y-3">
                 {order.items.map((item) => (
-                    <div class="flex items-center gap-3 rounded-2xl border border-border-light bg-surface px-3 py-3">
+                    <div class="flex items-center gap-3 rounded-2xl bg-bg px-3 py-3">
                         <div class="h-14 w-14 shrink-0 overflow-hidden rounded-2xl bg-border-light">
                             {item.imageUrl ? (
                                 <img
@@ -154,7 +144,7 @@ const customerName = order.shippingFullName || order.buyerEmail || strings.profi
             </div>
         </section>
 
-        <section class="rounded-2xl border border-border bg-bg p-4 sm:p-5">
+        <section class="rounded-2xl p-4 sm:p-5">
             <div class="flex items-center gap-2 text-sm font-semibold text-text-primary">
                 <Icon name="user" size={16} class="text-text-secondary" />
                 <span>{strings.sellerOrdersCustomerLabel}</span>

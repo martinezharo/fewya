@@ -5,9 +5,10 @@ import { strings } from '../../lib/i18n';
 
 interface Props {
     currentPath: string;
+    shopSlug?: string;
 }
 
-const { currentPath } = Astro.props;
+const { currentPath, shopSlug } = Astro.props;
 
 function isActive(href: string) {
     if (href === '/sell') return currentPath === '/sell';
@@ -84,8 +85,20 @@ function isActive(href: string) {
         </ul>
     </nav>
 
-    <!-- Footer: settings -->
-    <div class="px-2 py-3 border-t border-border shrink-0">
+    <!-- Footer: view shop + settings -->
+    <div class="px-2 py-3 border-t border-border shrink-0 flex flex-col gap-0.5">
+        {shopSlug && (
+            <a
+                href={`/${shopSlug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="sidebar-link relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent text-text-secondary hover:text-text-primary hover:bg-bg"
+            >
+                <Icon name="external-link" size={20} class="shrink-0" />
+                <span class="sidebar-label truncate leading-none">{strings.sellerSidebarViewShop}</span>
+                <span class="sidebar-tooltip" role="tooltip" aria-hidden="true">{strings.sellerSidebarViewShop}</span>
+            </a>
+        )}
         <a
             href={sellerFooterNavItem.href}
             class:list={[

@@ -146,14 +146,11 @@ if (Astro.request.method === 'POST') {
 }
 ---
 
-<SellerLayout title={`${strings.sellerShopEditTitle} - Shopenn Seller`}>
+<SellerLayout title={`${strings.sellerShopEditTitle} - Shopenn Seller`} shopSlug={shop.slug}>
     <div class="max-w-4xl mx-auto px-4 py-8 lg:py-12">
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-            <h1 class="text-2xl font-semibold tracking-tight text-neutral-900 dark:text-white">{strings.sellerShopEditTitle}</h1>
-            <a href={`/${shop.slug}`} target="_blank" class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-neutral-700 dark:text-neutral-300 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-full hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-                {strings.sellerShopEditViewPublic}
-            </a>
+        <div class="mb-8">
+            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-text-tertiary">{shop.name}</p>
+            <h1 class="mt-2 text-2xl font-semibold tracking-tight text-text-primary">{strings.sellerShopEditTitle}</h1>
         </div>
 
         {stripeNotice && (
@@ -173,12 +170,12 @@ if (Astro.request.method === 'POST') {
             </div>
         )}
 
-        <section class="mb-8 rounded-3xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6 md:p-8 shadow-sm">
+        <section class="mb-8 rounded-3xl border border-border bg-surface p-6 md:p-8 shadow-sm">
             <div class="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
                 <div class="max-w-2xl">
-                    <p class="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500 mb-3">Stripe Connect</p>
-                    <h2 class="text-xl font-semibold text-neutral-900 dark:text-white">{strings.sellerStripeSectionTitle}</h2>
-                    <p class="mt-2 text-sm text-neutral-600 dark:text-neutral-300">{strings.sellerStripeSectionSubtitle}</p>
+                    <p class="text-xs font-semibold uppercase tracking-[0.18em] text-text-tertiary mb-3">Stripe Connect</p>
+                    <h2 class="text-xl font-semibold text-text-primary">{strings.sellerStripeSectionTitle}</h2>
+                    <p class="mt-2 text-sm text-text-secondary">{strings.sellerStripeSectionSubtitle}</p>
                 </div>
                 <div class="flex flex-col sm:flex-row sm:items-center gap-3">
                     <span class:list={[
@@ -201,7 +198,7 @@ if (Astro.request.method === 'POST') {
             <div id="stripe-error-message" class="hidden mt-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300"></div>
         </section>
         
-        <form id="edit-shop-form" method="POST" class="bg-white dark:bg-neutral-900 p-6 md:p-8 rounded-3xl border border-neutral-200 dark:border-neutral-800 shadow-sm">
+        <form id="edit-shop-form" method="POST" class="bg-surface p-6 md:p-8 rounded-3xl border border-border shadow-sm">
             <ShopForm mode="edit" shopData={shop} />
 
             <!-- Messages -->
