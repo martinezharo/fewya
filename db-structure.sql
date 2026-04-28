@@ -37,7 +37,7 @@ CREATE TABLE public.products (
   title text NOT NULL,
   description text,
   category text NOT NULL,
-  gallery_images ARRAY DEFAULT '{}'::text[],
+  gallery_images text[] DEFAULT '{}'::text[],
   is_active boolean DEFAULT true,
   created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
   brand text,
