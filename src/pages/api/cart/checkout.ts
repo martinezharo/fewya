@@ -63,7 +63,12 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         .single();
 
     if (orderError || !order) {
-        return new Response(JSON.stringify({ error: strings.apiOrderCreateError }), {
+        console.error('checkout order insert failed', orderError);
+
+        return new Response(JSON.stringify({
+            error: strings.apiOrderCreateError,
+            details: orderError?.message ?? null,
+        }), {
             status: 500,
             headers: { 'Content-Type': 'application/json' },
         });
@@ -82,7 +87,12 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         .insert(orderItems);
 
     if (itemsError) {
-        return new Response(JSON.stringify({ error: strings.apiOrderItemsSaveError }), {
+        console.error('checkout order items insert failed', itemsError);
+
+        return new Response(JSON.stringify({
+            error: strings.apiOrderItemsSaveError,
+            details: itemsError.message,
+        }), {
             status: 500,
             headers: { 'Content-Type': 'application/json' },
         });

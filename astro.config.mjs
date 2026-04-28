@@ -22,6 +22,10 @@ export default defineConfig({
         injectRegister: false,
       registerType: 'autoUpdate',
       manifestFilename: 'manifest.webmanifest',
+      devOptions: {
+        enabled: true,
+        suppressWarnings: true,
+      },
       manifest: {
         name: 'Shopenn Marketplace',
         short_name: 'Shopenn',
