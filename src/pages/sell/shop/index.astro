@@ -3,6 +3,15 @@ import SellerLayout from '../../../layouts/SellerLayout.astro';
 import { createSupabaseAuthClient } from '../../../lib/auth';
 import ShopForm from '../../../components/seller/ShopForm.astro';
 import { strings } from '../../../lib/i18n';
+import { getStripeAccountStatus, getStripeClient } from '../../../lib/stripe';
+
+function one<T>(value: T | T[] | null | undefined): T | null {
+    if (Array.isArray(value)) {
+        return value[0] ?? null;
+    }
+
+    return value ?? null;
+}
 
 const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
 const { data: sessionData } = await supabase.auth.getSession();
@@ -15,13 +24,88 @@ if (!user) {
 // Get the shop of the current seller
 const { data: shop } = await supabase
     .from('shops')
-    .select('*')
+    .select(`
+        *,
+        shop_payment_accounts (
+            stripe_account_id,
+            charges_enabled,
+            payouts_enabled,
+            details_submitted,
+            onboarding_completed_at
+        )
+    `)
     .eq('owner_id', user.id)
     .single();
 
 if (!shop) {
     return Astro.redirect('/sell/onboarding');
 }
+
+let paymentAccount = one((shop as any).shop_payment_accounts);
+let stripeNotice: string | null = null;
+let stripeNoticeTone: 'success' | 'warning' | null = null;
+let stripeSyncError: string | null = null;
+
+const stripeFlow = Astro.url.searchParams.get('stripe');
+
+if ((stripeFlow === 'return' || stripeFlow === 'refresh') && paymentAccount?.stripe_account_id) {
+    try {
+        const stripe = getStripeClient();
+        const account = await stripe.accounts.retrieve(paymentAccount.stripe_account_id);
+        const accountStatus = getStripeAccountStatus(account);
+        const { data: syncedAccount, error: syncError } = await supabase.rpc('upsert_shop_payment_account', {
+            p_shop_id: shop.id,
+            p_stripe_account_id: accountStatus.stripeAccountId,
+            p_charges_enabled: accountStatus.chargesEnabled,
+            p_payouts_enabled: accountStatus.payoutsEnabled,
+            p_details_submitted: accountStatus.detailsSubmitted,
+        });
+
+        if (syncError) {
+            throw syncError;
+        }
+
+        paymentAccount = Array.isArray(syncedAccount) ? syncedAccount[0] : syncedAccount;
+    } catch (error) {
+        stripeSyncError = error instanceof Error ? error.message : strings.sellerStripeError;
+    }
+
+    if (stripeFlow === 'return') {
+        const isReadyAfterReturn = Boolean(
+            paymentAccount?.stripe_account_id
+            && paymentAccount?.charges_enabled
+            && paymentAccount?.payouts_enabled
+            && paymentAccount?.details_submitted
+        );
+
+        stripeNotice = isReadyAfterReturn ? strings.sellerStripeReturnReady : strings.sellerStripeReturnPending;
+        stripeNoticeTone = isReadyAfterReturn ? 'success' : 'warning';
+    }
+}
+
+const isStripeReady = Boolean(
+    paymentAccount?.stripe_account_id
+    && paymentAccount?.charges_enabled
+    && paymentAccount?.payouts_enabled
+    && paymentAccount?.details_submitted
+);
+const hasStripeAccount = Boolean(paymentAccount?.stripe_account_id);
+const stripeStatusLabel = isStripeReady
+    ? strings.sellerStripeStatusReady
+    : hasStripeAccount
+        ? strings.sellerStripeStatusPending
+        : strings.sellerStripeStatusNotConnected;
+const stripeStatusClasses = isStripeReady
+    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+    : hasStripeAccount
+        ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
+        : 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300';
+const stripeAction = isStripeReady ? 'dashboard' : 'onboarding';
+const stripeButtonLabel = isStripeReady
+    ? strings.sellerStripeDashboardCta
+    : hasStripeAccount
+        ? strings.sellerStripeContinueCta
+        : strings.sellerStripeConnectCta;
 
 if (Astro.request.method === 'POST') {
     const formData = await Astro.request.formData();
@@ -71,6 +155,51 @@ if (Astro.request.method === 'POST') {
                 {strings.sellerShopEditViewPublic}
             </a>
         </div>
+
+        {stripeNotice && (
+            <div class:list={[
+                'mb-6 rounded-2xl border px-4 py-3 text-sm font-medium',
+                stripeNoticeTone === 'success'
+                    ? 'border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-300'
+                    : 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300'
+            ]}>
+                {stripeNotice}
+            </div>
+        )}
+
+        {stripeSyncError && (
+            <div class="mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300">
+                {stripeSyncError}
+            </div>
+        )}
+
+        <section class="mb-8 rounded-3xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6 md:p-8 shadow-sm">
+            <div class="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+                <div class="max-w-2xl">
+                    <p class="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500 mb-3">Stripe Connect</p>
+                    <h2 class="text-xl font-semibold text-neutral-900 dark:text-white">{strings.sellerStripeSectionTitle}</h2>
+                    <p class="mt-2 text-sm text-neutral-600 dark:text-neutral-300">{strings.sellerStripeSectionSubtitle}</p>
+                </div>
+                <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+                    <span class:list={[
+                        'inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold',
+                        stripeStatusClasses,
+                    ]}>
+                        {stripeStatusLabel}
+                    </span>
+                    <button
+                        type="button"
+                        id="stripe-connect-btn"
+                        data-action={stripeAction}
+                        data-loading-label={strings.sellerStripeConnecting}
+                        class="inline-flex items-center justify-center rounded-full bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 px-5 py-2.5 text-sm font-medium hover:scale-[1.02] transition-transform"
+                    >
+                        {stripeButtonLabel}
+                    </button>
+                </div>
+            </div>
+            <div id="stripe-error-message" class="hidden mt-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300"></div>
+        </section>
         
         <form id="edit-shop-form" method="POST" class="bg-white dark:bg-neutral-900 p-6 md:p-8 rounded-3xl border border-neutral-200 dark:border-neutral-800 shadow-sm">
             <ShopForm mode="edit" shopData={shop} />
@@ -98,6 +227,47 @@ if (Astro.request.method === 'POST') {
     const submitSpinner = document.getElementById('submit-spinner');
     const errorMessage = document.getElementById('error-message');
     const successMessage = document.getElementById('success-message');
+    const stripeConnectBtn = document.getElementById('stripe-connect-btn') as HTMLButtonElement | null;
+    const stripeErrorMessage = document.getElementById('stripe-error-message');
+
+    type StripeConnectResponse = {
+        url?: string;
+        ready?: boolean;
+        error?: string;
+    };
+
+    stripeConnectBtn?.addEventListener('click', async () => {
+        const action = stripeConnectBtn.dataset.action || 'onboarding';
+        const originalText = stripeConnectBtn.textContent || strings.sellerStripeConnectCta;
+
+        stripeConnectBtn.disabled = true;
+        stripeConnectBtn.textContent = stripeConnectBtn.dataset.loadingLabel || strings.sellerStripeConnecting;
+        stripeErrorMessage?.classList.add('hidden');
+
+        try {
+            const response = await fetch('/api/sell/stripe/connect', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action }),
+            });
+
+            const data = await response.json().catch(() => ({} as StripeConnectResponse)) as StripeConnectResponse;
+
+            if (!response.ok || !data.url) {
+                throw new Error(data.error || strings.sellerStripeError);
+            }
+
+            window.location.href = data.url;
+        } catch (error: unknown) {
+            if (stripeErrorMessage instanceof HTMLElement) {
+                stripeErrorMessage.textContent = error instanceof Error ? error.message : strings.sellerStripeError;
+                stripeErrorMessage.classList.remove('hidden');
+            }
+        } finally {
+            stripeConnectBtn.disabled = false;
+            stripeConnectBtn.textContent = originalText;
+        }
+    });
 
     form?.addEventListener('submit', async (event: SubmitEvent) => {
         event.preventDefault();
