@@ -1,5 +1,6 @@
 ---
 import Icon from "./icons/Icon.astro";
+import WishlistButton from "./WishlistButton.astro";
 import { strings } from "../lib/i18n";
 import type { Product } from "../lib/types";
 
@@ -38,19 +39,7 @@ const reviewAvg = product.review_avg ?? 0;
                 />
             </div>
         </a>
-        <button
-            class:list={[
-                'wishlist-btn absolute bottom-4 right-2 flex items-center justify-center w-8 h-8 border-none bg-surface/80 backdrop-blur-sm cursor-pointer rounded-full transition-colors duration-150 [-webkit-tap-highlight-color:transparent]',
-                isWished ? 'text-wishlist' : 'text-text-tertiary hover:text-wishlist'
-            ]}
-            aria-label={isWished ? strings.removeFromWishlist : strings.addToWishlist}
-            data-product-id={product.id}
-            data-wished={isWished ? 'true' : 'false'}
-            data-icon-size="16"
-            type="button"
-        >
-            <Icon name={isWished ? 'heart-filled' : 'heart'} size={16} />
-        </button>
+        <WishlistButton productId={product.id} isWished={isWished} variant="overlay" size={16} class="absolute bottom-4 right-2" />
     </div>
 
     {/* Right — Info */}
@@ -126,21 +115,7 @@ const reviewAvg = product.review_avg ?? 0;
         </a>
 
         {/* Wishlist button — top right overlay */}
-        <button
-            class:list={[
-                'wishlist-btn absolute top-3 right-3 flex items-center justify-center w-8 h-8 border-none backdrop-blur-md cursor-pointer rounded-full transition-all duration-200 [-webkit-tap-highlight-color:transparent] shadow-md',
-                isWished
-                    ? 'bg-white/90 dark:bg-black/60 text-red-500'
-                    : 'bg-white/70 dark:bg-black/40 text-text-tertiary hover:text-red-500 hover:bg-white/90 dark:hover:bg-black/60 opacity-0 group-hover:opacity-100'
-            ]}
-            aria-label={isWished ? strings.removeFromWishlist : strings.addToWishlist}
-            data-product-id={product.id}
-            data-wished={isWished ? 'true' : 'false'}
-            data-icon-size="16"
-            type="button"
-        >
-            <Icon name={isWished ? 'heart-filled' : 'heart'} size={16} />
-        </button>
+        <WishlistButton productId={product.id} isWished={isWished} variant="overlay" size={16} class="absolute top-3 right-3" />
     </div>
 
     {/* Info */}

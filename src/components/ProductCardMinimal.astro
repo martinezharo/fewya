@@ -1,5 +1,5 @@
 ---
-import Icon from "./icons/Icon.astro";
+import WishlistButton from "./WishlistButton.astro";
 import { strings } from "../lib/i18n";
 import type { Product } from "../lib/types";
 
@@ -41,19 +41,7 @@ const productUrl = (shopSlug && product.slug) ? `/${shopSlug}/${product.slug}` :
                     <span class="text-base font-bold text-text-primary tracking-[-0.3px]">{formattedPrice}</span>
                 )
             }
-            <button
-                class:list={[
-                    'wishlist-btn flex items-center justify-center w-8 h-8 border-none bg-transparent cursor-pointer rounded-full transition-colors duration-150 [-webkit-tap-highlight-color:transparent]',
-                    isWished ? 'text-wishlist' : 'text-text-tertiary hover:text-wishlist hover:bg-border-light'
-                ]}
-                aria-label={isWished ? strings.removeFromWishlist : strings.addToWishlist}
-                data-product-id={product.id}
-                data-wished={isWished ? 'true' : 'false'}
-                data-icon-size="18"
-                type="button"
-            >
-                <Icon name={isWished ? 'heart-filled' : 'heart'} size={18} />
-            </button>
+            <WishlistButton productId={product.id} isWished={isWished} variant="minimal" size={18} />
         </div>
 
         <a href={productUrl} class="text-[13px] font-medium text-text-primary no-underline leading-[1.35] line-clamp-2 hover:underline">

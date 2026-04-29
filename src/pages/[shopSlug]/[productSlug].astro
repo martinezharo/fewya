@@ -1,6 +1,7 @@
 ---
 import BuyerDetailLayout from '../../layouts/BuyerDetailLayout.astro';
 import Icon from '../../components/icons/Icon.astro';
+import WishlistButton from '../../components/WishlistButton.astro';
 import ProductGallery from '../../components/product/ProductGallery.astro';
 import ShopCard from '../../components/product/ShopCard.astro';
 import VariantSelector from '../../components/product/VariantSelector.astro';
@@ -87,19 +88,7 @@ if (user) {
             </span>
             <span class="text-xs md:text-sm text-text-secondary">{strings.productShipping}</span>
           </div>
-          <button
-            type="button"
-            class:list={[
-              'wishlist-btn flex items-center justify-center w-10 h-10 rounded-full transition-colors',
-              isWished ? 'text-wishlist' : 'text-text-tertiary hover:text-wishlist'
-            ]}
-            aria-label={isWished ? strings.removeFromWishlist : strings.addToWishlist}
-            data-product-id={product.id}
-            data-wished={isWished ? 'true' : 'false'}
-            data-icon-size="22"
-          >
-            <Icon name={isWished ? 'heart-filled' : 'heart'} size={22} />
-          </button>
+          <WishlistButton productId={product.id} isWished={isWished} variant="detail" size={22} />
         </div>
 
         <!-- Title (mobile: 2nd, desktop: 1st) -->

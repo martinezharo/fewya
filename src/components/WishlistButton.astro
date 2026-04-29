@@ -1,0 +1,41 @@
+---
+import Icon from "./icons/Icon.astro";
+import { strings } from "../lib/i18n";
+
+interface Props {
+    productId: string;
+    isWished?: boolean;
+    variant?: "overlay" | "minimal" | "detail";
+    size?: number;
+    class?: string;
+}
+
+const {
+    productId,
+    isWished = false,
+    variant = "overlay",
+    size = 16,
+    class: extraClass = "",
+} = Astro.props;
+
+const base = "wishlist-btn flex items-center justify-center border-none cursor-pointer rounded-full transition-all duration-200 [-webkit-tap-highlight-color:transparent]";
+
+const variants: Record<string, string> = {
+    overlay: "w-8 h-8 bg-surface/80 backdrop-blur-sm hover:bg-surface",
+    minimal: "w-8 h-8 bg-transparent hover:bg-border-light",
+    detail: "w-10 h-10 bg-transparent hover:bg-border-light",
+};
+
+const color = isWished ? "text-wishlist" : "text-text-secondary hover:text-wishlist";
+---
+
+<button
+    class:list={[base, variants[variant], color, extraClass]}
+    aria-label={isWished ? strings.removeFromWishlist : strings.addToWishlist}
+    data-product-id={productId}
+    data-wished={isWished ? "true" : "false"}
+    data-icon-size={size}
+    type="button"
+>
+    <Icon name={isWished ? "heart-filled" : "heart"} size={size} />
+</button>
