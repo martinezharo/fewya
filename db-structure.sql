@@ -340,6 +340,7 @@ CREATE TRIGGER on_auth_user_created
 
 ALTER TABLE public.order_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.shop_payment_accounts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.product_variants ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Users can manage own profile" ON public.profiles FOR ALL TO public USING ((auth.uid() = id)) WITH CHECK ((auth.uid() = id));
 CREATE POLICY "Allow public read access to products" ON public.products FOR SELECT TO anon USING (true);
@@ -367,6 +368,10 @@ CREATE POLICY "Users can view own wishlist" ON public.wishlist FOR SELECT TO aut
 CREATE POLICY "Allow public read access to reviews" ON public.reviews FOR SELECT TO public USING (true);
 CREATE POLICY "Allow shop owners to insert products" ON public.products FOR INSERT TO authenticated WITH CHECK (EXISTS (SELECT 1 FROM public.shops WHERE id = shop_id AND owner_id = auth.uid()));
 CREATE POLICY "Allow shop owners to update products" ON public.products FOR UPDATE TO authenticated USING (EXISTS (SELECT 1 FROM public.shops WHERE id = shop_id AND owner_id = auth.uid()));
+CREATE POLICY "Allow shop owners to delete products" ON public.products FOR DELETE TO authenticated USING (EXISTS (SELECT 1 FROM public.shops WHERE id = shop_id AND owner_id = auth.uid()));
+CREATE POLICY "Allow shop owners to insert product variants" ON public.product_variants FOR INSERT TO authenticated WITH CHECK (EXISTS (SELECT 1 FROM public.products p JOIN public.shops s ON p.shop_id = s.id WHERE p.id = product_variants.product_id AND s.owner_id = auth.uid()));
+CREATE POLICY "Allow shop owners to update product variants" ON public.product_variants FOR UPDATE TO authenticated USING (EXISTS (SELECT 1 FROM public.products p JOIN public.shops s ON p.shop_id = s.id WHERE p.id = product_variants.product_id AND s.owner_id = auth.uid()));
+CREATE POLICY "Allow shop owners to delete product variants" ON public.product_variants FOR DELETE TO authenticated USING (EXISTS (SELECT 1 FROM public.products p JOIN public.shops s ON p.shop_id = s.id WHERE p.id = product_variants.product_id AND s.owner_id = auth.uid()));
 CREATE POLICY "Allow authenticated users to insert shops" ON public.shops FOR INSERT TO authenticated WITH CHECK (auth.uid() = owner_id);
 CREATE POLICY "Allow owners to update their shops" ON public.shops FOR UPDATE TO authenticated USING (auth.uid() = owner_id);
 CREATE POLICY "Allow inserting into own wishlist" ON public.wishlist FOR INSERT TO authenticated WITH CHECK (auth.uid() = profile_id);
@@ -380,3 +385,8 @@ CREATE POLICY "Allow inserting reviews if product was purchased" ON public.revie
 GRANT EXECUTE ON FUNCTION public.create_checkout_order(text, numeric, text, text, text, text, text, text, jsonb) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.mark_order_paid(uuid, text, text, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.upsert_shop_payment_account(uuid, text, boolean, boolean, boolean) TO authenticated;
+
+-- Storage policies for products bucket
+CREATE POLICY "Allow authenticated users to upload product images" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'products' AND (storage.foldername(name))[1] = auth.uid()::text OR (storage.foldername(name))[2] = auth.uid()::text);
+CREATE POLICY "Allow authenticated users to update product images" ON storage.objects FOR UPDATE TO authenticated USING (bucket_id = 'products' AND (storage.foldername(name))[1] = auth.uid()::text OR (storage.foldername(name))[2] = auth.uid()::text);
+CREATE POLICY "Allow owners to delete their product images" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'products' AND (storage.foldername(name))[1] = auth.uid()::text OR (storage.foldername(name))[2] = auth.uid()::text);
