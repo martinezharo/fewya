@@ -1,0 +1,302 @@
+---
+import SellerLayout from '../../../layouts/SellerLayout.astro';
+import Icon from '../../../components/icons/Icon.astro';
+import { createSupabaseAuthClient } from '../../../lib/auth';
+import { strings, getCategoryLabel } from '../../../lib/i18n';
+import type { Product, ProductVariant } from '../../../lib/types';
+
+const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
+const { data: sessionData } = await supabase.auth.getSession();
+const user = sessionData?.session?.user;
+
+if (!user) return Astro.redirect('/sell');
+
+const { data: profile } = await supabase
+    .from('profiles')
+    .select('is_seller')
+    .eq('id', user.id)
+    .single();
+
+if (!profile?.is_seller) return Astro.redirect('/sell');
+
+const { data: shop } = await supabase
+    .from('shops')
+    .select('id, name, slug')
+    .eq('owner_id', user.id)
+    .maybeSingle();
+
+if (!shop) return Astro.redirect('/sell/onboarding');
+
+const { data: products } = await supabase
+    .from('products')
+    .select('*, variants:product_variants(*)')
+    .eq('shop_id', shop.id)
+    .order('created_at', { ascending: false });
+
+const allProducts: (Product & { variants?: ProductVariant[] })[] = (products ?? []) as any;
+const activeCount = allProducts.filter(p => p.is_active).length;
+const totalStock = allProducts.reduce((sum, p) => sum + (p.variants?.reduce((vs, v) => vs + (v.stock ?? 0), 0) ?? 0), 0);
+const currencyFormatter = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' });
+---
+
+<SellerLayout title={strings.sellerCatalogPageTitle} shopSlug={shop.slug}>
+    <div class="p-6 lg:p-10">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+            <div>
+                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-text-tertiary">{shop.name}</p>
+                <h1 class="mt-2 text-2xl font-semibold tracking-tight text-text-primary">{strings.sellerCatalogTitle}</h1>
+            </div>
+            <a
+                href="/sell/catalog/new"
+                class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 text-sm font-medium no-underline hover:scale-[1.02] transition-transform shrink-0"
+            >
+                <Icon name="plus" size={18} />
+                {strings.sellerCatalogNewProduct}
+            </a>
+        </div>
+
+        <div class="grid gap-3 sm:grid-cols-3 mb-8">
+            <section class="rounded-[28px] border border-border bg-surface p-5 shadow-sm">
+                <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">
+                    {strings.sellerCatalogTotalProducts}
+                </p>
+                <p class="mt-3 text-2xl font-semibold tracking-tight text-text-primary tabular-nums">{allProducts.length}</p>
+            </section>
+            <section class="rounded-[28px] border border-border bg-surface p-5 shadow-sm">
+                <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">
+                    {strings.sellerCatalogActiveProducts}
+                </p>
+                <p class="mt-3 text-2xl font-semibold tracking-tight text-text-primary tabular-nums">{activeCount}</p>
+            </section>
+            <section class="rounded-[28px] border border-border bg-surface p-5 shadow-sm">
+                <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">
+                    {strings.sellerCatalogStock}
+                </p>
+                <p class="mt-3 text-2xl font-semibold tracking-tight text-text-primary tabular-nums">{totalStock}</p>
+            </section>
+        </div>
+
+        {allProducts.length > 0 ? (
+            <div class="flex flex-col gap-3" id="product-list">
+                {allProducts.map((product) => {
+                    const defaultVariant = product.variants?.find(v => v.is_default) || product.variants?.[0];
+                    const minPrice = product.variants?.length
+                        ? Math.min(...product.variants.map(v => v.price))
+                        : defaultVariant?.price ?? 0;
+                    const maxPrice = product.variants?.length
+                        ? Math.max(...product.variants.map(v => v.price))
+                        : defaultVariant?.price ?? 0;
+                    const stock = product.variants?.reduce((sum, v) => sum + (v.stock ?? 0), 0) ?? 0;
+                    const image = product.gallery_images?.[0] || defaultVariant?.variant_image || '';
+                    const catLabel = getCategoryLabel(product.category ?? '');
+                    return (
+                        <article
+                            class:list={[
+                                'group relative flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 rounded-2xl border border-border bg-surface transition-colors hover:bg-bg',
+                                !product.is_active && 'opacity-60'
+                            ]}
+                            data-product-id={product.id}
+                            data-is-active={String(product.is_active)}
+                        >
+                            <div class="w-full sm:w-20 h-24 sm:h-20 rounded-xl overflow-hidden bg-bg shrink-0 flex items-center justify-center">
+                                {image ? (
+                                    <img src={image} alt={product.title} class="w-full h-full object-cover" loading="lazy" />
+                                ) : (
+                                    <Icon name="image" size={28} class="text-text-tertiary" />
+                                )}
+                            </div>
+
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-start justify-between gap-3">
+                                    <div class="min-w-0">
+                                        <h3 class="text-sm font-semibold text-text-primary truncate">{product.title}</h3>
+                                        <div class="mt-1 flex items-center gap-2 flex-wrap">
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-bg text-text-secondary border border-border">
+                                                {catLabel}
+                                            </span>
+                                            {product.variants && product.variants.length > 1 && (
+                                                <span class="text-[11px] text-text-tertiary">
+                                                    {product.variants.length} {product.variants.length === 1 ? strings.sellerCatalogVariant : strings.sellerCatalogVariants}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div class="text-right shrink-0">
+                                        <p class="text-sm font-semibold text-text-primary tabular-nums">
+                                            {minPrice === maxPrice
+                                                ? currencyFormatter.format(minPrice)
+                                                : `${strings.sellerCatalogPriceFrom} ${currencyFormatter.format(minPrice)}`}
+                                        </p>
+                                        <p class="text-[11px] text-text-tertiary">{stock} uds</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="flex items-center gap-2 sm:ml-auto shrink-0 w-full sm:w-auto">
+                                <button
+                                    type="button"
+                                    class="toggle-active-btn flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                                    data-product-id={product.id}
+                                    data-active={String(product.is_active)}
+                                    aria-label={strings.sellerCatalogToggleActive}
+                                >
+                                    <span class:list={[
+                                        'inline-block w-1.5 h-1.5 rounded-full',
+                                        product.is_active ? 'bg-green-500' : 'bg-text-tertiary'
+                                    ]}></span>
+                                    {product.is_active ? strings.sellerCatalogActive : strings.sellerCatalogInactive}
+                                </button>
+                                <a
+                                    href={`/sell/catalog/${product.id}`}
+                                    class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-text-secondary hover:text-text-primary hover:bg-bg transition-colors"
+                                    aria-label={strings.sellerCatalogEdit}
+                                >
+                                    <Icon name="pencil" size={16} />
+                                </a>
+                                {shop.slug && (
+                                    <a
+                                        href={`/${shop.slug}/${product.slug}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-text-secondary hover:text-text-primary hover:bg-bg transition-colors"
+                                        aria-label={strings.sellerCatalogViewPublic}
+                                    >
+                                        <Icon name="external-link" size={16} />
+                                    </a>
+                                )}
+                                <button
+                                    type="button"
+                                    class="delete-product-btn inline-flex items-center justify-center w-8 h-8 rounded-lg text-text-secondary hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                                    data-product-id={product.id}
+                                    data-product-title={product.title}
+                                    aria-label={strings.sellerCatalogDelete}
+                                >
+                                    <Icon name="trash-2" size={16} />
+                                </button>
+                            </div>
+                        </article>
+                    );
+                })}
+            </div>
+        ) : (
+            <section class="flex min-h-[360px] flex-col items-center justify-center rounded-[32px] border border-dashed border-border bg-surface px-6 py-12 text-center">
+                <div class="flex h-16 w-16 items-center justify-center rounded-full border border-border text-text-tertiary">
+                    <Icon name="grid" size={26} />
+                </div>
+                <h2 class="mt-5 text-xl font-semibold tracking-tight text-text-primary">{strings.sellerCatalogEmptyTitle}</h2>
+                <p class="mt-2 max-w-md text-sm text-text-secondary">{strings.sellerCatalogEmptySubtitle}</p>
+                <a
+                    href="/sell/catalog/new"
+                    class="mt-6 inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 text-sm font-medium no-underline hover:scale-[1.02] transition-transform"
+                >
+                    <Icon name="plus" size={18} />
+                    {strings.sellerCatalogNewProduct}
+                </a>
+            </section>
+        )}
+    </div>
+</SellerLayout>
+
+<div id="delete-dialog" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50">
+    <div class="bg-surface rounded-2xl border border-border p-6 mx-4 max-w-sm w-full shadow-xl">
+        <p class="text-sm text-text-primary font-medium" id="delete-dialog-text"></p>
+        <div class="mt-5 flex justify-end gap-3">
+            <button type="button" id="delete-cancel-btn" class="px-4 py-2 rounded-xl text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-bg transition-colors">{strings.sellerOnboardingPrev}</button>
+            <button type="button" id="delete-confirm-btn" class="px-4 py-2 rounded-xl text-sm font-medium bg-red-500 text-white hover:bg-red-600 transition-colors">{strings.sellerCatalogDelete}</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    import { strings } from '../../../lib/i18n';
+
+    function initCatalogPage() {
+        const toggleBtns = document.querySelectorAll<HTMLButtonElement>('.toggle-active-btn');
+        const deleteBtns = document.querySelectorAll<HTMLButtonElement>('.delete-product-btn');
+        const dialog = document.getElementById('delete-dialog') as HTMLDivElement;
+        const dialogText = document.getElementById('delete-dialog-text') as HTMLParagraphElement;
+        const cancelBtn = document.getElementById('delete-cancel-btn') as HTMLButtonElement;
+        const confirmBtn = document.getElementById('delete-confirm-btn') as HTMLButtonElement;
+        let pendingDeleteId: string | null = null;
+
+        toggleBtns.forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const productId = btn.dataset.productId!;
+                const isActive = btn.dataset.active === 'true';
+                const newActive = !isActive;
+
+                const res = await fetch(`/api/sell/catalog/toggle?id=${productId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ is_active: newActive }),
+                });
+
+                if (res.ok) {
+                    btn.dataset.active = String(newActive);
+                    const dot = btn.querySelector('span');
+                    if (dot) {
+                        dot.className = `inline-block w-1.5 h-1.5 rounded-full ${newActive ? 'bg-green-500' : 'bg-text-tertiary'}`;
+                    }
+                    btn.lastChild!.textContent = newActive ? ` ${strings.sellerCatalogActive}` : ` ${strings.sellerCatalogInactive}`;
+                    const article = btn.closest('article');
+                    if (article) {
+                        if (!newActive) article.classList.add('opacity-60');
+                        else article.classList.remove('opacity-60');
+                    }
+                }
+            });
+        });
+
+        deleteBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                pendingDeleteId = btn.dataset.productId!;
+                dialogText.textContent = strings.sellerCatalogConfirmDelete;
+                dialog.classList.remove('hidden');
+                dialog.classList.add('flex');
+            });
+        });
+
+        cancelBtn.addEventListener('click', () => {
+            pendingDeleteId = null;
+            dialog.classList.add('hidden');
+            dialog.classList.remove('flex');
+        });
+
+        dialog.addEventListener('click', (e) => {
+            if (e.target === dialog) {
+                pendingDeleteId = null;
+                dialog.classList.add('hidden');
+                dialog.classList.remove('flex');
+            }
+        });
+
+        confirmBtn.addEventListener('click', async () => {
+            if (!pendingDeleteId) return;
+            confirmBtn.disabled = true;
+
+            const res = await fetch(`/api/sell/catalog/product?id=${pendingDeleteId}`, {
+                method: 'DELETE',
+            });
+
+            if (res.ok) {
+                const article = document.querySelector(`[data-product-id="${pendingDeleteId}"]`) as HTMLElement;
+                article?.remove();
+                pendingDeleteId = null;
+                dialog.classList.add('hidden');
+                dialog.classList.remove('flex');
+
+                const list = document.getElementById('product-list');
+                if (list && list.children.length === 0) {
+                    window.location.reload();
+                }
+            } else {
+                alert(strings.sellerProductDeleteError);
+            }
+            confirmBtn.disabled = false;
+        });
+    }
+
+    document.addEventListener('astro:page-load', initCatalogPage);
+    if (document.readyState !== 'loading') initCatalogPage();
+    else document.addEventListener('DOMContentLoaded', initCatalogPage);
+</script>

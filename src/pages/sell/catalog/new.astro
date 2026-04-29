@@ -1,0 +1,41 @@
+---
+import SellerLayout from '../../../layouts/SellerLayout.astro';
+import ProductForm from '../../../components/seller/ProductForm.astro';
+import { createSupabaseAuthClient } from '../../../lib/auth';
+import { strings } from '../../../lib/i18n';
+
+const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
+const { data: sessionData } = await supabase.auth.getSession();
+const user = sessionData?.session?.user;
+
+if (!user) return Astro.redirect('/sell');
+
+const { data: profile } = await supabase
+    .from('profiles')
+    .select('is_seller')
+    .eq('id', user.id)
+    .single();
+
+if (!profile?.is_seller) return Astro.redirect('/sell');
+
+const { data: shop } = await supabase
+    .from('shops')
+    .select('id, name, slug')
+    .eq('owner_id', user.id)
+    .maybeSingle();
+
+if (!shop) return Astro.redirect('/sell/onboarding');
+---
+
+<SellerLayout title={`${strings.sellerProductNewTitle} — Shopenn Seller`} shopSlug={shop.slug}>
+    <div class="max-w-4xl mx-auto px-4 py-8 lg:py-12">
+        <div class="mb-8">
+            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-text-tertiary">{shop.name}</p>
+            <h1 class="mt-2 text-2xl font-semibold tracking-tight text-text-primary">{strings.sellerProductNewTitle}</h1>
+        </div>
+
+        <div class="bg-surface p-6 md:p-8 rounded-3xl border border-border shadow-sm">
+            <ProductForm mode="create" shopId={shop.slug} />
+        </div>
+    </div>
+</SellerLayout>

@@ -1,0 +1,613 @@
+---
+import Icon from '../icons/Icon.astro';
+import { strings, categories } from '../../lib/i18n';
+
+interface VariantData {
+    id?: string;
+    variant_name: string;
+    price: number;
+    stock: number;
+    is_default: boolean;
+    variant_image: string | null;
+}
+
+interface Props {
+    mode: 'create' | 'edit';
+    shopId: string;
+    product?: {
+        id: string;
+        title: string;
+        slug: string;
+        description: string | null;
+        category: string;
+        brand: string | null;
+        gallery_images: string[];
+        is_active: boolean;
+        specifications: Record<string, any>;
+    };
+    variants?: VariantData[];
+}
+
+const { mode, shopId, product, variants } = Astro.props;
+const isEdit = mode === 'edit';
+
+const title = product?.title ?? '';
+const slug = product?.slug ?? '';
+const description = product?.description ?? '';
+const category = product?.category ?? '';
+const brand = product?.brand ?? '';
+const galleryImages: string[] = product?.gallery_images ?? [];
+const isActive = product?.is_active ?? true;
+const specs = product?.specifications ?? {};
+
+const initialVariants = (variants && variants.length > 0) ? variants : [
+    { variant_name: '', price: 0, stock: 0, is_default: true, variant_image: null }
+];
+---
+
+<div id="product-form-root" data-shop-id={shopId} data-mode={mode} data-gallery={JSON.stringify(galleryImages)}>
+    <input type="hidden" id="product-id" value={isEdit ? product!.id : ''} />
+
+    <!-- Basic Info -->
+    <section class="space-y-6">
+        <h2 class="text-lg font-medium text-text-primary border-b border-border pb-2">{strings.sellerProductBasicInfo}</h2>
+
+        <div class="grid gap-6 sm:grid-cols-2 max-w-3xl">
+            <div class="sm:col-span-2">
+                <label for="product-title" class="block text-sm font-medium text-text-secondary mb-2">
+                    {strings.sellerProductTitleLabel} <span class="text-red-500">*</span>
+                </label>
+                <input
+                    type="text"
+                    id="product-title"
+                    required
+                    value={title}
+                    class="w-full px-4 py-3 rounded-xl border border-border bg-transparent text-text-primary focus:ring-2 focus:ring-accent outline-none transition"
+                    placeholder={strings.sellerProductTitlePlaceholder}
+                />
+            </div>
+
+            <div>
+                <label for="product-slug" class="block text-sm font-medium text-text-secondary mb-2">{strings.sellerProductSlugLabel}</label>
+                <div class="flex items-stretch rounded-xl border border-border focus-within:ring-2 focus-within:ring-accent transition overflow-hidden">
+                    <span class="flex items-center pl-4 pr-2 text-text-tertiary bg-bg whitespace-nowrap select-none text-sm">{shopId}/</span>
+                    <input
+                        type="text"
+                        id="product-slug"
+                        value={slug}
+                        class="w-full px-2 py-3 bg-transparent text-text-primary outline-none text-sm"
+                        placeholder={strings.sellerProductSlugPlaceholder}
+                    />
+                </div>
+                <p class="text-xs text-text-tertiary mt-1.5">{strings.sellerProductSlugNote}</p>
+            </div>
+
+            <div>
+                <label for="product-category" class="block text-sm font-medium text-text-secondary mb-2">
+                    {strings.sellerProductCategoryLabel} <span class="text-red-500">*</span>
+                </label>
+                <select
+                    id="product-category"
+                    required
+                    class="w-full px-4 py-3 rounded-xl border border-border bg-transparent text-text-primary focus:ring-2 focus:ring-accent outline-none transition appearance-none"
+                >
+                    <option value="" disabled selected={category === ''} class="text-text-tertiary">{strings.sellerProductCategoryPlaceholder}</option>
+                    {categories.map(cat => (
+                        <option value={cat.value} selected={category === cat.value}>{cat.label}</option>
+                    ))}
+                </select>
+            </div>
+
+            <div class="sm:col-span-2">
+                <label for="product-description" class="block text-sm font-medium text-text-secondary mb-2">{strings.sellerProductDescriptionLabel}</label>
+                <textarea
+                    id="product-description"
+                    rows="3"
+                    class="w-full px-4 py-3 rounded-xl border border-border bg-transparent text-text-primary focus:ring-2 focus:ring-accent outline-none transition resize-none"
+                    placeholder={strings.sellerProductDescriptionPlaceholder}
+                >{description}</textarea>
+            </div>
+
+            <div>
+                <label for="product-brand" class="block text-sm font-medium text-text-secondary mb-2">{strings.sellerProductBrandLabel}</label>
+                <input
+                    type="text"
+                    id="product-brand"
+                    value={brand}
+                    class="w-full px-4 py-3 rounded-xl border border-border bg-transparent text-text-primary focus:ring-2 focus:ring-accent outline-none transition"
+                    placeholder={strings.sellerProductBrandPlaceholder}
+                />
+            </div>
+        </div>
+    </section>
+
+    <!-- Images -->
+    <section class="mt-10 space-y-5">
+        <div>
+            <h2 class="text-lg font-medium text-text-primary border-b border-border pb-2">{strings.sellerProductImagesLabel}</h2>
+            <p class="mt-1.5 text-xs text-text-tertiary">{strings.sellerProductImagesHint}</p>
+        </div>
+
+        <div
+            id="image-drop-zone"
+            class="relative flex flex-col items-center justify-center gap-2 p-8 border-2 border-dashed border-border rounded-2xl bg-bg cursor-pointer hover:border-accent transition-colors"
+        >
+            <Icon name="upload-cloud" size={32} class="text-text-tertiary" />
+            <p class="text-sm text-text-secondary">{strings.sellerProductImagesDragDrop}</p>
+            <input type="file" id="image-upload-input" multiple accept="image/jpeg,image/png,image/webp,image/gif" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+        </div>
+
+        <div id="image-gallery" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
+            {galleryImages.map((url, i) => (
+                <div class="image-item relative group rounded-xl overflow-hidden border border-border aspect-square" data-url={url}>
+                    <img src={url} alt="" class="w-full h-full object-cover" loading="lazy" />
+                    {i === 0 && (
+                        <span class="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-accent text-bg">Cover</span>
+                    )}
+                    <button
+                        type="button"
+                        class="image-remove-btn absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        aria-label={strings.sellerProductImageRemove}
+                    >
+                        <Icon name="x" size={14} />
+                    </button>
+                </div>
+            ))}
+        </div>
+    </section>
+
+    <!-- Variants -->
+    <section class="mt-10 space-y-5">
+        <div>
+            <h2 class="text-lg font-medium text-text-primary border-b border-border pb-2">{strings.sellerProductVariantsLabel}</h2>
+            <p class="mt-1.5 text-xs text-text-tertiary">{strings.sellerProductVariantsHint}</p>
+        </div>
+
+        <div id="variants-container" class="space-y-3">
+            {initialVariants.map((v, i) => (
+                <div class="variant-row rounded-2xl border border-border bg-surface p-4 space-y-4" data-variant-id={v.id ?? ''} data-is-new={v.id ? 'false' : 'true'}>
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            {i === 0 && (
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-accent text-bg">
+                                    {strings.sellerProductVariantDefault}
+                                </span>
+                            )}
+                            <span class="text-sm font-medium text-text-primary">#{i + 1}</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <label class="flex items-center gap-1.5 text-xs text-text-secondary cursor-pointer select-none">
+                                <input type="checkbox" class="variant-default-checkbox rounded border-border accent-neutral-900 dark:accent-white" checked={v.is_default} />
+                                {strings.sellerProductVariantDefault}
+                            </label>
+                            {initialVariants.length > 1 && (
+                                <button type="button" class="variant-remove-btn flex items-center justify-center w-7 h-7 rounded-lg text-text-tertiary hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" aria-label={strings.sellerProductVariantRemove}>
+                                    <Icon name="trash-2" size={14} />
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                    <div class="grid gap-4 sm:grid-cols-3">
+                        <div>
+                            <label class="block text-xs font-medium text-text-tertiary mb-1">{strings.sellerProductVariantNameLabel}</label>
+                            <input
+                                type="text"
+                                class="variant-name-input w-full px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition"
+                                placeholder={strings.sellerProductVariantNamePlaceholder}
+                                value={v.variant_name}
+                            />
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-text-tertiary mb-1">{strings.sellerProductVariantPriceLabel}</label>
+                            <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                class="variant-price-input w-full px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition tabular-nums"
+                                placeholder={strings.sellerProductVariantPricePlaceholder}
+                                value={v.price}
+                            />
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-text-tertiary mb-1">{strings.sellerProductVariantStockLabel}</label>
+                            <input
+                                type="number"
+                                min="0"
+                                class="variant-stock-input w-full px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition tabular-nums"
+                                placeholder={strings.sellerProductVariantStockPlaceholder}
+                                value={v.stock}
+                            />
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-text-tertiary mb-1">{strings.sellerProductVariantImage}</label>
+                        <div class="flex items-center gap-3">
+                            <div class="variant-image-preview w-14 h-14 rounded-lg border border-border bg-bg overflow-hidden flex items-center justify-center">
+                                {v.variant_image ? (
+                                    <img src={v.variant_image} alt="" class="w-full h-full object-cover" />
+                                ) : (
+                                    <Icon name="image" size={20} class="text-text-tertiary" />
+                                )}
+                            </div>
+                            <button type="button" class="variant-image-btn px-3 py-1.5 rounded-lg text-xs font-medium text-text-secondary border border-border hover:bg-bg transition-colors">
+                                {v.variant_image ? 'Cambiar' : 'Subir'}
+                            </button>
+                            <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" class="variant-image-input hidden" />
+                        </div>
+                    </div>
+                </div>
+            ))}
+        </div>
+
+        <button
+            type="button"
+            id="add-variant-btn"
+            class="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-border text-sm text-text-secondary hover:text-text-primary hover:border-accent transition-colors"
+        >
+            <Icon name="plus" size={16} />
+            {strings.sellerProductAddVariant}
+        </button>
+    </section>
+
+    <!-- Specifications -->
+    <section class="mt-10 space-y-5">
+        <div>
+            <h2 class="text-lg font-medium text-text-primary border-b border-border pb-2">{strings.sellerProductSpecsLabel}</h2>
+            <p class="mt-1.5 text-xs text-text-tertiary">{strings.sellerProductSpecsHint}</p>
+        </div>
+
+        <div id="specs-container" class="space-y-3 max-w-2xl">
+            {Object.entries(specs).map(([key, value]) => (
+                <div class="spec-row flex items-center gap-3">
+                    <input
+                        type="text"
+                        class="spec-key-input w-2/5 px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition"
+                        placeholder={strings.sellerProductSpecsKeyPlaceholder}
+                        value={key}
+                    />
+                    <input
+                        type="text"
+                        class="spec-value-input flex-1 px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition"
+                        placeholder={strings.sellerProductSpecsValuePlaceholder}
+                        value={String(value)}
+                    />
+                    <button type="button" class="spec-remove-btn flex items-center justify-center w-7 h-7 rounded-lg text-text-tertiary hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors shrink-0" aria-label={strings.sellerCatalogDelete}>
+                        <Icon name="x" size={16} />
+                    </button>
+                </div>
+            ))}
+        </div>
+
+        <button
+            type="button"
+            id="add-spec-btn"
+            class="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-border text-sm text-text-secondary hover:text-text-primary hover:border-accent transition-colors"
+        >
+            <Icon name="plus" size={16} />
+            {strings.sellerProductAddSpec}
+        </button>
+    </section>
+
+    <!-- Active toggle -->
+    <section class="mt-10 flex items-center justify-between max-w-2xl p-5 rounded-2xl border border-border bg-surface">
+        <div>
+            <p class="text-sm font-medium text-text-primary">{strings.sellerProductActiveLabel}</p>
+            <p class="text-xs text-text-tertiary mt-0.5">{strings.sellerProductActiveNote}</p>
+        </div>
+        <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="product-active" class="sr-only peer" checked={isActive} />
+            <div class="w-11 h-6 bg-border-light rounded-full peer-focus-visible:ring-2 peer-focus-visible:ring-accent peer-checked:bg-accent transition-colors after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-transform peer-checked:after:translate-x-full"></div>
+        </label>
+    </section>
+
+    <!-- Submit -->
+    <div class="mt-10 flex items-center gap-3">
+        <button
+            type="button"
+            id="save-product-btn"
+            class="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 font-medium text-sm hover:scale-[1.02] transition-transform"
+        >
+            <span id="save-product-text">{strings.sellerProductSave}</span>
+            <svg id="save-product-spinner" class="animate-spin h-4 w-4 hidden" viewBox="0 0 24 24" fill="none">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+            </svg>
+        </button>
+        <a href="/sell/catalog" class="px-6 py-2.5 rounded-full border border-border text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-bg transition-colors no-underline">
+            {strings.sellerProductBackToCatalog}
+        </a>
+    </div>
+
+    <!-- Messages -->
+    <div id="error-message" class="text-red-500 font-medium text-sm mt-6 hidden p-4 bg-red-50 dark:bg-red-900/20 rounded-xl"></div>
+    <div id="success-message" class="text-green-600 font-medium text-sm mt-6 hidden p-4 bg-green-50 dark:bg-green-900/20 rounded-xl">{strings.sellerProductSaveSuccess}</div>
+</div>
+
+<script>
+    import { strings } from '../../lib/i18n';
+
+    function initProductForm() {
+        const root = document.getElementById('product-form-root');
+        if (!root) return;
+
+        const mode = root.dataset.mode || 'create';
+        const galleryUrls = JSON.parse(root.dataset.gallery || '[]');
+
+        const titleInput = document.getElementById('product-title');
+        const slugInput = document.getElementById('product-slug');
+        const categorySelect = document.getElementById('product-category');
+        const descriptionInput = document.getElementById('product-description');
+        const brandInput = document.getElementById('product-brand');
+        const activeCheckbox = document.getElementById('product-active');
+        const saveBtn = document.getElementById('save-product-btn');
+        const saveText = document.getElementById('save-product-text');
+        const saveSpinner = document.getElementById('save-product-spinner');
+        const errorMsg = document.getElementById('error-message');
+        const successMsg = document.getElementById('success-message');
+        const imageGallery = document.getElementById('image-gallery');
+        const imageUploadInput = document.getElementById('image-upload-input');
+        const variantsContainer = document.getElementById('variants-container');
+        const addVariantBtn = document.getElementById('add-variant-btn');
+        const specsContainer = document.getElementById('specs-container');
+        const addSpecBtn = document.getElementById('add-spec-btn');
+
+        if (!titleInput || !saveBtn) return;
+
+        let slugManual = slugInput.value !== '';
+        titleInput.addEventListener('input', () => {
+            if (!slugManual) {
+                slugInput.value = titleInput.value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+            }
+        });
+        slugInput.addEventListener('input', () => { slugManual = true; });
+
+        imageUploadInput.addEventListener('change', async () => {
+            const files = Array.from(imageUploadInput.files || []);
+            if (files.length === 0) return;
+
+            for (const file of files) {
+                const formData = new FormData();
+                formData.append('file', file);
+                try {
+                    const res = await fetch('/api/sell/catalog/upload', { method: 'POST', body: formData });
+                    const data = await res.json();
+                    if (!res.ok) { alert(data.error || 'Upload failed'); continue; }
+                    galleryUrls.push(data.url);
+                    renderGallery();
+                } catch { alert('Upload failed'); }
+            }
+            imageUploadInput.value = '';
+        });
+
+        function renderGallery() {
+            imageGallery.innerHTML = '';
+            galleryUrls.forEach((url, i) => {
+                const div = document.createElement('div');
+                div.className = 'image-item relative group rounded-xl overflow-hidden border border-border aspect-square';
+                div.dataset.url = url;
+                const coverBadge = i === 0 ? '<span class="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-accent text-bg">Cover</span>' : '';
+                div.innerHTML = `<img src="${url}" alt="" class="w-full h-full object-cover" loading="lazy" />${coverBadge}<button type="button" class="image-remove-btn absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" aria-label="Remove"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>`;
+                imageGallery.appendChild(div);
+            });
+        }
+
+        variantsContainer.addEventListener('change', async (e) => {
+            const target = e.target;
+            if (!target.classList.contains('variant-image-input') || !target.files.length) return;
+            const variantRow = target.closest('.variant-row');
+            const btn = variantRow.querySelector('.variant-image-btn');
+            const preview = variantRow.querySelector('.variant-image-preview');
+
+            btn.textContent = strings.sellerProductImageUploading;
+            btn.disabled = true;
+
+            const formData = new FormData();
+            formData.append('file', target.files[0]);
+            try {
+                const res = await fetch('/api/sell/catalog/upload', { method: 'POST', body: formData });
+                const data = await res.json();
+                if (res.ok) {
+                    variantRow.dataset.variantImage = data.url;
+                    preview.innerHTML = `<img src="${data.url}" alt="" class="w-full h-full object-cover" />`;
+                    btn.textContent = 'Cambiar';
+                } else {
+                    alert(data.error || 'Upload failed');
+                    btn.textContent = 'Subir';
+                }
+            } catch {
+                alert('Upload failed');
+                btn.textContent = 'Subir';
+            } finally {
+                btn.disabled = false;
+                target.value = '';
+            }
+        });
+
+        variantsContainer.addEventListener('click', (e) => {
+            const target = e.target;
+            if (target.classList.contains('variant-image-btn') || target.closest('.variant-image-btn')) {
+                const btn = target.classList.contains('variant-image-btn') ? target : target.closest('.variant-image-btn');
+                const variantRow = btn.closest('.variant-row');
+                const fileInput = variantRow.querySelector('.variant-image-input');
+                fileInput.click();
+            }
+        });
+
+        addVariantBtn.addEventListener('click', () => {
+            const row = createVariantRow(false);
+            variantsContainer.appendChild(row);
+            row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        });
+
+        function createVariantRow(isDefault) {
+            const div = document.createElement('div');
+            div.className = 'variant-row rounded-2xl border border-border bg-surface p-4 space-y-4';
+            div.dataset.variantId = '';
+            div.dataset.isNew = 'true';
+            div.dataset.variantImage = '';
+            const defaultBadge = isDefault ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-accent text-bg">${strings.sellerProductVariantDefault}</span>` : '';
+            div.innerHTML = `<div class="flex items-center justify-between"><div class="flex items-center gap-2">${defaultBadge}<span class="text-sm font-medium text-text-primary">#${variantsContainer.children.length + 1}</span></div><div class="flex items-center gap-2"><label class="flex items-center gap-1.5 text-xs text-text-secondary cursor-pointer select-none"><input type="checkbox" class="variant-default-checkbox rounded border-border accent-neutral-900 dark:accent-white" ${isDefault ? 'checked' : ''} />${strings.sellerProductVariantDefault}</label><button type="button" class="variant-remove-btn flex items-center justify-center w-7 h-7 rounded-lg text-text-tertiary hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" aria-label="${strings.sellerProductVariantRemove}"><svg width="14" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button></div></div><div class="grid gap-4 sm:grid-cols-3"><div><label class="block text-xs font-medium text-text-tertiary mb-1">${strings.sellerProductVariantNameLabel}</label><input type="text" class="variant-name-input w-full px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition" placeholder="${strings.sellerProductVariantNamePlaceholder}" /></div><div><label class="block text-xs font-medium text-text-tertiary mb-1">${strings.sellerProductVariantPriceLabel}</label><input type="number" step="0.01" min="0" class="variant-price-input w-full px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition tabular-nums" placeholder="${strings.sellerProductVariantPricePlaceholder}" /></div><div><label class="block text-xs font-medium text-text-tertiary mb-1">${strings.sellerProductVariantStockLabel}</label><input type="number" min="0" class="variant-stock-input w-full px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition tabular-nums" placeholder="${strings.sellerProductVariantStockPlaceholder}" /></div></div><div><label class="block text-xs font-medium text-text-tertiary mb-1">${strings.sellerProductVariantImage}</label><div class="flex items-center gap-3"><div class="variant-image-preview w-14 h-14 rounded-lg border border-border bg-bg overflow-hidden flex items-center justify-center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="text-text-tertiary"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg></div><button type="button" class="variant-image-btn px-3 py-1.5 rounded-lg text-xs font-medium text-text-secondary border border-border hover:bg-bg transition-colors">Subir</button><input type="file" accept="image/jpeg,image/png,image/webp,image/gif" class="variant-image-input hidden" /></div></div>`;
+
+            const removeBtn = div.querySelector('.variant-remove-btn');
+            removeBtn.addEventListener('click', () => { div.remove(); });
+
+            const defaultCheckbox = div.querySelector('.variant-default-checkbox');
+            defaultCheckbox.addEventListener('change', () => {
+                if (defaultCheckbox.checked) {
+                    variantsContainer.querySelectorAll('.variant-default-checkbox').forEach((cb) => {
+                        if (cb !== defaultCheckbox) cb.checked = false;
+                    });
+                }
+            });
+
+            return div;
+        }
+
+        variantsContainer.addEventListener('click', (e) => {
+            const removeBtn = e.target.closest('.variant-remove-btn');
+            if (!removeBtn) return;
+            const row = removeBtn.closest('.variant-row');
+            row.remove();
+        });
+
+        variantsContainer.addEventListener('change', (e) => {
+            if (!e.target.classList.contains('variant-default-checkbox')) return;
+            if (e.target.checked) {
+                variantsContainer.querySelectorAll('.variant-default-checkbox').forEach((cb) => {
+                    if (cb !== e.target) cb.checked = false;
+                });
+            }
+        });
+
+        addSpecBtn.addEventListener('click', () => {
+            const div = document.createElement('div');
+            div.className = 'spec-row flex items-center gap-3';
+            div.innerHTML = `<input type="text" class="spec-key-input w-2/5 px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition" placeholder="${strings.sellerProductSpecsKeyPlaceholder}" /><input type="text" class="spec-value-input flex-1 px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition" placeholder="${strings.sellerProductSpecsValuePlaceholder}" /><button type="button" class="spec-remove-btn flex items-center justify-center w-7 h-7 rounded-lg text-text-tertiary hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors shrink-0"><svg width="16" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>`;
+            div.querySelector('.spec-remove-btn').addEventListener('click', () => div.remove());
+            specsContainer.appendChild(div);
+        });
+
+        specsContainer.addEventListener('click', (e) => {
+            const removeBtn = e.target.closest('.spec-remove-btn');
+            if (!removeBtn) return;
+            removeBtn.closest('.spec-row').remove();
+        });
+
+        imageGallery.addEventListener('click', (e) => {
+            const removeBtn = e.target.closest('.image-remove-btn');
+            if (!removeBtn) return;
+            const item = removeBtn.closest('.image-item');
+            const url = item.dataset.url;
+            const idx = galleryUrls.indexOf(url);
+            if (idx > -1) galleryUrls.splice(idx, 1);
+            renderGallery();
+        });
+
+        saveBtn.addEventListener('click', async () => {
+            errorMsg.classList.add('hidden');
+            successMsg.classList.add('hidden');
+
+            const title = titleInput.value.trim();
+            const slug = slugInput.value.trim();
+            const category = categorySelect.value;
+            const description = descriptionInput.value.trim();
+            const brand = brandInput.value.trim();
+            const is_active = activeCheckbox.checked;
+
+            if (!title) {
+                errorMsg.textContent = strings.sellerProductTitleRequired;
+                errorMsg.classList.remove('hidden');
+                return;
+            }
+            if (!category) {
+                errorMsg.textContent = strings.sellerProductCategoryRequired;
+                errorMsg.classList.remove('hidden');
+                return;
+            }
+
+            const variants = Array.from(variantsContainer.querySelectorAll('.variant-row')).map(row => {
+                const priceInput = row.querySelector('.variant-price-input');
+                const price = parseFloat(priceInput.value) || 0;
+                return {
+                    id: row.dataset.variantId || undefined,
+                    variant_name: row.querySelector('.variant-name-input').value.trim() || null,
+                    price,
+                    stock: parseInt(row.querySelector('.variant-stock-input').value) || 0,
+                    is_default: row.querySelector('.variant-default-checkbox').checked,
+                    variant_image: row.dataset.variantImage || (row.querySelector('.variant-image-preview img')?.getAttribute('src')) || null,
+                };
+            });
+
+            if (variants.length === 0) {
+                errorMsg.textContent = strings.sellerProductNoVariantsError;
+                errorMsg.classList.remove('hidden');
+                return;
+            }
+
+            const specs = {};
+            specsContainer.querySelectorAll('.spec-row').forEach((row) => {
+                const key = row.querySelector('.spec-key-input').value.trim();
+                const value = row.querySelector('.spec-value-input').value.trim();
+                if (key) specs[key] = value;
+            });
+
+            const payload = {
+                title,
+                slug: slug || undefined,
+                description: description || null,
+                category,
+                brand: brand || null,
+                specifications: specs,
+                gallery_images: galleryUrls,
+                is_active,
+                variants,
+            };
+
+            saveBtn.disabled = true;
+            saveText.textContent = strings.sellerProductSaving;
+            saveSpinner.classList.remove('hidden');
+
+            try {
+                let url = '/api/sell/catalog/product';
+                let method = 'POST';
+                const productId = document.getElementById('product-id').value;
+
+                if (mode === 'edit' && productId) {
+                    url += `?id=${productId}`;
+                    method = 'PATCH';
+                }
+
+                const res = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+
+                const data = await res.json();
+
+                if (!res.ok) {
+                    throw new Error(data.error || strings.sellerProductSaveError);
+                }
+
+                successMsg.classList.remove('hidden');
+                setTimeout(() => successMsg.classList.add('hidden'), 4000);
+
+                if (mode === 'create' && data.product && data.product.id) {
+                    window.location.href = `/sell/catalog/${data.product.id}`;
+                    return;
+                }
+            } catch (err) {
+                errorMsg.textContent = err instanceof Error ? err.message : strings.sellerProductSaveError;
+                errorMsg.classList.remove('hidden');
+            } finally {
+                saveBtn.disabled = false;
+                saveText.textContent = strings.sellerProductSave;
+                saveSpinner.classList.add('hidden');
+            }
+        });
+    }
+
+    document.addEventListener('astro:page-load', initProductForm);
+    if (document.readyState !== 'loading') initProductForm();
+    else document.addEventListener('DOMContentLoaded', initProductForm);
+</script>

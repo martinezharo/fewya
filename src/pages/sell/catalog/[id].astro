@@ -1,0 +1,80 @@
+---
+import SellerLayout from '../../../layouts/SellerLayout.astro';
+import ProductForm from '../../../components/seller/ProductForm.astro';
+import Icon from '../../../components/icons/Icon.astro';
+import { createSupabaseAuthClient } from '../../../lib/auth';
+import { strings } from '../../../lib/i18n';
+import type { Product, ProductVariant } from '../../../lib/types';
+
+const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
+const { data: sessionData } = await supabase.auth.getSession();
+const user = sessionData?.session?.user;
+
+if (!user) return Astro.redirect('/sell');
+
+const { data: profile } = await supabase
+    .from('profiles')
+    .select('is_seller')
+    .eq('id', user.id)
+    .single();
+
+if (!profile?.is_seller) return Astro.redirect('/sell');
+
+const { data: shop } = await supabase
+    .from('shops')
+    .select('id, name, slug')
+    .eq('owner_id', user.id)
+    .maybeSingle();
+
+if (!shop) return Astro.redirect('/sell/onboarding');
+
+const productId = Astro.params.id;
+if (!productId) return Astro.redirect('/sell/catalog');
+
+const { data: product } = await supabase
+    .from('products')
+    .select('*, variants:product_variants(*)')
+    .eq('id', productId)
+    .eq('shop_id', shop.id)
+    .maybeSingle();
+
+if (!product) return Astro.redirect('/sell/catalog');
+
+const typedProduct = product as any;
+const variants: ProductVariant[] = typedProduct.variants || [];
+---
+
+<SellerLayout title={`${strings.sellerProductEditTitle} — Shopenn Seller`} shopSlug={shop.slug}>
+    <div class="max-w-4xl mx-auto px-4 py-8 lg:py-12">
+        <div class="mb-8">
+            <div class="flex items-center gap-3 mb-2">
+                <a href="/sell/catalog" class="inline-flex items-center justify-center w-9 h-9 rounded-lg text-text-secondary hover:text-text-primary hover:bg-bg transition-colors" aria-label={strings.sellerProductBackToCatalog}>
+                    <Icon name="arrow-left" size={20} />
+                </a>
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-[0.18em] text-text-tertiary">{shop.name}</p>
+                    <h1 class="mt-1 text-2xl font-semibold tracking-tight text-text-primary">{strings.sellerProductEditTitle}</h1>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-surface p-6 md:p-8 rounded-3xl border border-border shadow-sm">
+            <ProductForm
+                mode="edit"
+                shopId={shop.slug}
+                product={{
+                    id: typedProduct.id,
+                    title: typedProduct.title,
+                    slug: typedProduct.slug,
+                    description: typedProduct.description,
+                    category: typedProduct.category,
+                    brand: typedProduct.brand,
+                    gallery_images: typedProduct.gallery_images,
+                    is_active: typedProduct.is_active,
+                    specifications: typedProduct.specifications,
+                }}
+                variants={variants}
+            />
+        </div>
+    </div>
+</SellerLayout>
