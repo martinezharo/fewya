@@ -2,6 +2,7 @@
 import SellerLayout from '../../../layouts/SellerLayout.astro';
 import { createSupabaseAuthClient } from '../../../lib/auth';
 import ShopForm from '../../../components/seller/ShopForm.astro';
+import Icon from '../../../components/icons/Icon.astro';
 import { strings } from '../../../lib/i18n';
 import { getStripeAccountStatus, getStripeClient } from '../../../lib/stripe';
 
@@ -139,6 +140,9 @@ if (Astro.request.method === 'POST') {
 
     return new Response(JSON.stringify({ success: true }), { status: 200 });
 }
+
+const profileImg = shop.profile_img || '';
+const bannerImg = shop.banner_img || '';
 ---
 
 <SellerLayout title={`${strings.sellerShopEditTitle} - Shopenn Seller`} shopSlug={shop.slug}>
@@ -217,15 +221,84 @@ if (Astro.request.method === 'POST') {
 
             <div id="stripe-error-message" class="hidden mx-6 md:mx-8 mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300"></div>
         </section>
-        
-        <form id="edit-shop-form" method="POST" class="bg-surface p-6 md:p-8 rounded-3xl border border-border shadow-sm">
-            <ShopForm mode="edit" shopData={shop} />
 
-            <!-- Messages -->
-            <div id="error-message" class="text-red-700 dark:text-red-300 font-medium text-sm mt-6 hidden p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl"></div>
-            <div id="success-message" class="text-green-700 dark:text-green-300 font-medium text-sm mt-6 hidden p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl">
-                {strings.sellerShopEditSuccess}
-            </div>
+        <!-- Banner + Profile Image Section -->
+        <form id="edit-shop-form" method="POST" class="space-y-8">
+            <section class="rounded-3xl border border-border bg-surface shadow-sm overflow-hidden">
+                <!-- Banner -->
+                <div class="relative group" id="banner-upload-area">
+                    <div class="h-40 md:h-52 overflow-hidden" id="banner-preview-container">
+                        <div class="w-full h-full" id="banner-preview">
+                            {bannerImg ? (
+                                <img src={bannerImg} alt="" class="w-full h-full object-cover" />
+                            ) : (
+                                <div class="w-full h-full bg-gradient-to-r from-accent/20 to-accent/40 flex items-center justify-center">
+                                    <Icon name="image" size={40} class="text-text-tertiary/40" />
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    <div class="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/30 transition-colors cursor-pointer" id="banner-trigger">
+                        <div class="opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center gap-1.5">
+                            <Icon name="camera" size={24} class="text-white" />
+                            <span class="text-sm text-white font-medium">{strings.sellerShopBannerChange}</span>
+                        </div>
+                    </div>
+                    {bannerImg && (
+                        <button type="button" id="banner-remove-btn" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/80" aria-label={strings.sellerShopImageRemove}>
+                            <Icon name="x" size={16} />
+                        </button>
+                    )}
+                    <input type="file" id="banner-input" accept="image/jpeg,image/png,image/webp,image/gif" class="hidden" />
+                    <p class="absolute bottom-3 right-3 text-xs text-white/70 opacity-0 group-hover:opacity-100 transition-opacity">{strings.sellerShopBannerHint}</p>
+
+                    <!-- Profile Image overlapping banner -->
+                    <div class="absolute -bottom-12 left-6 md:left-8">
+                        <div class="relative w-24 h-24 rounded-full border-4 border-surface overflow-hidden bg-bg shadow-sm cursor-pointer group/profile" id="profile-upload-area">
+                            <div class="w-full h-full flex items-center justify-center" id="profile-preview-inner">
+                                {profileImg ? (
+                                    <img src={profileImg} alt="" class="w-full h-full object-cover" />
+                                ) : (
+                                    <div class="w-full h-full flex items-center justify-center bg-border-light">
+                                        <Icon name="user" size={28} class="text-text-tertiary" />
+                                    </div>
+                                )}
+                            </div>
+                            <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover/profile:opacity-100 transition-opacity">
+                                <Icon name="camera" size={20} class="text-white" />
+                            </div>
+                            <input type="file" id="profile-input" accept="image/jpeg,image/png,image/webp,image/gif" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                            <!-- Auto-save indicator -->
+                            <div id="profile-saved-indicator" class="absolute inset-0 bg-green-500/30 flex items-center justify-center opacity-0 transition-opacity pointer-events-none rounded-full">
+                                <Icon name="check" size={24} class="text-white drop-shadow" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Auto-save indicator for banner -->
+                <div id="banner-saved-indicator" class="hidden mx-6 mt-2 mb-1 px-3 py-1.5 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 text-xs font-medium flex items-center gap-1.5">
+                    <Icon name="check" size={14} class="text-green-600 dark:text-green-400" />
+                    <span>{strings.sellerShopImageSaved}</span>
+                </div>
+
+                <!-- Profile label -->
+                <div class="pt-14 md:pt-16 px-6 md:px-8 pb-4">
+                    <p class="text-sm font-medium text-text-secondary">{strings.sellerShopProfileImgLabel}</p>
+                    <p class="text-xs text-text-tertiary mt-0.5">{strings.sellerShopProfileImgHint}</p>
+                </div>
+            </section>
+
+            <!-- Form Content -->
+            <section class="bg-surface p-6 md:p-8 rounded-3xl border border-border shadow-sm">
+                <ShopForm mode="edit" shopData={shop} />
+
+                <!-- Messages -->
+                <div id="error-message" class="text-red-700 dark:text-red-300 font-medium text-sm mt-6 hidden p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl"></div>
+                <div id="success-message" class="text-green-700 dark:text-green-300 font-medium text-sm mt-6 hidden p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl">
+                    {strings.sellerShopEditSuccess}
+                </div>
+            </section>
         </form>
     </div>
 </SellerLayout>
@@ -253,6 +326,7 @@ if (Astro.request.method === 'POST') {
         error?: string;
     };
 
+    // Stripe Connect button
     stripeConnectBtn?.addEventListener('click', async () => {
         const action = stripeConnectBtn.dataset.action || 'onboarding';
         const originalText = stripeConnectBtn.textContent || strings.sellerStripeConnectCta;
@@ -286,6 +360,147 @@ if (Astro.request.method === 'POST') {
         }
     });
 
+    type UploadResponse = { url: string; path?: string; error?: string };
+
+    // --- Image auto-save ---
+    const autoSave = async (field: string, value: string | null) => {
+        try {
+            const body: Record<string, string | null> = {};
+            body[field] = value;
+            const res = await fetch('/api/sell/shop/update', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+            });
+            return res.ok;
+        } catch {
+            return false;
+        }
+    };
+
+    const showImageSaved = (indicator: HTMLElement | null) => {
+        if (!indicator) return;
+        indicator.classList.remove('hidden', 'opacity-0');
+        indicator.classList.add('opacity-100');
+        setTimeout(() => {
+            indicator.classList.remove('opacity-100');
+            indicator.classList.add('opacity-0');
+            setTimeout(() => indicator.classList.add('hidden'), 300);
+        }, 2000);
+    };
+
+    // Banner upload
+    const bannerInput = document.getElementById('banner-input') as HTMLInputElement | null;
+    const bannerPreviewContainer = document.getElementById('banner-preview-container');
+    const bannerRemoveBtn = document.getElementById('banner-remove-btn');
+    const bannerTrigger = document.getElementById('banner-trigger');
+    const bannerSavedIndicator = document.getElementById('banner-saved-indicator');
+
+    const uploadImage = async (file: File, type: 'profile' | 'banner'): Promise<{ url: string } | null> => {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('type', type);
+
+        try {
+            const res = await fetch('/api/sell/shop/upload', { method: 'POST', body: formData });
+            const data = await res.json() as UploadResponse;
+            if (!res.ok) {
+                const errorMsg = data.error || strings.sellerOnboardingGenericError;
+                alert(errorMsg);
+                return null;
+            }
+            return { url: data.url };
+        } catch {
+            alert(strings.sellerOnboardingGenericError);
+            return null;
+        }
+    };
+
+    bannerTrigger?.addEventListener('click', () => {
+        bannerInput?.click();
+    });
+
+    bannerInput?.addEventListener('change', async () => {
+        if (!bannerInput.files || !bannerInput.files[0]) return;
+        const file = bannerInput.files[0];
+        bannerInput.value = '';
+
+        const result = await uploadImage(file, 'banner');
+        if (!result) return;
+
+        // Update preview
+        if (bannerPreviewContainer) {
+            const previewDiv = bannerPreviewContainer.querySelector('#banner-preview') as HTMLElement | null;
+            if (previewDiv) {
+                previewDiv.innerHTML = `<img src="${result.url}" alt="" class="w-full h-full object-cover" />`;
+            }
+        }
+
+        // Add remove button if not present
+        const existingRemoveBtn = document.getElementById('banner-remove-btn');
+        if (!existingRemoveBtn) {
+            const uploadArea = document.getElementById('banner-upload-area');
+            if (uploadArea) {
+                const removeBtn = document.createElement('button');
+                removeBtn.type = 'button';
+                removeBtn.id = 'banner-remove-btn';
+                removeBtn.className = 'absolute top-3 right-3 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/80';
+                removeBtn.setAttribute('aria-label', strings.sellerShopImageRemove);
+                removeBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>';
+                removeBtn.addEventListener('click', removeBanner);
+                uploadArea.appendChild(removeBtn);
+            }
+        }
+
+        // Auto-save
+        const saved = await autoSave('banner_img', result.url);
+        if (saved) {
+            showImageSaved(bannerSavedIndicator);
+        }
+    });
+
+    function removeBanner() {
+        if (bannerPreviewContainer) {
+            const previewDiv = bannerPreviewContainer.querySelector('#banner-preview') as HTMLElement | null;
+            if (previewDiv) {
+                previewDiv.innerHTML = `<div class="w-full h-full bg-gradient-to-r from-accent/20 to-accent/40 flex items-center justify-center"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="text-text-tertiary/40"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg></div>`;
+            }
+        }
+        const removeBtn = document.getElementById('banner-remove-btn');
+        if (removeBtn) removeBtn.remove();
+
+        // Auto-save removal
+        autoSave('banner_img', null);
+    }
+
+    bannerRemoveBtn?.addEventListener('click', removeBanner);
+
+    // Profile image upload
+    const profileInput = document.getElementById('profile-input') as HTMLInputElement | null;
+    const profilePreviewInner = document.getElementById('profile-preview-inner');
+    const profileSavedIndicator = document.getElementById('profile-saved-indicator');
+
+    profileInput?.addEventListener('change', async () => {
+        if (!profileInput.files || !profileInput.files[0]) return;
+        const file = profileInput.files[0];
+        profileInput.value = '';
+
+        const result = await uploadImage(file, 'profile');
+        if (!result) return;
+
+        // Update preview
+        if (profilePreviewInner) {
+            profilePreviewInner.innerHTML = `<img src="${result.url}" alt="" class="w-full h-full object-cover" />`;
+        }
+
+        // Auto-save
+        const saved = await autoSave('profile_img', result.url);
+        if (saved) {
+            showImageSaved(profileSavedIndicator);
+        }
+    });
+
+    // Form submission
     form?.addEventListener('submit', async (event: SubmitEvent) => {
         event.preventDefault();
         

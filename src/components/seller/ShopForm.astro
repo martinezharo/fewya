@@ -1,4 +1,5 @@
 ---
+import Icon from '../icons/Icon.astro';
 import { strings } from '../../lib/i18n';
 
 interface Props {
@@ -11,6 +12,8 @@ interface Props {
         contact_email?: string;
         whatsapp?: string;
         location?: string;
+        profile_img?: string;
+        banner_img?: string;
     };
 }
 
@@ -18,6 +21,7 @@ const { mode, shopData = {} } = Astro.props;
 const isEdit = mode === 'edit';
 
 const defaultEmail = shopData.contact_email || '';
+const profileImg = shopData.profile_img || '';
 ---
 
 <div class={isEdit ? "space-y-12" : ""}>
@@ -60,6 +64,33 @@ const defaultEmail = shopData.contact_email || '';
         </h2>
         {!isEdit && <p class="text-sm text-text-tertiary mb-6 font-normal">{strings.sellerOnboardingStep2Subtitle}</p>}
         <div class="space-y-6 max-w-2xl">
+            {!isEdit && (
+                <div>
+                    <label class="block text-sm font-medium text-text-secondary mb-2">{strings.sellerShopProfileImgLabel}</label>
+                    <div class="flex items-center gap-4">
+                        <div class="relative w-20 h-20 rounded-full overflow-hidden border-2 border-border bg-bg cursor-pointer group" id="onboarding-profile-upload">
+                            <div class="w-full h-full flex items-center justify-center" id="onboarding-profile-preview">
+                                {profileImg ? (
+                                    <img src={profileImg} alt="" class="w-full h-full object-cover" />
+                                ) : (
+                                    <Icon name="user" size={28} class="text-text-tertiary" />
+                                )}
+                            </div>
+                            <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Icon name="camera" size={20} class="text-white" />
+                            </div>
+                            <input type="file" id="onboarding-profile-input" accept="image/jpeg,image/png,image/webp,image/gif" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                        </div>
+                        <div>
+                            <button type="button" id="onboarding-profile-btn" class="px-3 py-1.5 rounded-lg text-xs font-medium text-text-secondary border border-border hover:bg-bg transition-colors">
+                                {profileImg ? strings.sellerShopProfileImgChange : strings.sellerShopProfileImgUpload}
+                            </button>
+                            <p class="text-xs text-text-tertiary mt-1">{strings.sellerShopProfileImgHint}</p>
+                        </div>
+                        <input type="hidden" name="profile_img" id="onboarding-profile-value" value={profileImg} />
+                    </div>
+                </div>
+            )}
             <div>
                 <label class="block text-sm font-medium text-text-secondary mb-2">{strings.sellerOnboardingDescriptionLabel}</label>
                 <textarea name="description" rows="3" class="w-full px-4 py-3 rounded-xl border border-border bg-transparent text-text-primary focus:ring-2 focus:ring-accent outline-none transition resize-none" placeholder={strings.sellerOnboardingDescriptionPlaceholder}>{shopData.description || ''}</textarea>
@@ -140,17 +171,17 @@ const defaultEmail = shopData.contact_email || '';
 </div>
 
 <script>
-    // Component script for shared fields behaviour
+    import { strings } from '../../lib/i18n';
+
     const initShopForm = () => {
         const nameInput = document.getElementById('shop-name') as HTMLInputElement;
         const slugInput = document.getElementById('shop-slug') as HTMLInputElement;
         const accentColorInput = document.getElementById('accent-color') as HTMLInputElement;
-        const colorHex = document.getElementById('color-hex');
+        const colorHex = document.getElementById('color-hex') as HTMLInputElement | null;
 
         if (nameInput && slugInput) {
             nameInput.addEventListener('input', (e) => {
                 const val = (e.target as HTMLInputElement).value;
-                // Only auto-slugify if we are empty or it was already sync
                 if (!slugInput.dataset.manual) {
                     slugInput.value = val.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
                 }
@@ -200,6 +231,60 @@ const defaultEmail = shopData.contact_email || '';
                 updateAll(color);
             });
         });
+
+        type UploadResponse = { url: string; path?: string; error?: string };
+
+        // Profile image upload (onboarding mode only)
+        const profileUpload = document.getElementById('onboarding-profile-upload');
+        const profileInput = document.getElementById('onboarding-profile-input') as HTMLInputElement | null;
+        const profileValue = document.getElementById('onboarding-profile-value') as HTMLInputElement | null;
+        const profileBtn = document.getElementById('onboarding-profile-btn') as HTMLButtonElement | null;
+        const profilePreview = document.getElementById('onboarding-profile-preview');
+
+        if (profileUpload && profileInput && profileValue) {
+            const uploadProfileImage = async (file: File) => {
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('type', 'profile');
+
+                try {
+                    if (profileBtn) {
+                        profileBtn.textContent = strings.sellerShopImageUploading;
+                        profileBtn.setAttribute('disabled', 'true');
+                    }
+
+                    const res = await fetch('/api/sell/shop/upload', { method: 'POST', body: formData });
+                    const data = await res.json() as UploadResponse;
+
+                    if (!res.ok) {
+                        const errorMsg = 'error' in data ? data.error : strings.sellerOnboardingGenericError;
+                        alert(errorMsg);
+                        return;
+                    }
+
+                    profileValue.value = data.url;
+                    if (profilePreview) {
+                        profilePreview.innerHTML = `<img src="${data.url}" alt="" class="w-full h-full object-cover" />`;
+                    }
+                    if (profileBtn) profileBtn.textContent = strings.sellerShopProfileImgChange;
+                } catch {
+                    alert(strings.sellerOnboardingGenericError);
+                } finally {
+                    if (profileBtn) profileBtn.removeAttribute('disabled');
+                    profileInput.value = '';
+                }
+            };
+
+            profileInput.addEventListener('change', () => {
+                if (profileInput.files && profileInput.files[0]) {
+                    uploadProfileImage(profileInput.files[0]);
+                }
+            });
+
+            profileBtn?.addEventListener('click', () => {
+                profileInput.click();
+            });
+        }
     };
 
     document.addEventListener('astro:page-load', initShopForm);

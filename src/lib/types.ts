@@ -11,6 +11,7 @@ export interface Shop {
     is_active: boolean;
     created_at: string;
     accent_color: string | null;
+    location: string | null;
 }
 
 export interface Product {

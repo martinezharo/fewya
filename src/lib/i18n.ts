@@ -260,6 +260,19 @@ export const strings = {
     sellerOnboardingUrlInUse: 'La URL ya está en uso',
     sellerOnboardingGenericError: 'Algo salió mal',
 
+    // Seller Shop Images
+    sellerShopBannerLabel: 'Banner',
+    sellerShopBannerChange: 'Cambiar banner',
+    sellerShopBannerRemove: 'Eliminar banner',
+    sellerShopBannerHint: 'Se recomienda 1200×400 píxeles',
+    sellerShopProfileImgLabel: 'Foto de perfil',
+    sellerShopProfileImgHint: 'Se recomienda una imagen cuadrada',
+    sellerShopProfileImgUpload: 'Subir foto',
+    sellerShopProfileImgChange: 'Cambiar foto',
+    sellerShopImageUploading: 'Subiendo...',
+    sellerShopImageRemove: 'Eliminar',
+    sellerShopImageSaved: 'Imagen guardada',
+
     // Seller Shop Edit
     sellerShopEditTitle: 'Información de la tienda',
     sellerShopEditViewPublic: 'Ver tienda pública',
