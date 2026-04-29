@@ -50,16 +50,27 @@ const isStripeReady = Boolean(
     <div class="p-6 lg:p-10">
         <h1 class="text-2xl font-semibold tracking-tight text-text-primary mb-6">{strings.sellerNavDashboard}</h1>
         {isStripeReady ? (
-            <div class="p-8 rounded-2xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-center">
-                <p class="text-green-800 dark:text-green-300 font-medium text-lg">{strings.sellerDashboardStripeReady}</p>
+            <div class="p-6 md:p-8 rounded-2xl bg-green-100 dark:bg-green-900/20 border border-green-300 dark:border-green-800 flex items-start gap-4">
+                <div class="mt-0.5 shrink-0 w-8 h-8 rounded-full bg-green-200 dark:bg-green-800/40 flex items-center justify-center">
+                    <svg class="w-4 h-4 text-green-700 dark:text-green-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                </div>
+                <div>
+                    <h2 class="text-base font-semibold text-green-900 dark:text-green-200">{strings.sellerDashboardStripeReady}</h2>
+                    <p class="mt-1 text-sm text-green-800 dark:text-green-300 max-w-2xl">{strings.sellerStripeSectionSubtitle}</p>
+                </div>
             </div>
         ) : (
-            <div class="p-8 rounded-2xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
-                <h2 class="text-lg font-semibold text-amber-900 dark:text-amber-200">{strings.sellerDashboardStripePendingTitle}</h2>
-                <p class="mt-2 text-sm text-amber-800 dark:text-amber-300 max-w-2xl">{strings.sellerDashboardStripePendingSubtitle}</p>
-                <a href="/sell/shop" class="mt-5 inline-flex items-center justify-center px-5 py-2.5 rounded-full bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 text-sm font-medium no-underline hover:scale-[1.02] transition-transform">
-                    {strings.sellerDashboardStripeCta}
-                </a>
+            <div class="p-6 md:p-8 rounded-2xl bg-amber-100 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-800 flex items-start gap-4">
+                <div class="mt-0.5 shrink-0 w-8 h-8 rounded-full bg-amber-200 dark:bg-amber-800/40 flex items-center justify-center">
+                    <svg class="w-4 h-4 text-amber-700 dark:text-amber-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <h2 class="text-base font-semibold text-amber-900 dark:text-amber-200">{strings.sellerDashboardStripePendingTitle}</h2>
+                    <p class="mt-1 text-sm text-amber-800 dark:text-amber-300 max-w-2xl">{strings.sellerDashboardStripePendingSubtitle}</p>
+                    <a href="/sell/shop" class="mt-5 inline-flex items-center justify-center px-5 py-2.5 rounded-full bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 text-sm font-medium no-underline hover:scale-[1.02] transition-transform">
+                        {strings.sellerDashboardStripeCta}
+                    </a>
+                </div>
             </div>
         )}
     </div>

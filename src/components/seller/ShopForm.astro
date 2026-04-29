@@ -24,23 +24,23 @@ const defaultEmail = shopData.contact_email || '';
     <!-- Step 1 / Section 1-->
     <div id={!isEdit ? "step-1" : undefined} class={(isEdit ? "w-full" : "step w-full pt-4")}>
         <h2 class:list={[
-            "font-medium  text-neutral-900 dark:text-white",
-            isEdit ? "text-lg mb-4 border-b border-neutral-200 dark:border-neutral-800 pb-2" : "text-xl mb-6"
+            "font-medium text-text-primary",
+            isEdit ? "text-lg mb-4 border-b border-border pb-2" : "text-xl mb-6"
         ]}>
             {!isEdit ? strings.sellerOnboardingStep1Title : strings.sellerShopEditTitle}
         </h2>
         <div class="space-y-6 max-w-2xl">
             <div>
-                <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">{strings.sellerOnboardingShopNameLabel} <span class="text-red-500">*</span></label>
-                <input type="text" name="name" id="shop-name" required value={shopData.name || ''} class="w-full px-4 py-3 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-transparent dark:text-white focus:ring-2 focus:ring-neutral-900 dark:focus:ring-white outline-none transition" placeholder={strings.sellerOnboardingShopNamePlaceholder} />
+                <label class="block text-sm font-medium text-text-secondary mb-2">{strings.sellerOnboardingShopNameLabel} <span class="text-red-500">*</span></label>
+                <input type="text" name="name" id="shop-name" required value={shopData.name || ''} class="w-full px-4 py-3 rounded-xl border border-border bg-transparent text-text-primary focus:ring-2 focus:ring-accent outline-none transition" placeholder={strings.sellerOnboardingShopNamePlaceholder} />
             </div>
             <div>
-                <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">{strings.sellerOnboardingShopSlugLabel} <span class="text-red-500">*</span></label>
-                <div class="flex items-stretch rounded-xl border border-neutral-300 dark:border-neutral-700 focus-within:ring-2 focus-within:ring-neutral-900 dark:focus-within:ring-white transition overflow-hidden">
-                    <span class="flex items-center pl-4 pr-2 text-neutral-500 bg-neutral-50 dark:bg-neutral-800/50 whitespace-nowrap select-none">shopenn.com/</span>
-                    <input type="text" name="slug" id="shop-slug" required value={shopData.slug || ''} class="w-full px-2 py-3 bg-transparent dark:text-white outline-none" placeholder={strings.sellerOnboardingShopSlugPlaceholder} />
+                <label class="block text-sm font-medium text-text-secondary mb-2">{strings.sellerOnboardingShopSlugLabel} <span class="text-red-500">*</span></label>
+                <div class="flex items-stretch rounded-xl border border-border focus-within:ring-2 focus-within:ring-accent transition overflow-hidden">
+                    <span class="flex items-center pl-4 pr-2 text-text-tertiary bg-bg whitespace-nowrap select-none text-sm">shopenn.com/</span>
+                    <input type="text" name="slug" id="shop-slug" required value={shopData.slug || ''} class="w-full px-2 py-3 bg-transparent text-text-primary outline-none" placeholder={strings.sellerOnboardingShopSlugPlaceholder} />
                 </div>
-                <p class="text-xs text-neutral-500 mt-2">{strings.sellerOnboardingShopSlugNote}</p>
+                <p class="text-xs text-text-tertiary mt-2">{strings.sellerOnboardingShopSlugNote}</p>
             </div>
         </div>
         {!isEdit && (
@@ -53,28 +53,39 @@ const defaultEmail = shopData.contact_email || '';
     <!-- Step 2 / Section 2-->
     <div id={!isEdit ? "step-2" : undefined} class={(isEdit ? "w-full" : "step hidden w-full pt-4")}>
         <h2 class:list={[
-            "font-medium text-neutral-900 dark:text-white",
-            isEdit ? "text-lg mb-4 border-b border-neutral-200 dark:border-neutral-800 pb-2" : "text-xl mb-1"
+            "font-medium text-text-primary",
+            isEdit ? "text-lg mb-4 border-b border-border pb-2" : "text-xl mb-1"
         ]}>
             {!isEdit ? strings.sellerOnboardingStep2Title : strings.sellerOnboardingStep2Title.replace('2. ', '')}
         </h2>
-        {!isEdit && <p class="text-sm text-neutral-500 mb-6 font-normal">{strings.sellerOnboardingStep2Subtitle}</p>}
+        {!isEdit && <p class="text-sm text-text-tertiary mb-6 font-normal">{strings.sellerOnboardingStep2Subtitle}</p>}
         <div class="space-y-6 max-w-2xl">
             <div>
-                <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">{strings.sellerOnboardingDescriptionLabel}</label>
-                <textarea name="description" rows="3" class="w-full px-4 py-3 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-transparent dark:text-white focus:ring-2 focus:ring-neutral-900 dark:focus:ring-white outline-none transition resize-none" placeholder={strings.sellerOnboardingDescriptionPlaceholder}>{shopData.description || ''}</textarea>
+                <label class="block text-sm font-medium text-text-secondary mb-2">{strings.sellerOnboardingDescriptionLabel}</label>
+                <textarea name="description" rows="3" class="w-full px-4 py-3 rounded-xl border border-border bg-transparent text-text-primary focus:ring-2 focus:ring-accent outline-none transition resize-none" placeholder={strings.sellerOnboardingDescriptionPlaceholder}>{shopData.description || ''}</textarea>
             </div>
             <div>
-                <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">{strings.sellerOnboardingAccentColorLabel}</label>
-                <div class="flex items-center gap-3">
-                    <input type="color" name="accent_color" id="accent-color" value={shopData.accent_color || '#000000'} class="h-10 w-20 rounded cursor-pointer border-0 bg-transparent p-0" />
-                    <span class="text-sm text-neutral-500" id="color-hex">{shopData.accent_color || '#000000'}</span>
+                <label class="block text-sm font-medium text-text-secondary mb-2">{strings.sellerOnboardingAccentColorLabel}</label>
+                <div class="flex items-center gap-4">
+                    <div class="relative group">
+                        <div id="color-preview" class="w-12 h-12 rounded-xl border-2 border-border shadow-sm transition-all duration-200 group-hover:scale-105 group-hover:shadow-md cursor-pointer" style={`background-color: ${shopData.accent_color || '#000000'}`}></div>
+                        <input type="color" name="accent_color" id="accent-color" value={shopData.accent_color || '#000000'} class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                    </div>
+                    <div class="flex items-center bg-surface rounded-lg border border-border overflow-hidden focus-within:ring-2 focus-within:ring-accent transition">
+                        <span class="pl-3 text-sm font-mono text-text-tertiary select-none">#</span>
+                        <input type="text" id="color-hex" maxlength="6" value={(shopData.accent_color || '#000000').replace('#', '').toUpperCase()} class="w-[5.5rem] px-2 py-1.5 bg-transparent text-sm font-mono text-text-primary outline-none" />
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 mt-3" id="color-presets">
+                    {['#000000', '#1E3A5F', '#2563EB', '#7C3AED', '#DB2777', '#DC2626', '#EA580C', '#CA8A04', '#16A34A', '#0D9488', '#64748B', '#475569'].map((color) => (
+                        <button type="button" data-color={color} class="color-preset w-7 h-7 rounded-full border-2 border-transparent hover:scale-110 transition-all duration-150 cursor-pointer" style={`background-color: ${color}`} title={color}></button>
+                    ))}
                 </div>
             </div>
         </div>
         {!isEdit && (
             <div class="mt-8 flex justify-between">
-                <button type="button" class="prev-btn px-6 py-2.5 bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 font-medium rounded-full hover:bg-neutral-200 dark:hover:bg-neutral-700 transition" data-prev="1">{strings.sellerOnboardingPrev}</button>
+                <button type="button" class="prev-btn px-6 py-2.5 bg-bg text-text-secondary border border-border dark:bg-neutral-800 dark:text-neutral-300 dark:border-neutral-700 font-medium rounded-full hover:bg-surface dark:hover:bg-neutral-700 transition" data-prev="1">{strings.sellerOnboardingPrev}</button>
                 <button type="button" class="next-btn px-6 py-2.5 bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 font-medium rounded-full shadow-sm hover:scale-105 transition-transform" data-next="3">{strings.sellerOnboardingNext}</button>
             </div>
         )}
@@ -83,29 +94,29 @@ const defaultEmail = shopData.contact_email || '';
     <!-- Step 3 / Section 3-->
     <div id={!isEdit ? "step-3" : undefined} class={(isEdit ? "w-full" : "step hidden w-full pt-4")}>
         <h2 class:list={[
-            "font-medium text-neutral-900 dark:text-white",
-            isEdit ? "text-lg mb-4 border-b border-neutral-200 dark:border-neutral-800 pb-2" : "text-xl mb-1"
+            "font-medium text-text-primary",
+            isEdit ? "text-lg mb-4 border-b border-border pb-2" : "text-xl mb-1"
         ]}>
             {!isEdit ? strings.sellerOnboardingStep3Title : strings.sellerOnboardingStep3Title.replace('3. ', '')}
         </h2>
-        {!isEdit && <p class="text-sm text-neutral-500 mb-6 font-normal">{strings.sellerOnboardingStep3Subtitle}</p>}
+        {!isEdit && <p class="text-sm text-text-tertiary mb-6 font-normal">{strings.sellerOnboardingStep3Subtitle}</p>}
         <div class="space-y-6 max-w-2xl">
             <div>
-                <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">{strings.sellerOnboardingContactEmailLabel}</label>
-                <input type="email" name="contact_email" value={defaultEmail} class="w-full px-4 py-3 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-transparent dark:text-white focus:ring-2 focus:ring-neutral-900 dark:focus:ring-white outline-none transition" placeholder={strings.sellerOnboardingContactEmailPlaceholder}/>
+                <label class="block text-sm font-medium text-text-secondary mb-2">{strings.sellerOnboardingContactEmailLabel}</label>
+                <input type="email" name="contact_email" value={defaultEmail} class="w-full px-4 py-3 rounded-xl border border-border bg-transparent text-text-primary focus:ring-2 focus:ring-accent outline-none transition" placeholder={strings.sellerOnboardingContactEmailPlaceholder}/>
             </div>
             <div>
-                <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">{strings.sellerOnboardingWhatsappLabel}</label>
-                <input type="tel" name="whatsapp" value={shopData.whatsapp || ''} class="w-full px-4 py-3 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-transparent dark:text-white focus:ring-2 focus:ring-neutral-900 dark:focus:ring-white outline-none transition" placeholder={strings.sellerOnboardingWhatsappPlaceholder} />
+                <label class="block text-sm font-medium text-text-secondary mb-2">{strings.sellerOnboardingWhatsappLabel}</label>
+                <input type="tel" name="whatsapp" value={shopData.whatsapp || ''} class="w-full px-4 py-3 rounded-xl border border-border bg-transparent text-text-primary focus:ring-2 focus:ring-accent outline-none transition" placeholder={strings.sellerOnboardingWhatsappPlaceholder} />
             </div>
             <div>
-                <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">{strings.sellerOnboardingLocationLabel}</label>
-                <input type="text" name="location" value={shopData.location || ''} class="w-full px-4 py-3 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-transparent dark:text-white focus:ring-2 focus:ring-neutral-900 dark:focus:ring-white outline-none transition" placeholder={strings.sellerOnboardingLocationPlaceholder} />
+                <label class="block text-sm font-medium text-text-secondary mb-2">{strings.sellerOnboardingLocationLabel}</label>
+                <input type="text" name="location" value={shopData.location || ''} class="w-full px-4 py-3 rounded-xl border border-border bg-transparent text-text-primary focus:ring-2 focus:ring-accent outline-none transition" placeholder={strings.sellerOnboardingLocationPlaceholder} />
             </div>
         </div>
         {!isEdit ? (
             <div class="mt-8 flex justify-between">
-                <button type="button" class="prev-btn px-6 py-2.5 bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 font-medium rounded-full hover:bg-neutral-200 dark:hover:bg-neutral-700 transition" data-prev="2">{strings.sellerOnboardingPrev}</button>
+                <button type="button" class="prev-btn px-6 py-2.5 bg-bg text-text-secondary border border-border dark:bg-neutral-800 dark:text-neutral-300 dark:border-neutral-700 font-medium rounded-full hover:bg-surface dark:hover:bg-neutral-700 transition" data-prev="2">{strings.sellerOnboardingPrev}</button>
                 <button type="submit" id="submit-btn" class="px-6 py-2.5 bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 font-medium rounded-full shadow-sm hover:scale-105 transition-transform flex items-center justify-center min-w-35">
                     <span id="submit-text">{strings.sellerOnboardingCreate}</span>
                     <svg id="submit-spinner" class="animate-spin -ml-1 mr-2 h-5 w-5 text-white dark:text-neutral-900 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -152,11 +163,43 @@ const defaultEmail = shopData.contact_email || '';
             });
         }
 
+        const colorPreview = document.getElementById('color-preview');
+
+        const isValidHex = (hex: string) => /^[0-9A-Fa-f]{6}$/.test(hex);
+
+        const updateAll = (hex: string) => {
+            const full = hex.startsWith('#') ? hex.toUpperCase() : `#${hex}`.toUpperCase();
+            if (accentColorInput) accentColorInput.value = full;
+            if (colorHex) colorHex.value = full.replace('#', '');
+            if (colorPreview) colorPreview.style.backgroundColor = full;
+        };
+
         if (accentColorInput && colorHex) {
             accentColorInput.addEventListener('input', (e) => {
-                colorHex.textContent = (e.target as HTMLInputElement).value.toUpperCase();
+                const val = (e.target as HTMLInputElement).value.toUpperCase();
+                colorHex.value = val.replace('#', '');
+                if (colorPreview) colorPreview.style.backgroundColor = val;
             });
         }
+
+        if (colorHex) {
+            colorHex.addEventListener('input', (e) => {
+                let raw = (e.target as HTMLInputElement).value.replace(/[^0-9A-Fa-f]/g, '').toUpperCase().slice(0, 6);
+                (e.target as HTMLInputElement).value = raw;
+                if (isValidHex(raw)) {
+                    const full = `#${raw}`;
+                    if (accentColorInput) accentColorInput.value = full;
+                    if (colorPreview) colorPreview.style.backgroundColor = full;
+                }
+            });
+        }
+
+        document.querySelectorAll('.color-preset').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const color = (btn as HTMLElement).dataset.color!;
+                updateAll(color);
+            });
+        });
     };
 
     document.addEventListener('astro:page-load', initShopForm);

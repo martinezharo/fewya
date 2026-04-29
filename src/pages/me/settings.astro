@@ -124,13 +124,11 @@ if (!user) {
     }
 
     function applyTheme(theme: Theme) {
-        if (theme === 'dark') {
-            document.documentElement.setAttribute('data-theme', 'dark');
-        } else if (theme === 'light') {
-            document.documentElement.setAttribute('data-theme', 'light');
-        } else {
-            document.documentElement.removeAttribute('data-theme');
-        }
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const resolved = theme === 'system' ? (prefersDark ? 'dark' : 'light') : theme;
+        document.documentElement.setAttribute('data-theme', resolved);
+        const m = document.querySelector('meta[name="theme-color"]');
+        if (m) m.setAttribute('content', resolved === 'dark' ? '#0a0a0a' : '#fafafa');
         localStorage.setItem(STORAGE_KEY, theme);
     }
 
@@ -144,6 +142,7 @@ if (!user) {
     function init() {
         const current = getStoredTheme();
         updateButtons(current);
+        applyTheme(current);
 
         document.querySelectorAll<HTMLButtonElement>('[data-theme-btn]').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -151,6 +150,10 @@ if (!user) {
                 applyTheme(theme);
                 updateButtons(theme);
             });
+        });
+
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+            if (getStoredTheme() === 'system') applyTheme('system');
         });
     }
 
