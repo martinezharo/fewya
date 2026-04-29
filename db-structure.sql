@@ -386,7 +386,13 @@ GRANT EXECUTE ON FUNCTION public.create_checkout_order(text, numeric, text, text
 GRANT EXECUTE ON FUNCTION public.mark_order_paid(uuid, text, text, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.upsert_shop_payment_account(uuid, text, boolean, boolean, boolean) TO authenticated;
 
--- Storage policies for products bucket
-CREATE POLICY "Allow authenticated users to upload product images" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'products' AND (storage.foldername(name))[1] = auth.uid()::text OR (storage.foldername(name))[2] = auth.uid()::text);
-CREATE POLICY "Allow authenticated users to update product images" ON storage.objects FOR UPDATE TO authenticated USING (bucket_id = 'products' AND (storage.foldername(name))[1] = auth.uid()::text OR (storage.foldername(name))[2] = auth.uid()::text);
-CREATE POLICY "Allow owners to delete their product images" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'products' AND (storage.foldername(name))[1] = auth.uid()::text OR (storage.foldername(name))[2] = auth.uid()::text);
+-- Storage policies for imgs bucket (products folder)
+DROP POLICY IF EXISTS "Allow authenticated users to upload product images" ON storage.objects;
+DROP POLICY IF EXISTS "Allow authenticated users to update product images" ON storage.objects;
+DROP POLICY IF EXISTS "Allow owners to delete their product images" ON storage.objects;
+DROP POLICY IF EXISTS "Allow public read of product images" ON storage.objects;
+
+CREATE POLICY "Allow public read of product images" ON storage.objects FOR SELECT USING (bucket_id = 'imgs' AND (storage.foldername(name))[1] = 'products');
+CREATE POLICY "Allow authenticated users to upload product images" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'imgs' AND (storage.foldername(name))[1] = 'products' AND (storage.foldername(name))[2]::uuid IN (SELECT id FROM shops WHERE owner_id = auth.uid()));
+CREATE POLICY "Allow authenticated users to update product images" ON storage.objects FOR UPDATE TO authenticated USING (bucket_id = 'imgs' AND (storage.foldername(name))[1] = 'products' AND (storage.foldername(name))[2]::uuid IN (SELECT id FROM shops WHERE owner_id = auth.uid()));
+CREATE POLICY "Allow owners to delete their product images" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'imgs' AND (storage.foldername(name))[1] = 'products' AND (storage.foldername(name))[2]::uuid IN (SELECT id FROM shops WHERE owner_id = auth.uid()));

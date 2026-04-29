@@ -42,8 +42,8 @@ export const POST: APIRoute = async ({ cookies, request }) => {
     const buffer = Buffer.from(await file.arrayBuffer());
 
     const { error: uploadError } = await supabase.storage
-        .from('products')
-        .upload(filename, buffer, {
+        .from('imgs')
+        .upload(`products/${filename}`, buffer, {
             contentType: file.type,
             upsert: false,
         });
@@ -53,8 +53,8 @@ export const POST: APIRoute = async ({ cookies, request }) => {
     }
 
     const { data: urlData } = supabase.storage
-        .from('products')
-        .getPublicUrl(filename);
+        .from('imgs')
+        .getPublicUrl(`products/${filename}`);
 
     return new Response(JSON.stringify({ url: urlData.publicUrl, path: filename }), { status: 200 });
 };
@@ -73,7 +73,7 @@ export const DELETE: APIRoute = async ({ cookies, request, url }) => {
     }
 
     const { error } = await supabase.storage
-        .from('products')
+        .from('imgs')
         .remove([path]);
 
     if (error) {
