@@ -1,7 +1,6 @@
 import type { APIRoute } from 'astro';
 import { createSupabaseAuthClient } from '../../../../lib/auth';
 import { strings } from '../../../../lib/i18n';
-import { getCategoryLabel } from '../../../../lib/i18n';
 
 type VariantInput = {
     id?: string;
@@ -97,7 +96,7 @@ export const POST: APIRoute = async ({ cookies, request }) => {
         return new Response(JSON.stringify({ error: productError.message }), { status: 500 });
     }
 
-    const triggerVariant = await supabase
+    const { data: triggerVariant } = await supabase
         .from('product_variants')
         .select('id')
         .eq('product_id', product.id)

@@ -4,7 +4,7 @@ import ProductForm from '../../../components/seller/ProductForm.astro';
 import Icon from '../../../components/icons/Icon.astro';
 import { createSupabaseAuthClient } from '../../../lib/auth';
 import { strings } from '../../../lib/i18n';
-import type { Product, ProductVariant } from '../../../lib/types';
+import type { ProductVariant } from '../../../lib/types';
 
 const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
 const { data: sessionData } = await supabase.auth.getSession();

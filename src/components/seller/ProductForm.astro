@@ -4,7 +4,7 @@ import { strings, categories } from '../../lib/i18n';
 
 interface VariantData {
     id?: string;
-    variant_name: string;
+    variant_name: string | null;
     price: number;
     stock: number;
     is_default: boolean;
@@ -331,25 +331,25 @@ const initialVariants = (variants && variants.length > 0) ? variants : [
         if (!root) return;
 
         const mode = root.dataset.mode || 'create';
-        const galleryUrls = JSON.parse(root.dataset.gallery || '[]');
+        const galleryUrls: string[] = JSON.parse(root.dataset.gallery || '[]');
 
-        const titleInput = document.getElementById('product-title');
-        const slugInput = document.getElementById('product-slug');
-        const categorySelect = document.getElementById('product-category');
-        const descriptionInput = document.getElementById('product-description');
-        const brandInput = document.getElementById('product-brand');
-        const activeCheckbox = document.getElementById('product-active');
-        const saveBtn = document.getElementById('save-product-btn');
-        const saveText = document.getElementById('save-product-text');
-        const saveSpinner = document.getElementById('save-product-spinner');
-        const errorMsg = document.getElementById('error-message');
-        const successMsg = document.getElementById('success-message');
-        const imageGallery = document.getElementById('image-gallery');
-        const imageUploadInput = document.getElementById('image-upload-input');
-        const variantsContainer = document.getElementById('variants-container');
-        const addVariantBtn = document.getElementById('add-variant-btn');
-        const specsContainer = document.getElementById('specs-container');
-        const addSpecBtn = document.getElementById('add-spec-btn');
+        const titleInput = document.getElementById('product-title') as HTMLInputElement;
+        const slugInput = document.getElementById('product-slug') as HTMLInputElement;
+        const categorySelect = document.getElementById('product-category') as unknown as HTMLSelectElement;
+        const descriptionInput = document.getElementById('product-description') as HTMLTextAreaElement;
+        const brandInput = document.getElementById('product-brand') as HTMLInputElement;
+        const activeCheckbox = document.getElementById('product-active') as HTMLInputElement;
+        const saveBtn = document.getElementById('save-product-btn') as HTMLButtonElement;
+        const saveText = document.getElementById('save-product-text') as HTMLSpanElement;
+        const saveSpinner = document.getElementById('save-product-spinner') as unknown as HTMLElement;
+        const errorMsg = document.getElementById('error-message') as HTMLDivElement;
+        const successMsg = document.getElementById('success-message') as HTMLDivElement;
+        const imageGallery = document.getElementById('image-gallery') as HTMLDivElement;
+        const imageUploadInput = document.getElementById('image-upload-input') as HTMLInputElement;
+        const variantsContainer = document.getElementById('variants-container') as HTMLDivElement;
+        const addVariantBtn = document.getElementById('add-variant-btn') as HTMLButtonElement;
+        const specsContainer = document.getElementById('specs-container') as HTMLDivElement;
+        const addSpecBtn = document.getElementById('add-spec-btn') as HTMLButtonElement;
 
         if (!titleInput || !saveBtn) return;
 
@@ -370,9 +370,9 @@ const initialVariants = (variants && variants.length > 0) ? variants : [
                 formData.append('file', file);
                 try {
                     const res = await fetch('/api/sell/catalog/upload', { method: 'POST', body: formData });
-                    const data = await res.json();
+                    const data: { error?: string; url?: string } = await res.json();
                     if (!res.ok) { alert(data.error || 'Upload failed'); continue; }
-                    galleryUrls.push(data.url);
+                    galleryUrls.push(data.url!);
                     renderGallery();
                 } catch { alert('Upload failed'); }
             }
@@ -381,7 +381,7 @@ const initialVariants = (variants && variants.length > 0) ? variants : [
 
         function renderGallery() {
             imageGallery.innerHTML = '';
-            galleryUrls.forEach((url, i) => {
+            galleryUrls.forEach((url: string, i: number) => {
                 const div = document.createElement('div');
                 div.className = 'image-item relative group rounded-xl overflow-hidden border border-border aspect-square';
                 div.dataset.url = url;
@@ -391,12 +391,12 @@ const initialVariants = (variants && variants.length > 0) ? variants : [
             });
         }
 
-        variantsContainer.addEventListener('change', async (e) => {
-            const target = e.target;
-            if (!target.classList.contains('variant-image-input') || !target.files.length) return;
-            const variantRow = target.closest('.variant-row');
-            const btn = variantRow.querySelector('.variant-image-btn');
-            const preview = variantRow.querySelector('.variant-image-preview');
+        variantsContainer.addEventListener('change', async (e: Event) => {
+            const target = e.target as HTMLInputElement;
+            if (!target || !target.classList.contains('variant-image-input') || !target.files?.length) return;
+            const variantRow = target.closest('.variant-row') as HTMLElement;
+            const btn = variantRow.querySelector('.variant-image-btn') as HTMLButtonElement;
+            const preview = variantRow.querySelector('.variant-image-preview') as HTMLElement;
 
             btn.textContent = strings.sellerProductImageUploading;
             btn.disabled = true;
@@ -405,9 +405,9 @@ const initialVariants = (variants && variants.length > 0) ? variants : [
             formData.append('file', target.files[0]);
             try {
                 const res = await fetch('/api/sell/catalog/upload', { method: 'POST', body: formData });
-                const data = await res.json();
+                const data: { error?: string; url?: string } = await res.json();
                 if (res.ok) {
-                    variantRow.dataset.variantImage = data.url;
+                    variantRow.dataset.variantImage = data.url!;
                     preview.innerHTML = `<img src="${data.url}" alt="" class="w-full h-full object-cover" />`;
                     btn.textContent = 'Cambiar';
                 } else {
@@ -423,12 +423,12 @@ const initialVariants = (variants && variants.length > 0) ? variants : [
             }
         });
 
-        variantsContainer.addEventListener('click', (e) => {
-            const target = e.target;
+        variantsContainer.addEventListener('click', (e: MouseEvent) => {
+            const target = e.target as HTMLElement;
             if (target.classList.contains('variant-image-btn') || target.closest('.variant-image-btn')) {
-                const btn = target.classList.contains('variant-image-btn') ? target : target.closest('.variant-image-btn');
-                const variantRow = btn.closest('.variant-row');
-                const fileInput = variantRow.querySelector('.variant-image-input');
+                const btn = (target.classList.contains('variant-image-btn') ? target : target.closest('.variant-image-btn')) as HTMLElement;
+                const variantRow = btn.closest('.variant-row') as HTMLElement;
+                const fileInput = variantRow.querySelector('.variant-image-input') as HTMLInputElement;
                 fileInput.click();
             }
         });
@@ -439,7 +439,7 @@ const initialVariants = (variants && variants.length > 0) ? variants : [
             row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         });
 
-        function createVariantRow(isDefault) {
+        function createVariantRow(isDefault: boolean) {
             const div = document.createElement('div');
             div.className = 'variant-row rounded-2xl border border-border bg-surface p-4 space-y-4';
             div.dataset.variantId = '';
@@ -448,14 +448,14 @@ const initialVariants = (variants && variants.length > 0) ? variants : [
             const defaultBadge = isDefault ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-accent text-bg">${strings.sellerProductVariantDefault}</span>` : '';
             div.innerHTML = `<div class="flex items-center justify-between"><div class="flex items-center gap-2">${defaultBadge}<span class="text-sm font-medium text-text-primary">#${variantsContainer.children.length + 1}</span></div><div class="flex items-center gap-2"><label class="flex items-center gap-1.5 text-xs text-text-secondary cursor-pointer select-none"><input type="checkbox" class="variant-default-checkbox rounded border-border accent-neutral-900 dark:accent-white" ${isDefault ? 'checked' : ''} />${strings.sellerProductVariantDefault}</label><button type="button" class="variant-remove-btn flex items-center justify-center w-7 h-7 rounded-lg text-text-tertiary hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" aria-label="${strings.sellerProductVariantRemove}"><svg width="14" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button></div></div><div class="grid gap-4 sm:grid-cols-3"><div><label class="block text-xs font-medium text-text-tertiary mb-1">${strings.sellerProductVariantNameLabel}</label><input type="text" class="variant-name-input w-full px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition" placeholder="${strings.sellerProductVariantNamePlaceholder}" /></div><div><label class="block text-xs font-medium text-text-tertiary mb-1">${strings.sellerProductVariantPriceLabel}</label><input type="number" step="0.01" min="0" class="variant-price-input w-full px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition tabular-nums" placeholder="${strings.sellerProductVariantPricePlaceholder}" /></div><div><label class="block text-xs font-medium text-text-tertiary mb-1">${strings.sellerProductVariantStockLabel}</label><input type="number" min="0" class="variant-stock-input w-full px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition tabular-nums" placeholder="${strings.sellerProductVariantStockPlaceholder}" /></div></div><div><label class="block text-xs font-medium text-text-tertiary mb-1">${strings.sellerProductVariantImage}</label><div class="flex items-center gap-3"><div class="variant-image-preview w-14 h-14 rounded-lg border border-border bg-bg overflow-hidden flex items-center justify-center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="text-text-tertiary"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg></div><button type="button" class="variant-image-btn px-3 py-1.5 rounded-lg text-xs font-medium text-text-secondary border border-border hover:bg-bg transition-colors">Subir</button><input type="file" accept="image/jpeg,image/png,image/webp,image/gif" class="variant-image-input hidden" /></div></div>`;
 
-            const removeBtn = div.querySelector('.variant-remove-btn');
+            const removeBtn = div.querySelector('.variant-remove-btn') as HTMLButtonElement;
             removeBtn.addEventListener('click', () => { div.remove(); });
 
-            const defaultCheckbox = div.querySelector('.variant-default-checkbox');
+            const defaultCheckbox = div.querySelector('.variant-default-checkbox') as HTMLInputElement;
             defaultCheckbox.addEventListener('change', () => {
                 if (defaultCheckbox.checked) {
                     variantsContainer.querySelectorAll('.variant-default-checkbox').forEach((cb) => {
-                        if (cb !== defaultCheckbox) cb.checked = false;
+                        if (cb !== defaultCheckbox) (cb as HTMLInputElement).checked = false;
                     });
                 }
             });
@@ -463,18 +463,18 @@ const initialVariants = (variants && variants.length > 0) ? variants : [
             return div;
         }
 
-        variantsContainer.addEventListener('click', (e) => {
-            const removeBtn = e.target.closest('.variant-remove-btn');
+        variantsContainer.addEventListener('click', (e: MouseEvent) => {
+            const removeBtn = (e.target as HTMLElement).closest('.variant-remove-btn') as HTMLElement | null;
             if (!removeBtn) return;
-            const row = removeBtn.closest('.variant-row');
+            const row = removeBtn.closest('.variant-row') as HTMLElement;
             row.remove();
         });
 
-        variantsContainer.addEventListener('change', (e) => {
-            if (!e.target.classList.contains('variant-default-checkbox')) return;
-            if (e.target.checked) {
+        variantsContainer.addEventListener('change', (e: Event) => {
+            if (!((e.target as HTMLInputElement).classList.contains('variant-default-checkbox'))) return;
+            if ((e.target as HTMLInputElement).checked) {
                 variantsContainer.querySelectorAll('.variant-default-checkbox').forEach((cb) => {
-                    if (cb !== e.target) cb.checked = false;
+                    if (cb !== e.target) (cb as HTMLInputElement).checked = false;
                 });
             }
         });
@@ -483,22 +483,22 @@ const initialVariants = (variants && variants.length > 0) ? variants : [
             const div = document.createElement('div');
             div.className = 'spec-row flex items-center gap-3';
             div.innerHTML = `<input type="text" class="spec-key-input w-2/5 px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition" placeholder="${strings.sellerProductSpecsKeyPlaceholder}" /><input type="text" class="spec-value-input flex-1 px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition" placeholder="${strings.sellerProductSpecsValuePlaceholder}" /><button type="button" class="spec-remove-btn flex items-center justify-center w-7 h-7 rounded-lg text-text-tertiary hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors shrink-0"><svg width="16" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>`;
-            div.querySelector('.spec-remove-btn').addEventListener('click', () => div.remove());
+            div.querySelector('.spec-remove-btn')!.addEventListener('click', () => div.remove());
             specsContainer.appendChild(div);
         });
 
-        specsContainer.addEventListener('click', (e) => {
-            const removeBtn = e.target.closest('.spec-remove-btn');
+        specsContainer.addEventListener('click', (e: MouseEvent) => {
+            const removeBtn = (e.target as HTMLElement).closest('.spec-remove-btn') as HTMLElement | null;
             if (!removeBtn) return;
-            removeBtn.closest('.spec-row').remove();
+            removeBtn.closest('.spec-row')!.remove();
         });
 
-        imageGallery.addEventListener('click', (e) => {
-            const removeBtn = e.target.closest('.image-remove-btn');
+        imageGallery.addEventListener('click', (e: MouseEvent) => {
+            const removeBtn = (e.target as HTMLElement).closest('.image-remove-btn') as HTMLElement | null;
             if (!removeBtn) return;
-            const item = removeBtn.closest('.image-item');
+            const item = removeBtn.closest('.image-item') as HTMLElement;
             const url = item.dataset.url;
-            const idx = galleryUrls.indexOf(url);
+            const idx = galleryUrls.indexOf(url!);
             if (idx > -1) galleryUrls.splice(idx, 1);
             renderGallery();
         });
@@ -525,16 +525,17 @@ const initialVariants = (variants && variants.length > 0) ? variants : [
                 return;
             }
 
-            const variants = Array.from(variantsContainer.querySelectorAll('.variant-row')).map(row => {
-                const priceInput = row.querySelector('.variant-price-input');
+            const variants = Array.from(variantsContainer.querySelectorAll('.variant-row')).map((row: Element) => {
+                const el = row as HTMLElement;
+                const priceInput = el.querySelector('.variant-price-input') as HTMLInputElement;
                 const price = parseFloat(priceInput.value) || 0;
                 return {
-                    id: row.dataset.variantId || undefined,
-                    variant_name: row.querySelector('.variant-name-input').value.trim() || null,
+                    id: el.dataset.variantId || undefined,
+                    variant_name: (el.querySelector('.variant-name-input') as HTMLInputElement).value.trim() || null,
                     price,
-                    stock: parseInt(row.querySelector('.variant-stock-input').value) || 0,
-                    is_default: row.querySelector('.variant-default-checkbox').checked,
-                    variant_image: row.dataset.variantImage || (row.querySelector('.variant-image-preview img')?.getAttribute('src')) || null,
+                    stock: parseInt((el.querySelector('.variant-stock-input') as HTMLInputElement).value) || 0,
+                    is_default: (el.querySelector('.variant-default-checkbox') as HTMLInputElement).checked,
+                    variant_image: el.dataset.variantImage || (el.querySelector('.variant-image-preview img')?.getAttribute('src')) || null,
                 };
             });
 
@@ -544,10 +545,10 @@ const initialVariants = (variants && variants.length > 0) ? variants : [
                 return;
             }
 
-            const specs = {};
-            specsContainer.querySelectorAll('.spec-row').forEach((row) => {
-                const key = row.querySelector('.spec-key-input').value.trim();
-                const value = row.querySelector('.spec-value-input').value.trim();
+            const specs: Record<string, string> = {};
+            specsContainer.querySelectorAll('.spec-row').forEach((row: Element) => {
+                const key = (row.querySelector('.spec-key-input') as HTMLInputElement).value.trim();
+                const value = (row.querySelector('.spec-value-input') as HTMLInputElement).value.trim();
                 if (key) specs[key] = value;
             });
 
@@ -570,7 +571,7 @@ const initialVariants = (variants && variants.length > 0) ? variants : [
             try {
                 let url = '/api/sell/catalog/product';
                 let method = 'POST';
-                const productId = document.getElementById('product-id').value;
+                const productId = (document.getElementById('product-id') as HTMLInputElement).value;
 
                 if (mode === 'edit' && productId) {
                     url += `?id=${productId}`;
@@ -583,7 +584,7 @@ const initialVariants = (variants && variants.length > 0) ? variants : [
                     body: JSON.stringify(payload),
                 });
 
-                const data = await res.json();
+                const data: { product?: { id: string }; error?: string } = await res.json();
 
                 if (!res.ok) {
                     throw new Error(data.error || strings.sellerProductSaveError);
@@ -592,7 +593,7 @@ const initialVariants = (variants && variants.length > 0) ? variants : [
                 successMsg.classList.remove('hidden');
                 setTimeout(() => successMsg.classList.add('hidden'), 4000);
 
-                if (mode === 'create' && data.product && data.product.id) {
+                if (mode === 'create' && data.product?.id) {
                     window.location.href = `/sell/catalog/${data.product.id}`;
                     return;
                 }
