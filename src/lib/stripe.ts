@@ -2,8 +2,6 @@ import { STRIPE_SECRET_KEY } from 'astro:env/server';
 import Stripe from 'stripe';
 import { strings } from './i18n';
 
-let stripeClient: Stripe | null = null;
-
 export const DEFAULT_STRIPE_ACCOUNT_COUNTRY = 'ES';
 
 export interface StripeAccountStatus {
@@ -19,13 +17,9 @@ export function getStripeClient() {
         throw new Error(strings.authMissingStripeEnv);
     }
 
-    if (!stripeClient) {
-        stripeClient = new Stripe(STRIPE_SECRET_KEY, {
-            httpClient: Stripe.createFetchHttpClient(),
-        });
-    }
-
-    return stripeClient;
+    return new Stripe(STRIPE_SECRET_KEY, {
+        httpClient: Stripe.createFetchHttpClient(),
+    });
 }
 
 export function buildAbsoluteUrl(request: Request, path: string) {
