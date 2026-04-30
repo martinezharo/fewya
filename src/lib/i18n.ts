@@ -193,6 +193,8 @@ export const strings = {
     settingsThemeSystem: 'Sistema',
     settingsThemeLight: 'Claro',
     settingsThemeDark: 'Oscuro',
+    settingsAccountSection: 'Cuenta',
+    settingsSignOut: 'Cerrar sesión',
 
     // Seller sidebar / nav
     sellerNavDashboard: 'Inicio',

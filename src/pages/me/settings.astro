@@ -30,7 +30,7 @@ if (!user) {
         </div>
 
         {/* Apariencia */}
-        <section>
+        <section class="mb-6">
             <h2 class="text-[11px] font-semibold uppercase tracking-widest text-text-tertiary mb-3 px-1">
                 {strings.settingsAppearanceSection}
             </h2>
@@ -91,8 +91,29 @@ if (!user) {
             </div>
         </section>
 
+        {/* Cuenta */}
+        <section class="mb-6">
+            <h2 class="text-[11px] font-semibold uppercase tracking-widest text-text-tertiary mb-3 px-1">
+                {strings.settingsAccountSection}
+            </h2>
+
+            <div class="bg-surface border border-border-light rounded-2xl divide-y divide-border-light">
+                <button
+                    type="button"
+                    id="sign-out-btn"
+                    class="w-full flex items-center gap-3 px-5 py-4 hover:bg-white/50 dark:hover:bg-white/5 transition-colors"
+                >
+                    <Icon name="log-out" size={20} class="text-text-secondary" />
+                    <span class="text-[15px] font-medium text-text-primary">
+                        {strings.settingsSignOut}
+                    </span>
+                </button>
+            </div>
+        </section>
+
     </main>
-</BuyerAppLayout>
+
+    </BuyerAppLayout>
 
 <style>
     .theme-btn {
@@ -154,6 +175,12 @@ if (!user) {
 
         window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
             if (getStoredTheme() === 'system') applyTheme('system');
+        });
+
+        const signOutBtn = document.getElementById('sign-out-btn') as HTMLButtonElement | null;
+
+        signOutBtn?.addEventListener('click', () => {
+            window.location.href = '/api/auth/logout';
         });
     }
 
