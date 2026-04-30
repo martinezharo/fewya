@@ -66,11 +66,13 @@ CREATE TABLE public.product_variants (
   CONSTRAINT product_variants_pkey PRIMARY KEY (id),
   CONSTRAINT product_variants_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.products(id)
 );
+CREATE TYPE order_status AS ENUM ('pending', 'paid', 'processing', 'shipped', 'delivered', 'cancelled');
+
 CREATE TABLE public.orders (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   public_id text NOT NULL UNIQUE,
   buyer_id uuid,
-  status text DEFAULT 'pending'::text,
+  status order_status DEFAULT 'pending',
   payment_status text NOT NULL DEFAULT 'pending'::text,
   total_amount numeric NOT NULL,
   currency text NOT NULL DEFAULT 'eur'::text,

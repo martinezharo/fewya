@@ -1,6 +1,7 @@
 ---
 import Icon from "../icons/Icon.astro";
 import { strings } from "../../lib/i18n";
+import { orderStatusLabels } from "../../lib/orderStatus";
 
 export interface OrderItem {
     productTitle: string;
@@ -25,15 +26,6 @@ interface Props {
 
 const { order } = Astro.props;
 
-const statusMap: Record<string, string> = {
-    pending: strings.orderStatusPending,
-    paid: strings.orderStatusPaid,
-    processing: strings.orderStatusProcessing,
-    shipped: strings.orderStatusShipped,
-    delivered: strings.orderStatusDelivered,
-    cancelled: strings.orderStatusCancelled,
-};
-
 const statusColorMap: Record<string, string> = {
     pending: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
     paid: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400",
@@ -44,7 +36,7 @@ const statusColorMap: Record<string, string> = {
 };
 
 const normalizedStatus = order.status?.toLowerCase() ?? "pending";
-const statusLabel = statusMap[normalizedStatus] ?? order.status;
+const statusLabel = orderStatusLabels[normalizedStatus as keyof typeof orderStatusLabels] ?? order.status;
 const statusColor = statusColorMap[normalizedStatus] ?? statusColorMap.pending;
 
 const firstItem = order.items[0];

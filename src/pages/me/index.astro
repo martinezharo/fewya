@@ -3,6 +3,7 @@ import BuyerAppLayout from "../../layouts/BuyerAppLayout.astro";
 import Icon from "../../components/icons/Icon.astro";
 import { strings } from "../../lib/i18n";
 import { createSupabaseAuthClient } from "../../lib/auth";
+import { orderStatusLabels } from "../../lib/orderStatus";
 
 // Auth Server-Side Verification:
 const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
@@ -46,15 +47,6 @@ interface PurchaseGroup {
     status: string;
     items: { imageUrl: string, productName: string }[];
 }
-
-const statusMap: Record<string, string> = {
-    'pending': strings.orderStatusPending,
-    'paid': strings.orderStatusPaid,
-    'processing': strings.orderStatusProcessing,
-    'shipped': strings.orderStatusShipped,
-    'delivered': strings.orderStatusDelivered,
-    'cancelled': strings.orderStatusCancelled,
-};
 
 // Group order items by shop and handle quantity
 const purchaseGroups: PurchaseGroup[] = [];
@@ -154,7 +146,7 @@ const recentPurchases = purchaseGroups.slice(0, 5);
                                         {purchase.shopName}
                                     </h3>
                                     <span class="text-[12px] font-medium text-text-secondary mt-1 block pointer-events-none">
-                                        {statusMap[purchase.status?.toLowerCase()] || purchase.status || strings.orderStatusPending}
+                                        {orderStatusLabels[purchase.status?.toLowerCase() as keyof typeof orderStatusLabels] || purchase.status || strings.orderStatusPending}
                                     </span>
                                 </div>
                             </article>
