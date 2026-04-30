@@ -10,6 +10,17 @@ interface Props {
 const { value = '', autofocus = false } = Astro.props;
 ---
 
+<style>
+    html[data-theme="dark"] .search-form {
+        background-color: var(--color-search-bg, #1f1f1f);
+    }
+    @media (prefers-color-scheme: dark) {
+        html:not([data-theme="light"]) .search-form {
+            background-color: var(--color-search-bg, #1f1f1f);
+        }
+    }
+</style>
+
 <div class="search-container relative w-full">
     <form action="/search" method="get" class="search-form flex items-center gap-2 w-full px-[14px] py-[10px] bg-search-bg border border-border-light rounded-full transition-colors duration-200 focus-within:bg-surface focus-within:ring-2 focus-within:ring-text-primary/5 relative z-[60]">
         <Icon name="search" size={18} class="shrink-0 text-text-tertiary" />

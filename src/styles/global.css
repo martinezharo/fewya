@@ -35,6 +35,25 @@
   --color-accent-hover-val: #d4d4d4;
 
   --color-wishlist-val: #f87171;
+
+  --color-search-bg-val: #1f1f1f;
+}
+
+/* Fallback for dark mode using system preference (prevents flash during page load) */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-bg-val: #0a0a0a;
+    --color-surface-val: #171717;
+    --color-border-val: #262626;
+    --color-border-light-val: #404040;
+    --color-text-primary-val: #ededed;
+    --color-text-secondary-val: #a1a1aa;
+    --color-text-tertiary-val: #52525b;
+    --color-accent-val: #ededed;
+    --color-accent-hover-val: #d4d4d4;
+    --color-wishlist-val: #f87171;
+    --color-search-bg-val: #1f1f1f;
+  }
 }
 
 @theme {
