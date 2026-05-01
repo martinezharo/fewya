@@ -48,7 +48,7 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', { style: 'currency', cu
             </div>
             <a
                 href="/sell/catalog/new"
-                class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 text-sm font-medium no-underline hover:scale-[1.02] transition-transform shrink-0"
+                    class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-accent text-bg text-sm font-medium no-underline hover:scale-[1.02] transition-transform shrink-0"
             >
                 <Icon name="plus" size={18} />
                 {strings.sellerCatalogNewProduct}
@@ -92,7 +92,7 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', { style: 'currency', cu
                     return (
                         <article
                             class:list={[
-                                'group relative flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 rounded-2xl border border-border bg-surface transition-colors hover:bg-bg',
+                                'group relative flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 rounded-2xl border border-border bg-surface transition-colors hover:bg-border-light',
                                 !product.is_active && 'opacity-60'
                             ]}
                             data-product-id={product.id}
@@ -148,7 +148,7 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', { style: 'currency', cu
                                 </button>
                                 <a
                                     href={`/sell/catalog/${product.id}`}
-                                    class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-text-secondary hover:text-text-primary hover:bg-bg transition-colors"
+                                    class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-text-secondary hover:text-text-primary hover:bg-border-light transition-colors"
                                     aria-label={strings.sellerCatalogEdit}
                                 >
                                     <Icon name="pencil" size={16} />
@@ -158,7 +158,7 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', { style: 'currency', cu
                                         href={`/${shop.slug}/${product.slug}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-text-secondary hover:text-text-primary hover:bg-bg transition-colors"
+                                        class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-text-secondary hover:text-text-primary hover:bg-border-light transition-colors"
                                         aria-label={strings.sellerCatalogViewPublic}
                                     >
                                         <Icon name="external-link" size={16} />
@@ -187,7 +187,7 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', { style: 'currency', cu
                 <p class="mt-2 max-w-md text-sm text-text-secondary">{strings.sellerCatalogEmptySubtitle}</p>
                 <a
                     href="/sell/catalog/new"
-                    class="mt-6 inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 text-sm font-medium no-underline hover:scale-[1.02] transition-transform"
+                        class="mt-6 inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-accent text-bg text-sm font-medium no-underline hover:scale-[1.02] transition-transform"
                 >
                     <Icon name="plus" size={18} />
                     {strings.sellerCatalogNewProduct}
@@ -201,7 +201,7 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', { style: 'currency', cu
     <div class="bg-surface rounded-2xl border border-border p-6 mx-4 max-w-sm w-full shadow-xl">
         <p class="text-sm text-text-primary font-medium" id="delete-dialog-text"></p>
         <div class="mt-5 flex justify-end gap-3">
-            <button type="button" id="delete-cancel-btn" class="px-4 py-2 rounded-xl text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-bg transition-colors">{strings.sellerOnboardingPrev}</button>
+            <button type="button" id="delete-cancel-btn"                     class="px-4 py-2 rounded-xl text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-border-light transition-colors">{strings.sellerOnboardingPrev}</button>
             <button type="button" id="delete-confirm-btn" class="px-4 py-2 rounded-xl text-sm font-medium bg-red-500 text-white hover:bg-red-600 transition-colors">{strings.sellerCatalogDelete}</button>
         </div>
     </div>

@@ -37,14 +37,14 @@ if (isSeller && hasShop) {
 <Layout title="Fewya - Vender">
     <div class="max-w-4xl mx-auto px-4 py-12">
         {!user ? (
-            <div class="text-center rounded-2xl bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 p-12">
-                <h1 class="text-4xl font-semibold tracking-tight text-neutral-900 dark:text-white mb-4">Vende con nosotros</h1>
-                <p class="text-lg text-neutral-600 dark:text-neutral-400 mb-8 max-w-xl mx-auto">
+            <div class="text-center rounded-2xl bg-border-light border border-border p-12">
+                <h1 class="text-4xl font-semibold tracking-tight text-text-primary mb-4">Vende con nosotros</h1>
+                <p class="text-lg text-text-secondary mb-8 max-w-xl mx-auto">
                     Abre tu tienda en minutos. Democratizamos el eCommerce para que vendas de una forma más profesional y directa.
                 </p>
                 <a 
                     href="/api/auth/login?role=seller&redirect_to=/sell" 
-                    class="inline-flex items-center justify-center gap-2 px-6 py-3 bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 font-medium rounded-full shadow-sm hover:scale-105 transition-transform"
+                    class="inline-flex items-center justify-center gap-2 px-6 py-3 bg-accent text-bg font-medium rounded-full shadow-sm hover:scale-105 transition-transform"
                 >
                     <svg class="w-5 h-5" viewBox="0 0 24 24" aria-hidden="true">
                         <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -56,14 +56,14 @@ if (isSeller && hasShop) {
                 </a>
             </div>
         ) : (
-            <div class="text-center rounded-2xl bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 p-12">
-                <h1 class="text-3xl font-semibold tracking-tight text-neutral-900 dark:text-white mb-4">¡Hola, {user.user_metadata?.full_name?.split(' ')[0] || 'Vendedor'}!</h1>
-                <p class="text-lg text-neutral-600 dark:text-neutral-400 mb-8 max-w-xl mx-auto">
+            <div class="text-center rounded-2xl bg-border-light border border-border p-12">
+                <h1 class="text-3xl font-semibold tracking-tight text-text-primary mb-4">¡Hola, {user.user_metadata?.full_name?.split(' ')[0] || 'Vendedor'}!</h1>
+                <p class="text-lg text-text-secondary mb-8 max-w-xl mx-auto">
                     Estás a un paso de comenzar a vender. Configura tu tienda para publicar tus productos.
                 </p>
                 <a 
                     href="/sell/onboarding" 
-                    class="inline-flex items-center justify-center gap-2 px-6 py-3 bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 font-medium rounded-full shadow-sm hover:scale-105 transition-transform"
+                    class="inline-flex items-center justify-center gap-2 px-6 py-3 bg-accent text-bg font-medium rounded-full shadow-sm hover:scale-105 transition-transform"
                 >
                     Configurar mi tienda
                 </a>
