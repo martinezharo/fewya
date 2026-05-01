@@ -81,6 +81,34 @@ CREATE TABLE public.product_variants (
   CONSTRAINT product_variants_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.products(id)
 );
 
+-- ============================================================
+-- Profile Address Fields - Split address into structured fields
+-- (Migrations applied to existing databases via 002_packlink_shipping.sql)
+-- ============================================================
+
+-- Migrate existing full_name to first_name if first_name is empty
+-- UPDATE public.profiles
+-- SET
+--   first_name = COALESCE(SPLIT_PART(full_name, ' ', 1), ''),
+--   last_name = CASE
+--     WHEN POSITION(' ' IN full_name) > 0 THEN TRIM(SUBSTRING(full_name FROM POSITION(' ' IN full_name) + 1))
+--     ELSE ''
+--   END
+-- WHERE first_name IS NULL AND full_name IS NOT NULL;
+
+-- Migrate existing address to new structured fields (basic parsing)
+-- UPDATE public.profiles
+-- SET
+--   address_postal_code = COALESCE(
+--     NULLIF((REGEXP_MATCH(address, '[0-9]{5}'))[1], ''),
+--     ''
+--   )
+-- WHERE address IS NOT NULL AND address_postal_code IS NULL;
+
+-- ============================================================
+-- Packlink Shipping Integration
+-- ============================================================
+
 -- Platform-wide Packlink configuration (single API key for all sellers)
 CREATE TABLE public.packlink_config (
   id boolean PRIMARY KEY DEFAULT true CHECK (id = true),
@@ -97,9 +125,10 @@ CREATE TABLE public.packlink_config (
   updated_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now())
 );
 
--- Shipments created in Packlink
+-- Shipment status enum
 CREATE TYPE shipment_status AS ENUM ('pending', 'label_ready', 'shipped', 'delivered', 'failed', 'cancelled');
 
+-- Shipments created in Packlink
 CREATE TABLE public.shipments (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   order_id uuid NOT NULL,
@@ -134,6 +163,53 @@ CREATE TABLE public.shipment_tracking (
   CONSTRAINT shipment_tracking_pkey PRIMARY KEY (id),
   CONSTRAINT shipment_tracking_shipment_id_fkey FOREIGN KEY (shipment_id) REFERENCES public.shipments(id) ON DELETE CASCADE
 );
+
+-- RLS for shipments (buyers can view their order shipments, sellers can manage theirs)
+ALTER TABLE public.shipments ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Buyers can view shipments for their orders" ON public.shipments;
+DROP POLICY IF EXISTS "Sellers can view shipments for their shop orders" ON public.shipments;
+
+CREATE POLICY "Buyers can view shipments for their orders" ON public.shipments
+  FOR SELECT TO authenticated
+  USING (EXISTS (
+    SELECT 1 FROM public.orders
+    WHERE orders.id = shipments.order_id AND orders.buyer_id = auth.uid()
+  ));
+
+CREATE POLICY "Sellers can view shipments for their shop orders" ON public.shipments
+  FOR SELECT TO authenticated
+  USING (EXISTS (
+    SELECT 1 FROM public.orders o
+    JOIN public.order_items oi ON o.id = oi.order_id
+    JOIN public.product_variants pv ON oi.variant_id = pv.id
+    JOIN public.products p ON pv.product_id = p.id
+    JOIN public.shops s ON p.shop_id = s.id
+    WHERE o.id = shipments.order_id AND s.owner_id = auth.uid()
+  ));
+
+-- RLS for shipment_tracking
+ALTER TABLE public.shipment_tracking ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view tracking for shipments they have access to" ON public.shipment_tracking;
+
+CREATE POLICY "Users can view tracking for shipments they have access to" ON public.shipment_tracking
+  FOR SELECT TO authenticated
+  USING (EXISTS (
+    SELECT 1 FROM public.shipments s
+    JOIN public.orders o ON s.order_id = o.id
+    WHERE s.id = shipment_tracking.shipment_id AND (
+      o.buyer_id = auth.uid() OR
+      EXISTS (
+        SELECT 1 FROM public.orders o2
+        JOIN public.order_items oi ON o2.id = oi.order_id
+        JOIN public.product_variants pv ON oi.variant_id = pv.id
+        JOIN public.products p ON pv.product_id = p.id
+        JOIN public.shops sh ON p.shop_id = sh.id
+        WHERE o2.id = s.order_id AND sh.owner_id = auth.uid()
+      )
+    )
+  ));
 CREATE TYPE order_status AS ENUM ('pending', 'paid', 'processing', 'shipped', 'delivered', 'cancelled');
 
 CREATE TABLE public.orders (
