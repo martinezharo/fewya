@@ -35,6 +35,14 @@ const { data: ordersData } = await supabase
                     )
                 )
             )
+        ),
+        shipments (
+            id,
+            status,
+            tracking_number,
+            tracking_url,
+            label_url,
+            carrier_name
         )
     `)
     .eq("buyer_id", user.id)
@@ -65,6 +73,9 @@ const orders: OrderCardData[] = (ordersData ?? []).map((order: any) => {
         }));
     });
 
+    const rawShipments = order.shipments;
+    const shipment = Array.isArray(rawShipments) ? rawShipments[0] : rawShipments;
+
     return {
         orderId: order.id,
         publicId: order.public_id,
@@ -72,6 +83,11 @@ const orders: OrderCardData[] = (ordersData ?? []).map((order: any) => {
         totalAmount: order.total_amount ?? 0,
         createdAt: new Date(order.created_at),
         items,
+        hasShipment: !!shipment,
+        trackingNumber: shipment?.tracking_number ?? null,
+        trackingUrl: shipment?.tracking_url ?? null,
+        labelUrl: shipment?.label_url ?? null,
+        carrierName: shipment?.carrier_name ?? null,
     };
 });
 ---

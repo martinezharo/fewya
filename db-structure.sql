@@ -2,9 +2,19 @@ CREATE TABLE public.profiles (
   id uuid NOT NULL,
   email text NOT NULL UNIQUE,
   full_name text,
+  first_name text,
+  last_name text,
   avatar_url text,
   address text,
+  address_street text,
+  address_number text,
+  address_floor text,
+  address_postal_code text,
+  address_city text,
+  address_province text,
+  address_country text DEFAULT 'ES',
   phone text,
+  phone_prefix text DEFAULT '+34',
   is_seller boolean DEFAULT false,
   created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
   CONSTRAINT profiles_pkey PRIMARY KEY (id),
@@ -63,8 +73,66 @@ CREATE TABLE public.product_variants (
   variant_image text,
   created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
   is_default boolean DEFAULT false,
+  weight_kg decimal(8,3),
+  length_cm decimal(8,3),
+  width_cm decimal(8,3),
+  height_cm decimal(8,3),
   CONSTRAINT product_variants_pkey PRIMARY KEY (id),
   CONSTRAINT product_variants_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.products(id)
+);
+
+-- Platform-wide Packlink configuration (single API key for all sellers)
+CREATE TABLE public.packlink_config (
+  id boolean PRIMARY KEY DEFAULT true CHECK (id = true),
+  api_key text NOT NULL,
+  sender_name text,
+  sender_company text,
+  sender_address text,
+  sender_city text,
+  sender_postal_code text,
+  sender_country text DEFAULT 'ES',
+  sender_phone text,
+  sender_email text,
+  is_active boolean DEFAULT false,
+  updated_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+-- Shipments created in Packlink
+CREATE TYPE shipment_status AS ENUM ('pending', 'label_ready', 'shipped', 'delivered', 'failed', 'cancelled');
+
+CREATE TABLE public.shipments (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  order_id uuid NOT NULL,
+  packlink_shipment_id text UNIQUE,
+  packlink_reference text,
+  carrier_id text,
+  carrier_name text,
+  service_name text,
+  status shipment_status DEFAULT 'pending',
+  tracking_number text,
+  tracking_url text,
+  price numeric(10,2),
+  currency text DEFAULT 'EUR',
+  label_url text,
+  requested_at timestamp with time zone DEFAULT timezone('utc'::text, now()),
+  created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
+  updated_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
+  CONSTRAINT shipments_pkey PRIMARY KEY (id),
+  CONSTRAINT shipments_order_id_fkey FOREIGN KEY (order_id) REFERENCES public.orders(id)
+);
+
+-- Shipment tracking history
+CREATE TABLE public.shipment_tracking (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  shipment_id uuid NOT NULL,
+  status text NOT NULL,
+  description text,
+  location text,
+  event_timestamp timestamp with time zone,
+  raw_data jsonb,
+  created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
+  CONSTRAINT shipment_tracking_pkey PRIMARY KEY (id),
+  CONSTRAINT shipment_tracking_shipment_id_fkey FOREIGN KEY (shipment_id) REFERENCES public.shipments(id) ON DELETE CASCADE
 );
 CREATE TYPE order_status AS ENUM ('pending', 'paid', 'processing', 'shipped', 'delivered', 'cancelled');
 
@@ -387,6 +455,106 @@ CREATE POLICY "Allow inserting reviews if product was purchased" ON public.revie
 GRANT EXECUTE ON FUNCTION public.create_checkout_order(text, numeric, text, text, text, text, text, text, jsonb) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.mark_order_paid(uuid, text, text, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.upsert_shop_payment_account(uuid, text, boolean, boolean, boolean) TO authenticated;
+
+-- Packlink shipment functions
+CREATE OR REPLACE FUNCTION public.create_shipment(
+  p_order_id uuid,
+  p_packlink_shipment_id text,
+  p_packlink_reference text,
+  p_carrier_id text,
+  p_carrier_name text,
+  p_service_name text,
+  p_price numeric,
+  p_tracking_number text,
+  p_tracking_url text,
+  p_label_url text
+)
+RETURNS public.shipments AS $$
+DECLARE
+  new_shipment public.shipments;
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Not authenticated';
+  END IF;
+
+  INSERT INTO public.shipments (
+    order_id,
+    packlink_shipment_id,
+    packlink_reference,
+    carrier_id,
+    carrier_name,
+    service_name,
+    price,
+    tracking_number,
+    tracking_url,
+    label_url
+  )
+  VALUES (
+    p_order_id,
+    p_packlink_shipment_id,
+    p_packlink_reference,
+    p_carrier_id,
+    p_carrier_name,
+    p_service_name,
+    p_price,
+    p_tracking_number,
+    p_tracking_url,
+    p_label_url
+  )
+  RETURNING * INTO new_shipment;
+
+  RETURN new_shipment;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+CREATE OR REPLACE FUNCTION public.update_shipment_tracking(
+  p_shipment_id uuid,
+  p_status text,
+  p_description text,
+  p_location text,
+  p_event_timestamp timestamp with time zone,
+  p_tracking_number text,
+  p_tracking_url text,
+  p_raw_data jsonb
+)
+RETURNS public.shipments AS $$
+DECLARE
+  updated_shipment public.shipments;
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Not authenticated';
+  END IF;
+
+  INSERT INTO public.shipment_tracking (shipment_id, status, description, location, event_timestamp, raw_data)
+  VALUES (p_shipment_id, p_status, p_description, p_location, p_event_timestamp, p_raw_data);
+
+  UPDATE public.shipments
+  SET
+    status = CASE
+      WHEN p_status = 'delivered' THEN 'delivered'::shipment_status
+      WHEN p_status = 'shipped' OR p_status = 'shipment.tracking.update' THEN 'shipped'::shipment_status
+      WHEN p_status = 'label_ready' THEN 'label_ready'::shipment_status
+      WHEN p_status = 'failed' THEN 'failed'::shipment_status
+      ELSE status
+    END,
+    tracking_number = COALESCE(p_tracking_number, tracking_number),
+    tracking_url = COALESCE(p_tracking_url, tracking_url),
+    updated_at = timezone('utc'::text, now())
+  WHERE id = p_shipment_id
+  RETURNING * INTO updated_shipment;
+
+  RETURN updated_shipment;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+CREATE OR REPLACE FUNCTION public.get_order_shipment(p_order_id uuid)
+RETURNS public.shipments AS $$
+  SELECT s.* FROM public.shipments s WHERE s.order_id = p_order_id;
+$$ LANGUAGE sql SECURITY DEFINER;
+
+GRANT EXECUTE ON FUNCTION public.create_shipment(uuid, text, text, text, text, text, numeric, text, text, text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.update_shipment_tracking(uuid, text, text, text, timestamp with time zone, text, text, jsonb) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_order_shipment(uuid) TO authenticated;
 
 -- Storage policies for imgs bucket (products folder)
 DROP POLICY IF EXISTS "Allow authenticated users to upload product images" ON storage.objects;

@@ -114,13 +114,32 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     const { data: profile } = await authClient
         .from('profiles')
-        .select('full_name, email, phone, address')
+        .select('first_name, last_name, email, phone, phone_prefix, address_street, address_number, address_floor, address_postal_code, address_city, address_province, address_country')
         .eq('id', user.id)
         .single();
 
-    const shippingFullName = profile?.full_name?.trim() || user.user_metadata?.full_name?.trim() || null;
-    const shippingAddress = profile?.address?.trim() || null;
-    const shippingPhone = profile?.phone?.trim() || null;
+    const firstName = profile?.first_name?.trim() || user.user_metadata?.full_name?.trim() || null;
+    const lastName = profile?.last_name?.trim() || null;
+    const shippingFullName = [firstName, lastName].filter(Boolean).join(' ') || null;
+    const shippingPhone = [(profile as any)?.phone_prefix || '+34', profile?.phone?.trim()].filter(Boolean).join(' ') || null;
+
+    const street = profile?.address_street?.trim() || '';
+    const number = profile?.address_number?.trim() || '';
+    const floor = profile?.address_floor?.trim() || '';
+    const postalCode = profile?.address_postal_code?.trim() || '';
+    const city = profile?.address_city?.trim() || '';
+    const province = profile?.address_province?.trim() || '';
+    const country = profile?.address_country?.trim() || 'ES';
+
+    const addressParts = [
+        street && number ? `${street} ${number}` : street,
+        floor,
+        postalCode ? `${postalCode} ${city}` : city,
+        province,
+        country !== 'ES' ? country : null,
+    ].filter(Boolean);
+
+    const shippingAddress = addressParts.length > 0 ? addressParts.join(', ') : null;
     const buyerEmail = user.email || profile?.email || null;
 
     if (!shippingFullName || !shippingAddress) {

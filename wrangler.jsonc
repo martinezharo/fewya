@@ -15,5 +15,16 @@
 			"enabled": true,
 			"invocation_logs": true
 		}
+	},
+	"vars": {
+		"PACKLINK_API_KEY": "",
+		"PACKLINK_SENDER_ADDRESS": "Calle Principal 1",
+		"PACKLINK_SENDER_CITY": "Madrid",
+		"PACKLINK_SENDER_POSTAL_CODE": "28001",
+		"PACKLINK_SENDER_COUNTRY": "ES",
+		"PACKLINK_SENDER_PHONE": "+34600000000",
+		"PACKLINK_SENDER_EMAIL": "envios@shopenn.com",
+		"PACKLINK_SENDER_NAME": "Shopenn",
+		"PACKLINK_SENDER_COMPANY": "Shopenn Marketplace"
 	}
 }

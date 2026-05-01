@@ -3,6 +3,8 @@ import BuyerAppLayout from "../../layouts/BuyerAppLayout.astro";
 import Icon from "../../components/icons/Icon.astro";
 import { strings } from "../../lib/i18n";
 import { createSupabaseAuthClient } from "../../lib/auth";
+import { getAllCountries } from "../../lib/countries";
+import { spainProvinces } from "../../lib/spain-provinces";
 
 const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
 const { data: { user } } = await supabase.auth.getUser();
@@ -13,12 +15,17 @@ if (!user) {
 
 const { data: profile } = await supabase
     .from('profiles')
-    .select('full_name, email, avatar_url, address, phone')
+    .select('first_name, last_name, email, avatar_url, phone, phone_prefix, address_street, address_number, address_floor, address_postal_code, address_city, address_province, address_country')
     .eq('id', user.id)
     .single();
 
 const returnTo = Astro.url.searchParams.get('return_to');
 const fromCheckout = Astro.url.searchParams.get('checkout') === '1' && returnTo === '/cart';
+
+const allCountries = getAllCountries();
+const currentCountry = profile?.address_country || 'ES';
+const currentPrefix = profile?.phone_prefix || '+34';
+const isSpain = currentCountry === 'ES';
 ---
 
 <BuyerAppLayout title={`${strings.meDataPageTitle} — ${strings.siteTitle}`}>
@@ -47,7 +54,7 @@ const fromCheckout = Astro.url.searchParams.get('checkout') === '1' && returnTo 
                 {profile?.avatar_url ? (
                     <img
                         src={profile.avatar_url}
-                        alt={profile?.full_name ?? strings.meDataAvatarNote}
+                        alt={profile?.first_name ?? strings.meDataAvatarNote}
                         class="w-24 h-24 rounded-full object-cover border-2 border-border-light"
                     />
                 ) : (
@@ -62,19 +69,36 @@ const fromCheckout = Astro.url.searchParams.get('checkout') === '1' && returnTo 
         {/* Form */}
         <form id="profile-form" class="flex flex-col gap-5" novalidate>
 
-            {/* Nombre */}
-            <div class="flex flex-col gap-1.5">
-                <label for="full_name" class="text-[13px] font-medium text-text-secondary">
-                    {strings.meDataName}
-                </label>
-                <input
-                    id="full_name"
-                    name="full_name"
-                    type="text"
-                    value={profile?.full_name ?? ''}
-                    autocomplete="name"
-                    class="w-full rounded-xl border border-border bg-surface px-4 py-3 text-[15px] text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-text-primary transition-colors"
-                />
+            {/* Nombre y Apellidos */}
+            <div class="grid grid-cols-2 gap-3">
+                <div class="flex flex-col gap-1.5">
+                    <label for="first_name" class="text-[13px] font-medium text-text-secondary">
+                        Nombre
+                    </label>
+                    <input
+                        id="first_name"
+                        name="first_name"
+                        type="text"
+                        value={profile?.first_name ?? ''}
+                        autocomplete="given-name"
+                        placeholder="María"
+                        class="w-full rounded-xl border border-border bg-surface px-4 py-3 text-[15px] text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-text-primary transition-colors"
+                    />
+                </div>
+                <div class="flex flex-col gap-1.5">
+                    <label for="last_name" class="text-[13px] font-medium text-text-secondary">
+                        Apellidos
+                    </label>
+                    <input
+                        id="last_name"
+                        name="last_name"
+                        type="text"
+                        value={profile?.last_name ?? ''}
+                        autocomplete="family-name"
+                        placeholder="García López"
+                        class="w-full rounded-xl border border-border bg-surface px-4 py-3 text-[15px] text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-text-primary transition-colors"
+                    />
+                </div>
             </div>
 
             {/* Email (read-only) */}
@@ -91,35 +115,169 @@ const fromCheckout = Astro.url.searchParams.get('checkout') === '1' && returnTo 
                 />
             </div>
 
-            {/* Teléfono */}
+            {/* Teléfono con prefijo */}
             <div class="flex flex-col gap-1.5">
                 <label for="phone" class="text-[13px] font-medium text-text-secondary">
                     {strings.meDataPhone}
                 </label>
+                <div class="flex gap-2">
+                    <select
+                        id="phone_prefix"
+                        name="phone_prefix"
+                        autocomplete="tel-country-code"
+                        class="shrink-0 w-[130px] rounded-xl border border-border bg-surface px-3 py-3 text-[15px] text-text-primary focus:outline-none focus:border-text-primary transition-colors cursor-pointer appearance-none"
+                        style="background-image: url('data:image/svg+xml;charset=UTF-8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2712%27 height=%2712%27 viewBox=%270 0 12 12%27%3E%3Cpath fill=%27%23999%27 d=%27M3 4.5L6 7.5l3-3%27/%3E%3C/svg%3E'); background-repeat: no-repeat; background-position: right 8px center; padding-right: 24px;"
+                    >
+                        {allCountries.map(country => (
+                            <option value={country.phonePrefix} selected={currentPrefix === country.phonePrefix}>
+                                {country.flag} {country.phonePrefix}
+                            </option>
+                        ))}
+                    </select>
+                    <input
+                        id="phone"
+                        name="phone"
+                        type="tel"
+                        value={profile?.phone ?? ''}
+                        autocomplete="tel"
+                        placeholder="612 345 678"
+                        class="flex-1 rounded-xl border border-border bg-surface px-4 py-3 text-[15px] text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-text-primary transition-colors"
+                    />
+                </div>
+            </div>
+
+            {/* Calle y Número */}
+            <div class="grid grid-cols-3 gap-3">
+                <div class="col-span-2 flex flex-col gap-1.5">
+                    <label for="address_street" class="text-[13px] font-medium text-text-secondary">
+                        Calle
+                    </label>
+                    <input
+                        id="address_street"
+                        name="address_street"
+                        type="text"
+                        value={profile?.address_street ?? ''}
+                        autocomplete="address-line1"
+                        placeholder="Calle Gran Vía"
+                        class="w-full rounded-xl border border-border bg-surface px-4 py-3 text-[15px] text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-text-primary transition-colors"
+                    />
+                </div>
+                <div class="flex flex-col gap-1.5">
+                    <label for="address_number" class="text-[13px] font-medium text-text-secondary">
+                        Número
+                    </label>
+                    <input
+                        id="address_number"
+                        name="address_number"
+                        type="text"
+                        value={profile?.address_number ?? ''}
+                        autocomplete="address-line2"
+                        placeholder="42"
+                        class="w-full rounded-xl border border-border bg-surface px-4 py-3 text-[15px] text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-text-primary transition-colors"
+                    />
+                </div>
+            </div>
+
+            {/* Piso / Puerta (opcional) */}
+            <div class="flex flex-col gap-1.5">
+                <label for="address_floor" class="text-[13px] font-medium text-text-secondary">
+                    Piso / Puerta <span class="text-text-tertiary font-normal">(opcional)</span>
+                </label>
                 <input
-                    id="phone"
-                    name="phone"
-                    type="tel"
-                    value={(profile as any)?.phone ?? ''}
-                    autocomplete="tel"
-                    placeholder={strings.meDataPhonePlaceholder}
+                    id="address_floor"
+                    name="address_floor"
+                    type="text"
+                    value={profile?.address_floor ?? ''}
+                    autocomplete="address-line3"
+                    placeholder="3ºB, Portal 2..."
                     class="w-full rounded-xl border border-border bg-surface px-4 py-3 text-[15px] text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-text-primary transition-colors"
                 />
             </div>
 
-            {/* Dirección */}
+            {/* Código Postal y Ciudad */}
+            <div class="grid grid-cols-3 gap-3">
+                <div class="flex flex-col gap-1.5">
+                    <label for="address_postal_code" class="text-[13px] font-medium text-text-secondary">
+                        C.P.
+                    </label>
+                    <input
+                        id="address_postal_code"
+                        name="address_postal_code"
+                        type="text"
+                        value={profile?.address_postal_code ?? ''}
+                        autocomplete="postal-code"
+                        placeholder="28013"
+                        maxlength="5"
+                        class="w-full rounded-xl border border-border bg-surface px-4 py-3 text-[15px] text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-text-primary transition-colors"
+                    />
+                </div>
+                <div class="col-span-2 flex flex-col gap-1.5">
+                    <label for="address_city" class="text-[13px] font-medium text-text-secondary">
+                        Ciudad
+                    </label>
+                    <input
+                        id="address_city"
+                        name="address_city"
+                        type="text"
+                        value={profile?.address_city ?? ''}
+                        autocomplete="address-level2"
+                        placeholder="Madrid"
+                        class="w-full rounded-xl border border-border bg-surface px-4 py-3 text-[15px] text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-text-primary transition-colors"
+                    />
+                </div>
+            </div>
+
+            {/* País */}
             <div class="flex flex-col gap-1.5">
-                <label for="address" class="text-[13px] font-medium text-text-secondary">
-                    {strings.meDataAddress}
+                <label for="address_country" class="text-[13px] font-medium text-text-secondary">
+                    País
                 </label>
-                <textarea
-                    id="address"
-                    name="address"
-                    rows={3}
-                    autocomplete="street-address"
-                    placeholder={strings.meDataAddressPlaceholder}
-                    class="w-full rounded-xl border border-border bg-surface px-4 py-3 text-[15px] text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-text-primary transition-colors resize-none"
-                >{profile?.address ?? ''}</textarea>
+                <select
+                    id="address_country"
+                    name="address_country"
+                    autocomplete="country"
+                    class="w-full rounded-xl border border-border bg-surface px-4 py-3 text-[15px] text-text-primary focus:outline-none focus:border-text-primary transition-colors cursor-pointer appearance-none"
+                    style="background-image: url('data:image/svg+xml;charset=UTF-8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2712%27 height=%2712%27 viewBox=%270 0 12 12%27%3E%3Cpath fill=%27%23999%27 d=%27M3 4.5L6 7.5l3-3%27/%3E%3C/svg%3E'); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px;"
+                >
+                    {allCountries.map(country => (
+                        <option value={country.code} selected={currentCountry === country.code}>
+                            {country.flag} {country.name}
+                        </option>
+                    ))}
+                </select>
+            </div>
+
+            {/* Provincia / Estado */}
+            <div class="flex flex-col gap-1.5" id="province-container" data-is-spain={isSpain ? 'true' : 'false'}>
+                <label for="address_province" class="text-[13px] font-medium text-text-secondary">
+                    Provincia
+                </label>
+                {isSpain ? (
+                    <select
+                        id="address_province"
+                        name="address_province"
+                        autocomplete="address-level1"
+                        class="w-full rounded-xl border border-border bg-surface px-4 py-3 text-[15px] text-text-primary focus:outline-none focus:border-text-primary transition-colors cursor-pointer appearance-none"
+                        style="background-image: url('data:image/svg+xml;charset=UTF-8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2712%27 height=%2712%27 viewBox=%270 0 12 12%27%3E%3Cpath fill=%27%23999%27 d=%27M3 4.5L6 7.5l3-3%27/%3E%3C/svg%3E'); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px;"
+                    >
+                        <option value="">Selecciona provincia</option>
+                        {spainProvinces.map(province => (
+                            <option value={province.name} selected={profile?.address_province === province.name}>
+                                {province.name}
+                            </option>
+                        ))}
+                    </select>
+                ) : (
+                    <input
+                        id="address_province"
+                        name="address_province"
+                        type="text"
+                        value={profile?.address_province ?? ''}
+                        autocomplete="address-level1"
+                        placeholder="Madrid"
+                        class="w-full rounded-xl border border-border bg-surface px-4 py-3 text-[15px] text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-text-primary transition-colors"
+                    />
+                )}
             </div>
 
             {/* Feedback */}
@@ -140,10 +298,13 @@ const fromCheckout = Astro.url.searchParams.get('checkout') === '1' && returnTo 
 
 <script>
     import { strings } from '../../lib/i18n';
+    import { spainProvinces } from '../../lib/spain-provinces';
 
     const form = document.getElementById('profile-form') as HTMLFormElement;
     const btn = document.getElementById('save-btn') as HTMLButtonElement;
     const feedback = document.getElementById('form-feedback') as HTMLParagraphElement;
+    const countrySelect = document.getElementById('address_country') as unknown as HTMLSelectElement;
+    const provinceContainer = document.getElementById('province-container') as unknown as HTMLDivElement;
     const currentUrl = new URL(window.location.href);
     const returnTo = currentUrl.searchParams.get('return_to');
     const fromCheckout = currentUrl.searchParams.get('checkout') === '1' && returnTo === '/cart';
@@ -160,15 +321,74 @@ const fromCheckout = Astro.url.searchParams.get('checkout') === '1' && returnTo 
         setTimeout(() => feedback.classList.add('hidden'), 4000);
     }
 
+    function getProvinceValue(): string {
+        const el = provinceContainer.querySelector('input, select');
+        if (el instanceof HTMLInputElement || el instanceof HTMLSelectElement) {
+            return el.value || '';
+        }
+        return '';
+    }
+
+    function updateProvinceField() {
+        const country = countrySelect.value;
+        const isSpain = country === 'ES';
+        const currentProvince = getProvinceValue();
+
+        if (isSpain) {
+            provinceContainer.innerHTML = `
+                <label for="address_province" class="text-[13px] font-medium text-text-secondary">
+                    Provincia
+                </label>
+                <select
+                    id="address_province"
+                    name="address_province"
+                    autocomplete="address-level1"
+                    class="w-full rounded-xl border border-border bg-surface px-4 py-3 text-[15px] text-text-primary focus:outline-none focus:border-text-primary transition-colors cursor-pointer appearance-none"
+                    style="background-image: url('data:image/svg+xml;charset=UTF-8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2712%27 height=%2712%27 viewBox=%270 0 12 12%27%3E%3Cpath fill=%27%23999%27 d=%27M3 4.5L6 7.5l3-3%27/%3E%3C/svg%3E'); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px;"
+                >
+                    <option value="">Selecciona provincia</option>
+                    ${spainProvinces.map(p => `<option value="${p.name}" ${p.name === currentProvince ? 'selected' : ''}>${p.name}</option>`).join('')}
+                </select>
+            `;
+        } else {
+            provinceContainer.innerHTML = `
+                <label for="address_province" class="text-[13px] font-medium text-text-secondary">
+                    Provincia / Estado
+                </label>
+                <input
+                    id="address_province"
+                    name="address_province"
+                    type="text"
+                    value="${currentProvince}"
+                    autocomplete="address-level1"
+                    placeholder="Madrid"
+                    class="w-full rounded-xl border border-border bg-surface px-4 py-3 text-[15px] text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-text-primary transition-colors"
+                />
+            `;
+        }
+    }
+
+    countrySelect.addEventListener('change', updateProvinceField);
+
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
         btn.disabled = true;
         btn.textContent = strings.meDataSaving;
 
+        const provinceEl = form.querySelector('#address_province') as HTMLInputElement | HTMLSelectElement | null;
+
         const data = {
-            full_name: (form.querySelector<HTMLInputElement>('#full_name')!).value,
-            phone: (form.querySelector<HTMLInputElement>('#phone')!).value,
-            address: (form.querySelector<HTMLTextAreaElement>('#address')!).value,
+            first_name: (form.querySelector('#first_name') as HTMLInputElement).value,
+            last_name: (form.querySelector('#last_name') as HTMLInputElement).value,
+            phone: (form.querySelector('#phone') as HTMLInputElement).value,
+            phone_prefix: (form.querySelector('#phone_prefix') as unknown as HTMLSelectElement).value,
+            address_street: (form.querySelector('#address_street') as HTMLInputElement).value,
+            address_number: (form.querySelector('#address_number') as HTMLInputElement).value,
+            address_floor: (form.querySelector('#address_floor') as HTMLInputElement).value,
+            address_postal_code: (form.querySelector('#address_postal_code') as HTMLInputElement).value,
+            address_city: (form.querySelector('#address_city') as HTMLInputElement).value,
+            address_province: provinceEl?.value || '',
+            address_country: (form.querySelector('#address_country') as unknown as HTMLSelectElement).value,
         };
 
         try {
@@ -198,9 +418,9 @@ const fromCheckout = Astro.url.searchParams.get('checkout') === '1' && returnTo 
     });
 
     if (fromCheckout) {
-        const fullNameInput = form.querySelector<HTMLInputElement>('#full_name');
-        const addressInput = form.querySelector<HTMLTextAreaElement>('#address');
-        const firstMissingField = fullNameInput?.value.trim() ? addressInput : fullNameInput;
+        const firstNameInput = form.querySelector('#first_name') as HTMLInputElement | null;
+        const streetInput = form.querySelector('#address_street') as HTMLInputElement | null;
+        const firstMissingField = firstNameInput?.value.trim() ? streetInput : firstNameInput;
         firstMissingField?.focus();
     }
 </script>

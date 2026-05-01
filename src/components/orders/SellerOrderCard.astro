@@ -25,6 +25,13 @@ export interface SellerOrderCardData {
     itemsSold: number;
     items: SellerOrderItem[];
     shopSlug: string;
+    hasShipment?: boolean;
+    shipmentId?: string;
+    trackingNumber?: string;
+    trackingUrl?: string;
+    labelUrl?: string;
+    carrierName?: string;
+    serviceName?: string;
 }
 
 interface Props {
@@ -186,6 +193,60 @@ const customerName = order.shippingFullName || order.buyerEmail || strings.profi
                     </li>
                 )}
             </ul>
+
+            {(order.hasShipment || order.status === 'paid') && (
+                <div class="mt-6 pt-5 border-t border-border">
+                    <div class="flex items-center gap-2 text-[13px] font-bold uppercase tracking-wider text-text-primary mb-4">
+                        <Icon name="truck" size={16} class="text-text-tertiary" />
+                        <span>Envío</span>
+                    </div>
+
+                    {order.hasShipment ? (
+                        <div class="flex flex-col gap-3">
+                            {order.carrierName && (
+                                <p class="text-sm text-text-secondary">
+                                    <span class="font-medium text-text-primary">{strings.shippingCarrier}:</span> {order.carrierName}
+                                </p>
+                            )}
+                            {order.trackingNumber && (
+                                <p class="text-sm text-text-secondary">
+                                    <span class="font-medium text-text-primary">{strings.shippingTrackingNumber}:</span>{' '}
+                                    <span class="font-mono">{order.trackingNumber}</span>
+                                </p>
+                            )}
+                            <div class="flex flex-wrap gap-2 mt-2">
+                                {order.trackingUrl && (
+                                    <a
+                                        href={order.trackingUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-400 hover:bg-purple-200 dark:hover:bg-purple-900/60 transition-colors"
+                                    >
+                                        <Icon name="external-link" size={12} />
+                                        {strings.shippingTrackPackage}
+                                    </a>
+                                )}
+                                {order.labelUrl && (
+                                    <a
+                                        href={order.labelUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/60 transition-colors"
+                                    >
+                                        <Icon name="file-text" size={12} />
+                                        {strings.shippingViewLabel}
+                                    </a>
+                                )}
+                            </div>
+                        </div>
+                    ) : order.status === 'paid' ? (
+                        <div class="flex items-center gap-2 text-sm text-amber-700 dark:text-amber-400">
+                            <Icon name="clock" size={16} class="shrink-0" />
+                            <span>Envío pendiente de crear</span>
+                        </div>
+                    ) : null}
+                </div>
+            )}
         </section>
     </div>
 </article>

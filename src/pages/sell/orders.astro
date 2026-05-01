@@ -50,7 +50,17 @@ const { data: orderItemsData } = await supabase
             buyer_email,
             shipping_full_name,
             shipping_phone,
-            shipping_address
+            shipping_address,
+            shipments (
+                id,
+                packlink_shipment_id,
+                carrier_name,
+                service_name,
+                status,
+                tracking_number,
+                tracking_url,
+                label_url
+            )
         ),
         product_variants (
             variant_name,
@@ -81,6 +91,9 @@ for (const orderItem of orderItemsData ?? []) {
 
     const quantity = Number((orderItem as any).quantity ?? 0);
     if (quantity <= 0) continue;
+
+    const rawShipments = (order as any).shipments;
+    const shipment = Array.isArray(rawShipments) ? rawShipments[0] : rawShipments;
 
     const item: SellerOrderItem = {
         productTitle: product.title ?? strings.fallbackProductName,
@@ -113,6 +126,13 @@ for (const orderItem of orderItemsData ?? []) {
         itemsSold: item.quantity,
         items: [item],
         shopSlug: shop.slug,
+        hasShipment: !!shipment,
+        shipmentId: shipment?.id,
+        trackingNumber: shipment?.tracking_number ?? null,
+        trackingUrl: shipment?.tracking_url ?? null,
+        labelUrl: shipment?.label_url ?? null,
+        carrierName: shipment?.carrier_name ?? null,
+        serviceName: shipment?.service_name ?? null,
     });
 }
 

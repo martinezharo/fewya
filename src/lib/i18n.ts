@@ -169,6 +169,26 @@ export const strings = {
     ordersTotal: 'Total',
     ordersOrder: 'Pedido',
 
+    // Shipping / Packlink
+    shippingCreateShipment: 'Crear envío',
+    shippingCreatingShipment: 'Creando…',
+    shippingShipmentCreated: 'Envío creado',
+    shippingShipmentError: 'Error al crear el envío',
+    shippingViewLabel: 'Ver etiqueta',
+    shippingTrackPackage: 'Seguir paquete',
+    shippingTrackingNumber: 'Número de seguimiento',
+    shippingCarrier: 'Transportista',
+    shippingService: 'Servicio',
+    shippingSelectCarrier: 'Seleccionar transportista',
+    shippingNoRates: 'No hay tarifas disponibles',
+    shippingRatesError: 'Error al obtener tarifas de envío',
+    shippingLabelReady: 'Etiqueta lista',
+    shippingShipped: 'Enviado',
+    shippingDelivered: 'Entregado',
+    shippingPending: 'Pendiente',
+    shippingFailed: 'Error',
+    shippingCancelled: 'Cancelado',
+
     // Orders / states
     orderStatusPending: 'Pendiente',
     orderStatusPaid: 'Pagado',

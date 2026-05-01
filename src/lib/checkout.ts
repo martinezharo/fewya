@@ -1,5 +1,6 @@
 export const CHECKOUT_CURRENCY = 'eur';
 export const SHOP_SHIPPING_EUR = 3.49;
+export const DEFAULT_SHOP_SHIPPING_EUR = 3.49;
 
 export interface CheckoutPricedItem {
     shopId: string;
@@ -37,7 +38,10 @@ export function fromMinorUnits(amount: number): number {
     return amount / 100;
 }
 
-export function buildShopPayouts(items: CheckoutPricedItem[]): ShopPayoutBreakdown[] {
+export function buildShopPayouts(
+    items: CheckoutPricedItem[],
+    shopShippingMap?: Map<string, number>
+): ShopPayoutBreakdown[] {
     const shopMap = new Map<string, ShopPayoutBreakdown>();
 
     for (const item of items) {
@@ -49,20 +53,22 @@ export function buildShopPayouts(items: CheckoutPricedItem[]): ShopPayoutBreakdo
             continue;
         }
 
+        const shipping = shopShippingMap?.get(item.shopId) ?? DEFAULT_SHOP_SHIPPING_EUR;
+
         shopMap.set(item.shopId, {
             shopId: item.shopId,
             shopName: item.shopName,
             shopSlug: item.shopSlug,
             stripeAccountId: item.stripeAccountId,
             subtotal: item.unitPrice * item.quantity,
-            shipping: SHOP_SHIPPING_EUR,
-            total: item.unitPrice * item.quantity + SHOP_SHIPPING_EUR,
+            shipping,
+            total: item.unitPrice * item.quantity + shipping,
         });
     }
 
     return Array.from(shopMap.values());
 }
 
-export function calculateOrderTotal(items: CheckoutPricedItem[]): number {
-    return buildShopPayouts(items).reduce((sum, payout) => sum + payout.total, 0);
+export function calculateOrderTotal(items: CheckoutPricedItem[], shopShippingMap?: Map<string, number>): number {
+    return buildShopPayouts(items, shopShippingMap).reduce((sum, payout) => sum + payout.total, 0);
 }
