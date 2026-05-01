@@ -82,8 +82,10 @@ const isSpain = currentCountry === 'ES';
                         value={profile?.first_name ?? ''}
                         autocomplete="given-name"
                         placeholder="María"
+                        maxlength="50"
                         class="w-full rounded-xl border border-border bg-surface px-4 py-3 text-[15px] text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-text-primary transition-colors"
                     />
+                    <p id="first_name_error" class="hidden text-[12px] text-red-500"></p>
                 </div>
                 <div class="flex flex-col gap-1.5">
                     <label for="last_name" class="text-[13px] font-medium text-text-secondary">
@@ -96,8 +98,10 @@ const isSpain = currentCountry === 'ES';
                         value={profile?.last_name ?? ''}
                         autocomplete="family-name"
                         placeholder="García López"
+                        maxlength="100"
                         class="w-full rounded-xl border border-border bg-surface px-4 py-3 text-[15px] text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-text-primary transition-colors"
                     />
+                    <p id="last_name_error" class="hidden text-[12px] text-red-500"></p>
                 </div>
             </div>
 
@@ -144,6 +148,7 @@ const isSpain = currentCountry === 'ES';
                         class="flex-1 rounded-xl border border-border bg-surface px-4 py-3 text-[15px] text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-text-primary transition-colors"
                     />
                 </div>
+                <p id="phone_error" class="hidden text-[12px] text-red-500"></p>
             </div>
 
             {/* Calle y Número */}
@@ -159,8 +164,10 @@ const isSpain = currentCountry === 'ES';
                         value={profile?.address_street ?? ''}
                         autocomplete="address-line1"
                         placeholder="Calle Gran Vía"
+                        maxlength="100"
                         class="w-full rounded-xl border border-border bg-surface px-4 py-3 text-[15px] text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-text-primary transition-colors"
                     />
+                    <p id="address_street_error" class="hidden text-[12px] text-red-500"></p>
                 </div>
                 <div class="flex flex-col gap-1.5">
                     <label for="address_number" class="text-[13px] font-medium text-text-secondary">
@@ -173,8 +180,10 @@ const isSpain = currentCountry === 'ES';
                         value={profile?.address_number ?? ''}
                         autocomplete="address-line2"
                         placeholder="42"
+                        maxlength="20"
                         class="w-full rounded-xl border border-border bg-surface px-4 py-3 text-[15px] text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-text-primary transition-colors"
                     />
+                    <p id="address_number_error" class="hidden text-[12px] text-red-500"></p>
                 </div>
             </div>
 
@@ -190,8 +199,10 @@ const isSpain = currentCountry === 'ES';
                     value={profile?.address_floor ?? ''}
                     autocomplete="address-line3"
                     placeholder="3ºB, Portal 2..."
+                    maxlength="30"
                     class="w-full rounded-xl border border-border bg-surface px-4 py-3 text-[15px] text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-text-primary transition-colors"
                 />
+                <p id="address_floor_error" class="hidden text-[12px] text-red-500"></p>
             </div>
 
             {/* Código Postal y Ciudad */}
@@ -208,8 +219,10 @@ const isSpain = currentCountry === 'ES';
                         autocomplete="postal-code"
                         placeholder="28013"
                         maxlength="5"
+                        inputmode="numeric"
                         class="w-full rounded-xl border border-border bg-surface px-4 py-3 text-[15px] text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-text-primary transition-colors"
                     />
+                    <p id="address_postal_code_error" class="hidden text-[12px] text-red-500"></p>
                 </div>
                 <div class="col-span-2 flex flex-col gap-1.5">
                     <label for="address_city" class="text-[13px] font-medium text-text-secondary">
@@ -222,8 +235,10 @@ const isSpain = currentCountry === 'ES';
                         value={profile?.address_city ?? ''}
                         autocomplete="address-level2"
                         placeholder="Madrid"
+                        maxlength="100"
                         class="w-full rounded-xl border border-border bg-surface px-4 py-3 text-[15px] text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-text-primary transition-colors"
                     />
+                    <p id="address_city_error" class="hidden text-[12px] text-red-500"></p>
                 </div>
             </div>
 
@@ -278,6 +293,7 @@ const isSpain = currentCountry === 'ES';
                         class="w-full rounded-xl border border-border bg-surface px-4 py-3 text-[15px] text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-text-primary transition-colors"
                     />
                 )}
+                <p id="address_province_error" class="hidden text-[12px] text-red-500"></p>
             </div>
 
             {/* Feedback */}
@@ -299,6 +315,7 @@ const isSpain = currentCountry === 'ES';
 <script>
     import { strings } from '../../lib/i18n';
     import { spainProvinces } from '../../lib/spain-provinces';
+    import { validateProfileForm, type ProfileFormData } from '../../lib/validation';
 
     const form = document.getElementById('profile-form') as HTMLFormElement;
     const btn = document.getElementById('save-btn') as HTMLButtonElement;
@@ -308,6 +325,27 @@ const isSpain = currentCountry === 'ES';
     const currentUrl = new URL(window.location.href);
     const returnTo = currentUrl.searchParams.get('return_to');
     const fromCheckout = currentUrl.searchParams.get('checkout') === '1' && returnTo === '/cart';
+
+    const errorMessages: Record<string, string> = {
+        validationRequired: strings.validationRequired,
+        validationNameMinLength: strings.validationNameMinLength,
+        validationNameMaxLength: strings.validationNameMaxLength,
+        validationLastNameMinLength: strings.validationLastNameMinLength,
+        validationLastNameMaxLength: strings.validationLastNameMaxLength,
+        validationPhoneFormat: strings.validationPhoneFormat,
+        validationPhonePrefixMissing: strings.validationPhonePrefixMissing,
+        validationStreetMinLength: strings.validationStreetMinLength,
+        validationStreetMaxLength: strings.validationStreetMaxLength,
+        validationNumberMaxLength: strings.validationNumberMaxLength,
+        validationFloorMaxLength: strings.validationFloorMaxLength,
+        validationPostalCodeFormat: strings.validationPostalCodeFormat,
+        validationPostalCodeFormatEs: strings.validationPostalCodeFormatEs,
+        validationCityMinLength: strings.validationCityMinLength,
+        validationCityMaxLength: strings.validationCityMaxLength,
+        validationProvinceRequiredEs: strings.validationProvinceRequiredEs,
+        validationNameFormat: strings.validationNameFormat,
+        validationCityFormat: strings.validationCityFormat,
+    };
 
     function showFeedback(message: string, isError: boolean) {
         feedback.textContent = message;
@@ -319,6 +357,26 @@ const isSpain = currentCountry === 'ES';
         ].join(' ');
         feedback.classList.remove('hidden');
         setTimeout(() => feedback.classList.add('hidden'), 4000);
+    }
+
+    function showFieldError(fieldId: string, message: string | null) {
+        const errorEl = document.getElementById(`${fieldId}_error`);
+        const inputEl = document.getElementById(fieldId);
+        if (errorEl && message) {
+            errorEl.textContent = message;
+            errorEl.classList.remove('hidden');
+            inputEl?.classList.add('border-red-500');
+            inputEl?.classList.remove('border-border');
+        } else if (errorEl) {
+            errorEl.classList.add('hidden');
+            inputEl?.classList.remove('border-red-500');
+            inputEl?.classList.add('border-border');
+        }
+    }
+
+    function clearAllErrors() {
+        const errorFields = ['first_name', 'last_name', 'phone', 'phone_prefix', 'address_street', 'address_number', 'address_floor', 'address_postal_code', 'address_city', 'address_province'];
+        errorFields.forEach(field => showFieldError(field, null));
     }
 
     function getProvinceValue(): string {
@@ -349,6 +407,7 @@ const isSpain = currentCountry === 'ES';
                     <option value="">Selecciona provincia</option>
                     ${spainProvinces.map(p => `<option value="${p.name}" ${p.name === currentProvince ? 'selected' : ''}>${p.name}</option>`).join('')}
                 </select>
+                <p id="address_province_error" class="hidden text-[12px] text-red-500"></p>
             `;
         } else {
             provinceContainer.innerHTML = `
@@ -364,6 +423,7 @@ const isSpain = currentCountry === 'ES';
                     placeholder="Madrid"
                     class="w-full rounded-xl border border-border bg-surface px-4 py-3 text-[15px] text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-text-primary transition-colors"
                 />
+                <p id="address_province_error" class="hidden text-[12px] text-red-500"></p>
             `;
         }
     }
@@ -372,12 +432,11 @@ const isSpain = currentCountry === 'ES';
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        btn.disabled = true;
-        btn.textContent = strings.meDataSaving;
+        clearAllErrors();
 
         const provinceEl = form.querySelector('#address_province') as HTMLInputElement | HTMLSelectElement | null;
 
-        const data = {
+        const data: ProfileFormData = {
             first_name: (form.querySelector('#first_name') as HTMLInputElement).value,
             last_name: (form.querySelector('#last_name') as HTMLInputElement).value,
             phone: (form.querySelector('#phone') as HTMLInputElement).value,
@@ -390,6 +449,22 @@ const isSpain = currentCountry === 'ES';
             address_province: provinceEl?.value || '',
             address_country: (form.querySelector('#address_country') as unknown as HTMLSelectElement).value,
         };
+
+        const errors = validateProfileForm(data);
+
+        if (errors.length > 0) {
+            errors.forEach(err => {
+                const translatedMsg = errorMessages[err.message] || err.message;
+                showFieldError(err.field, translatedMsg);
+            });
+            const firstErrorField = errors[0].field;
+            const firstInput = form.querySelector(`#${firstErrorField}`) as HTMLElement | null;
+            firstInput?.focus();
+            return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = strings.meDataSaving;
 
         try {
             const res = await fetch('/api/profile/update', {
@@ -415,6 +490,14 @@ const isSpain = currentCountry === 'ES';
             btn.disabled = false;
             btn.textContent = strings.meDataSave;
         }
+    });
+
+    const inputFields = ['first_name', 'last_name', 'address_street', 'address_postal_code', 'address_city'];
+    inputFields.forEach(fieldId => {
+        const input = form.querySelector(`#${fieldId}`) as HTMLInputElement | null;
+        input?.addEventListener('input', () => {
+            showFieldError(fieldId, null);
+        });
     });
 
     if (fromCheckout) {

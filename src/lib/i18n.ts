@@ -158,6 +158,26 @@ export const strings = {
     meDataCheckoutNoticeTitle: 'Completa tus datos para pagar',
     meDataCheckoutNoticeSubtitle: 'Guarda tu nombre y tu dirección de envío para volver al carrito y terminar la compra.',
 
+    // Form validation errors
+    validationRequired: 'Este campo es obligatorio',
+    validationNameMinLength: 'El nombre debe tener al menos 2 caracteres',
+    validationNameMaxLength: 'El nombre no puede superar los 50 caracteres',
+    validationLastNameMinLength: 'El apellido debe tener al menos 2 caracteres',
+    validationLastNameMaxLength: 'El apellido no puede superar los 100 caracteres',
+    validationPhoneFormat: 'El teléfono no es válido',
+    validationPhonePrefixMissing: 'Selecciona un prefijo de país',
+    validationStreetMinLength: 'La calle debe tener al menos 3 caracteres',
+    validationStreetMaxLength: 'La calle no puede superar los 100 caracteres',
+    validationNumberMaxLength: 'El número no puede superar los 20 caracteres',
+    validationFloorMaxLength: 'El piso no puede superar los 30 caracteres',
+    validationPostalCodeFormat: 'El código postal debe ser de 5 dígitos',
+    validationPostalCodeFormatEs: 'El código postal español debe ser de 5 dígitos (00100-52999)',
+    validationCityMinLength: 'La ciudad debe tener al menos 2 caracteres',
+    validationCityMaxLength: 'La ciudad no puede superar los 100 caracteres',
+    validationProvinceRequiredEs: 'Selecciona una provincia',
+    validationNameFormat: 'El nombre solo puede contener letras',
+    validationCityFormat: 'La ciudad solo puede contener letras',
+
     // Orders page
     ordersPageTitle: 'Mis pedidos — Fewya',
     ordersHeading: 'Mis pedidos',
