@@ -19,7 +19,7 @@ if (!user) {
         <div class="flex items-center gap-3 mb-8">
             <a
                 href="/me"
-                class="w-9 h-9 rounded-full flex items-center justify-center hover:bg-surface transition-colors -ml-1 text-text-secondary hover:text-text-primary"
+                class="w-9 h-9 rounded-full flex items-center justify-center hover:bg-border-light transition-colors -ml-1 text-text-secondary hover:text-text-primary"
                 aria-label={strings.productBack}
             >
                 <Icon name="arrow-left" size={20} />
@@ -101,7 +101,7 @@ if (!user) {
                 <button
                     type="button"
                     id="sign-out-btn"
-                    class="w-full flex items-center gap-3 px-5 py-4 hover:bg-white/50 dark:hover:bg-white/5 transition-colors"
+                    class="w-full flex items-center gap-3 px-5 py-4 hover:bg-border-light transition-colors"
                 >
                     <Icon name="log-out" size={20} class="text-text-secondary" />
                     <span class="text-[15px] font-medium text-text-primary">
@@ -149,7 +149,7 @@ if (!user) {
         const resolved = theme === 'system' ? (prefersDark ? 'dark' : 'light') : theme;
         document.documentElement.setAttribute('data-theme', resolved);
         const m = document.querySelector('meta[name="theme-color"]');
-        if (m) m.setAttribute('content', resolved === 'dark' ? '#0a0a0a' : '#fafafa');
+        if (m) m.setAttribute('content', resolved === 'dark' ? '#0B1020' : '#F5F7FF');
         localStorage.setItem(STORAGE_KEY, theme);
     }
 

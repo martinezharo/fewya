@@ -25,7 +25,7 @@ const { variants, defaultImage } = Astro.props;
             data-variant-stock={v.stock}
             data-variant-image={v.variant_image || defaultImage}
           >
-            <div class={`w-14 h-14 rounded-full overflow-hidden border-[2.5px] transition-all ${i === 0 ? 'border-accent' : 'border-border-light'}`} data-variant-ring>
+            <div class={`w-14 h-14 rounded-full overflow-hidden border-[2.5px] transition-all ${i === 0 ? 'border-secondary' : 'border-border-light'}`} data-variant-ring>
               <img
                 src={v.variant_image ?? defaultImage}
                 alt={displayName}
@@ -35,7 +35,7 @@ const { variants, defaultImage } = Astro.props;
             </div>
             <div class="w-16 overflow-hidden">
               <span
-                class={`block text-[11px] font-medium whitespace-nowrap text-center transition-colors ${i === 0 ? 'text-accent' : 'text-text-secondary'}`}
+                class={`block text-[11px] font-medium whitespace-nowrap text-center transition-colors ${i === 0 ? 'text-secondary' : 'text-text-secondary'}`}
                 data-variant-name
               >
                 {displayName}
@@ -84,11 +84,11 @@ const { variants, defaultImage } = Astro.props;
         const ring = b.querySelector<HTMLElement>('[data-variant-ring]');
         const nameEl = b.querySelector<HTMLElement>('[data-variant-name]');
         if (ring) {
-          ring.classList.remove('border-accent');
+          ring.classList.remove('border-secondary');
           ring.classList.add('border-border-light');
         }
         if (nameEl) {
-          nameEl.classList.remove('text-accent');
+          nameEl.classList.remove('text-secondary');
           nameEl.classList.add('text-text-secondary');
         }
       });
@@ -96,11 +96,11 @@ const { variants, defaultImage } = Astro.props;
       const ring = btn.querySelector<HTMLElement>('[data-variant-ring]');
       const nameEl = btn.querySelector<HTMLElement>('[data-variant-name]');
       if (ring) {
-        ring.classList.add('border-accent');
+        ring.classList.add('border-secondary');
         ring.classList.remove('border-border-light');
       }
       if (nameEl) {
-        nameEl.classList.add('text-accent');
+        nameEl.classList.add('text-secondary');
         nameEl.classList.remove('text-text-secondary');
       }
 
