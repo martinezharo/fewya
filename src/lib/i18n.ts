@@ -1,10 +1,10 @@
 export const strings = {
     // Meta / SEO
-    siteTitle: 'Shopenn — Marketplace de pequeños negocios',
+    siteTitle: 'Fewya — Marketplace de pequeños negocios',
     siteDescription: 'Descubre productos únicos de vendedores independientes. Compra directamente, sin intermediarios.',
 
     // Header
-    logoText: 'Shopenn',
+    logoText: 'Fewya',
     searchPlaceholder: 'Buscar productos...',
 
     // Hero Banner — Web (unregistered)
@@ -67,12 +67,12 @@ export const strings = {
     heroGoogleSignIn: 'Continuar con Google',
 
     // Profile Page
-    profilePageTitle: 'Mi perfil — Shopenn',
+    profilePageTitle: 'Mi perfil — Fewya',
     profileAnonymous: 'Usuario',
     profileSignOut: 'Cerrar sesión',
 
     // Wishlist
-    wishlistPageTitle: 'Mis favoritos — Shopenn',
+    wishlistPageTitle: 'Mis favoritos — Fewya',
     wishlistEmpty: 'Aún no tienes favoritos',
     wishlistEmptySub: 'Explora productos y guarda los que más te gusten.',
     wishlistExploreCta: 'Explorar productos',
@@ -102,7 +102,7 @@ export const strings = {
     searchPageTitlePrefix: 'Buscar',
 
     // Cart
-    cartPageTitle: 'Mi carrito — Shopenn',
+    cartPageTitle: 'Mi carrito — Fewya',
     cartEmpty: 'Tu carrito está vacío',
     cartEmptySub: 'Añade productos de las tiendas que más te gusten.',
     cartExploreCta: 'Explorar productos',
@@ -118,7 +118,7 @@ export const strings = {
     cartProductSingular: 'producto',
     cartProductPlural: 'productos',
     cartShippingIncluded: 'Envio incluido',
-    cartSuccessPageTitle: 'Pago confirmado — Shopenn',
+    cartSuccessPageTitle: 'Pago confirmado — Fewya',
     cartSuccessLoading: 'Confirmando tu pago…',
     cartSuccessTitle: 'Pago confirmado',
     cartSuccessSubtitle: 'Tu pedido ha sido registrado y los vendedores ya pueden prepararlo.',
@@ -127,13 +127,13 @@ export const strings = {
     cartSuccessContinueCta: 'Seguir comprando',
     cartSuccessErrorTitle: 'No hemos podido confirmar el pago',
     cartSuccessErrorSubtitle: 'Si Stripe ya ha cobrado el pedido, podrás verlo en tus pedidos en unos instantes.',
-    cartCancelPageTitle: 'Pago cancelado — Shopenn',
+    cartCancelPageTitle: 'Pago cancelado — Fewya',
     cartCancelTitle: 'Pago cancelado',
     cartCancelSubtitle: 'Tu carrito sigue intacto para que puedas revisarlo y reintentar el pago cuando quieras.',
     cartCancelReturnCta: 'Volver al carrito',
 
     // Me / Profile Dashboard
-    mePageTitle: 'Mi cuenta — Shopenn',
+    mePageTitle: 'Mi cuenta — Fewya',
     meLastPurchases: 'Últimas compras',
     meViewAllOrders: 'Ver todos',
     meMyOrders: 'Mis pedidos',
@@ -159,7 +159,7 @@ export const strings = {
     meDataCheckoutNoticeSubtitle: 'Guarda tu nombre y tu dirección de envío para volver al carrito y terminar la compra.',
 
     // Orders page
-    ordersPageTitle: 'Mis pedidos — Shopenn',
+    ordersPageTitle: 'Mis pedidos — Fewya',
     ordersHeading: 'Mis pedidos',
     ordersEmpty: 'No tienes pedidos aún',
     ordersEmptySub: 'Cuando realices tu primer pedido aparecerá aquí.',
@@ -186,7 +186,7 @@ export const strings = {
     fallbackProductName: 'Producto',
 
     // Settings Page
-    settingsPageTitle: 'Ajustes — Shopenn',
+    settingsPageTitle: 'Ajustes — Fewya',
     settingsTitle: 'Ajustes',
     settingsAppearanceSection: 'Apariencia',
     settingsThemeLabel: 'Tema',
@@ -210,7 +210,7 @@ export const strings = {
     sellerSidebarCloseLabel: 'Cerrar menú',
     sellerSidebarOpenLabel: 'Abrir menú',
     sellerSidebarViewShop: 'Ver tienda',
-    sellerBrandName: 'Shopenn seller',
+    sellerBrandName: 'Fewya seller',
 
     // Auth / API / errors
     authGoogleLoginError: 'Error al iniciar sesion con Google',
@@ -298,7 +298,7 @@ export const strings = {
     sellerDashboardStripePendingTitle: 'Te falta conectar Stripe',
     sellerDashboardStripePendingSubtitle: 'Sin Stripe Connect no podremos cobrar ni repartir pagos a tu tienda.',
     sellerDashboardStripeCta: 'Configurar cobros',
-    sellerOrdersPageTitle: 'Pedidos — Shopenn Seller',
+    sellerOrdersPageTitle: 'Pedidos — Fewya Seller',
     sellerOrdersHeading: 'Pedidos',
     sellerOrdersIntro: 'Revisa las ventas de tu tienda con el detalle de productos, estado del pedido y datos de entrega.',
     sellerOrdersEmpty: 'Todavía no has recibido ventas',
@@ -312,7 +312,7 @@ export const strings = {
     sellerOrdersItemsSoldLabel: 'Unidades',
 
     // Seller Catalog
-    sellerCatalogPageTitle: 'Catálogo — Shopenn Seller',
+    sellerCatalogPageTitle: 'Catálogo — Fewya Seller',
     sellerCatalogTitle: 'Catálogo',
     sellerCatalogNewProduct: 'Nuevo producto',
     sellerCatalogSearchPlaceholder: 'Buscar productos...',

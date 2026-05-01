@@ -10,7 +10,7 @@
 - Las rutas de las páginas deben estar siempre en inglés.
 - Cuando hagas un cambio en la estructura de la base de datos actualiza db-structure.sql y crea un nuevo archivo SQL con los cambios listos para ser importados a Supabase.
 
-## Shopenn
+## Fewya
 
 ### Producto
 - Será una PWA Mobile First en la sección de compras, actua más cómo si estuvieses desarrollando una app móvil nativa que una web.

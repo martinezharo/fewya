@@ -3,8 +3,8 @@ import type { AstroCookies } from 'astro';
 import { SUPABASE_URL, SUPABASE_KEY } from 'astro:env/server';
 import { strings } from './i18n';
 
-const AUTH_REDIRECT_COOKIE = 'shopenn-auth-redirect';
-const AUTH_ROLE_COOKIE = 'shopenn-auth-role';
+const AUTH_REDIRECT_COOKIE = 'fewya-auth-redirect';
+const AUTH_ROLE_COOKIE = 'fewya-auth-role';
 
 /**
  * Creates a Supabase client with cookie-based session management for SSR.

@@ -19,7 +19,7 @@ const {
     <!-- Theme init: apply before paint to avoid flash -->
     <script is:inline>
       (function () {
-        var t = localStorage.getItem('shopenn-theme');
+        var t = localStorage.getItem('fewya-theme');
         var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         var theme = (t === 'system' || !t) ? (prefersDark ? 'dark' : 'light') : t;
         document.documentElement.setAttribute('data-theme', theme);

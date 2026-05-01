@@ -29,8 +29,8 @@ export default defineConfig({
         suppressWarnings: true,
       },
       manifest: {
-        name: 'Shopenn Marketplace',
-        short_name: 'Shopenn',
+        name: 'Fewya Marketplace',
+        short_name: 'Fewya',
         description: 'Marketplace moderno para pequeños negocios',
         theme_color: '#ffffff',
         icons: [

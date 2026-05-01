@@ -1,4 +1,4 @@
-Shopenn es el nombre en clave de un marketplace donde pequeños negocios pueden vender de una forma más profesional que Wallapop o Vinted, pero igual de fácil de usar sin las complicaciones de una propia web o de vender en Amazon.
+Fewya es el nombre en clave de un marketplace donde pequeños negocios pueden vender de una forma más profesional que Wallapop o Vinted, pero igual de fácil de usar sin las complicaciones de una propia web o de vender en Amazon.
 
 ## Entorno
 

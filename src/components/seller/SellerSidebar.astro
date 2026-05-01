@@ -198,7 +198,7 @@ function isActive(href: string) {
         if (!sidebar) return;
 
         // Restore desktop preference
-        if (window.innerWidth >= 1024 && localStorage.getItem('shopenn-seller-sidebar') === 'collapsed') {
+        if (window.innerWidth >= 1024 && localStorage.getItem('fewya-seller-sidebar') === 'collapsed') {
             sidebar.dataset.collapsed = '';
             collapseBtn?.setAttribute('aria-label', 'Expandir menú');
         }
@@ -208,11 +208,11 @@ function isActive(href: string) {
             const isCollapsed = 'collapsed' in sidebar.dataset;
             if (isCollapsed) {
                 delete sidebar.dataset.collapsed;
-                localStorage.setItem('shopenn-seller-sidebar', 'expanded');
+                localStorage.setItem('fewya-seller-sidebar', 'expanded');
                 collapseBtn.setAttribute('aria-label', 'Contraer menú');
             } else {
                 sidebar.dataset.collapsed = '';
-                localStorage.setItem('shopenn-seller-sidebar', 'collapsed');
+                localStorage.setItem('fewya-seller-sidebar', 'collapsed');
                 collapseBtn.setAttribute('aria-label', 'Expandir menú');
             }
         });
