@@ -32,7 +32,7 @@ export default defineConfig({
         name: 'Fewya Marketplace',
         short_name: 'Fewya',
         description: 'Marketplace moderno para pequeños negocios',
-        theme_color: '#ffffff',
+        theme_color: '#F5F7FF',
         icons: [
           {
             src: 'favicon.svg',
