@@ -229,7 +229,7 @@ const initialVariants = (variants && variants.length > 0) ? variants : [
                                     <Icon name="image" size={20} class="text-text-tertiary" />
                                 )}
                             </div>
-                            <button type="button" class="variant-image-btn px-3 py-1.5 rounded-lg text-xs font-medium text-text-secondary border border-border hover:bg-bg transition-colors">
+                            <button type="button" class="variant-image-btn px-3 py-1.5 rounded-lg text-xs font-medium text-text-secondary border border-border hover:bg-border-light transition-colors">
                                 {v.variant_image ? 'Cambiar' : 'Subir'}
                             </button>
                             <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" class="variant-image-input hidden" />
@@ -305,7 +305,7 @@ const initialVariants = (variants && variants.length > 0) ? variants : [
         <button
             type="button"
             id="save-product-btn"
-            class="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 font-medium text-sm hover:scale-[1.02] transition-transform"
+            class="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-accent text-bg font-medium text-sm hover:scale-[1.02] transition-transform"
         >
             <span id="save-product-text">{strings.sellerProductSave}</span>
             <svg id="save-product-spinner" class="animate-spin h-4 w-4 hidden" viewBox="0 0 24 24" fill="none">
@@ -313,7 +313,7 @@ const initialVariants = (variants && variants.length > 0) ? variants : [
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
             </svg>
         </button>
-        <a href="/sell/catalog" class="px-6 py-2.5 rounded-full border border-border text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-bg transition-colors no-underline">
+        <a href="/sell/catalog" class="px-6 py-2.5 rounded-full border border-border text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-border-light transition-colors no-underline">
             {strings.sellerProductBackToCatalog}
         </a>
     </div>

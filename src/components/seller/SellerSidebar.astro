@@ -45,7 +45,7 @@ function isActive(href: string) {
         <!-- Desktop: collapse/expand toggle -->
         <button
             id="seller-sidebar-collapse-btn"
-            class="hidden lg:flex shrink-0 items-center justify-center w-8 h-8 rounded-lg text-text-tertiary hover:text-text-primary hover:bg-bg transition-colors"
+            class="hidden lg:flex shrink-0 items-center justify-center w-8 h-8 rounded-lg text-text-tertiary hover:text-text-primary hover:bg-border-light transition-colors"
             aria-label={strings.sellerSidebarCollapseLabel}
         >
             <Icon name="panel-left" size={16} />
@@ -54,7 +54,7 @@ function isActive(href: string) {
         <!-- Mobile: close button -->
         <button
             id="seller-sidebar-close-btn"
-            class="flex lg:hidden shrink-0 items-center justify-center w-8 h-8 rounded-lg text-text-tertiary hover:text-text-primary hover:bg-bg transition-colors"
+            class="flex lg:hidden shrink-0 items-center justify-center w-8 h-8 rounded-lg text-text-tertiary hover:text-text-primary hover:bg-border-light transition-colors"
             aria-label={strings.sellerSidebarCloseLabel}
         >
             <Icon name="x" size={18} />
@@ -72,7 +72,7 @@ function isActive(href: string) {
                             'sidebar-link relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent',
                             isActive(item.href)
                                 ? 'bg-accent text-bg'
-                                : 'text-text-secondary hover:text-text-primary hover:bg-bg',
+                                : 'text-text-secondary hover:text-text-primary hover:bg-border-light',
                         ]}
                         aria-current={isActive(item.href) ? 'page' : undefined}
                     >
@@ -92,7 +92,7 @@ function isActive(href: string) {
                 href={`/${shopSlug}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                class="sidebar-link relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent text-text-secondary hover:text-text-primary hover:bg-bg"
+                class="sidebar-link relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent text-text-secondary hover:text-text-primary hover:bg-border-light"
             >
                 <Icon name="external-link" size={20} class="shrink-0" />
                 <span class="sidebar-label truncate">{strings.sellerSidebarViewShop}</span>
@@ -105,7 +105,7 @@ function isActive(href: string) {
                 'sidebar-link relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent',
                 isActive(sellerFooterNavItem.href)
                     ? 'bg-accent text-bg'
-                    : 'text-text-secondary hover:text-text-primary hover:bg-bg',
+                    : 'text-text-secondary hover:text-text-primary hover:bg-border-light',
             ]}
             aria-current={isActive(sellerFooterNavItem.href) ? 'page' : undefined}
         >
