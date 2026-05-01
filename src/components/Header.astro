@@ -27,7 +27,7 @@ const {
     <!-- Desktop: logo + search + nav icons -->
     <div class="hidden md:flex items-center gap-6 px-10 py-3 max-w-[1400px] mx-auto relative z-[50] bg-bg">
         <a href="/" class="flex items-center gap-2.5 text-[22px] font-bold text-text-primary no-underline tracking-[-0.5px] shrink-0" style="font-family: 'Jost', sans-serif;" aria-label={strings.logoText}>
-            <div class="flex items-center justify-center w-9 h-9 rounded-full bg-text-primary text-bg">
+            <div class="flex items-center justify-center w-9 h-9 rounded-full bg-[#5B7FFF] text-[#F5F7FF] dark:text-[#0B1020]">
                 <Logo class="w-9 h-9" />
             </div>
             {strings.logoText}
@@ -53,16 +53,16 @@ const {
                         {isWishlistBadge && (
                             <span 
                                 data-wishlist-badge 
-                                class="absolute top-0.5 right-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold text-bg ring-2 ring-bg"
+                                class="absolute top-0.5 right-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold text-white ring-2 ring-bg"
                                 style={wishlistCount === 0 ? "display: none" : ""}
                             >
                                 {wishlistCount}
                             </span>
                         )}
                         {isCartBadge && (
-                            <span 
-                                data-cart-badge 
-                                class="absolute top-0.5 right-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold text-bg ring-2 ring-bg"
+                            <span
+                                data-cart-badge
+                                class="absolute top-0.5 right-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold text-white ring-2 ring-bg"
                                 style="display: none"
                             >
                                 0
