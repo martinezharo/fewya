@@ -4,7 +4,7 @@
   "version": "0.0.1",
   "scripts": {
     "typegen": "wrangler types",
-    "dev": "pnpm run typegen && astro dev",
+    "dev": "astro dev",
     "start": "pnpm run dev",
     "check": "pnpm run typegen && astro check",
     "build": "pnpm run typegen && astro check && astro build",
