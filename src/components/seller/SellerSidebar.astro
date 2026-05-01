@@ -77,7 +77,7 @@ function isActive(href: string) {
                         aria-current={isActive(item.href) ? 'page' : undefined}
                     >
                         <Icon name={item.icon} size={20} class="shrink-0" />
-                        <span class="sidebar-label truncate leading-none">{item.label}</span>
+                        <span class="sidebar-label truncate">{item.label}</span>
                         <span class="sidebar-tooltip" role="tooltip" aria-hidden="true">{item.label}</span>
                     </a>
                 </li>
@@ -95,7 +95,7 @@ function isActive(href: string) {
                 class="sidebar-link relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent text-text-secondary hover:text-text-primary hover:bg-bg"
             >
                 <Icon name="external-link" size={20} class="shrink-0" />
-                <span class="sidebar-label truncate leading-none">{strings.sellerSidebarViewShop}</span>
+                <span class="sidebar-label truncate">{strings.sellerSidebarViewShop}</span>
                 <span class="sidebar-tooltip" role="tooltip" aria-hidden="true">{strings.sellerSidebarViewShop}</span>
             </a>
         )}
@@ -110,7 +110,7 @@ function isActive(href: string) {
             aria-current={isActive(sellerFooterNavItem.href) ? 'page' : undefined}
         >
             <Icon name={sellerFooterNavItem.icon} size={20} class="shrink-0" />
-            <span class="sidebar-label truncate leading-none">{sellerFooterNavItem.label}</span>
+            <span class="sidebar-label truncate">{sellerFooterNavItem.label}</span>
             <span class="sidebar-tooltip" role="tooltip" aria-hidden="true">{sellerFooterNavItem.label}</span>
         </a>
     </div>
