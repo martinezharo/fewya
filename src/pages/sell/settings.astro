@@ -1,5 +1,7 @@
 ---
 import SellerLayout from '../../layouts/SellerLayout.astro';
+import ThemeSelector from '../../components/settings/ThemeSelector.astro';
+import SignOutButton from '../../components/settings/SignOutButton.astro';
 import { strings } from '../../lib/i18n';
 import { createSupabaseAuthClient } from '../../lib/auth';
 
@@ -144,6 +146,23 @@ const defaults = {
             <!-- Messages -->
             <div id="settings-error-message" class="text-red-500 font-medium text-sm hidden p-4 bg-red-50 dark:bg-red-900/20 rounded-xl"></div>
             <div id="settings-success-message" class="text-green-600 font-medium text-sm hidden p-4 bg-green-50 dark:bg-green-900/20 rounded-xl">{strings.sellerSettingsSaveSuccess}</div>
+
+            <!-- Appearance -->
+            <section class="space-y-5">
+                <div>
+                    <h2 class="text-lg font-medium text-text-primary border-b border-border pb-2">{strings.settingsAppearanceSection}</h2>
+                    <p class="mt-1.5 text-xs text-text-tertiary">{strings.settingsThemeLabel}</p>
+                </div>
+                <ThemeSelector />
+            </section>
+
+            <!-- Account -->
+            <section class="space-y-5">
+                <div>
+                    <h2 class="text-lg font-medium text-text-primary border-b border-border pb-2">{strings.settingsAccountSection}</h2>
+                </div>
+                <SignOutButton />
+            </section>
         </div>
     </div>
 </SellerLayout>

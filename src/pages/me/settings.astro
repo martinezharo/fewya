@@ -1,6 +1,8 @@
 ---
 import BuyerAppLayout from "../../layouts/BuyerAppLayout.astro";
 import Icon from "../../components/icons/Icon.astro";
+import ThemeSelector from "../../components/settings/ThemeSelector.astro";
+import SignOutButton from "../../components/settings/SignOutButton.astro";
 import { strings } from "../../lib/i18n";
 import { createSupabaseAuthClient } from "../../lib/auth";
 
@@ -40,54 +42,7 @@ if (!user) {
                     {strings.settingsThemeLabel}
                 </p>
 
-                <div class="grid grid-cols-3 gap-2" role="radiogroup" aria-label={strings.settingsThemeLabel}>
-
-                    {/* Sistema */}
-                    <button
-                        type="button"
-                        data-theme-btn="system"
-                        role="radio"
-                        class="theme-btn flex flex-col items-center gap-2.5 rounded-xl border-2 p-3 transition-all duration-150 focus:outline-none"
-                    >
-                        <div class="w-10 h-10 rounded-full bg-bg border border-border flex items-center justify-center">
-                            <Icon name="monitor" size={20} class="text-text-secondary" />
-                        </div>
-                        <span class="text-[13px] font-medium text-text-primary">
-                            {strings.settingsThemeSystem}
-                        </span>
-                    </button>
-
-                    {/* Claro */}
-                    <button
-                        type="button"
-                        data-theme-btn="light"
-                        role="radio"
-                        class="theme-btn flex flex-col items-center gap-2.5 rounded-xl border-2 p-3 transition-all duration-150 focus:outline-none"
-                    >
-                        <div class="w-10 h-10 rounded-full bg-bg border border-border flex items-center justify-center">
-                            <Icon name="sun" size={20} class="text-text-secondary" />
-                        </div>
-                        <span class="text-[13px] font-medium text-text-primary">
-                            {strings.settingsThemeLight}
-                        </span>
-                    </button>
-
-                    {/* Oscuro */}
-                    <button
-                        type="button"
-                        data-theme-btn="dark"
-                        role="radio"
-                        class="theme-btn flex flex-col items-center gap-2.5 rounded-xl border-2 p-3 transition-all duration-150 focus:outline-none"
-                    >
-                        <div class="w-10 h-10 rounded-full bg-bg border border-border flex items-center justify-center">
-                            <Icon name="moon" size={20} class="text-text-secondary" />
-                        </div>
-                        <span class="text-[13px] font-medium text-text-primary">
-                            {strings.settingsThemeDark}
-                        </span>
-                    </button>
-
-                </div>
+                <ThemeSelector />
             </div>
         </section>
 
@@ -98,93 +53,10 @@ if (!user) {
             </h2>
 
             <div class="bg-surface border border-border-light rounded-2xl divide-y divide-border-light">
-                <button
-                    type="button"
-                    id="sign-out-btn"
-                    class="w-full flex items-center gap-3 px-5 py-4 hover:bg-border-light transition-colors"
-                >
-                    <Icon name="log-out" size={20} class="text-text-secondary" />
-                    <span class="text-[15px] font-medium text-text-primary">
-                        {strings.settingsSignOut}
-                    </span>
-                </button>
+                <SignOutButton />
             </div>
         </section>
 
     </main>
 
-    </BuyerAppLayout>
-
-<style>
-    .theme-btn {
-        border-color: var(--color-border-val);
-        background: transparent;
-        cursor: pointer;
-    }
-    .theme-btn:hover {
-        border-color: var(--color-text-secondary-val);
-    }
-    .theme-btn[aria-checked="true"] {
-        border-color: var(--color-accent-val);
-        background: color-mix(in srgb, var(--color-accent-val) 6%, transparent);
-    }
-    .theme-btn[aria-checked="true"] span {
-        color: var(--color-text-primary-val);
-        font-weight: 600;
-    }
-</style>
-
-<script>
-    type Theme = 'system' | 'light' | 'dark';
-    const STORAGE_KEY = 'fewya-theme';
-
-    function getStoredTheme(): Theme {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored === 'light' || stored === 'dark') return stored;
-        return 'system';
-    }
-
-    function applyTheme(theme: Theme) {
-        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        const resolved = theme === 'system' ? (prefersDark ? 'dark' : 'light') : theme;
-        document.documentElement.setAttribute('data-theme', resolved);
-        const m = document.querySelector('meta[name="theme-color"]');
-        if (m) m.setAttribute('content', resolved === 'dark' ? '#0B1020' : '#F5F7FF');
-        localStorage.setItem(STORAGE_KEY, theme);
-    }
-
-    function updateButtons(active: Theme) {
-        document.querySelectorAll<HTMLButtonElement>('[data-theme-btn]').forEach(btn => {
-            const isActive = btn.dataset.themeBtn === active;
-            btn.setAttribute('aria-checked', String(isActive));
-        });
-    }
-
-    function init() {
-        const current = getStoredTheme();
-        updateButtons(current);
-        applyTheme(current);
-
-        document.querySelectorAll<HTMLButtonElement>('[data-theme-btn]').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const theme = btn.dataset.themeBtn as Theme;
-                applyTheme(theme);
-                updateButtons(theme);
-            });
-        });
-
-        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-            if (getStoredTheme() === 'system') applyTheme('system');
-        });
-
-        const signOutBtn = document.getElementById('sign-out-btn') as HTMLButtonElement | null;
-
-        signOutBtn?.addEventListener('click', () => {
-            window.location.href = '/api/auth/logout';
-        });
-    }
-
-    document.addEventListener('astro:page-load', init);
-    if (document.readyState !== 'loading') init();
-    else document.addEventListener('DOMContentLoaded', init);
-</script>
+</BuyerAppLayout>
