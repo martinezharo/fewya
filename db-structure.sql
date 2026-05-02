@@ -55,6 +55,7 @@ ALTER TABLE public.shops ADD COLUMN default_length_cm decimal(8,3);
 ALTER TABLE public.shops ADD COLUMN default_width_cm decimal(8,3);
 ALTER TABLE public.shops ADD COLUMN default_height_cm decimal(8,3);
 ALTER TABLE public.shops ADD COLUMN default_shipping_cost numeric(8,2);
+ALTER TABLE public.product_variants ADD COLUMN shipping_cost numeric(8,2);
 CREATE TABLE public.products (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   shop_id uuid NOT NULL,
