@@ -262,6 +262,18 @@ CREATE TABLE public.reviews (
   CONSTRAINT reviews_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.products(id),
   CONSTRAINT reviews_profile_id_fkey FOREIGN KEY (profile_id) REFERENCES public.profiles(id)
 );
+CREATE TABLE public.refunds (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  order_id uuid NOT NULL,
+  amount numeric NOT NULL,
+  currency text NOT NULL DEFAULT 'eur'::text,
+  reason text,
+  stripe_refund_id text,
+  processed_by uuid,
+  created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
+  CONSTRAINT refunds_pkey PRIMARY KEY (id),
+  CONSTRAINT refunds_order_id_fkey FOREIGN KEY (order_id) REFERENCES public.orders(id)
+);
 CREATE TABLE public.wishlist (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   profile_id uuid NOT NULL,
@@ -313,6 +325,20 @@ RETURNS boolean AS $$
     WHERE id = p_order_id AND buyer_id = auth.uid()
   );
 $$ LANGUAGE sql SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION public.order_belongs_to_seller(p_order_id uuid)
+RETURNS boolean AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.order_items oi
+    JOIN public.product_variants pv ON oi.variant_id = pv.id
+    JOIN public.products p ON pv.product_id = p.id
+    JOIN public.shops s ON p.shop_id = s.id
+    WHERE oi.order_id = p_order_id AND s.owner_id = auth.uid()
+  );
+$$ LANGUAGE sql SECURITY DEFINER;
+
+GRANT EXECUTE ON FUNCTION public.order_belongs_to_user(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.order_belongs_to_seller(uuid) TO authenticated;
 
 CREATE OR REPLACE FUNCTION public.create_checkout_order(
   p_public_id text,
@@ -410,6 +436,60 @@ BEGIN
 
   IF updated_order.id IS NULL THEN
     RAISE EXCEPTION 'Order not found';
+  END IF;
+
+  RETURN updated_order;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+CREATE OR REPLACE FUNCTION public.cancel_order(p_order_id uuid)
+RETURNS public.orders AS $$
+DECLARE
+  updated_order public.orders;
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Not authenticated';
+  END IF;
+
+  IF NOT public.order_belongs_to_seller(p_order_id) THEN
+    RAISE EXCEPTION 'Not authorized';
+  END IF;
+
+  UPDATE public.orders
+  SET status = 'cancelled'
+  WHERE id = p_order_id
+    AND status IN ('paid', 'processing')
+  RETURNING * INTO updated_order;
+
+  IF updated_order.id IS NULL THEN
+    RAISE EXCEPTION 'Order not found or cannot be cancelled';
+  END IF;
+
+  RETURN updated_order;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+CREATE OR REPLACE FUNCTION public.mark_order_processing(p_order_id uuid)
+RETURNS public.orders AS $$
+DECLARE
+  updated_order public.orders;
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Not authenticated';
+  END IF;
+
+  IF NOT public.order_belongs_to_seller(p_order_id) THEN
+    RAISE EXCEPTION 'Not authorized';
+  END IF;
+
+  UPDATE public.orders
+  SET status = 'processing'
+  WHERE id = p_order_id
+    AND status = 'paid'
+  RETURNING * INTO updated_order;
+
+  IF updated_order.id IS NULL THEN
+    RAISE EXCEPTION 'Order not found or not in paid status';
   END IF;
 
   RETURN updated_order;
@@ -539,6 +619,8 @@ CREATE POLICY "Allow inserting reviews if product was purchased" ON public.revie
 
 GRANT EXECUTE ON FUNCTION public.create_checkout_order(text, numeric, text, text, text, text, text, text, jsonb) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.mark_order_paid(uuid, text, text, text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.cancel_order(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.mark_order_processing(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.upsert_shop_payment_account(uuid, text, boolean, boolean, boolean) TO authenticated;
 
 -- Packlink shipment functions
