@@ -18,6 +18,7 @@ function initCartButtons() {
             const shopName = btn.dataset.cartShopName ?? '';
             const shopSlug = btn.dataset.cartShopSlug ?? '';
             const productSlug = btn.dataset.cartProductSlug ?? '';
+            const shippingCost = parseFloat(btn.dataset.cartShipping ?? '0');
             const qty = parseInt(btn.dataset.cartQty ?? '1', 10);
 
             if (!variantId || stock <= 0) return;
@@ -34,6 +35,7 @@ function initCartButtons() {
                 shopName,
                 shopSlug,
                 productSlug,
+                shippingCost,
             }, qty);
 
             // Visual feedback

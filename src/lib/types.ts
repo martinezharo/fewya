@@ -12,6 +12,11 @@ export interface Shop {
     created_at: string;
     accent_color: string | null;
     location: string | null;
+    default_weight_kg: number | null;
+    default_length_cm: number | null;
+    default_width_cm: number | null;
+    default_height_cm: number | null;
+    default_shipping_cost: number | null;
 }
 
 export interface Product {
@@ -42,6 +47,11 @@ export interface ProductVariant {
     variant_image: string | null;
     created_at: string;
     is_default: boolean;
+    weight_kg: number | null;
+    length_cm: number | null;
+    width_cm: number | null;
+    height_cm: number | null;
+    shipping_cost: number | null;
 }
 
 export interface Review {

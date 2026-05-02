@@ -1,6 +1,4 @@
 export const CHECKOUT_CURRENCY = 'eur';
-export const SHOP_SHIPPING_EUR = 3.49;
-export const DEFAULT_SHOP_SHIPPING_EUR = 3.49;
 
 export interface CheckoutPricedItem {
     shopId: string;
@@ -9,6 +7,7 @@ export interface CheckoutPricedItem {
     stripeAccountId: string;
     quantity: number;
     unitPrice: number;
+    shippingCost: number;
 }
 
 export interface CheckoutResolvedItem extends CheckoutPricedItem {
@@ -39,8 +38,7 @@ export function fromMinorUnits(amount: number): number {
 }
 
 export function buildShopPayouts(
-    items: CheckoutPricedItem[],
-    shopShippingMap?: Map<string, number>
+    items: CheckoutPricedItem[]
 ): ShopPayoutBreakdown[] {
     const shopMap = new Map<string, ShopPayoutBreakdown>();
 
@@ -49,11 +47,10 @@ export function buildShopPayouts(
 
         if (existing) {
             existing.subtotal += item.unitPrice * item.quantity;
+            existing.shipping = Math.max(existing.shipping, item.shippingCost);
             existing.total = existing.subtotal + existing.shipping;
             continue;
         }
-
-        const shipping = shopShippingMap?.get(item.shopId) ?? DEFAULT_SHOP_SHIPPING_EUR;
 
         shopMap.set(item.shopId, {
             shopId: item.shopId,
@@ -61,14 +58,14 @@ export function buildShopPayouts(
             shopSlug: item.shopSlug,
             stripeAccountId: item.stripeAccountId,
             subtotal: item.unitPrice * item.quantity,
-            shipping,
-            total: item.unitPrice * item.quantity + shipping,
+            shipping: item.shippingCost,
+            total: item.unitPrice * item.quantity + item.shippingCost,
         });
     }
 
     return Array.from(shopMap.values());
 }
 
-export function calculateOrderTotal(items: CheckoutPricedItem[], shopShippingMap?: Map<string, number>): number {
-    return buildShopPayouts(items, shopShippingMap).reduce((sum, payout) => sum + payout.total, 0);
+export function calculateOrderTotal(items: CheckoutPricedItem[]): number {
+    return buildShopPayouts(items).reduce((sum, payout) => sum + payout.total, 0);
 }

@@ -12,6 +12,7 @@ export interface CartItem {
     shopName: string;
     shopSlug: string;
     productSlug: string;
+    shippingCost: number;
 }
 
 const CART_KEY = 'fewya_cart';
