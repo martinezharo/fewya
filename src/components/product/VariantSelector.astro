@@ -23,6 +23,7 @@ const { variants, defaultImage } = Astro.props;
             data-variant-id={v.id}
             data-variant-price={v.price}
             data-variant-stock={v.stock}
+            data-variant-shipping={v.shipping_cost ?? 0}
             data-variant-image={v.variant_image || defaultImage}
           >
             <div class={`w-14 h-14 rounded-full overflow-hidden border-[2.5px] transition-all ${i === 0 ? 'border-secondary' : 'border-border-light'}`} data-variant-ring>

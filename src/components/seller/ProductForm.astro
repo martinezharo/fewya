@@ -9,6 +9,19 @@ interface VariantData {
     stock: number;
     is_default: boolean;
     variant_image: string | null;
+    weight_kg?: number | null;
+    length_cm?: number | null;
+    width_cm?: number | null;
+    height_cm?: number | null;
+    shipping_cost?: number | null;
+}
+
+interface ShippingDefaults {
+    weight_kg?: number | null;
+    length_cm?: number | null;
+    width_cm?: number | null;
+    height_cm?: number | null;
+    shipping_cost?: number | null;
 }
 
 interface Props {
@@ -26,9 +39,10 @@ interface Props {
         specifications: Record<string, any>;
     };
     variants?: VariantData[];
+    shippingDefaults?: ShippingDefaults;
 }
 
-const { mode, shopId, product, variants } = Astro.props;
+const { mode, shopId, product, variants, shippingDefaults } = Astro.props;
 const isEdit = mode === 'edit';
 
 const title = product?.title ?? '';
@@ -41,11 +55,13 @@ const isActive = product?.is_active ?? true;
 const specs = product?.specifications ?? {};
 
 const initialVariants = (variants && variants.length > 0) ? variants : [
-    { variant_name: '', price: 0, stock: 0, is_default: true, variant_image: null }
+    { variant_name: '', price: 0, stock: 0, is_default: true, variant_image: null, weight_kg: shippingDefaults?.weight_kg ?? null, length_cm: shippingDefaults?.length_cm ?? null, width_cm: shippingDefaults?.width_cm ?? null, height_cm: shippingDefaults?.height_cm ?? null, shipping_cost: shippingDefaults?.shipping_cost ?? null }
 ];
+
+const defaultsJson = JSON.stringify(shippingDefaults ?? {});
 ---
 
-<div id="product-form-root" data-shop-id={shopId} data-mode={mode} data-gallery={JSON.stringify(galleryImages)}>
+<div id="product-form-root" data-shop-id={shopId} data-mode={mode} data-gallery={JSON.stringify(galleryImages)} data-shipping-defaults={defaultsJson}>
     <input type="hidden" id="product-id" value={isEdit ? product!.id : ''} />
 
     <!-- Basic Info -->
@@ -165,7 +181,7 @@ const initialVariants = (variants && variants.length > 0) ? variants : [
 
         <div id="variants-container" class="space-y-3">
             {initialVariants.map((v, i) => (
-                <div class="variant-row rounded-2xl border border-border bg-surface p-4 space-y-4" data-variant-id={v.id ?? ''} data-is-new={v.id ? 'false' : 'true'}>
+                <div class="variant-row rounded-2xl border border-border bg-surface p-4 space-y-4" data-variant-id={v.id ?? ''} data-is-new={v.id ? 'false' : 'true'} data-variant-image={v.variant_image ?? ''}>
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-2">
                             {i === 0 && (
@@ -219,6 +235,78 @@ const initialVariants = (variants && variants.length > 0) ? variants : [
                             />
                         </div>
                     </div>
+
+                    <div class="border-t border-border pt-4 space-y-4">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-xs font-semibold uppercase tracking-wider text-text-secondary">{strings.sellerProductVariantShippingTitle}</h3>
+                            <div class="flex items-center gap-2">
+                                <button type="button" class="variant-use-defaults-btn px-3 py-1.5 rounded-lg text-[11px] font-medium text-text-secondary border border-border hover:bg-border-light transition-colors">
+                                    {strings.sellerProductVariantUseDefaults}
+                                </button>
+                                <button type="button" class="variant-apply-shipping-btn px-3 py-1.5 rounded-lg text-[11px] font-medium text-text-secondary border border-border hover:bg-border-light transition-colors">
+                                    {strings.sellerProductVariantApplyToRest}
+                                </button>
+                            </div>
+                        </div>
+                        <div class="grid gap-4 sm:grid-cols-5">
+                            <div>
+                                <label class="block text-xs font-medium text-text-tertiary mb-1">{strings.sellerProductVariantWeightLabel}</label>
+                                <input
+                                    type="number"
+                                    step="0.001"
+                                    min="0"
+                                    class="variant-weight-input w-full px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition tabular-nums"
+                                    placeholder={strings.sellerProductVariantWeightPlaceholder}
+                                    value={v.weight_kg ?? ''}
+                                />
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-text-tertiary mb-1">{strings.sellerProductVariantLengthLabel}</label>
+                                <input
+                                    type="number"
+                                    step="0.1"
+                                    min="0"
+                                    class="variant-length-input w-full px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition tabular-nums"
+                                    placeholder={strings.sellerProductVariantLengthPlaceholder}
+                                    value={v.length_cm ?? ''}
+                                />
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-text-tertiary mb-1">{strings.sellerProductVariantWidthLabel}</label>
+                                <input
+                                    type="number"
+                                    step="0.1"
+                                    min="0"
+                                    class="variant-width-input w-full px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition tabular-nums"
+                                    placeholder={strings.sellerProductVariantWidthPlaceholder}
+                                    value={v.width_cm ?? ''}
+                                />
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-text-tertiary mb-1">{strings.sellerProductVariantHeightLabel}</label>
+                                <input
+                                    type="number"
+                                    step="0.1"
+                                    min="0"
+                                    class="variant-height-input w-full px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition tabular-nums"
+                                    placeholder={strings.sellerProductVariantHeightPlaceholder}
+                                    value={v.height_cm ?? ''}
+                                />
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-text-tertiary mb-1">{strings.sellerProductVariantShippingLabel}</label>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    class="variant-shipping-input w-full px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition tabular-nums"
+                                    placeholder={strings.sellerProductVariantShippingPlaceholder}
+                                    value={v.shipping_cost ?? ''}
+                                />
+                            </div>
+                        </div>
+                    </div>
+
                     <div>
                         <label class="block text-xs font-medium text-text-tertiary mb-1">{strings.sellerProductVariantImage}</label>
                         <div class="flex items-center gap-3">
@@ -239,14 +327,20 @@ const initialVariants = (variants && variants.length > 0) ? variants : [
             ))}
         </div>
 
-        <button
-            type="button"
-            id="add-variant-btn"
-            class="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-border text-sm text-text-secondary hover:text-text-primary hover:border-accent transition-colors"
-        >
-            <Icon name="plus" size={16} />
-            {strings.sellerProductAddVariant}
-        </button>
+        <div class="flex items-center gap-3">
+            <button
+                type="button"
+                id="add-variant-btn"
+                class="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-border text-sm text-text-secondary hover:text-text-primary hover:border-accent transition-colors"
+            >
+                <Icon name="plus" size={16} />
+                {strings.sellerProductAddVariant}
+            </button>
+        </div>
+
+        {shippingDefaults && (shippingDefaults.weight_kg != null || shippingDefaults.length_cm != null || shippingDefaults.width_cm != null || shippingDefaults.height_cm != null || shippingDefaults.shipping_cost != null) && (
+            <p class="text-xs text-text-tertiary">{strings.sellerProductShippingDefaultsHint}</p>
+        )}
     </section>
 
     <!-- Specifications -->
@@ -332,6 +426,7 @@ const initialVariants = (variants && variants.length > 0) ? variants : [
 
         const mode = root.dataset.mode || 'create';
         const galleryUrls: string[] = JSON.parse(root.dataset.gallery || '[]');
+        const shippingDefaults: Record<string, number | null> = JSON.parse(root.dataset.shippingDefaults || '{}');
 
         const titleInput = document.getElementById('product-title') as HTMLInputElement;
         const slugInput = document.getElementById('product-slug') as HTMLInputElement;
@@ -439,6 +534,52 @@ const initialVariants = (variants && variants.length > 0) ? variants : [
             row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         });
 
+        variantsContainer.addEventListener('click', (e: MouseEvent) => {
+            const target = e.target as HTMLElement;
+
+            const useDefaultsBtn = target.closest('.variant-use-defaults-btn') as HTMLElement | null;
+            if (useDefaultsBtn) {
+                const row = useDefaultsBtn.closest('.variant-row') as HTMLElement;
+                const w = row.querySelector('.variant-weight-input') as HTMLInputElement;
+                const l = row.querySelector('.variant-length-input') as HTMLInputElement;
+                const wi = row.querySelector('.variant-width-input') as HTMLInputElement;
+                const h = row.querySelector('.variant-height-input') as HTMLInputElement;
+                const s = row.querySelector('.variant-shipping-input') as HTMLInputElement;
+                if (w) w.value = shippingDefaults.weight_kg != null ? String(shippingDefaults.weight_kg) : '';
+                if (l) l.value = shippingDefaults.length_cm != null ? String(shippingDefaults.length_cm) : '';
+                if (wi) wi.value = shippingDefaults.width_cm != null ? String(shippingDefaults.width_cm) : '';
+                if (h) h.value = shippingDefaults.height_cm != null ? String(shippingDefaults.height_cm) : '';
+                if (s) s.value = shippingDefaults.shipping_cost != null ? String(shippingDefaults.shipping_cost) : '';
+                return;
+            }
+
+            const applyShippingBtn = target.closest('.variant-apply-shipping-btn') as HTMLElement | null;
+            if (applyShippingBtn) {
+                const sourceRow = applyShippingBtn.closest('.variant-row') as HTMLElement;
+                const weight = (sourceRow.querySelector('.variant-weight-input') as HTMLInputElement)?.value ?? '';
+                const length = (sourceRow.querySelector('.variant-length-input') as HTMLInputElement)?.value ?? '';
+                const width = (sourceRow.querySelector('.variant-width-input') as HTMLInputElement)?.value ?? '';
+                const height = (sourceRow.querySelector('.variant-height-input') as HTMLInputElement)?.value ?? '';
+                const shipping = (sourceRow.querySelector('.variant-shipping-input') as HTMLInputElement)?.value ?? '';
+
+                variantsContainer.querySelectorAll('.variant-row').forEach((rowEl) => {
+                    if (rowEl === sourceRow) return;
+                    const el = rowEl as HTMLElement;
+                    const w = el.querySelector('.variant-weight-input') as HTMLInputElement;
+                    const l = el.querySelector('.variant-length-input') as HTMLInputElement;
+                    const wi = el.querySelector('.variant-width-input') as HTMLInputElement;
+                    const h = el.querySelector('.variant-height-input') as HTMLInputElement;
+                    const s = el.querySelector('.variant-shipping-input') as HTMLInputElement;
+                    if (w) w.value = weight;
+                    if (l) l.value = length;
+                    if (wi) wi.value = width;
+                    if (h) h.value = height;
+                    if (s) s.value = shipping;
+                });
+                return;
+            }
+        });
+
         function createVariantRow(isDefault: boolean) {
             const div = document.createElement('div');
             div.className = 'variant-row rounded-2xl border border-border bg-surface p-4 space-y-4';
@@ -446,7 +587,7 @@ const initialVariants = (variants && variants.length > 0) ? variants : [
             div.dataset.isNew = 'true';
             div.dataset.variantImage = '';
             const defaultBadge = isDefault ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-accent text-bg">${strings.sellerProductVariantDefault}</span>` : '';
-            div.innerHTML = `<div class="flex items-center justify-between"><div class="flex items-center gap-2">${defaultBadge}<span class="text-sm font-medium text-text-primary">#${variantsContainer.children.length + 1}</span></div><div class="flex items-center gap-2"><label class="flex items-center gap-1.5 text-xs text-text-secondary cursor-pointer select-none"><input type="checkbox" class="variant-default-checkbox rounded border-border accent-neutral-900 dark:accent-white" ${isDefault ? 'checked' : ''} />${strings.sellerProductVariantDefault}</label><button type="button" class="variant-remove-btn flex items-center justify-center w-7 h-7 rounded-lg text-text-tertiary hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" aria-label="${strings.sellerProductVariantRemove}"><svg width="14" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button></div></div><div class="grid gap-4 sm:grid-cols-3"><div><label class="block text-xs font-medium text-text-tertiary mb-1">${strings.sellerProductVariantNameLabel}</label><input type="text" class="variant-name-input w-full px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition" placeholder="${strings.sellerProductVariantNamePlaceholder}" /></div><div><label class="block text-xs font-medium text-text-tertiary mb-1">${strings.sellerProductVariantPriceLabel}</label><input type="number" step="0.01" min="0" class="variant-price-input w-full px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition tabular-nums" placeholder="${strings.sellerProductVariantPricePlaceholder}" /></div><div><label class="block text-xs font-medium text-text-tertiary mb-1">${strings.sellerProductVariantStockLabel}</label><input type="number" min="0" class="variant-stock-input w-full px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition tabular-nums" placeholder="${strings.sellerProductVariantStockPlaceholder}" /></div></div><div><label class="block text-xs font-medium text-text-tertiary mb-1">${strings.sellerProductVariantImage}</label><div class="flex items-center gap-3"><div class="variant-image-preview w-14 h-14 rounded-lg border border-border bg-bg overflow-hidden flex items-center justify-center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="text-text-tertiary"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg></div><button type="button" class="variant-image-btn px-3 py-1.5 rounded-lg text-xs font-medium text-text-secondary border border-border hover:bg-bg transition-colors">Subir</button><input type="file" accept="image/jpeg,image/png,image/webp,image/gif" class="variant-image-input hidden" /></div></div>`;
+            div.innerHTML = `<div class="flex items-center justify-between"><div class="flex items-center gap-2">${defaultBadge}<span class="text-sm font-medium text-text-primary">#${variantsContainer.children.length + 1}</span></div><div class="flex items-center gap-2"><label class="flex items-center gap-1.5 text-xs text-text-secondary cursor-pointer select-none"><input type="checkbox" class="variant-default-checkbox rounded border-border accent-neutral-900 dark:accent-white" ${isDefault ? 'checked' : ''} />${strings.sellerProductVariantDefault}</label><button type="button" class="variant-remove-btn flex items-center justify-center w-7 h-7 rounded-lg text-text-tertiary hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" aria-label="${strings.sellerProductVariantRemove}"><svg width="14" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button></div></div><div class="grid gap-4 sm:grid-cols-3"><div><label class="block text-xs font-medium text-text-tertiary mb-1">${strings.sellerProductVariantNameLabel}</label><input type="text" class="variant-name-input w-full px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition" placeholder="${strings.sellerProductVariantNamePlaceholder}" /></div><div><label class="block text-xs font-medium text-text-tertiary mb-1">${strings.sellerProductVariantPriceLabel}</label><input type="number" step="0.01" min="0" class="variant-price-input w-full px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition tabular-nums" placeholder="${strings.sellerProductVariantPricePlaceholder}" /></div><div><label class="block text-xs font-medium text-text-tertiary mb-1">${strings.sellerProductVariantStockLabel}</label><input type="number" min="0" class="variant-stock-input w-full px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition tabular-nums" placeholder="${strings.sellerProductVariantStockPlaceholder}" /></div></div><div class="border-t border-border pt-4 space-y-4"><div class="flex items-center justify-between"><h3 class="text-xs font-semibold uppercase tracking-wider text-text-secondary">${strings.sellerProductVariantShippingTitle}</h3><div class="flex items-center gap-2"><button type="button" class="variant-use-defaults-btn px-3 py-1.5 rounded-lg text-[11px] font-medium text-text-secondary border border-border hover:bg-border-light transition-colors">${strings.sellerProductVariantUseDefaults}</button><button type="button" class="variant-apply-shipping-btn px-3 py-1.5 rounded-lg text-[11px] font-medium text-text-secondary border border-border hover:bg-border-light transition-colors">${strings.sellerProductVariantApplyToRest}</button></div></div><div class="grid gap-4 sm:grid-cols-5"><div><label class="block text-xs font-medium text-text-tertiary mb-1">${strings.sellerProductVariantWeightLabel}</label><input type="number" step="0.001" min="0" class="variant-weight-input w-full px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition tabular-nums" placeholder="${strings.sellerProductVariantWeightPlaceholder}" value="${shippingDefaults.weight_kg ?? ''}" /></div><div><label class="block text-xs font-medium text-text-tertiary mb-1">${strings.sellerProductVariantLengthLabel}</label><input type="number" step="0.1" min="0" class="variant-length-input w-full px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition tabular-nums" placeholder="${strings.sellerProductVariantLengthPlaceholder}" value="${shippingDefaults.length_cm ?? ''}" /></div><div><label class="block text-xs font-medium text-text-tertiary mb-1">${strings.sellerProductVariantWidthLabel}</label><input type="number" step="0.1" min="0" class="variant-width-input w-full px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition tabular-nums" placeholder="${strings.sellerProductVariantWidthPlaceholder}" value="${shippingDefaults.width_cm ?? ''}" /></div><div><label class="block text-xs font-medium text-text-tertiary mb-1">${strings.sellerProductVariantHeightLabel}</label><input type="number" step="0.1" min="0" class="variant-height-input w-full px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition tabular-nums" placeholder="${strings.sellerProductVariantHeightPlaceholder}" value="${shippingDefaults.height_cm ?? ''}" /></div><div><label class="block text-xs font-medium text-text-tertiary mb-1">${strings.sellerProductVariantShippingLabel}</label><input type="number" step="0.01" min="0" class="variant-shipping-input w-full px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition tabular-nums" placeholder="${strings.sellerProductVariantShippingPlaceholder}" value="${shippingDefaults.shipping_cost ?? ''}" /></div></div></div><div><label class="block text-xs font-medium text-text-tertiary mb-1">${strings.sellerProductVariantImage}</label><div class="flex items-center gap-3"><div class="variant-image-preview w-14 h-14 rounded-lg border border-border bg-bg overflow-hidden flex items-center justify-center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="text-text-tertiary"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg></div><button type="button" class="variant-image-btn px-3 py-1.5 rounded-lg text-xs font-medium text-text-secondary border border-border hover:bg-border-light transition-colors">Subir</button><input type="file" accept="image/jpeg,image/png,image/webp,image/gif" class="variant-image-input hidden" /></div></div>`;
 
             const removeBtn = div.querySelector('.variant-remove-btn') as HTMLButtonElement;
             removeBtn.addEventListener('click', () => { div.remove(); });
@@ -536,11 +677,42 @@ const initialVariants = (variants && variants.length > 0) ? variants : [
                     stock: parseInt((el.querySelector('.variant-stock-input') as HTMLInputElement).value) || 0,
                     is_default: (el.querySelector('.variant-default-checkbox') as HTMLInputElement).checked,
                     variant_image: el.dataset.variantImage || (el.querySelector('.variant-image-preview img')?.getAttribute('src')) || null,
+                    weight_kg: (el.querySelector('.variant-weight-input') as HTMLInputElement).value === '' ? null : parseFloat((el.querySelector('.variant-weight-input') as HTMLInputElement).value),
+                    length_cm: (el.querySelector('.variant-length-input') as HTMLInputElement).value === '' ? null : parseFloat((el.querySelector('.variant-length-input') as HTMLInputElement).value),
+                    width_cm: (el.querySelector('.variant-width-input') as HTMLInputElement).value === '' ? null : parseFloat((el.querySelector('.variant-width-input') as HTMLInputElement).value),
+                    height_cm: (el.querySelector('.variant-height-input') as HTMLInputElement).value === '' ? null : parseFloat((el.querySelector('.variant-height-input') as HTMLInputElement).value),
+                    shipping_cost: (el.querySelector('.variant-shipping-input') as HTMLInputElement).value === '' ? null : parseFloat((el.querySelector('.variant-shipping-input') as HTMLInputElement).value),
                 };
             });
 
             if (variants.length === 0) {
                 errorMsg.textContent = strings.sellerProductNoVariantsError;
+                errorMsg.classList.remove('hidden');
+                return;
+            }
+
+            // Completeness validation
+            const missingFields: string[] = [];
+            if (!title) missingFields.push(strings.sellerProductMissingName);
+            if (!description) missingFields.push(strings.sellerProductMissingDescription);
+            if (!category) missingFields.push(strings.sellerProductMissingCategory);
+            if (!slug) missingFields.push(strings.sellerProductMissingSlug);
+            if (galleryUrls.length === 0) missingFields.push(strings.sellerProductMissingPhotos);
+
+            const hasCompleteVariant = variants.some((v: any) =>
+                v.price > 0 &&
+                v.stock >= 0 &&
+                v.weight_kg != null && v.weight_kg > 0 &&
+                v.length_cm != null && v.length_cm > 0 &&
+                v.width_cm != null && v.width_cm > 0 &&
+                v.height_cm != null && v.height_cm > 0 &&
+                v.shipping_cost != null && v.shipping_cost >= 0
+            );
+            if (!hasCompleteVariant) missingFields.push(strings.sellerProductMissingVariantData);
+
+            if (missingFields.length > 0) {
+                const list = missingFields.join(', ');
+                errorMsg.textContent = strings.sellerProductIncompleteError.replace('{fields}', list);
                 errorMsg.classList.remove('hidden');
                 return;
             }

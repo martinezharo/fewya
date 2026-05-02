@@ -14,6 +14,7 @@ const { product, isWished = false } = Astro.props;
 const imageUrl = product.gallery_images?.[0] ?? "/placeholder.svg";
 const defaultVariant = product.variants?.find(v => v.is_default) ?? product.variants?.[0];
 const price = defaultVariant?.price ?? 0;
+const shippingCost = defaultVariant?.shipping_cost ?? 0;
 const formattedPrice = `${price.toFixed(2)}${strings.currency}`;
 const isOutOfStock = product.variants?.every(v => (v.stock ?? 0) <= 0) ?? true;
 const shopName = product.shop?.name ?? "";
@@ -81,6 +82,7 @@ const reviewAvg = product.review_avg ?? 0;
             data-cart-price={String(price)}
             data-cart-stock={String(defaultVariant?.stock ?? 0)}
             data-cart-variant-name={defaultVariant?.variant_name ?? ''}
+            data-cart-shipping={String(shippingCost)}
             data-cart-shop-id={product.shop?.id ?? ''}
             data-cart-shop-name={shopName}
             data-cart-shop-slug={shopSlug}
@@ -163,6 +165,7 @@ const reviewAvg = product.review_avg ?? 0;
                 data-cart-price={String(price)}
                 data-cart-stock={String(defaultVariant?.stock ?? 0)}
                 data-cart-variant-name={defaultVariant?.variant_name ?? ''}
+                data-cart-shipping={String(shippingCost)}
                 data-cart-shop-id={product.shop?.id ?? ''}
                 data-cart-shop-name={shopName}
                 data-cart-shop-slug={shopSlug}
