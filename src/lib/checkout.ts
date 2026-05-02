@@ -69,3 +69,56 @@ export function buildShopPayouts(
 export function calculateOrderTotal(items: CheckoutPricedItem[]): number {
     return buildShopPayouts(items).reduce((sum, payout) => sum + payout.total, 0);
 }
+
+/**
+ * Release held funds to sellers via Stripe transfers.
+ * This should be called after an order is confirmed (buyer confirmation or 48h auto-confirm).
+ */
+export async function releaseOrderFunds(options: {
+    stripe: any;
+    orderId: string;
+    publicId: string;
+    paymentIntentId: string;
+    items: CheckoutPricedItem[];
+}): Promise<{ success: boolean; error?: string }> {
+    const { stripe, orderId, publicId, paymentIntentId, items } = options;
+
+    try {
+        const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId, {
+            expand: ['latest_charge'],
+        });
+
+        const latestCharge = typeof paymentIntent.latest_charge === 'string'
+            ? paymentIntent.latest_charge
+            : paymentIntent.latest_charge?.id;
+
+        if (!latestCharge) {
+            return { success: false, error: 'No charge found on payment intent' };
+        }
+
+        const payoutBreakdown = buildShopPayouts(items);
+
+        for (const payout of payoutBreakdown) {
+            await stripe.transfers.create({
+                amount: toMinorUnits(payout.total),
+                currency: CHECKOUT_CURRENCY,
+                destination: payout.stripeAccountId,
+                source_transaction: latestCharge,
+                transfer_group: paymentIntent.transfer_group || `order_${publicId}`,
+                metadata: {
+                    orderId,
+                    publicId,
+                    shopId: payout.shopId,
+                },
+            }, {
+                idempotencyKey: `order-transfer:${orderId}:${payout.shopId}`,
+            });
+        }
+
+        return { success: true };
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Transfer failed';
+        console.error('releaseOrderFunds failed', error);
+        return { success: false, error: message };
+    }
+}

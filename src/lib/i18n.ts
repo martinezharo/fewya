@@ -213,6 +213,8 @@ export const strings = {
     orderStatusProcessing: 'Procesando',
     orderStatusShipped: 'Enviado',
     orderStatusDelivered: 'Entregado',
+    orderStatusConfirmed: 'Confirmado',
+    orderStatusIncident: 'Incidencia',
     orderStatusCancelled: 'Cancelado',
 
     // Seller Orders filters
@@ -220,6 +222,18 @@ export const strings = {
     sellerOrdersFilterStatusAll: 'Todos los estados',
     sellerOrdersFilterShowPending: 'Mostrar pendientes',
     sellerOrdersFilterShowPendingHint: 'Ocultados por defecto',
+
+    // Fund holding / buyer actions
+    orderConfirmDelivery: 'Confirmar recepción',
+    orderConfirmDeliverySuccess: 'Pedido confirmado correctamente',
+    orderConfirmDeliveryError: 'No se pudo confirmar el pedido',
+    orderReportIncident: 'Reportar incidencia',
+    orderReportIncidentSuccess: 'Incidencia reportada',
+    orderReportIncidentError: 'No se pudo reportar la incidencia',
+    orderFundsHeld: 'Fondos retenidos',
+    orderFundsReleased: 'Fondos liberados',
+    orderAutoConfirmHint: 'Se confirmará automáticamente en 48h si no hay incidencias',
+    orderIncidentReported: 'Incidencia reportada por el comprador',
 
     // Variant fallbacks
     variantDefaultName: 'Estandar',
