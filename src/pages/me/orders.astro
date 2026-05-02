@@ -110,7 +110,7 @@ const orders: OrderCardData[] = (ordersData ?? []).map((order: any) => {
         </div>
 
         {orders.length > 0 ? (
-            <div class="flex flex-col gap-3">
+            <div id="buyer-orders-list" class="flex flex-col gap-3">
                 {orders.map((order) => (
                     <OrderCard order={order} />
                 ))}
@@ -135,4 +135,26 @@ const orders: OrderCardData[] = (ordersData ?? []).map((order: any) => {
             </div>
         )}
     </main>
+
+    <script>
+        // Auto-confirm any delivered orders past 48h in the background
+        (async function () {
+            const hasDelivered = document.querySelector('[data-order-status="delivered"]');
+            if (!hasDelivered) return;
+
+            try {
+                const res = await fetch('/api/orders/auto-confirm', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({}),
+                });
+                const data = await res.json();
+                if (data.autoConfirmed > 0) {
+                    window.location.reload();
+                }
+            } catch {
+                // Silent fail — will retry on next page load
+            }
+        })();
+    </script>
 </BuyerAppLayout>

@@ -227,6 +227,8 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', {
                             <option value="processing">{strings.orderStatusProcessing}</option>
                             <option value="shipped">{strings.orderStatusShipped}</option>
                             <option value="delivered">{strings.orderStatusDelivered}</option>
+                            <option value="confirmed">{strings.orderStatusConfirmed}</option>
+                            <option value="incident">{strings.orderStatusIncident}</option>
                             <option value="cancelled">{strings.orderStatusCancelled}</option>
                         </select>
                     </div>
@@ -298,6 +300,26 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', {
 
             // Initial state: toggle off, select "all" -> hide pending
             applyFilters();
+        })();
+
+        // Auto-confirm any delivered orders past 48h in the background
+        (async function () {
+            const hasDelivered = document.querySelector('[data-order-status="delivered"]');
+            if (!hasDelivered) return;
+
+            try {
+                const res = await fetch('/api/orders/auto-confirm', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({}),
+                });
+                const data = await res.json();
+                if (data.autoConfirmed > 0) {
+                    window.location.reload();
+                }
+            } catch {
+                // Silent fail — will retry on next page load
+            }
         })();
     </script>
 </SellerLayout>
