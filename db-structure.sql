@@ -217,7 +217,7 @@ CREATE POLICY "Users can view tracking for shipments they have access to" ON pub
       )
     )
   ));
-CREATE TYPE order_status AS ENUM ('pending', 'paid', 'processing', 'shipped', 'delivered', 'cancelled');
+CREATE TYPE order_status AS ENUM ('pending', 'paid', 'processing', 'shipped', 'delivered', 'confirmed', 'incident', 'cancelled');
 
 CREATE TABLE public.orders (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -231,6 +231,8 @@ CREATE TABLE public.orders (
   stripe_checkout_session_id text UNIQUE,
   stripe_payment_intent_id text UNIQUE,
   paid_at timestamp with time zone,
+  delivered_at timestamp with time zone,
+  funds_released_at timestamp with time zone,
   buyer_email text,
   shipping_full_name text,
   shipping_phone text,
@@ -626,6 +628,16 @@ BEGIN
   WHERE id = p_shipment_id
   RETURNING * INTO updated_shipment;
 
+  -- When shipment is delivered, update order status and set delivered_at
+  IF p_status = 'delivered' AND updated_shipment.order_id IS NOT NULL THEN
+    UPDATE public.orders
+    SET
+      status = 'delivered',
+      delivered_at = COALESCE(delivered_at, timezone('utc'::text, now()))
+    WHERE id = updated_shipment.order_id
+      AND status NOT IN ('confirmed', 'incident', 'cancelled');
+  END IF;
+
   RETURN updated_shipment;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
@@ -635,9 +647,77 @@ RETURNS public.shipments AS $$
   SELECT s.* FROM public.shipments s WHERE s.order_id = p_order_id;
 $$ LANGUAGE sql SECURITY DEFINER;
 
+CREATE OR REPLACE FUNCTION public.confirm_order_delivery(p_order_id uuid)
+RETURNS public.orders AS $$
+DECLARE
+  updated_order public.orders;
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Not authenticated';
+  END IF;
+
+  UPDATE public.orders
+  SET
+    status = 'confirmed',
+    funds_released_at = timezone('utc'::text, now())
+  WHERE id = p_order_id
+    AND buyer_id = auth.uid()
+    AND status = 'delivered'
+  RETURNING * INTO updated_order;
+
+  IF updated_order.id IS NULL THEN
+    RAISE EXCEPTION 'Order not found or not in delivered status';
+  END IF;
+
+  RETURN updated_order;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+CREATE OR REPLACE FUNCTION public.report_order_incident(p_order_id uuid)
+RETURNS public.orders AS $$
+DECLARE
+  updated_order public.orders;
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Not authenticated';
+  END IF;
+
+  UPDATE public.orders
+  SET status = 'incident'
+  WHERE id = p_order_id
+    AND buyer_id = auth.uid()
+    AND status IN ('delivered', 'confirmed')
+  RETURNING * INTO updated_order;
+
+  IF updated_order.id IS NULL THEN
+    RAISE EXCEPTION 'Order not found or cannot be reported';
+  END IF;
+
+  RETURN updated_order;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+CREATE OR REPLACE FUNCTION public.auto_confirm_delivered_orders()
+RETURNS TABLE(order_id uuid, public_id text) AS $$
+BEGIN
+  RETURN QUERY
+  UPDATE public.orders
+  SET
+    status = 'confirmed',
+    funds_released_at = timezone('utc'::text, now())
+  WHERE status = 'delivered'
+    AND delivered_at < timezone('utc'::text, now()) - interval '48 hours'
+    AND funds_released_at IS NULL
+  RETURNING id, public_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
 GRANT EXECUTE ON FUNCTION public.create_shipment(uuid, text, text, text, text, text, numeric, text, text, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.update_shipment_tracking(uuid, text, text, text, timestamp with time zone, text, text, jsonb) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_order_shipment(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.confirm_order_delivery(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.report_order_incident(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.auto_confirm_delivered_orders() TO authenticated;
 
 -- Storage policies for imgs bucket (products folder)
 DROP POLICY IF EXISTS "Allow authenticated users to upload product images" ON storage.objects;
