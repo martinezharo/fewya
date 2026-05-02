@@ -5,8 +5,7 @@ import { strings } from '../../../../lib/i18n';
 export const DELETE: APIRoute = async ({ cookies, request }) => {
     const supabase = createSupabaseAuthClient(cookies, request);
 
-    const { data: sessionData } = await supabase.auth.getSession();
-    const user = sessionData?.session?.user;
+    const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
         return new Response(JSON.stringify({ error: strings.apiUnauthorized }), {
@@ -15,26 +14,26 @@ export const DELETE: APIRoute = async ({ cookies, request }) => {
         });
     }
 
-    const { data: shop } = await supabase
+    const { data: shop, error: shopError } = await supabase
         .from('shops')
         .select('id')
         .eq('owner_id', user.id)
         .maybeSingle();
 
-    if (!shop) {
+    if (shopError || !shop) {
         return new Response(JSON.stringify({ error: strings.apiForbidden }), {
             status: 403,
             headers: { 'Content-Type': 'application/json' },
         });
     }
 
-    const { error } = await supabase
+    const { error: deleteError } = await supabase
         .from('shops')
         .delete()
         .eq('id', shop.id);
 
-    if (error) {
-        return new Response(JSON.stringify({ error: strings.sellerSettingsDeleteShopError }), {
+    if (deleteError) {
+        return new Response(JSON.stringify({ error: deleteError.message }), {
             status: 500,
             headers: { 'Content-Type': 'application/json' },
         });
