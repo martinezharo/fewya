@@ -10,6 +10,7 @@ export interface SellerOrderItem {
     variantName: string | null;
     quantity: number;
     unitPrice: number;
+    shippingCost: number;
 }
 
 export interface SellerOrderCardData {
@@ -22,6 +23,7 @@ export interface SellerOrderCardData {
     shippingPhone: string | null;
     shippingAddress: string | null;
     subtotal: number;
+    shipping: number;
     itemsSold: number;
     items: SellerOrderItem[];
     shopSlug: string;
@@ -94,10 +96,13 @@ const customerName = order.shippingFullName || order.buyerEmail || strings.profi
 
         <div class="shrink-0 text-right">
             <p class="text-xl md:text-2xl font-bold tracking-tight text-text-primary tabular-nums">
-                {currencyFormatter.format(order.subtotal)}
+                {currencyFormatter.format(order.subtotal + order.shipping)}
             </p>
             <p class="mt-1.5 text-xs font-medium text-text-tertiary tabular-nums">
                 {order.itemsSold} {order.itemsSold === 1 ? strings.ordersItemsSingular : strings.ordersItemsPlural}
+                {order.shipping > 0 && (
+                    <span> · +{currencyFormatter.format(order.shipping)} {strings.cartShipping.toLowerCase()}</span>
+                )}
             </p>
         </div>
     </div>

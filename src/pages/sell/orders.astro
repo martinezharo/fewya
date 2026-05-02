@@ -65,6 +65,7 @@ const { data: orderItemsData } = await supabase
         product_variants (
             variant_name,
             variant_image,
+            shipping_cost,
             products (
                 shop_id,
                 title,
@@ -102,6 +103,7 @@ for (const orderItem of orderItemsData ?? []) {
         variantName: variant.variant_name ?? null,
         quantity,
         unitPrice: Number((orderItem as any).price_at_purchase ?? 0),
+        shippingCost: Number(variant.shipping_cost ?? 0),
     };
 
     const existingOrder = ordersById.get(order.id);
@@ -110,6 +112,7 @@ for (const orderItem of orderItemsData ?? []) {
         existingOrder.items.push(item);
         existingOrder.itemsSold += item.quantity;
         existingOrder.subtotal += item.quantity * item.unitPrice;
+        existingOrder.shipping = Math.max(existingOrder.shipping, item.shippingCost);
         continue;
     }
 
@@ -123,6 +126,7 @@ for (const orderItem of orderItemsData ?? []) {
         shippingPhone: order.shipping_phone ?? null,
         shippingAddress: order.shipping_address ?? null,
         subtotal: item.quantity * item.unitPrice,
+        shipping: item.shippingCost,
         itemsSold: item.quantity,
         items: [item],
         shopSlug: shop.slug,
@@ -140,7 +144,7 @@ const orders = Array.from(ordersById.values()).sort(
     (left, right) => right.createdAt.getTime() - left.createdAt.getTime(),
 );
 
-const totalSales = orders.reduce((sum, order) => sum + order.subtotal, 0);
+const totalSales = orders.reduce((sum, order) => sum + order.subtotal + order.shipping, 0);
 const totalOrders = orders.length;
 const totalItemsSold = orders.reduce((sum, order) => sum + order.itemsSold, 0);
 const currencyFormatter = new Intl.NumberFormat('es-ES', {
