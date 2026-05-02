@@ -68,7 +68,7 @@ const profileImg = shopData.profile_img || '';
                 <div>
                     <label class="block text-sm font-medium text-text-secondary mb-2">{strings.sellerShopProfileImgLabel}</label>
                     <div class="flex items-center gap-4">
-                        <div class="relative w-20 h-20 rounded-full overflow-hidden border-2 border-border bg-bg cursor-pointer group" id="onboarding-profile-upload">
+                        <div class="relative w-20 h-20 shrink-0 rounded-full overflow-hidden border-2 border-border bg-bg cursor-pointer group" id="onboarding-profile-upload">
                             <div class="w-full h-full flex items-center justify-center" id="onboarding-profile-preview">
                                 {profileImg ? (
                                     <img src={profileImg} alt="" class="w-full h-full object-cover" />
