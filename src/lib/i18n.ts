@@ -231,10 +231,22 @@ export const strings = {
     orderReportIncidentSuccess: 'Incidencia reportada',
     orderReportIncidentError: 'No se pudo reportar la incidencia',
     orderFundsHeld: 'Fondos retenidos',
-    orderFundsHeldTooltip: 'Cuando el comprador confirme que todo está OK o transcurran 48h desde la recepción del pedido, los fondos estarán listos para ser retirados.',
+    orderFundsHeldTooltip: 'Fewya retiene el dinero hasta que el comprador confirme la recepción o pasen 48h desde la entrega.',
     orderFundsReleased: 'Fondos liberados',
     orderAutoConfirmHint: 'Se confirmará automáticamente en 48h si no hay incidencias',
     orderIncidentReported: 'Incidencia reportada por el comprador',
+
+    // Seller order management
+    sellerOrderManage: 'Gestionar venta',
+    sellerOrderCreateLabel: 'Generar etiqueta de envío',
+    sellerOrderMockLabelHint: 'Modo prueba: genera una etiqueta simulada sin coste',
+    sellerOrderCancelOrder: 'Cancelar pedido',
+    sellerOrderCancelConfirm: '¿Cancelar este pedido? Se reembolsará el importe total al comprador.',
+    sellerOrderRefundSuccess: 'Pedido cancelado y reembolsado',
+    sellerOrderRefundError: 'Error al cancelar el pedido',
+    sellerOrderLabelSuccess: 'Etiqueta generada correctamente',
+    sellerOrderLabelError: 'Error al generar la etiqueta',
+    sellerOrderViewLabel: 'Ver etiqueta',
 
     // Variant fallbacks
     variantDefaultName: 'Estandar',
