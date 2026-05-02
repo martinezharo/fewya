@@ -49,6 +49,12 @@ CREATE TABLE public.shop_payment_accounts (
   CONSTRAINT shop_payment_accounts_pkey PRIMARY KEY (shop_id),
   CONSTRAINT shop_payment_accounts_shop_id_fkey FOREIGN KEY (shop_id) REFERENCES public.shops(id) ON DELETE CASCADE
 );
+
+ALTER TABLE public.shops ADD COLUMN default_weight_kg decimal(8,3);
+ALTER TABLE public.shops ADD COLUMN default_length_cm decimal(8,3);
+ALTER TABLE public.shops ADD COLUMN default_width_cm decimal(8,3);
+ALTER TABLE public.shops ADD COLUMN default_height_cm decimal(8,3);
+ALTER TABLE public.shops ADD COLUMN default_shipping_cost numeric(8,2);
 CREATE TABLE public.products (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   shop_id uuid NOT NULL,
