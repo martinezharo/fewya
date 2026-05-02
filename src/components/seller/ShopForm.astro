@@ -107,9 +107,9 @@ const profileImg = shopData.profile_img || '';
                         <input type="text" id="color-hex" maxlength="6" value={(shopData.accent_color || '#000000').replace('#', '').toUpperCase()} class="w-[5.5rem] px-2 py-1.5 bg-transparent text-sm font-mono text-text-primary outline-none" />
                     </div>
                 </div>
-                <div class="flex items-center gap-2 mt-3" id="color-presets">
+                <div class="flex items-center gap-2 mt-3 overflow-x-auto flex-nowrap scrollbar-hide cursor-grab active:cursor-grabbing select-none" id="color-presets">
                     {['#000000', '#1E3A5F', '#2563EB', '#7C3AED', '#DB2777', '#DC2626', '#EA580C', '#CA8A04', '#16A34A', '#0D9488', '#64748B', '#475569'].map((color) => (
-                        <button type="button" data-color={color} class="color-preset w-7 h-7 rounded-full border-2 border-transparent hover:scale-110 transition-all duration-150 cursor-pointer" style={`background-color: ${color}`} title={color}></button>
+                        <button type="button" data-color={color} class="color-preset w-7 h-7 shrink-0 rounded-full border-2 border-transparent hover:scale-110 transition-all duration-150 cursor-pointer" style={`background-color: ${color}`} title={color}></button>
                     ))}
                 </div>
             </div>
@@ -227,10 +227,50 @@ const profileImg = shopData.profile_img || '';
 
         document.querySelectorAll('.color-preset').forEach(btn => {
             btn.addEventListener('click', () => {
+                if ((btn as HTMLElement).closest('#color-presets')?.dataset.dragged) return;
                 const color = (btn as HTMLElement).dataset.color!;
                 updateAll(color);
             });
         });
+
+        // Drag-to-scroll for color presets
+        const presetsContainer = document.getElementById('color-presets');
+        if (presetsContainer) {
+            let isDown = false;
+            let startX = 0;
+            let scrollLeft = 0;
+            let hasMoved = false;
+
+            presetsContainer.addEventListener('mousedown', (e) => {
+                isDown = true;
+                hasMoved = false;
+                presetsContainer.dataset.dragged = '';
+                startX = e.pageX - presetsContainer.offsetLeft;
+                scrollLeft = presetsContainer.scrollLeft;
+            });
+
+            presetsContainer.addEventListener('mouseleave', () => {
+                isDown = false;
+                delete presetsContainer.dataset.dragged;
+            });
+
+            presetsContainer.addEventListener('mouseup', () => {
+                isDown = false;
+                if (!hasMoved) delete presetsContainer.dataset.dragged;
+            });
+
+            presetsContainer.addEventListener('mousemove', (e) => {
+                if (!isDown) return;
+                e.preventDefault();
+                const x = e.pageX - presetsContainer.offsetLeft;
+                const walk = x - startX;
+                if (Math.abs(walk) > 3) {
+                    hasMoved = true;
+                    presetsContainer.dataset.dragged = '1';
+                }
+                presetsContainer.scrollLeft = scrollLeft - walk;
+            });
+        }
 
         type UploadResponse = { url: string; path?: string; error?: string };
 
