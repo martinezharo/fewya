@@ -1,10 +1,4 @@
 import type { APIRoute } from 'astro';
-import {
-    buildShopPayouts,
-    CHECKOUT_CURRENCY,
-    type CheckoutPricedItem,
-    toMinorUnits,
-} from '../../../../lib/checkout';
 import { createSupabaseAuthClient } from '../../../../lib/auth';
 import { strings } from '../../../../lib/i18n';
 import { getStripeClient } from '../../../../lib/stripe';
@@ -14,14 +8,6 @@ function jsonResponse(payload: Record<string, unknown>, status: number) {
         status,
         headers: { 'Content-Type': 'application/json' },
     });
-}
-
-function one<T>(value: T | T[] | null | undefined): T | null {
-    if (Array.isArray(value)) {
-        return value[0] ?? null;
-    }
-
-    return value ?? null;
 }
 
 export const GET: APIRoute = async ({ url, request, cookies }) => {
@@ -76,89 +62,8 @@ export const GET: APIRoute = async ({ url, request, cookies }) => {
             return jsonResponse({ error: strings.apiCheckoutConfirmationError }, 500);
         }
 
-        const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId, {
-            expand: ['latest_charge'],
-        });
-
-        const latestCharge = typeof paymentIntent.latest_charge === 'string'
-            ? paymentIntent.latest_charge
-            : paymentIntent.latest_charge?.id;
-
-        if (!latestCharge) {
-            return jsonResponse({ error: strings.apiCheckoutConfirmationError }, 500);
-        }
-
-        const { data: orderItems, error: orderItemsError } = await authClient
-            .from('order_items')
-            .select(`
-                quantity,
-                price_at_purchase,
-                product_variants (
-                    shipping_cost,
-                    products (
-                        shops (
-                            id,
-                            name,
-                            slug,
-                            shop_payment_accounts (
-                                stripe_account_id,
-                                charges_enabled,
-                                payouts_enabled,
-                                details_submitted
-                            )
-                        )
-                    )
-                )
-            `)
-            .eq('order_id', order.id);
-
-        if (orderItemsError) {
-            console.error('checkout confirmation items lookup failed', orderItemsError);
-            return jsonResponse({ error: strings.apiCheckoutConfirmationError }, 500);
-        }
-
-        const payoutItems: CheckoutPricedItem[] = [];
-
-        for (const item of orderItems ?? []) {
-            const variant = one((item as any).product_variants);
-            const product = one(variant?.products as any);
-            const shop = one(product?.shops as any);
-            const paymentAccount = one(shop?.shop_payment_accounts as any);
-
-            if (!shop || !paymentAccount?.stripe_account_id) {
-                return jsonResponse({ error: strings.apiCheckoutConfirmationError }, 500);
-            }
-
-            payoutItems.push({
-                shopId: shop.id,
-                shopName: shop.name,
-                shopSlug: shop.slug,
-                stripeAccountId: paymentAccount.stripe_account_id,
-                quantity: Number((item as any).quantity ?? 0),
-                unitPrice: Number((item as any).price_at_purchase ?? 0),
-                shippingCost: Number((item as any).product_variants?.shipping_cost ?? 0),
-            });
-        }
-
-        const payoutBreakdown = buildShopPayouts(payoutItems);
-
-        for (const payout of payoutBreakdown) {
-            await stripe.transfers.create({
-                amount: toMinorUnits(payout.total),
-                currency: CHECKOUT_CURRENCY,
-                destination: payout.stripeAccountId,
-                source_transaction: latestCharge,
-                transfer_group: paymentIntent.transfer_group || `order_${order.public_id}`,
-                metadata: {
-                    orderId: order.id,
-                    publicId: order.public_id,
-                    shopId: payout.shopId,
-                },
-            }, {
-                idempotencyKey: `order-transfer:${order.id}:${payout.shopId}`,
-            });
-        }
-
+        // Mark order as paid. Funds are held by Fewya until delivery is confirmed.
+        // Transfers to sellers happen in /api/orders/release-funds when status becomes 'confirmed'.
         const { error: markPaidError } = await authClient.rpc('mark_order_paid', {
             p_order_id: order.id,
             p_session_id: sessionId,
