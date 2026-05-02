@@ -76,9 +76,15 @@ const customerName = order.shippingFullName || order.buyerEmail || strings.profi
                     {statusLabel}
                 </span>
                 {(normalizedStatus === 'paid' || normalizedStatus === 'processing' || normalizedStatus === 'shipped' || normalizedStatus === 'delivered') && (
-                    <span class="shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
-                        <Icon name="lock" size={9} class="mr-1" />
+                    <span class="funds-badge relative shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 cursor-help" data-tooltip={strings.orderFundsHeldTooltip}>
+                        <Icon name="info" size={9} class="mr-1" />
                         {strings.orderFundsHeld}
+                        <span class="tooltip absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden z-50 pointer-events-none">
+                            <span class="block w-max max-w-[220px] rounded-lg border border-border bg-surface px-3 py-2 text-center text-[11px] font-medium leading-relaxed text-text-primary shadow-lg dark:bg-neutral-800 dark:border-neutral-700">
+                                {strings.orderFundsHeldTooltip}
+                            </span>
+                            <span class="absolute left-1/2 top-full -translate-x-1/2 -mt-px border-4 border-transparent border-t-border dark:border-t-neutral-700"></span>
+                        </span>
                     </span>
                 )}
                 {normalizedStatus === 'confirmed' && (
@@ -334,4 +340,21 @@ const customerName = order.shippingFullName || order.buyerEmail || strings.profi
     if (!customElements.get('order-id-popover')) {
         customElements.define('order-id-popover', OrderIdPopover);
     }
+
+    document.querySelectorAll('.funds-badge').forEach((badge) => {
+        const tooltip = badge.querySelector('.tooltip');
+        if (!tooltip) return;
+
+        function show() {
+            tooltip.classList.remove('hidden');
+        }
+        function hide() {
+            tooltip.classList.add('hidden');
+        }
+
+        badge.addEventListener('mouseenter', show);
+        badge.addEventListener('mouseleave', hide);
+        badge.addEventListener('focus', show);
+        badge.addEventListener('blur', hide);
+    });
 </script>

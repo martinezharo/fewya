@@ -231,6 +231,7 @@ export const strings = {
     orderReportIncidentSuccess: 'Incidencia reportada',
     orderReportIncidentError: 'No se pudo reportar la incidencia',
     orderFundsHeld: 'Fondos retenidos',
+    orderFundsHeldTooltip: 'Cuando el comprador confirme que todo está OK o transcurran 48h desde la recepción del pedido, los fondos estarán listos para ser retirados.',
     orderFundsReleased: 'Fondos liberados',
     orderAutoConfirmHint: 'Se confirmará automáticamente en 48h si no hay incidencias',
     orderIncidentReported: 'Incidencia reportada por el comprador',
