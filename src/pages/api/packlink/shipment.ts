@@ -68,7 +68,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         return jsonResponse({ error: 'Order not found' }, 404);
     }
 
-    const { data: sellerHasAccess } = await authClient.rpc('order_belongs_to_user', { p_order_id: orderId });
+    const { data: sellerHasAccess } = await authClient.rpc('order_belongs_to_seller', { p_order_id: orderId });
     if (!sellerHasAccess) {
         return jsonResponse({ error: 'Forbidden' }, 403);
     }

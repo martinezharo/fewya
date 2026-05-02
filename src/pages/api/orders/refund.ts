@@ -33,7 +33,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     }
 
     // Verify seller owns this order
-    const { data: hasAccess } = await authClient.rpc('order_belongs_to_user', {
+    const { data: hasAccess } = await authClient.rpc('order_belongs_to_seller', {
         p_order_id: orderId,
     });
 
@@ -73,13 +73,13 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             });
         }
 
-        // Mark order as cancelled
-        const { error: cancelError } = await authClient
-            .from('orders')
-            .update({ status: 'cancelled' })
-            .eq('id', orderId);
+        // Mark order as cancelled via RPC (bypasses RLS)
+        const { data: cancelledOrder, error: cancelError } = await authClient.rpc(
+            'cancel_order',
+            { p_order_id: orderId }
+        );
 
-        if (cancelError) {
+        if (cancelError || !cancelledOrder) {
             console.error('failed to cancel order after refund', cancelError);
             return jsonResponse({ error: strings.sellerOrderRefundError }, 500);
         }

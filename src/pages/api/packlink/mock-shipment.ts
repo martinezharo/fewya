@@ -36,7 +36,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     }
 
     // Verify seller owns this order
-    const { data: hasAccess } = await authClient.rpc('order_belongs_to_user', {
+    const { data: hasAccess } = await authClient.rpc('order_belongs_to_seller', {
         p_order_id: orderId,
     });
 
@@ -81,12 +81,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         return jsonResponse({ error: strings.sellerOrderLabelError }, 500);
     }
 
-    // Update order status to processing
-    await authClient
-        .from('orders')
-        .update({ status: 'processing' })
-        .eq('id', orderId)
-        .eq('status', 'paid');
+    // Update order status to processing via RPC (bypasses RLS)
+    await authClient.rpc('mark_order_processing', { p_order_id: orderId });
 
     return jsonResponse({
         success: true,
