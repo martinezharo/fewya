@@ -70,10 +70,14 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     }
 
     let action = 'onboarding';
+    let returnTo: string | null = null;
     try {
-        const body = await request.json().catch(() => null) as { action?: string } | null;
+        const body = await request.json().catch(() => null) as { action?: string; returnTo?: string } | null;
         if (body?.action === 'dashboard') {
             action = 'dashboard';
+        }
+        if (body?.returnTo) {
+            returnTo = body.returnTo;
         }
     } catch {
         action = 'onboarding';
@@ -128,10 +132,11 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             return jsonResponse({ url: loginLink.url, ready: true }, 200);
         }
 
+        const returnBase = returnTo || '/sell/shop';
         const accountLink = await stripe.accountLinks.create({
             account: stripeAccountId,
-            refresh_url: buildAbsoluteUrl(request, '/sell/shop?stripe=refresh'),
-            return_url: buildAbsoluteUrl(request, '/sell/shop?stripe=return'),
+            refresh_url: buildAbsoluteUrl(request, `${returnBase}?stripe=refresh`),
+            return_url: buildAbsoluteUrl(request, `${returnBase}?stripe=return`),
             type: 'account_onboarding',
         });
 

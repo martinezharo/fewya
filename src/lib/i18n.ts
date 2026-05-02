@@ -352,6 +352,15 @@ export const strings = {
     sellerOnboardingCreating: 'Creando...',
     sellerOnboardingUrlInUse: 'La URL ya está en uso',
     sellerOnboardingGenericError: 'Algo salió mal',
+    sellerOnboardingStep4Title: '4. Configura tus cobros',
+    sellerOnboardingStep4Subtitle: 'Conecta Stripe para poder recibir pagos de tus clientes',
+    sellerOnboardingStep4Description: 'Para poder vender en Fewya necesitas conectar una cuenta de Stripe. Es el sistema que usamos para procesar los pagos de tus clientes y transferirte el dinero de tus ventas. Sin Stripe no podrás recibir pedidos ni cobros.',
+    sellerOnboardingStripeConnectCta: 'Conectar Stripe',
+    sellerOnboardingStripeConnecting: 'Abriendo Stripe…',
+    sellerOnboardingStripeError: 'No se pudo abrir Stripe',
+    sellerOnboardingStripeStatusReady: 'Todo listo. Ya puedes empezar a vender.',
+    sellerOnboardingStripeStatusPending: 'Falta completar la verificación en Stripe.',
+    sellerOnboardingSkipStripe: 'Configurar más tarde',
 
     // Seller Shop Images
     sellerShopBannerLabel: 'Banner',
