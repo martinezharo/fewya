@@ -163,9 +163,39 @@ const defaults = {
                 </div>
                 <SignOutButton />
             </section>
+
+            <!-- Danger Zone -->
+            <section class="space-y-5">
+                <div>
+                    <h2 class="text-lg font-medium text-red-500 border-b border-red-200 dark:border-red-800 pb-2">{strings.sellerSettingsDeleteShop}</h2>
+                </div>
+                <p class="text-sm text-text-secondary">{strings.sellerSettingsDeleteShopConfirm}</p>
+                <button
+                    type="button"
+                    id="delete-shop-btn"
+                    class="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-red-500 text-white font-medium text-sm hover:bg-red-600 transition-colors"
+                >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    {strings.sellerSettingsDeleteShop}
+                </button>
+            </section>
         </div>
     </div>
 </SellerLayout>
+
+<div id="delete-dialog" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50">
+    <div class="bg-surface rounded-2xl border border-border p-6 mx-4 max-w-sm w-full shadow-xl">
+        <p class="text-sm text-text-primary font-medium" id="delete-dialog-text"></p>
+        <div class="mt-5 flex justify-end gap-3">
+            <button type="button" id="delete-cancel-btn" class="px-4 py-2 rounded-xl text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-border-light transition-colors">{strings.sellerOnboardingPrev}</button>
+            <button type="button" id="delete-confirm-btn" class="px-4 py-2 rounded-xl text-sm font-medium bg-red-500 text-white hover:bg-red-600 transition-colors">{strings.sellerSettingsDeleteShop}</button>
+        </div>
+    </div>
+</div>
+
+<div id="delete-success-message" class="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 text-green-600 font-medium text-sm hidden p-4 bg-green-50 dark:bg-green-900/20 rounded-xl shadow-lg"></div>
 
 <script>
     import { strings } from '../../lib/i18n';
@@ -175,7 +205,7 @@ const defaults = {
         const saveText = document.getElementById('save-settings-text') as HTMLSpanElement;
         const saveSpinner = document.getElementById('save-settings-spinner') as HTMLElement;
         const errorMsg = document.getElementById('settings-error-message') as HTMLDivElement;
-        const successMsg = document.getElementById('settings-success-message') as HTMLDivElement;
+        const settingsSuccessMsg = document.getElementById('settings-success-message') as HTMLDivElement;
 
         const weightInput = document.getElementById('default-weight') as HTMLInputElement;
         const lengthInput = document.getElementById('default-length') as HTMLInputElement;
@@ -214,8 +244,8 @@ const defaults = {
                     throw new Error(data.error || strings.sellerSettingsSaveError);
                 }
 
-                successMsg.classList.remove('hidden');
-                setTimeout(() => successMsg.classList.add('hidden'), 4000);
+                settingsSuccessMsg.classList.remove('hidden');
+                setTimeout(() => settingsSuccessMsg.classList.add('hidden'), 4000);
             } catch (err) {
                 errorMsg.textContent = err instanceof Error ? err.message : strings.sellerSettingsSaveError;
                 errorMsg.classList.remove('hidden');
@@ -223,6 +253,46 @@ const defaults = {
                 saveBtn.disabled = false;
                 saveText.textContent = strings.sellerSettingsSave;
                 saveSpinner.classList.add('hidden');
+            }
+        });
+
+        const deleteBtn = document.getElementById('delete-shop-btn') as HTMLButtonElement;
+        const dialog = document.getElementById('delete-dialog') as HTMLDivElement;
+        const dialogText = document.getElementById('delete-dialog-text') as HTMLParagraphElement;
+        const cancelBtn = document.getElementById('delete-cancel-btn') as HTMLButtonElement;
+        const confirmBtn = document.getElementById('delete-confirm-btn') as HTMLButtonElement;
+        const deleteSuccessMsg = document.getElementById('delete-success-message') as HTMLDivElement;
+
+        deleteBtn?.addEventListener('click', () => {
+            dialogText.textContent = strings.sellerSettingsDeleteShopConfirm;
+            dialog.classList.remove('hidden');
+            dialog.classList.add('flex');
+        });
+
+        cancelBtn?.addEventListener('click', () => {
+            dialog.classList.add('hidden');
+            dialog.classList.remove('flex');
+        });
+
+        confirmBtn?.addEventListener('click', async () => {
+            confirmBtn.disabled = true;
+            confirmBtn.textContent = '...';
+
+            try {
+                const res = await fetch('/api/sell/shop/delete', { method: 'DELETE' });
+                const data = await res.json() as { error?: string };
+
+                if (!res.ok) throw new Error(data.error || strings.sellerSettingsDeleteShopError);
+
+                deleteSuccessMsg.textContent = strings.sellerSettingsDeleteShopSuccess;
+                deleteSuccessMsg.classList.remove('hidden');
+                setTimeout(() => {
+                    window.location.href = '/sell';
+                }, 1500);
+            } catch (err) {
+                alert(err instanceof Error ? err.message : strings.sellerSettingsDeleteShopError);
+                confirmBtn.disabled = false;
+                confirmBtn.textContent = strings.sellerSettingsDeleteShop;
             }
         });
     }

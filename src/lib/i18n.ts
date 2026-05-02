@@ -282,6 +282,10 @@ export const strings = {
     sellerSettingsSaving: 'Guardando...',
     sellerSettingsSaveSuccess: 'Configuración guardada correctamente',
     sellerSettingsSaveError: 'Error al guardar la configuración',
+    sellerSettingsDeleteShop: 'Eliminar tienda',
+    sellerSettingsDeleteShopConfirm: '¿Estás seguro de que quieres eliminar tu tienda? Esta acción no se puede deshacer y se eliminarán todos los productos y pedidos.',
+    sellerSettingsDeleteShopSuccess: 'Tienda eliminada correctamente',
+    sellerSettingsDeleteShopError: 'Error al eliminar la tienda',
 
     // Seller sidebar / nav
     sellerNavDashboard: 'Inicio',
