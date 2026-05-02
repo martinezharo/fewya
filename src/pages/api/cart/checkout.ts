@@ -8,6 +8,7 @@ import {
 } from '../../../lib/checkout';
 import { createSupabaseAuthClient } from '../../../lib/auth';
 import { strings } from '../../../lib/i18n';
+import { validateCheckoutReadiness } from '../../../lib/productValidation';
 import { buildAbsoluteUrl, getStripeClient } from '../../../lib/stripe';
 
 interface CheckoutItemPayload {
@@ -163,6 +164,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             stock,
             variant_name,
             variant_image,
+            shipping_cost,
             products!inner (
                 id,
                 title,
@@ -207,6 +209,14 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             return jsonResponse({ error: strings.apiCheckoutProductUnavailable }, 400);
         }
 
+        const checkoutCheck = validateCheckoutReadiness(product, variant, item.quantity);
+        if (!checkoutCheck.ready) {
+            if (checkoutCheck.reason === 'out_of_stock') {
+                return jsonResponse({ error: strings.apiCheckoutOutOfStock }, 400);
+            }
+            return jsonResponse({ error: strings.apiCheckoutProductUnavailable }, 400);
+        }
+
         const stock = Number(variant.stock ?? 0);
         if (item.quantity > stock) {
             return jsonResponse({ error: strings.apiCheckoutOutOfStock }, 400);
@@ -225,6 +235,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             image: variant.variant_image || product.gallery_images?.[0] || null,
             quantity: item.quantity,
             unitPrice: Number(variant.price ?? 0),
+            shippingCost: Number(variant.shipping_cost ?? 0),
             shopId: shop.id,
             shopName: shop.name,
             shopSlug: shop.slug,

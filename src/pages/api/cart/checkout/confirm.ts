@@ -94,6 +94,7 @@ export const GET: APIRoute = async ({ url, request, cookies }) => {
                 quantity,
                 price_at_purchase,
                 product_variants (
+                    shipping_cost,
                     products (
                         shops (
                             id,
@@ -135,6 +136,7 @@ export const GET: APIRoute = async ({ url, request, cookies }) => {
                 stripeAccountId: paymentAccount.stripe_account_id,
                 quantity: Number((item as any).quantity ?? 0),
                 unitPrice: Number((item as any).price_at_purchase ?? 0),
+                shippingCost: Number((item as any).product_variants?.shipping_cost ?? 0),
             });
         }
 

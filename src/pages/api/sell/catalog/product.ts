@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { createSupabaseAuthClient } from '../../../../lib/auth';
 import { strings } from '../../../../lib/i18n';
+import { validateProductCompleteness } from '../../../../lib/productValidation';
 
 type VariantInput = {
     id?: string;
@@ -9,6 +10,11 @@ type VariantInput = {
     stock: number;
     is_default?: boolean;
     variant_image?: string | null;
+    weight_kg?: number | null;
+    length_cm?: number | null;
+    width_cm?: number | null;
+    height_cm?: number | null;
+    shipping_cost?: number | null;
 };
 
 type ProductPayload = {
@@ -61,6 +67,12 @@ export const POST: APIRoute = async ({ cookies, request }) => {
 
     if (!body.category?.trim()) {
         return new Response(JSON.stringify({ error: strings.sellerProductCategoryRequired }), { status: 400 });
+    }
+
+    const completeness = validateProductCompleteness(body, body.variants ?? []);
+    if (!completeness.complete) {
+        const list = completeness.missing.join(', ');
+        return new Response(JSON.stringify({ error: strings.sellerProductIncompleteError.replace('{fields}', list) }), { status: 400 });
     }
 
     const slug = body.slug?.trim() || slugify(body.title);
@@ -117,6 +129,11 @@ export const POST: APIRoute = async ({ cookies, request }) => {
                     stock: first.stock ?? 0,
                     is_default: true,
                     variant_image: first.variant_image || null,
+                    weight_kg: first.weight_kg ?? null,
+                    length_cm: first.length_cm ?? null,
+                    width_cm: first.width_cm ?? null,
+                    height_cm: first.height_cm ?? null,
+                    shipping_cost: first.shipping_cost ?? null,
                 })
                 .eq('id', triggerVariant.id)
                 .select()
@@ -139,6 +156,11 @@ export const POST: APIRoute = async ({ cookies, request }) => {
                     stock: v.stock ?? 0,
                     is_default: false,
                     variant_image: v.variant_image || null,
+                    weight_kg: v.weight_kg ?? null,
+                    length_cm: v.length_cm ?? null,
+                    width_cm: v.width_cm ?? null,
+                    height_cm: v.height_cm ?? null,
+                    shipping_cost: v.shipping_cost ?? null,
                 })
                 .select()
                 .single();
@@ -208,6 +230,32 @@ export const PATCH: APIRoute = async ({ cookies, request, url }) => {
         return new Response(JSON.stringify({ error: strings.sellerProductCategoryRequired }), { status: 400 });
     }
 
+    // Validate completeness when relevant fields are being updated
+    if (body.variants !== undefined || body.title !== undefined || body.description !== undefined || body.category !== undefined || body.gallery_images !== undefined) {
+        const { data: existingProduct } = await supabase
+            .from('products')
+            .select('title, description, category, slug, gallery_images')
+            .eq('id', productId)
+            .single();
+
+        const mergedProduct = {
+            title: body.title ?? existingProduct?.title ?? '',
+            description: body.description !== undefined ? body.description : (existingProduct?.description ?? ''),
+            category: body.category ?? existingProduct?.category ?? '',
+            slug: body.slug !== undefined ? body.slug : (existingProduct?.slug ?? ''),
+            gallery_images: body.gallery_images ?? existingProduct?.gallery_images ?? [],
+        };
+
+        const variantsForCheck = body.variants ?? [];
+        if (variantsForCheck.length > 0) {
+            const completeness = validateProductCompleteness(mergedProduct, variantsForCheck);
+            if (!completeness.complete) {
+                const list = completeness.missing.join(', ');
+                return new Response(JSON.stringify({ error: strings.sellerProductIncompleteError.replace('{fields}', list) }), { status: 400 });
+            }
+        }
+    }
+
     const updates: Record<string, unknown> = {};
     if (body.title !== undefined) updates.title = body.title.trim();
     if (body.slug !== undefined) {
@@ -263,6 +311,11 @@ export const PATCH: APIRoute = async ({ cookies, request, url }) => {
                         stock: v.stock ?? 0,
                         is_default: v.is_default ?? false,
                         variant_image: v.variant_image || null,
+                        weight_kg: v.weight_kg ?? null,
+                        length_cm: v.length_cm ?? null,
+                        width_cm: v.width_cm ?? null,
+                        height_cm: v.height_cm ?? null,
+                        shipping_cost: v.shipping_cost ?? null,
                     })
                     .eq('id', v.id)
                     .eq('product_id', productId);
@@ -280,6 +333,11 @@ export const PATCH: APIRoute = async ({ cookies, request, url }) => {
                         stock: v.stock ?? 0,
                         is_default: v.is_default ?? false,
                         variant_image: v.variant_image || null,
+                        weight_kg: v.weight_kg ?? null,
+                        length_cm: v.length_cm ?? null,
+                        width_cm: v.width_cm ?? null,
+                        height_cm: v.height_cm ?? null,
+                        shipping_cost: v.shipping_cost ?? null,
                     });
 
                 if (error) {
