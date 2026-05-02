@@ -37,6 +37,8 @@ const statusColorMap: Record<string, string> = {
     processing: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400",
     shipped: "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-400",
     delivered: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400",
+    confirmed: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400",
+    incident: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400",
     cancelled: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400",
 };
 
@@ -60,91 +62,180 @@ const priceFormatted = new Intl.NumberFormat("es-ES", {
 }).format(order.totalAmount);
 
 const showTracking = order.hasShipment && (order.trackingNumber || order.trackingUrl || order.labelUrl);
+const showActions = normalizedStatus === 'delivered';
 ---
 
-<a
-    href={href}
-    class="group flex items-center gap-4 py-4 px-4 md:py-5 md:px-5 bg-surface rounded-2xl border border-border-light hover:border-border-default hover:shadow-sm transition-all duration-200 select-none"
->
-    {/* Thumbnail */}
-    <div class="relative flex-shrink-0 w-16 h-16 md:w-[72px] md:h-[72px] rounded-xl overflow-hidden bg-border-light">
-        {firstItem?.imageUrl ? (
-            <img
-                src={firstItem.imageUrl}
-                alt={firstItem.productTitle}
-                class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                draggable="false"
-            />
-        ) : (
-            <div class="w-full h-full flex items-center justify-center text-text-tertiary">
-                <Icon name="shopping-cart" size={24} />
-            </div>
-        )}
-        {itemCount > 1 && (
-            <div class="absolute inset-0 bg-black/50 flex items-center justify-center">
-                <span class="text-white text-sm font-bold">+{itemCount - 1}</span>
-            </div>
-        )}
-    </div>
+<article class="bg-surface rounded-2xl border border-border-light overflow-hidden" data-order-id={order.orderId} data-order-status={normalizedStatus}>
+    <a
+        href={href}
+        class="group flex items-center gap-4 py-4 px-4 md:py-5 md:px-5 hover:border-border-default hover:shadow-sm transition-all duration-200 select-none"
+    >
+        {/* Thumbnail */}
+        <div class="relative flex-shrink-0 w-16 h-16 md:w-[72px] md:h-[72px] rounded-xl overflow-hidden bg-border-light">
+            {firstItem?.imageUrl ? (
+                <img
+                    src={firstItem.imageUrl}
+                    alt={firstItem.productTitle}
+                    class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    draggable="false"
+                />
+            ) : (
+                <div class="w-full h-full flex items-center justify-center text-text-tertiary">
+                    <Icon name="shopping-cart" size={24} />
+                </div>
+            )}
+            {itemCount > 1 && (
+                <div class="absolute inset-0 bg-black/50 flex items-center justify-center">
+                    <span class="text-white text-sm font-bold">+{itemCount - 1}</span>
+                </div>
+            )}
+        </div>
 
-    {/* Content */}
-    <div class="flex-1 min-w-0">
-        <div class="flex items-start justify-between gap-2">
-            <div class="min-w-0">
-                <p class="text-[15px] font-semibold text-text-primary truncate leading-snug">
-                    {itemCount === 1
-                        ? firstItem?.productTitle
-                        : `${itemCount} ${strings.ordersItemsPlural}`}
-                </p>
-                {itemCount === 1 && firstItem?.variantName && (
-                    <p class="text-[12px] text-text-tertiary truncate mt-0.5">
-                        {firstItem.variantName}
+        {/* Content */}
+        <div class="flex-1 min-w-0">
+            <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0">
+                    <p class="text-[15px] font-semibold text-text-primary truncate leading-snug">
+                        {itemCount === 1
+                            ? firstItem?.productTitle
+                            : `${itemCount} ${strings.ordersItemsPlural}`}
                     </p>
-                )}
-                <p class="text-[13px] text-text-secondary mt-1">{dateFormatted}</p>
-            </div>
-            <div class="flex flex-col items-end gap-1.5 flex-shrink-0">
-                <span class="text-[15px] font-bold text-text-primary tabular-nums">
-                    {priceFormatted}
-                </span>
-                <span class={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${statusColor}`}>
-                    {statusLabel}
-                </span>
+                    {itemCount === 1 && firstItem?.variantName && (
+                        <p class="text-[12px] text-text-tertiary truncate mt-0.5">
+                            {firstItem.variantName}
+                        </p>
+                    )}
+                    <p class="text-[13px] text-text-secondary mt-1">{dateFormatted}</p>
+                </div>
+                <div class="flex flex-col items-end gap-1.5 flex-shrink-0">
+                    <span class="text-[15px] font-bold text-text-primary tabular-nums">
+                        {priceFormatted}
+                    </span>
+                    <span class={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${statusColor}`}>
+                        {statusLabel}
+                    </span>
+                </div>
             </div>
         </div>
-    </div>
 
-    {/* Chevron (desktop only) */}
-    <Icon
-        name="chevron-right"
-        size={18}
-        class="hidden md:block flex-shrink-0 text-text-tertiary group-hover:text-text-primary transition-colors"
-    />
-</a>
+        {/* Chevron (desktop only) */}
+        <Icon
+            name="chevron-right"
+            size={18}
+            class="hidden md:block flex-shrink-0 text-text-tertiary group-hover:text-text-primary transition-colors"
+        />
+    </a>
 
-{showTracking && (
-    <div class="flex flex-wrap items-center gap-2 px-4 pb-4 -mt-2 md:px-5 md:pb-5">
-        {order.trackingUrl && (
-            <a
-                href={order.trackingUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                class="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-400 hover:bg-purple-200 dark:hover:bg-purple-900/60 transition-colors"
-            >
-                <Icon name="truck" size={10} />
-                {order.trackingNumber || 'Seguir'}
-            </a>
-        )}
-        {order.labelUrl && (
-            <a
-                href={order.labelUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                class="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded-full bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors"
-            >
-                <Icon name="file-text" size={10} />
-                Etiqueta
-            </a>
-        )}
-    </div>
-)}
+    {showTracking && (
+        <div class="flex flex-wrap items-center gap-2 px-4 pb-4 -mt-2 md:px-5 md:pb-5">
+            {order.trackingUrl && (
+                <a
+                    href={order.trackingUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-400 hover:bg-purple-200 dark:hover:bg-purple-900/60 transition-colors"
+                >
+                    <Icon name="truck" size={10} />
+                    {order.trackingNumber || 'Seguir'}
+                </a>
+            )}
+            {order.labelUrl && (
+                <a
+                    href={order.labelUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded-full bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors"
+                >
+                    <Icon name="file-text" size={10} />
+                    Etiqueta
+                </a>
+            )}
+        </div>
+    )}
+
+    {showActions && (
+        <div class="px-4 pb-4 md:px-5 md:pb-5 flex flex-col gap-2">
+            <p class="text-xs text-text-tertiary">{strings.orderAutoConfirmHint}</p>
+            <div class="flex flex-wrap gap-2">
+                <button
+                    type="button"
+                    class="order-confirm-btn inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/60 transition-colors"
+                    data-order-id={order.orderId}
+                >
+                    <Icon name="check" size={12} />
+                    {strings.orderConfirmDelivery}
+                </button>
+                <button
+                    type="button"
+                    class="order-incident-btn inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/60 transition-colors"
+                    data-order-id={order.orderId}
+                >
+                    <Icon name="alert-circle" size={12} />
+                    {strings.orderReportIncident}
+                </button>
+            </div>
+        </div>
+    )}
+</article>
+
+<script>
+    (function () {
+        document.querySelectorAll('.order-confirm-btn').forEach((btn) => {
+            btn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const orderId = (btn as HTMLElement).dataset.orderId;
+                if (!orderId) return;
+
+                if (!confirm('¿Confirmas que has recibido el pedido correctamente?')) return;
+
+                try {
+                    const res = await fetch('/api/orders/confirm-delivery', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ orderId }),
+                    });
+
+                    const data = await res.json();
+                    if (data.success) {
+                        alert('Pedido confirmado correctamente');
+                        window.location.reload();
+                    } else {
+                        alert(data.error || 'Error al confirmar');
+                    }
+                } catch {
+                    alert('Error de red');
+                }
+            });
+        });
+
+        document.querySelectorAll('.order-incident-btn').forEach((btn) => {
+            btn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const orderId = (btn as HTMLElement).dataset.orderId;
+                if (!orderId) return;
+
+                if (!confirm('¿Quieres reportar una incidencia con este pedido? El vendedor será notificado.')) return;
+
+                try {
+                    const res = await fetch('/api/orders/report-incident', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ orderId }),
+                    });
+
+                    const data = await res.json();
+                    if (data.success) {
+                        alert('Incidencia reportada');
+                        window.location.reload();
+                    } else {
+                        alert(data.error || 'Error al reportar');
+                    }
+                } catch {
+                    alert('Error de red');
+                }
+            });
+        });
+    })();
+</script>

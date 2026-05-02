@@ -48,6 +48,8 @@ const statusColorMap: Record<string, string> = {
     processing: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400',
     shipped: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-400',
     delivered: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400',
+    confirmed: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400',
+    incident: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400',
     cancelled: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400',
 };
 
@@ -69,10 +71,28 @@ const customerName = order.shippingFullName || order.buyerEmail || strings.profi
 <article class="rounded-3xl border border-border bg-surface p-5 sm:p-6 shadow-sm flex flex-col gap-6" data-order-status={normalizedStatus}>
     <div class="flex items-start justify-between gap-4">
         <div class="min-w-0 flex-1">
-            <div class="flex items-center gap-3">
+            <div class="flex items-center gap-3 flex-wrap">
                 <span class={`shrink-0 inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${statusColor}`}>
                     {statusLabel}
                 </span>
+                {(normalizedStatus === 'paid' || normalizedStatus === 'processing' || normalizedStatus === 'shipped' || normalizedStatus === 'delivered') && (
+                    <span class="shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+                        <Icon name="lock" size={9} class="mr-1" />
+                        {strings.orderFundsHeld}
+                    </span>
+                )}
+                {normalizedStatus === 'confirmed' && (
+                    <span class="shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                        <Icon name="check" size={9} class="mr-1" />
+                        {strings.orderFundsReleased}
+                    </span>
+                )}
+                {normalizedStatus === 'incident' && (
+                    <span class="shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800">
+                        <Icon name="alert-circle" size={9} class="mr-1" />
+                        {strings.orderIncidentReported}
+                    </span>
+                )}
                 <order-id-popover class="relative inline-flex min-w-0 max-w-full" data-id={order.publicId}>
                     <button type="button" class="trigger-btn group inline-flex items-center gap-1.5 truncate rounded-md bg-neutral-100 dark:bg-neutral-800 px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.12em] text-text-secondary hover:bg-neutral-200 dark:hover:bg-neutral-700 hover:text-text-primary transition-all focus:outline-none ring-accent focus:ring-2">
                         #{order.publicId}
