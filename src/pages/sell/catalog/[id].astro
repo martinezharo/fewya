@@ -22,7 +22,7 @@ if (!profile?.is_seller) return Astro.redirect('/sell');
 
 const { data: shop } = await supabase
     .from('shops')
-    .select('id, name, slug')
+    .select('id, name, slug, default_weight_kg, default_length_cm, default_width_cm, default_height_cm, default_shipping_cost')
     .eq('owner_id', user.id)
     .maybeSingle();
 
@@ -42,6 +42,14 @@ if (!product) return Astro.redirect('/sell/catalog');
 
 const typedProduct = product as any;
 const variants: ProductVariant[] = typedProduct.variants || [];
+
+const shippingDefaults = {
+    weight_kg: shop.default_weight_kg,
+    length_cm: shop.default_length_cm,
+    width_cm: shop.default_width_cm,
+    height_cm: shop.default_height_cm,
+    shipping_cost: shop.default_shipping_cost,
+};
 ---
 
 <SellerLayout title={`${strings.sellerProductEditTitle} — Fewya Seller`} shopSlug={shop.slug}>
@@ -74,6 +82,7 @@ const variants: ProductVariant[] = typedProduct.variants || [];
                     specifications: typedProduct.specifications,
                 }}
                 variants={variants}
+                shippingDefaults={shippingDefaults}
             />
         </div>
     </div>

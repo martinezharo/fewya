@@ -3,6 +3,7 @@ import SellerLayout from '../../../layouts/SellerLayout.astro';
 import Icon from '../../../components/icons/Icon.astro';
 import { createSupabaseAuthClient } from '../../../lib/auth';
 import { strings, getCategoryLabel } from '../../../lib/i18n';
+import { validateProductCompleteness } from '../../../lib/productValidation';
 import type { Product, ProductVariant } from '../../../lib/types';
 
 const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
@@ -34,8 +35,14 @@ const { data: products } = await supabase
     .order('created_at', { ascending: false });
 
 const allProducts: (Product & { variants?: ProductVariant[] })[] = (products ?? []) as any;
-const activeCount = allProducts.filter(p => p.is_active).length;
-const totalStock = allProducts.reduce((sum, p) => sum + (p.variants?.reduce((vs, v) => vs + (v.stock ?? 0), 0) ?? 0), 0);
+
+const productsWithCompleteness = allProducts.map(p => {
+    const complete = validateProductCompleteness(p, p.variants ?? []);
+    return { ...p, isComplete: complete.complete };
+});
+
+const activeCount = productsWithCompleteness.filter(p => p.is_active).length;
+const totalStock = productsWithCompleteness.reduce((sum, p) => sum + (p.variants?.reduce((vs, v) => vs + (v.stock ?? 0), 0) ?? 0), 0);
 const currencyFormatter = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' });
 ---
 
@@ -76,9 +83,9 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', { style: 'currency', cu
             </section>
         </div>
 
-        {allProducts.length > 0 ? (
+        {productsWithCompleteness.length > 0 ? (
             <div class="flex flex-col gap-3" id="product-list">
-                {allProducts.map((product) => {
+                {productsWithCompleteness.map((product) => {
                     const defaultVariant = product.variants?.find(v => v.is_default) || product.variants?.[0];
                     const minPrice = product.variants?.length
                         ? Math.min(...product.variants.map(v => v.price))
@@ -93,7 +100,7 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', { style: 'currency', cu
                         <article
                             class:list={[
                                 'group relative flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 rounded-2xl border border-border bg-surface transition-colors hover:bg-border-light',
-                                !product.is_active && 'opacity-60'
+                                (!product.is_active || !product.isComplete) && 'opacity-60'
                             ]}
                             data-product-id={product.id}
                             data-is-active={String(product.is_active)}
@@ -109,7 +116,15 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', { style: 'currency', cu
                             <div class="flex-1 min-w-0">
                                 <div class="flex items-start justify-between gap-3">
                                     <div class="min-w-0">
-                                        <h3 class="text-sm font-semibold text-text-primary truncate">{product.title}</h3>
+                                        <div class="flex items-center gap-2">
+                                            <h3 class="text-sm font-semibold text-text-primary truncate">{product.title}</h3>
+                                            {!product.isComplete && (
+                                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border border-amber-200 dark:border-amber-800" title={strings.sellerCatalogIncompleteTooltip}>
+                                                    <Icon name="alert-triangle" size={12} />
+                                                    {strings.sellerCatalogIncompleteWarning}
+                                                </span>
+                                            )}
+                                        </div>
                                         <div class="mt-1 flex items-center gap-2 flex-wrap">
                                             <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-bg text-text-secondary border border-border">
                                                 {catLabel}
@@ -153,7 +168,7 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', { style: 'currency', cu
                                 >
                                     <Icon name="pencil" size={16} />
                                 </a>
-                                {shop.slug && (
+                                {shop.slug && product.isComplete && (
                                     <a
                                         href={`/${shop.slug}/${product.slug}`}
                                         target="_blank"

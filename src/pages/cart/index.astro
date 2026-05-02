@@ -64,7 +64,6 @@ import { strings } from '../../lib/i18n';
 
 <script>
   import { cart, type CartItem } from '../../lib/cart';
-  import { SHOP_SHIPPING_EUR } from '../../lib/checkout';
   import { strings } from '../../lib/i18n';
 
   const currencyFormatter = new Intl.NumberFormat('es-ES', {
@@ -102,7 +101,8 @@ import { strings } from '../../lib/i18n';
 
     grouped.forEach(({ shopName, shopSlug, items: shopItems }) => {
       const shopTotal = shopItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-      const shopTotalWithShipping = shopTotal + SHOP_SHIPPING_EUR;
+      const shopShipping = Math.max(...shopItems.map(i => i.shippingCost));
+      const shopTotalWithShipping = shopTotal + shopShipping;
       grandTotal += shopTotalWithShipping;
 
       const shopSection = document.createElement('div');
@@ -111,11 +111,12 @@ import { strings } from '../../lib/i18n';
       // Shop header
       const header = document.createElement('div');
       header.className = 'flex items-center justify-between px-4 py-3 border-b border-border-light';
+      const shippingText = shopShipping === 0 ? 'Envío gratis' : currencyFormatter.format(shopShipping);
       header.innerHTML = `
         <a href="/${escapeHtml(shopSlug)}" class="text-sm font-semibold text-text-primary no-underline hover:underline">${escapeHtml(shopName)}</a>
         <div class="flex items-center gap-1.5 text-xs text-text-secondary">
           <span>${strings.cartShipping}</span>
-          <span class="font-semibold text-text-primary">${currencyFormatter.format(SHOP_SHIPPING_EUR)}</span>
+          <span class="font-semibold text-text-primary">${shippingText}</span>
         </div>
       `;
       shopSection.appendChild(header);

@@ -20,11 +20,19 @@ if (!profile?.is_seller) return Astro.redirect('/sell');
 
 const { data: shop } = await supabase
     .from('shops')
-    .select('id, name, slug')
+    .select('id, name, slug, default_weight_kg, default_length_cm, default_width_cm, default_height_cm, default_shipping_cost')
     .eq('owner_id', user.id)
     .maybeSingle();
 
 if (!shop) return Astro.redirect('/sell/onboarding');
+
+const shippingDefaults = {
+    weight_kg: shop.default_weight_kg,
+    length_cm: shop.default_length_cm,
+    width_cm: shop.default_width_cm,
+    height_cm: shop.default_height_cm,
+    shipping_cost: shop.default_shipping_cost,
+};
 ---
 
 <SellerLayout title={`${strings.sellerProductNewTitle} — Fewya Seller`} shopSlug={shop.slug}>
@@ -35,7 +43,7 @@ if (!shop) return Astro.redirect('/sell/onboarding');
         </div>
 
         <div class="bg-surface p-6 md:p-8 rounded-3xl border border-border shadow-sm">
-            <ProductForm mode="create" shopId={shop.slug} />
+            <ProductForm mode="create" shopId={shop.slug} shippingDefaults={shippingDefaults} />
         </div>
     </div>
 </SellerLayout>
