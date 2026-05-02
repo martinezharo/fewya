@@ -126,9 +126,6 @@ const customerName = order.shippingFullName || order.buyerEmail || strings.profi
             </p>
             <p class="mt-1.5 text-xs font-medium text-text-tertiary tabular-nums">
                 {order.itemsSold} {order.itemsSold === 1 ? strings.ordersItemsSingular : strings.ordersItemsPlural}
-                {order.shipping > 0 && (
-                    <span> · +{currencyFormatter.format(order.shipping)} {strings.cartShipping.toLowerCase()}</span>
-                )}
             </p>
         </div>
     </div>
@@ -189,6 +186,21 @@ const customerName = order.shippingFullName || order.buyerEmail || strings.profi
                     </div>
                 ))}
             </div>
+
+            <div class="mt-2 pt-4 border-t border-border-light">
+                <div class="flex items-center justify-between text-sm">
+                    <span class="text-text-secondary">{strings.cartShipping}</span>
+                    <span class="font-semibold text-text-primary tabular-nums">
+                        {order.shipping > 0 ? currencyFormatter.format(order.shipping) : 'Gratis'}
+                    </span>
+                </div>
+                <div class="flex items-center justify-between text-sm mt-2">
+                    <span class="font-semibold text-text-primary">{strings.cartTotal}</span>
+                    <span class="font-bold text-text-primary tabular-nums">
+                        {currencyFormatter.format(order.subtotal + order.shipping)}
+                    </span>
+                </div>
+            </div>
         </section>
 
         <section>
@@ -225,59 +237,76 @@ const customerName = order.shippingFullName || order.buyerEmail || strings.profi
                 )}
             </ul>
 
-            {(order.hasShipment || order.status === 'paid') && (
-                <div class="mt-6 pt-5 border-t border-border">
-                    <div class="flex items-center gap-2 text-[13px] font-bold uppercase tracking-wider text-text-primary mb-4">
-                        <Icon name="truck" size={16} class="text-text-tertiary" />
-                        <span>Envío</span>
-                    </div>
-
-                    {order.hasShipment ? (
-                        <div class="flex flex-col gap-3">
-                            {order.carrierName && (
-                                <p class="text-sm text-text-secondary">
-                                    <span class="font-medium text-text-primary">{strings.shippingCarrier}:</span> {order.carrierName}
-                                </p>
-                            )}
-                            {order.trackingNumber && (
-                                <p class="text-sm text-text-secondary">
-                                    <span class="font-medium text-text-primary">{strings.shippingTrackingNumber}:</span>{' '}
-                                    <span class="font-mono">{order.trackingNumber}</span>
-                                </p>
-                            )}
-                            <div class="flex flex-wrap gap-2 mt-2">
-                                {order.trackingUrl && (
-                                    <a
-                                        href={order.trackingUrl}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-400 hover:bg-purple-200 dark:hover:bg-purple-900/60 transition-colors"
-                                    >
-                                        <Icon name="external-link" size={12} />
-                                        {strings.shippingTrackPackage}
-                                    </a>
-                                )}
-                                {order.labelUrl && (
-                                    <a
-                                        href={order.labelUrl}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/60 transition-colors"
-                                    >
-                                        <Icon name="file-text" size={12} />
-                                        {strings.shippingViewLabel}
-                                    </a>
-                                )}
-                            </div>
-                        </div>
-                    ) : order.status === 'paid' ? (
-                        <div class="flex items-center gap-2 text-sm text-amber-700 dark:text-amber-400">
-                            <Icon name="clock" size={16} class="shrink-0" />
-                            <span>Envío pendiente de crear</span>
-                        </div>
-                    ) : null}
+            <div class="mt-6 pt-5 border-t border-border">
+                <div class="flex items-center gap-2 text-[13px] font-bold uppercase tracking-wider text-text-primary mb-4">
+                    <Icon name="settings" size={16} class="text-text-tertiary" />
+                    <span>{strings.sellerOrderManage}</span>
                 </div>
-            )}
+
+                {order.hasShipment ? (
+                    <div class="flex flex-col gap-3">
+                        {order.carrierName && (
+                            <p class="text-sm text-text-secondary">
+                                <span class="font-medium text-text-primary">{strings.shippingCarrier}:</span> {order.carrierName}
+                            </p>
+                        )}
+                        {order.trackingNumber && (
+                            <p class="text-sm text-text-secondary">
+                                <span class="font-medium text-text-primary">{strings.shippingTrackingNumber}:</span>{' '}
+                                <span class="font-mono">{order.trackingNumber}</span>
+                            </p>
+                        )}
+                        <div class="flex flex-wrap gap-2 mt-2">
+                            {order.trackingUrl && (
+                                <a
+                                    href={order.trackingUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-400 hover:bg-purple-200 dark:hover:bg-purple-900/60 transition-colors"
+                                >
+                                    <Icon name="external-link" size={12} />
+                                    {strings.shippingTrackPackage}
+                                </a>
+                            )}
+                            {order.labelUrl && (
+                                <a
+                                    href={order.labelUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/60 transition-colors"
+                                >
+                                    <Icon name="file-text" size={12} />
+                                    {strings.shippingViewLabel}
+                                </a>
+                            )}
+                        </div>
+                    </div>
+                ) : (normalizedStatus === 'paid' || normalizedStatus === 'processing') ? (
+                    <div class="flex flex-col gap-3">
+                        <p class="text-sm text-text-secondary">{strings.sellerOrderMockLabelHint}</p>
+                        <div class="flex flex-wrap gap-2">
+                            <button
+                                type="button"
+                                class="mock-label-btn inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/60 transition-colors"
+                                data-order-id={order.orderId}
+                            >
+                                <Icon name="truck" size={12} />
+                                {strings.sellerOrderCreateLabel}
+                            </button>
+                            <button
+                                type="button"
+                                class="cancel-order-btn inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/60 transition-colors"
+                                data-order-id={order.orderId}
+                            >
+                                <Icon name="x" size={12} />
+                                {strings.sellerOrderCancelOrder}
+                            </button>
+                        </div>
+                    </div>
+                ) : (
+                    <p class="text-sm text-text-secondary">No hay acciones disponibles para este pedido.</p>
+                )}
+            </div>
         </section>
     </div>
 </article>
@@ -356,5 +385,79 @@ const customerName = order.shippingFullName || order.buyerEmail || strings.profi
         badge.addEventListener('mouseleave', hide);
         badge.addEventListener('focus', show);
         badge.addEventListener('blur', hide);
+    });
+
+    // Mock label generation
+    document.querySelectorAll('.mock-label-btn').forEach((btn) => {
+        btn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const orderId = (btn as HTMLElement).dataset.orderId;
+            if (!orderId) return;
+
+            btn.setAttribute('disabled', 'true');
+            const originalText = btn.textContent || '';
+            btn.textContent = 'Generando…';
+
+            try {
+                const res = await fetch('/api/packlink/mock-shipment', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ orderId }),
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    alert('Etiqueta generada correctamente');
+                    window.location.reload();
+                } else {
+                    alert(data.error || 'Error al generar etiqueta');
+                    btn.removeAttribute('disabled');
+                    btn.textContent = originalText;
+                }
+            } catch {
+                alert('Error de red');
+                btn.removeAttribute('disabled');
+                btn.textContent = originalText;
+            }
+        });
+    });
+
+    // Cancel order + refund
+    document.querySelectorAll('.cancel-order-btn').forEach((btn) => {
+        btn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const orderId = (btn as HTMLElement).dataset.orderId;
+            if (!orderId) return;
+
+            if (!confirm('¿Cancelar este pedido? Se reembolsará el importe total al comprador.')) return;
+
+            btn.setAttribute('disabled', 'true');
+            const originalText = btn.textContent || '';
+            btn.textContent = 'Cancelando…';
+
+            try {
+                const res = await fetch('/api/orders/refund', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ orderId }),
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    alert('Pedido cancelado y reembolsado');
+                    window.location.reload();
+                } else {
+                    alert(data.error || 'Error al cancelar');
+                    btn.removeAttribute('disabled');
+                    btn.textContent = originalText;
+                }
+            } catch {
+                alert('Error de red');
+                btn.removeAttribute('disabled');
+                btn.textContent = originalText;
+            }
+        });
     });
 </script>
