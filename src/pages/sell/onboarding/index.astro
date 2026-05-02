@@ -96,127 +96,135 @@ if (Astro.request.method === 'POST') {
     import confetti from 'my-canvas-confetti';
     import { strings } from '../../../lib/i18n';
 
-    type OnboardingResponse = {
-        success?: boolean;
-        redirect?: string;
-        error?: string;
-    };
+    const initOnboarding = () => {
+        type OnboardingResponse = {
+            success?: boolean;
+            redirect?: string;
+            error?: string;
+        };
 
-    const steps = document.querySelectorAll<HTMLElement>('.step');
-    const nextBtns = document.querySelectorAll<HTMLButtonElement>('.next-btn');
-    const prevBtns = document.querySelectorAll<HTMLButtonElement>('.prev-btn');
-    const progressBar = document.getElementById('progress-bar');
-    const form = document.getElementById('onboarding-form');
-    const submitBtn = document.getElementById('submit-btn');
-    const submitText = document.getElementById('submit-text');
-    const submitSpinner = document.getElementById('submit-spinner');
-    const errorMessage = document.getElementById('error-message');
+        const steps = document.querySelectorAll<HTMLElement>('.step');
+        const nextBtns = document.querySelectorAll<HTMLButtonElement>('.next-btn');
+        const prevBtns = document.querySelectorAll<HTMLButtonElement>('.prev-btn');
+        const progressBar = document.getElementById('progress-bar');
+        const form = document.getElementById('onboarding-form');
+        const submitBtn = document.getElementById('submit-btn');
+        const submitText = document.getElementById('submit-text');
+        const submitSpinner = document.getElementById('submit-spinner');
+        const errorMessage = document.getElementById('error-message');
 
-    const updateProgress = (step: number) => {
-        if (progressBar instanceof HTMLElement) {
-            progressBar.style.width = `${(step / 3) * 100}%`;
-        }
-    };
+        if (!steps.length || !form) return;
 
-    nextBtns.forEach((btn) => {
-        btn.addEventListener('click', (event: Event) => {
-            const currentButton = event.currentTarget;
-            if (!(currentButton instanceof HTMLButtonElement)) {
-                return;
+        const updateProgress = (step: number) => {
+            if (progressBar instanceof HTMLElement) {
+                progressBar.style.width = `${(step / 3) * 100}%`;
             }
+        };
 
-            const currentStep = currentButton.closest('.step');
-            const inputs = currentStep?.querySelectorAll<HTMLInputElement>('input[required]');
-            let isValid = true;
-
-            inputs?.forEach((input) => {
-                if (!input.value.trim()) {
-                    input.classList.add('border-red-500');
-                    isValid = false;
-                } else {
-                    input.classList.remove('border-red-500');
+        nextBtns.forEach((btn) => {
+            btn.addEventListener('click', (event: Event) => {
+                const currentButton = event.currentTarget;
+                if (!(currentButton instanceof HTMLButtonElement)) {
+                    return;
                 }
+
+                const currentStep = currentButton.closest('.step');
+                const inputs = currentStep?.querySelectorAll<HTMLInputElement>('input[required]');
+                let isValid = true;
+
+                inputs?.forEach((input) => {
+                    if (!input.value.trim()) {
+                        input.classList.add('border-red-500');
+                        isValid = false;
+                    } else {
+                        input.classList.remove('border-red-500');
+                    }
+                });
+
+                if (!isValid) {
+                    return;
+                }
+
+                const nextStepId = currentButton.dataset.next;
+                steps.forEach((step) => step.classList.add('hidden'));
+                document.getElementById(`step-${nextStepId}`)?.classList.remove('hidden');
+                updateProgress(parseInt(nextStepId || '1', 10));
             });
-
-            if (!isValid) {
-                return;
-            }
-
-            const nextStepId = currentButton.dataset.next;
-            steps.forEach((step) => step.classList.add('hidden'));
-            document.getElementById(`step-${nextStepId}`)?.classList.remove('hidden');
-            updateProgress(parseInt(nextStepId || '1', 10));
         });
-    });
 
-    prevBtns.forEach((btn) => {
-        btn.addEventListener('click', (event: Event) => {
-            const currentButton = event.currentTarget;
-            if (!(currentButton instanceof HTMLButtonElement)) {
-                return;
-            }
-
-            const prevStepId = currentButton.dataset.prev;
-            steps.forEach((step) => step.classList.add('hidden'));
-            document.getElementById(`step-${prevStepId}`)?.classList.remove('hidden');
-            updateProgress(parseInt(prevStepId || '1', 10));
-        });
-    });
-
-    if (form instanceof HTMLFormElement) {
-        form.addEventListener('submit', async (event: SubmitEvent) => {
-            event.preventDefault();
-
-            if (submitBtn instanceof HTMLButtonElement) {
-                submitBtn.disabled = true;
-            }
-            submitText?.classList.add('hidden');
-            submitSpinner?.classList.remove('hidden');
-            errorMessage?.classList.add('hidden');
-
-            try {
-                const formData = new FormData(form);
-                const response = await fetch('/sell/onboarding', {
-                    method: 'POST',
-                    body: formData
-                });
-                const data = await response.json() as OnboardingResponse;
-
-                if (!response.ok) {
-                    throw new Error(data.error || strings.sellerOnboardingGenericError);
+        prevBtns.forEach((btn) => {
+            btn.addEventListener('click', (event: Event) => {
+                const currentButton = event.currentTarget;
+                if (!(currentButton instanceof HTMLButtonElement)) {
+                    return;
                 }
 
-                confetti({
-                    particleCount: 100,
-                    spread: 70,
-                    origin: { y: 0.6 },
-                    colors: ['#000000', '#ffffff', '#666666']
-                });
+                const prevStepId = currentButton.dataset.prev;
+                steps.forEach((step) => step.classList.add('hidden'));
+                document.getElementById(`step-${prevStepId}`)?.classList.remove('hidden');
+                updateProgress(parseInt(prevStepId || '1', 10));
+            });
+        });
 
-                setTimeout(() => {
-                    window.location.href = data.redirect || '/sell?success=1';
-                }, 1500);
-            } catch (error: unknown) {
-                if (errorMessage instanceof HTMLElement) {
-                    errorMessage.textContent = error instanceof Error ? error.message : strings.sellerOnboardingGenericError;
-                    errorMessage.classList.remove('hidden');
-                }
+        if (form instanceof HTMLFormElement) {
+            form.addEventListener('submit', async (event: SubmitEvent) => {
+                event.preventDefault();
 
                 if (submitBtn instanceof HTMLButtonElement) {
-                    submitBtn.disabled = false;
+                    submitBtn.disabled = true;
                 }
-                submitText?.classList.remove('hidden');
-                submitSpinner?.classList.add('hidden');
-            }
-        });
-    }
+                submitText?.classList.add('hidden');
+                submitSpinner?.classList.remove('hidden');
+                errorMessage?.classList.add('hidden');
 
-    document.querySelectorAll<HTMLInputElement>('input[required]').forEach((input) => {
-        input.addEventListener('input', (event: Event) => {
-            const target = event.currentTarget;
-            if (target instanceof HTMLInputElement) {
-                target.classList.remove('border-red-500');
-            }
+                try {
+                    const formData = new FormData(form);
+                    const response = await fetch('/sell/onboarding', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const data = await response.json() as OnboardingResponse;
+
+                    if (!response.ok) {
+                        throw new Error(data.error || strings.sellerOnboardingGenericError);
+                    }
+
+                    confetti({
+                        particleCount: 100,
+                        spread: 70,
+                        origin: { y: 0.6 },
+                        colors: ['#000000', '#ffffff', '#666666']
+                    });
+
+                    setTimeout(() => {
+                        window.location.href = data.redirect || '/sell?success=1';
+                    }, 1500);
+                } catch (error: unknown) {
+                    if (errorMessage instanceof HTMLElement) {
+                        errorMessage.textContent = error instanceof Error ? error.message : strings.sellerOnboardingGenericError;
+                        errorMessage.classList.remove('hidden');
+                    }
+
+                    if (submitBtn instanceof HTMLButtonElement) {
+                        submitBtn.disabled = false;
+                    }
+                    submitText?.classList.remove('hidden');
+                    submitSpinner?.classList.add('hidden');
+                }
+            });
+        }
+
+        document.querySelectorAll<HTMLInputElement>('input[required]').forEach((input) => {
+            input.addEventListener('input', (event: Event) => {
+                const target = event.currentTarget;
+                if (target instanceof HTMLInputElement) {
+                    target.classList.remove('border-red-500');
+                }
+            });
         });
-    });
+    };
+
+    document.addEventListener('astro:page-load', initOnboarding);
+    if (document.readyState !== 'loading') initOnboarding();
+    else document.addEventListener('DOMContentLoaded', initOnboarding);
 </script>
