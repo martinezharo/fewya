@@ -6,6 +6,7 @@ import Icon from '../../components/icons/Icon.astro';
 import { supabase } from '../../lib/supabase';
 import { createSupabaseAuthClient } from '../../lib/auth';
 import { enrichProductsWithRatings } from '../../lib/productUtils';
+import { isProductComplete } from '../../lib/productValidation';
 import { strings } from '../../lib/i18n';
 import type { Shop, Product } from '../../lib/types';
 
@@ -31,7 +32,8 @@ const { data: productsData } = await supabase
   .eq('is_active', true)
   .order('created_at', { ascending: false });
 
-const products = (productsData ?? []).map((p: any) => ({ ...p, shop })) as Product[];
+const rawProducts = (productsData ?? []).map((p: any) => ({ ...p, shop })) as Product[];
+const products = rawProducts.filter(p => isProductComplete(p));
 await enrichProductsWithRatings(products, supabase);
 
 // Calculate average rating of shop's products

@@ -11,6 +11,7 @@ import ShopContact from '../../components/product/ShopContact.astro';
 import ReportButton from '../../components/product/ReportButton.astro';
 import { supabase } from '../../lib/supabase';
 import { createSupabaseAuthClient } from '../../lib/auth';
+import { isProductComplete } from '../../lib/productValidation';
 import { strings } from '../../lib/i18n';
 import type { Product, Review, Shop } from '../../lib/types';
 
@@ -37,6 +38,8 @@ if (!productData) return Astro.redirect('/');
 
 const product = { ...productData, shop: shop as Shop } as Product;
 
+if (!isProductComplete(product)) return Astro.redirect('/');
+
 const { data: reviewsData } = await supabase
   .from('reviews')
   .select('*, profile:public_profiles(full_name, avatar_url)')
@@ -52,6 +55,8 @@ const sortedVariants = [...(product.variants ?? [])].sort((a, b) =>
 );
 const activeVariant = sortedVariants[0];
 const price = activeVariant?.price ?? 0;
+const shippingCost = activeVariant?.shipping_cost ?? 0;
+const shippingDisplay = shippingCost === 0 ? 'Envío gratis' : `+${shippingCost.toFixed(2).replace('.', ',')}€ envío`;
 const hasVariants = sortedVariants.length > 1;
 
 // Check wishlist status
@@ -86,7 +91,7 @@ if (user) {
             <span class="text-xl md:text-2xl font-bold text-text-primary" data-product-price>
               {price.toFixed(2)}{strings.currency}
             </span>
-            <span class="text-xs md:text-sm text-text-secondary">{strings.productShipping}</span>
+            <span class="text-xs md:text-sm text-text-secondary" data-product-shipping>{shippingDisplay}</span>
           </div>
           <WishlistButton productId={product.id} isWished={isWished} variant="detail" size={22} />
         </div>
@@ -149,6 +154,7 @@ if (user) {
             data-cart-price={String(price)}
             data-cart-stock={String(activeVariant?.stock ?? 0)}
             data-cart-variant-name={activeVariant?.variant_name ?? ''}
+            data-cart-shipping={String(activeVariant?.shipping_cost ?? 0)}
             data-cart-shop-id={shop.id}
             data-cart-shop-name={shop.name}
             data-cart-shop-slug={shop.slug}
@@ -233,18 +239,24 @@ if (user) {
       const price = btn.dataset.variantPrice ?? '0';
       const stock = btn.dataset.variantStock ?? '0';
       const variantImage = btn.dataset.variantImage ?? '';
+      const variantShipping = parseFloat(btn.dataset.variantShipping ?? '0');
 
-      // Find variant id from the button's parent context
-      // The variant buttons are rendered with data attributes, we need to find the variant id
-      // We'll pass it via a new data attribute on VariantSelector
       if (btn.dataset.variantId) {
         addBtn.dataset.cartVariantId = btn.dataset.variantId;
       }
       addBtn.dataset.cartPrice = price;
       addBtn.dataset.cartStock = stock;
+      addBtn.dataset.cartShipping = String(variantShipping);
       if (variantImage) addBtn.dataset.cartImage = variantImage;
       if (btn.querySelector('[data-variant-name]')) {
         addBtn.dataset.cartVariantName = btn.querySelector('[data-variant-name]')?.textContent?.trim() ?? '';
+      }
+
+      // Update shipping display
+      const shippingEl = document.querySelector('[data-product-shipping]');
+      if (shippingEl) {
+        const display = variantShipping === 0 ? 'Envío gratis' : `+${variantShipping.toFixed(2).replace('.', ',')}€ envío`;
+        shippingEl.textContent = display;
       }
     });
   });

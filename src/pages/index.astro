@@ -5,6 +5,7 @@ import ProductGrid from "../components/ProductGrid.astro";
 import { supabase } from "../lib/supabase";
 import { createSupabaseAuthClient } from "../lib/auth";
 import { enrichProductsWithRatings } from "../lib/productUtils";
+import { isProductComplete } from "../lib/productValidation";
 import type { Product } from "../lib/types";
 
 const { data, error } = await supabase
@@ -17,7 +18,8 @@ if (error) {
 	console.error("Error al obtener productos:", error);
 }
 
-const products: Product[] = data ?? [];
+const rawProducts: Product[] = data ?? [];
+const products = rawProducts.filter(p => isProductComplete(p));
 await enrichProductsWithRatings(products, supabase);
 
 const authClient = createSupabaseAuthClient(Astro.cookies, Astro.request);
