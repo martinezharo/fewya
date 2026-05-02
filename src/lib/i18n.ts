@@ -215,6 +215,12 @@ export const strings = {
     orderStatusDelivered: 'Entregado',
     orderStatusCancelled: 'Cancelado',
 
+    // Seller Orders filters
+    sellerOrdersFilterStatusLabel: 'Estado',
+    sellerOrdersFilterStatusAll: 'Todos los estados',
+    sellerOrdersFilterShowPending: 'Mostrar pendientes',
+    sellerOrdersFilterShowPendingHint: 'Ocultados por defecto',
+
     // Variant fallbacks
     variantDefaultName: 'Estandar',
     variantFallbackName: 'Variante {index}',
