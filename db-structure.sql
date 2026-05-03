@@ -222,14 +222,16 @@ CREATE TYPE order_status AS ENUM ('pending', 'paid', 'processing', 'shipped', 'd
 CREATE TABLE public.orders (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   public_id text NOT NULL UNIQUE,
+  checkout_group_id text,
   buyer_id uuid,
+  shop_id uuid,
   status order_status DEFAULT 'pending',
   payment_status text NOT NULL DEFAULT 'pending'::text,
   total_amount numeric NOT NULL,
   currency text NOT NULL DEFAULT 'eur'::text,
   has_insurance boolean DEFAULT false,
-  stripe_checkout_session_id text UNIQUE,
-  stripe_payment_intent_id text UNIQUE,
+  stripe_checkout_session_id text,
+  stripe_payment_intent_id text,
   paid_at timestamp with time zone,
   delivered_at timestamp with time zone,
   funds_released_at timestamp with time zone,
@@ -239,8 +241,14 @@ CREATE TABLE public.orders (
   shipping_address text,
   created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
   CONSTRAINT orders_pkey PRIMARY KEY (id),
-  CONSTRAINT orders_buyer_id_fkey FOREIGN KEY (buyer_id) REFERENCES public.profiles(id)
+  CONSTRAINT orders_buyer_id_fkey FOREIGN KEY (buyer_id) REFERENCES public.profiles(id),
+  CONSTRAINT orders_shop_id_fkey FOREIGN KEY (shop_id) REFERENCES public.shops(id)
 );
+
+CREATE INDEX idx_orders_shop_id ON public.orders(shop_id);
+CREATE INDEX idx_orders_checkout_group_id ON public.orders(checkout_group_id);
+CREATE INDEX idx_orders_stripe_session ON public.orders(stripe_checkout_session_id);
+CREATE INDEX idx_orders_stripe_payment ON public.orders(stripe_payment_intent_id);
 CREATE TABLE public.order_items (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   order_id uuid NOT NULL,
@@ -329,11 +337,9 @@ $$ LANGUAGE sql SECURITY DEFINER;
 CREATE OR REPLACE FUNCTION public.order_belongs_to_seller(p_order_id uuid)
 RETURNS boolean AS $$
   SELECT EXISTS (
-    SELECT 1 FROM public.order_items oi
-    JOIN public.product_variants pv ON oi.variant_id = pv.id
-    JOIN public.products p ON pv.product_id = p.id
-    JOIN public.shops s ON p.shop_id = s.id
-    WHERE oi.order_id = p_order_id AND s.owner_id = auth.uid()
+    SELECT 1 FROM public.orders o
+    JOIN public.shops s ON o.shop_id = s.id
+    WHERE o.id = p_order_id AND s.owner_id = auth.uid()
   );
 $$ LANGUAGE sql SECURITY DEFINER;
 
@@ -342,6 +348,8 @@ GRANT EXECUTE ON FUNCTION public.order_belongs_to_seller(uuid) TO authenticated;
 
 CREATE OR REPLACE FUNCTION public.create_checkout_order(
   p_public_id text,
+  p_checkout_group_id text,
+  p_shop_id uuid,
   p_total_amount numeric,
   p_currency text,
   p_stripe_checkout_session_id text,
@@ -365,7 +373,9 @@ BEGIN
 
   INSERT INTO public.orders (
     public_id,
+    checkout_group_id,
     buyer_id,
+    shop_id,
     status,
     payment_status,
     total_amount,
@@ -378,7 +388,9 @@ BEGIN
   )
   VALUES (
     p_public_id,
+    p_checkout_group_id,
     auth.uid(),
+    p_shop_id,
     'pending',
     'pending',
     p_total_amount,
@@ -404,19 +416,17 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 CREATE OR REPLACE FUNCTION public.mark_order_paid(
-  p_order_id uuid,
   p_session_id text,
   p_payment_intent_id text,
   p_payment_status text
 )
-RETURNS public.orders AS $$
-DECLARE
-  updated_order public.orders;
+RETURNS SETOF public.orders AS $$
 BEGIN
   IF auth.uid() IS NULL THEN
     RAISE EXCEPTION 'Not authenticated';
   END IF;
 
+  RETURN QUERY
   UPDATE public.orders
   SET
     status = CASE
@@ -429,16 +439,9 @@ BEGIN
       WHEN lower(COALESCE(p_payment_status, '')) = 'paid' THEN COALESCE(paid_at, timezone('utc'::text, now()))
       ELSE paid_at
     END
-  WHERE id = p_order_id
-    AND buyer_id = auth.uid()
+  WHERE buyer_id = auth.uid()
     AND stripe_checkout_session_id = p_session_id
-  RETURNING * INTO updated_order;
-
-  IF updated_order.id IS NULL THEN
-    RAISE EXCEPTION 'Order not found';
-  END IF;
-
-  RETURN updated_order;
+  RETURNING *;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
@@ -586,12 +589,12 @@ CREATE POLICY "Allow authenticated read access to payment accounts" ON public.sh
 CREATE POLICY "Allow public read access to variants" ON public.product_variants FOR SELECT TO public USING (true);
 CREATE POLICY "Buyers can create their own orders" ON public.orders FOR INSERT TO authenticated WITH CHECK ((auth.uid() = buyer_id));
 CREATE POLICY "Buyers can view their own orders" ON public.orders FOR SELECT TO authenticated USING ((auth.uid() = buyer_id));
-CREATE POLICY "Sellers can view orders from their shop" ON public.orders FOR SELECT TO authenticated USING ((EXISTS ( SELECT 1
-   FROM (((order_items oi
-     JOIN product_variants pv ON ((oi.variant_id = pv.id)))
-     JOIN products p ON ((pv.product_id = p.id)))
-     JOIN shops s ON ((p.shop_id = s.id)))
-  WHERE ((oi.order_id = orders.id) AND (s.owner_id = auth.uid())))));
+CREATE POLICY "Sellers can view orders from their shop" ON public.orders FOR SELECT TO authenticated USING (
+  shop_id IS NOT NULL AND EXISTS (
+    SELECT 1 FROM public.shops s
+    WHERE s.id = orders.shop_id AND s.owner_id = auth.uid()
+  )
+);
 CREATE POLICY "View items if you have access to the order" ON public.order_items FOR SELECT TO authenticated USING (order_belongs_to_user(order_id));
   CREATE POLICY "Sellers can view order items from their shop" ON public.order_items FOR SELECT TO authenticated USING ((EXISTS ( SELECT 1
     FROM ((product_variants pv
@@ -618,8 +621,8 @@ CREATE POLICY "Allow inserting reviews if product was purchased" ON public.revie
   WHERE o.buyer_id = auth.uid() AND pv.product_id = public.reviews.product_id
 ));
 
-GRANT EXECUTE ON FUNCTION public.create_checkout_order(text, numeric, text, text, text, text, text, text, jsonb) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.mark_order_paid(uuid, text, text, text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.create_checkout_order(text, text, uuid, numeric, text, text, text, text, text, text, jsonb) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.mark_order_paid(text, text, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.cancel_order(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.mark_order_processing(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.upsert_shop_payment_account(uuid, text, boolean, boolean, boolean) TO authenticated;
@@ -791,7 +794,7 @@ BEGIN
   WHERE status = 'delivered'
     AND delivered_at < timezone('utc'::text, now()) - interval '48 hours'
     AND funds_released_at IS NULL
-  RETURNING id, public_id;
+  RETURNING orders.id, orders.public_id;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
