@@ -6,9 +6,10 @@ import { strings } from '../../lib/i18n';
 interface Props {
     currentPath: string;
     shopSlug?: string;
+    stripeStatus?: 'not_connected' | 'pending' | 'ready';
 }
 
-const { currentPath, shopSlug } = Astro.props;
+const { currentPath, shopSlug, stripeStatus = 'not_connected' } = Astro.props;
 
 function isActive(href: string) {
     if (href === '/sell') return currentPath === '/sell';
@@ -82,6 +83,40 @@ function isActive(href: string) {
                     </a>
                 </li>
             ))}
+            <li>
+                <button
+                    type="button"
+                    id="stripe-nav-btn"
+                    data-stripe-status={stripeStatus}
+                    class:list={[
+                        'sidebar-link relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent w-full text-left',
+                        stripeStatus === 'ready'
+                            ? 'text-text-secondary hover:text-text-primary hover:bg-border-light'
+                            : 'text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/10',
+                    ]}
+                >
+                    <span class="relative shrink-0">
+                        <Icon name="credit-card" size={20} />
+                        {stripeStatus !== 'ready' && (
+                            <span class="absolute -top-0.5 -right-0.5 flex h-2 w-2">
+                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                                <span class="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                            </span>
+                        )}
+                    </span>
+                    <span id="stripe-nav-label" class="sidebar-label truncate">{strings.sellerNavStripe}</span>
+                    <span id="stripe-nav-spinner" class="hidden shrink-0">
+                        <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    </span>
+                    {stripeStatus !== 'ready' && (
+                        <span id="stripe-nav-badge" class="sidebar-label ml-auto text-[10px] font-semibold uppercase tracking-wider text-amber-500 dark:text-amber-400">{strings.sellerNavStripeWarning}</span>
+                    )}
+                    <span class="sidebar-tooltip" role="tooltip" aria-hidden="true">{strings.sellerNavStripe}</span>
+                </button>
+            </li>
         </ul>
     </nav>
 
@@ -249,6 +284,41 @@ function isActive(href: string) {
             }
         };
         window.addEventListener('resize', onResize, { passive: true });
+
+        // Stripe nav button
+        const stripeNavBtn = document.getElementById('stripe-nav-btn');
+        const stripeNavLabel = document.getElementById('stripe-nav-label');
+        const stripeNavSpinner = document.getElementById('stripe-nav-spinner');
+        const stripeNavBadge = document.getElementById('stripe-nav-badge');
+        if (stripeNavBtn) {
+            stripeNavBtn.addEventListener('click', async () => {
+                const status = stripeNavBtn.dataset.stripeStatus;
+
+                if (status === 'ready') {
+                    stripeNavBtn.setAttribute('disabled', 'true');
+                    if (stripeNavLabel) stripeNavLabel.textContent = 'Abriendo…';
+                    if (stripeNavSpinner) stripeNavSpinner.classList.remove('hidden');
+                    if (stripeNavBadge) stripeNavBadge.classList.add('hidden');
+                    try {
+                        const res = await fetch('/api/sell/stripe/connect', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ action: 'dashboard' })
+                        });
+                        const data = await res.json().catch(() => ({})) as { url?: string; error?: string };
+                        if (data.url) {
+                            window.location.href = data.url;
+                        } else {
+                            window.location.href = '/sell/onboarding';
+                        }
+                    } catch {
+                        window.location.href = '/sell/onboarding';
+                    }
+                } else {
+                    window.location.href = '/sell/onboarding';
+                }
+            });
+        }
     }
 
     document.addEventListener('astro:page-load', initSellerSidebar);
