@@ -287,7 +287,7 @@ const defaults = {
                 deleteSuccessMsg.textContent = strings.sellerSettingsDeleteShopSuccess;
                 deleteSuccessMsg.classList.remove('hidden');
                 setTimeout(() => {
-                    window.location.href = '/sell';
+                    window.location.href = '/';
                 }, 1500);
             } catch (err) {
                 alert(err instanceof Error ? err.message : strings.sellerSettingsDeleteShopError);

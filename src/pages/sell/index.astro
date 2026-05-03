@@ -1,6 +1,7 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import { createSupabaseAuthClient } from '../../lib/auth';
+import { strings } from '../../lib/i18n';
 
 const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
 const { data: sessionData } = await supabase.auth.getSession();
@@ -36,6 +37,12 @@ if (isSeller && hasShop) {
 
 <Layout title="Fewya - Vender">
     <div class="max-w-4xl mx-auto px-4 py-12">
+        <a href="/" class="inline-flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary transition-colors mb-8">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            {strings.navBackToBuyers}
+        </a>
         {!user ? (
             <div class="text-center rounded-2xl bg-border-light border border-border p-12">
                 <h1 class="text-4xl font-semibold tracking-tight text-text-primary mb-4">Vende con nosotros</h1>

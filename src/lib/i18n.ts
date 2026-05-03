@@ -18,6 +18,7 @@ export const strings = {
 
     // Navigation
     navHome: 'Inicio',
+    navBackToBuyers: 'Volver a comprar',
     navWishlist: 'Favoritos',
     navProfile: 'Yo',
     navCart: 'Carrito',
