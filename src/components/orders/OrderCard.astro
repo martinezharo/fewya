@@ -9,6 +9,7 @@ export interface OrderItem {
     productSlug: string;
     shopSlug: string;
     variantName: string | null;
+    quantity?: number;
 }
 
 export interface OrderCardData {
@@ -47,7 +48,7 @@ const statusLabel = orderStatusLabels[normalizedStatus as keyof typeof orderStat
 const statusColor = statusColorMap[normalizedStatus] ?? statusColorMap.pending;
 
 const firstItem = order.items[0];
-const itemCount = order.items.length;
+const itemCount = order.items.reduce((sum, item) => sum + (item.quantity ?? 1), 0);
 const href = firstItem ? `/${firstItem.shopSlug}/${firstItem.productSlug}` : "#";
 
 const dateFormatted = order.createdAt.toLocaleDateString("es-ES", {
