@@ -295,6 +295,8 @@ export const strings = {
     sellerNavReviews: 'Reseñas',
     sellerNavClaims: 'Reclamaciones',
     sellerNavSettings: 'Configuración',
+    sellerNavStripe: 'Cobros',
+    sellerNavStripeWarning: 'Sin conectar',
     sellerSidebarLabel: 'Menú del vendedor',
     sellerSidebarCollapseLabel: 'Contraer menú',
     sellerSidebarExpandLabel: 'Expandir menú',
