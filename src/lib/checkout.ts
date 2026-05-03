@@ -84,17 +84,7 @@ export async function releaseOrderFunds(options: {
     const { stripe, orderId, publicId, paymentIntentId, items } = options;
 
     try {
-        const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId, {
-            expand: ['latest_charge'],
-        });
-
-        const latestCharge = typeof paymentIntent.latest_charge === 'string'
-            ? paymentIntent.latest_charge
-            : paymentIntent.latest_charge?.id;
-
-        if (!latestCharge) {
-            return { success: false, error: 'No charge found on payment intent' };
-        }
+        const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
 
         const payoutBreakdown = buildShopPayouts(items);
 
@@ -103,7 +93,6 @@ export async function releaseOrderFunds(options: {
                 amount: toMinorUnits(payout.total),
                 currency: CHECKOUT_CURRENCY,
                 destination: payout.stripeAccountId,
-                source_transaction: latestCharge,
                 transfer_group: paymentIntent.transfer_group || `order_${publicId}`,
                 metadata: {
                     orderId,
