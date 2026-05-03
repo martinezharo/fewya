@@ -25,6 +25,7 @@ import { strings } from '../../lib/i18n';
                 <div class="rounded-2xl border border-border-light bg-border-light/30 px-4 py-3 min-w-56">
                     <p class="text-xs uppercase tracking-[0.18em] text-text-tertiary">{strings.cartSuccessOrderNumber}</p>
                     <p id="checkout-success-order-id" class="mt-1 text-lg font-semibold text-text-primary"></p>
+                    <p id="checkout-success-order-count" class="mt-1 text-xs text-text-secondary"></p>
                 </div>
                 <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                     <a href="/me/orders" class="inline-flex items-center justify-center px-6 py-3 rounded-lg bg-accent text-bg font-semibold text-sm no-underline hover:bg-accent-hover transition-colors">
@@ -63,11 +64,12 @@ import { strings } from '../../lib/i18n';
 
     let confirmationStarted = false;
 
-    function showState(state: 'loading' | 'success' | 'error', message?: string, publicId?: string) {
+    function showState(state: 'loading' | 'success' | 'error', message?: string, orderInfo?: { publicId?: string; orderCount?: number }) {
         const loadingEl = document.getElementById('checkout-success-loading');
         const successEl = document.getElementById('checkout-success-done');
         const errorEl = document.getElementById('checkout-success-error');
         const orderIdEl = document.getElementById('checkout-success-order-id');
+        const orderCountEl = document.getElementById('checkout-success-order-count');
         const errorTextEl = document.getElementById('checkout-success-error-text');
 
         loadingEl?.classList.toggle('hidden', state !== 'loading');
@@ -77,8 +79,12 @@ import { strings } from '../../lib/i18n';
         errorEl?.classList.toggle('hidden', state !== 'error');
         errorEl?.classList.toggle('flex', state === 'error');
 
-        if (publicId && orderIdEl) {
-            orderIdEl.textContent = publicId;
+        if (orderInfo?.publicId && orderIdEl) {
+            orderIdEl.textContent = orderInfo.publicId;
+        }
+
+        if (orderInfo?.orderCount && orderCountEl) {
+            orderCountEl.textContent = `${orderInfo.orderCount} pedido${orderInfo.orderCount > 1 ? 's' : ''}`;
         }
 
         if (message && errorTextEl) {
@@ -104,9 +110,9 @@ import { strings } from '../../lib/i18n';
 
         try {
             const response = await fetch(`/api/cart/checkout/confirm?session_id=${encodeURIComponent(sessionId)}`);
-            const data = await response.json().catch(() => ({} as { error?: string; publicId?: string })) as {
+            const data = await response.json().catch(() => ({} as { error?: string; orders?: Array<{ public_id: string }> })) as {
                 error?: string;
-                publicId?: string;
+                orders?: Array<{ public_id: string }>;
             };
 
             if (!response.ok) {
@@ -116,7 +122,12 @@ import { strings } from '../../lib/i18n';
             cart.clear();
             currentUrl.searchParams.delete('session_id');
             window.history.replaceState({}, '', currentUrl.pathname + currentUrl.search + currentUrl.hash);
-            showState('success', undefined, data.publicId);
+
+            const firstOrder = data.orders?.[0];
+            showState('success', undefined, {
+                publicId: firstOrder?.public_id,
+                orderCount: data.orders?.length ?? 1,
+            });
         } catch (error: unknown) {
             const message = error instanceof Error ? error.message : strings.apiCheckoutConfirmationError;
             showState('error', message);

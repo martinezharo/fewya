@@ -49,29 +49,30 @@ const { data: ordersData } = await supabase
     .order("created_at", { ascending: false });
 
 const orders: OrderCardData[] = (ordersData ?? []).map((order: any) => {
-    const items = (order.order_items ?? []).flatMap((oi: any) => {
+    const items = (order.order_items ?? []).map((oi: any) => {
         const rawVariant = oi.product_variants;
         const variant = Array.isArray(rawVariant) ? rawVariant[0] : rawVariant;
-        if (!variant) return [];
+        if (!variant) return null;
 
         const rawProduct = variant.products;
         const product = Array.isArray(rawProduct) ? rawProduct[0] : rawProduct;
-        if (!product) return [];
+        if (!product) return null;
 
         const rawShop = product.shops;
         const shop = Array.isArray(rawShop) ? rawShop[0] : rawShop;
-        if (!shop) return [];
+        if (!shop) return null;
 
         const imageUrl = variant.variant_image || product.gallery_images?.[0] || "";
 
-        return Array.from({ length: oi.quantity ?? 1 }, () => ({
+        return {
             productTitle: product.title ?? strings.fallbackProductName,
             imageUrl,
             productSlug: product.slug,
             shopSlug: shop.slug,
             variantName: variant.variant_name ?? null,
-        }));
-    });
+            quantity: oi.quantity ?? 1,
+        };
+    }).filter(Boolean);
 
     const rawShipments = order.shipments;
     const shipment = Array.isArray(rawShipments) ? rawShipments[0] : rawShipments;

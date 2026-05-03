@@ -36,87 +36,88 @@ if (!shop) {
     return Astro.redirect('/sell/onboarding');
 }
 
-const { data: orderItemsData } = await supabase
-    .from('order_items')
+const { data: ordersData } = await supabase
+    .from('orders')
     .select(`
-        quantity,
-        price_at_purchase,
-        orders (
-            id,
-            public_id,
-            status,
-            payment_status,
-            created_at,
-            buyer_email,
-            shipping_full_name,
-            shipping_phone,
-            shipping_address,
-            shipments (
-                id,
-                packlink_shipment_id,
-                carrier_name,
-                service_name,
-                status,
-                tracking_number,
-                tracking_url,
-                label_url
+        id,
+        public_id,
+        status,
+        payment_status,
+        total_amount,
+        created_at,
+        buyer_email,
+        shipping_full_name,
+        shipping_phone,
+        shipping_address,
+        order_items (
+            quantity,
+            price_at_purchase,
+            product_variants (
+                variant_name,
+                variant_image,
+                shipping_cost,
+                products (
+                    title,
+                    slug,
+                    gallery_images
+                )
             )
         ),
-        product_variants (
-            variant_name,
-            variant_image,
-            shipping_cost,
-            products (
-                shop_id,
-                title,
-                slug,
-                gallery_images
-            )
+        shipments (
+            id,
+            packlink_shipment_id,
+            carrier_name,
+            service_name,
+            status,
+            tracking_number,
+            tracking_url,
+            label_url
         )
-    `);
+    `)
+    .eq('shop_id', shop.id)
+    .order('created_at', { ascending: false });
 
-const ordersById = new Map<string, SellerOrderCardData>();
+const orders: SellerOrderCardData[] = (ordersData ?? []).map((order: any) => {
+    const rawItems = order.order_items ?? [];
+    const items: SellerOrderItem[] = [];
+    let subtotal = 0;
+    let shipping = 0;
+    let itemsSold = 0;
 
-for (const orderItem of orderItemsData ?? []) {
-    const rawOrder = (orderItem as any).orders;
-    const order = Array.isArray(rawOrder) ? rawOrder[0] : rawOrder;
-    if (!order?.id) continue;
+    for (const oi of rawItems) {
+        const rawVariant = oi.product_variants;
+        const variant = Array.isArray(rawVariant) ? rawVariant[0] : rawVariant;
+        if (!variant) continue;
 
-    const rawVariant = (orderItem as any).product_variants;
-    const variant = Array.isArray(rawVariant) ? rawVariant[0] : rawVariant;
-    if (!variant) continue;
+        const rawProduct = variant.products;
+        const product = Array.isArray(rawProduct) ? rawProduct[0] : rawProduct;
+        if (!product) continue;
 
-    const rawProduct = variant.products;
-    const product = Array.isArray(rawProduct) ? rawProduct[0] : rawProduct;
-    if (!product || product.shop_id !== shop.id) continue;
+        const quantity = Number(oi.quantity ?? 0);
+        if (quantity <= 0) continue;
 
-    const quantity = Number((orderItem as any).quantity ?? 0);
-    if (quantity <= 0) continue;
+        const unitPrice = Number(oi.price_at_purchase ?? 0);
+        const shippingCost = Number(variant.shipping_cost ?? 0);
 
-    const rawShipments = (order as any).shipments;
-    const shipment = Array.isArray(rawShipments) ? rawShipments[0] : rawShipments;
+        items.push({
+            productTitle: product.title ?? strings.fallbackProductName,
+            imageUrl: variant.variant_image || product.gallery_images?.[0] || '',
+            productSlug: product.slug ?? null,
+            variantName: variant.variant_name ?? null,
+            quantity,
+            unitPrice,
+            shippingCost,
+        });
 
-    const item: SellerOrderItem = {
-        productTitle: product.title ?? strings.fallbackProductName,
-        imageUrl: variant.variant_image || product.gallery_images?.[0] || '',
-        productSlug: product.slug ?? null,
-        variantName: variant.variant_name ?? null,
-        quantity,
-        unitPrice: Number((orderItem as any).price_at_purchase ?? 0),
-        shippingCost: Number(variant.shipping_cost ?? 0),
-    };
-
-    const existingOrder = ordersById.get(order.id);
-
-    if (existingOrder) {
-        existingOrder.items.push(item);
-        existingOrder.itemsSold += item.quantity;
-        existingOrder.subtotal += item.quantity * item.unitPrice;
-        existingOrder.shipping = Math.max(existingOrder.shipping, item.shippingCost);
-        continue;
+        subtotal += quantity * unitPrice;
+        shipping = Math.max(shipping, shippingCost);
+        itemsSold += quantity;
     }
 
-    ordersById.set(order.id, {
+    const rawShipments = order.shipments;
+    const shipment = Array.isArray(rawShipments) ? rawShipments[0] : rawShipments;
+
+    return {
         orderId: order.id,
         publicId: order.public_id,
         status: order.status ?? order.payment_status ?? 'pending',
@@ -125,10 +126,10 @@ for (const orderItem of orderItemsData ?? []) {
         shippingFullName: order.shipping_full_name ?? null,
         shippingPhone: order.shipping_phone ?? null,
         shippingAddress: order.shipping_address ?? null,
-        subtotal: item.quantity * item.unitPrice,
-        shipping: item.shippingCost,
-        itemsSold: item.quantity,
-        items: [item],
+        subtotal,
+        shipping,
+        itemsSold,
+        items,
         shopSlug: shop.slug,
         hasShipment: !!shipment,
         shipmentId: shipment?.id,
@@ -137,12 +138,8 @@ for (const orderItem of orderItemsData ?? []) {
         labelUrl: shipment?.label_url ?? null,
         carrierName: shipment?.carrier_name ?? null,
         serviceName: shipment?.service_name ?? null,
-    });
-}
-
-const orders = Array.from(ordersById.values()).sort(
-    (left, right) => right.createdAt.getTime() - left.createdAt.getTime(),
-);
+    };
+});
 
 const totalSales = orders.reduce((sum, order) => sum + order.subtotal + order.shipping, 0);
 const totalOrders = orders.length;
