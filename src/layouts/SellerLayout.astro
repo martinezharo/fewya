@@ -3,20 +3,41 @@ import Layout from './Layout.astro';
 import SellerSidebar from '../components/seller/SellerSidebar.astro';
 import Icon from '../components/icons/Icon.astro';
 import { strings } from '../lib/i18n';
+import { createSupabaseAuthClient } from '../lib/auth';
 
 interface Props {
     title?: string;
     description?: string;
     shopSlug?: string;
+    shopId?: string;
 }
 
-const { title, description, shopSlug } = Astro.props;
+const { title, description, shopSlug, shopId } = Astro.props;
 const currentPath = Astro.url.pathname;
+
+let stripeStatus: 'not_connected' | 'pending' | 'ready' = 'not_connected';
+
+if (shopId) {
+    const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
+    const { data: paymentAccount } = await supabase
+        .from('shop_payment_accounts')
+        .select('stripe_account_id, charges_enabled, payouts_enabled, details_submitted')
+        .eq('shop_id', shopId)
+        .maybeSingle();
+
+    if (paymentAccount?.stripe_account_id) {
+        if (paymentAccount.charges_enabled && paymentAccount.payouts_enabled && paymentAccount.details_submitted) {
+            stripeStatus = 'ready';
+        } else {
+            stripeStatus = 'pending';
+        }
+    }
+}
 ---
 
 <Layout title={title} description={description}>
     <div class="flex h-dvh overflow-hidden bg-bg">
-        <SellerSidebar currentPath={currentPath} shopSlug={shopSlug} />
+        <SellerSidebar currentPath={currentPath} shopSlug={shopSlug} stripeStatus={stripeStatus} />
 
         <div class="flex flex-col flex-1 min-w-0 overflow-hidden">
             <!-- Mobile top bar (hidden on lg+) -->
