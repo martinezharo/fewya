@@ -4,15 +4,6 @@ import { createSupabaseAuthClient } from '../../../lib/auth';
 import ShopForm from '../../../components/seller/ShopForm.astro';
 import Icon from '../../../components/icons/Icon.astro';
 import { strings } from '../../../lib/i18n';
-import { getStripeAccountStatus, getStripeClient } from '../../../lib/stripe';
-
-function one<T>(value: T | T[] | null | undefined): T | null {
-    if (Array.isArray(value)) {
-        return value[0] ?? null;
-    }
-
-    return value ?? null;
-}
 
 const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
 const { data: sessionData } = await supabase.auth.getSession();
@@ -26,14 +17,7 @@ if (!user) {
 const { data: shop } = await supabase
     .from('shops')
     .select(`
-        *,
-        shop_payment_accounts (
-            stripe_account_id,
-            charges_enabled,
-            payouts_enabled,
-            details_submitted,
-            onboarding_completed_at
-        )
+        *
     `)
     .eq('owner_id', user.id)
     .single();
@@ -41,67 +25,6 @@ const { data: shop } = await supabase
 if (!shop) {
     return Astro.redirect('/sell/onboarding');
 }
-
-let paymentAccount = one((shop as any).shop_payment_accounts);
-let stripeNotice: string | null = null;
-let stripeNoticeTone: 'success' | 'warning' | null = null;
-let stripeSyncError: string | null = null;
-
-const stripeFlow = Astro.url.searchParams.get('stripe');
-
-if ((stripeFlow === 'return' || stripeFlow === 'refresh') && paymentAccount?.stripe_account_id) {
-    try {
-        const stripe = getStripeClient();
-        const account = await stripe.accounts.retrieve(paymentAccount.stripe_account_id);
-        const accountStatus = getStripeAccountStatus(account);
-        const { data: syncedAccount, error: syncError } = await supabase.rpc('upsert_shop_payment_account', {
-            p_shop_id: shop.id,
-            p_stripe_account_id: accountStatus.stripeAccountId,
-            p_charges_enabled: accountStatus.chargesEnabled,
-            p_payouts_enabled: accountStatus.payoutsEnabled,
-            p_details_submitted: accountStatus.detailsSubmitted,
-        });
-
-        if (syncError) {
-            throw syncError;
-        }
-
-        paymentAccount = Array.isArray(syncedAccount) ? syncedAccount[0] : syncedAccount;
-    } catch (error) {
-        stripeSyncError = error instanceof Error ? error.message : strings.sellerStripeError;
-    }
-
-    if (stripeFlow === 'return') {
-        const isReadyAfterReturn = Boolean(
-            paymentAccount?.stripe_account_id
-            && paymentAccount?.charges_enabled
-            && paymentAccount?.payouts_enabled
-            && paymentAccount?.details_submitted
-        );
-
-        stripeNotice = isReadyAfterReturn ? strings.sellerStripeReturnReady : strings.sellerStripeReturnPending;
-        stripeNoticeTone = isReadyAfterReturn ? 'success' : 'warning';
-    }
-}
-
-const isStripeReady = Boolean(
-    paymentAccount?.stripe_account_id
-    && paymentAccount?.charges_enabled
-    && paymentAccount?.payouts_enabled
-    && paymentAccount?.details_submitted
-);
-const hasStripeAccount = Boolean(paymentAccount?.stripe_account_id);
-const stripeStatusLabel = isStripeReady
-    ? strings.sellerStripeStatusReady
-    : hasStripeAccount
-        ? strings.sellerStripeStatusPending
-        : strings.sellerStripeStatusNotConnected;
-const stripeAction = isStripeReady ? 'dashboard' : 'onboarding';
-const stripeButtonLabel = isStripeReady
-    ? strings.sellerStripeDashboardCta
-    : hasStripeAccount
-        ? strings.sellerStripeContinueCta
-        : strings.sellerStripeConnectCta;
 
 if (Astro.request.method === 'POST') {
     const formData = await Astro.request.formData();
@@ -145,82 +68,12 @@ const profileImg = shop.profile_img || '';
 const bannerImg = shop.banner_img || '';
 ---
 
-<SellerLayout title={`${strings.sellerShopEditTitle} - Fewya Seller`} shopSlug={shop.slug}>
+<SellerLayout title={`${strings.sellerShopEditTitle} - Fewya Seller`} shopSlug={shop.slug} shopId={shop.id}>
     <div class="max-w-4xl mx-auto px-4 py-8 lg:py-12">
         <div class="mb-8">
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-text-tertiary">{shop.name}</p>
             <h1 class="mt-2 text-2xl font-semibold tracking-tight text-text-primary">{strings.sellerShopEditTitle}</h1>
         </div>
-
-        {stripeNotice && (
-            <div class:list={[
-                'mb-6 rounded-2xl border px-4 py-3 text-sm font-medium',
-                stripeNoticeTone === 'success'
-                    ? 'border-green-300 bg-green-100 text-green-800 dark:border-green-800 dark:bg-green-900/20 dark:text-green-300'
-                    : 'border-amber-300 bg-amber-100 text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300'
-            ]}>
-                {stripeNotice}
-            </div>
-        )}
-
-        {stripeSyncError && (
-            <div class="mb-6 rounded-2xl border border-red-300 bg-red-100 px-4 py-3 text-sm font-medium text-red-800 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300">
-                {stripeSyncError}
-            </div>
-        )}
-
-        <section class="mb-8 rounded-3xl border border-border bg-surface shadow-sm overflow-hidden">
-            <!-- Header: Stripe branding + live status indicator -->
-            <div class="flex items-center justify-between px-6 md:px-8 pt-6 pb-4">
-                <div class="flex items-center gap-2.5">
-                    <div class="w-7 h-7 rounded-lg bg-[#625afa]/10 dark:bg-[#625afa]/15 flex items-center justify-center">
-                        <svg class="w-3.5 h-3.5 text-[#625afa]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                            <rect x="2" y="5" width="20" height="14" rx="3"/>
-                            <path stroke-linecap="round" d="M2 10h20"/>
-                        </svg>
-                    </div>
-                    <p class="text-xs font-semibold uppercase tracking-[0.18em] text-text-tertiary">Stripe Connect</p>
-                </div>
-                <!-- Status indicator: dot + label, not a button -->
-                <div class="flex items-center gap-2">
-                    <span class="relative flex w-2 h-2">
-                        {isStripeReady && <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-60"></span>}
-                        <span class:list={[
-                            'relative inline-flex rounded-full w-2 h-2',
-                            isStripeReady ? 'bg-green-500' : hasStripeAccount ? 'bg-amber-400' : 'bg-neutral-400 dark:bg-neutral-600'
-                        ]}></span>
-                    </span>
-                    <span class:list={[
-                        'text-xs font-medium',
-                        isStripeReady ? 'text-green-600 dark:text-green-400' : hasStripeAccount ? 'text-amber-600 dark:text-amber-400' : 'text-text-tertiary'
-                    ]}>
-                        {stripeStatusLabel}
-                    </span>
-                </div>
-            </div>
-
-            <!-- Content + action -->
-            <div class="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between px-6 md:px-8 pb-6 md:pb-8">
-                <div>
-                    <h2 class="text-xl font-semibold text-text-primary">{strings.sellerStripeSectionTitle}</h2>
-                    <p class="mt-1.5 text-sm text-text-secondary max-w-lg">{strings.sellerStripeSectionSubtitle}</p>
-                </div>
-                <button
-                    type="button"
-                    id="stripe-connect-btn"
-                    data-action={stripeAction}
-                    data-loading-label={strings.sellerStripeConnecting}
-                    class="self-start sm:self-auto shrink-0 inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-accent text-bg text-sm font-medium hover:scale-[1.02] transition-transform"
-                >
-                    {stripeButtonLabel}
-                    <svg class="w-3.5 h-3.5 opacity-60" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 13L13 3M13 3H6M13 3v7"/>
-                    </svg>
-                </button>
-            </div>
-
-            <div id="stripe-error-message" class="hidden mx-6 md:mx-8 mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300"></div>
-        </section>
 
         <!-- Banner + Profile Image Section -->
         <form id="edit-shop-form" method="POST" class="space-y-8">
@@ -317,48 +170,6 @@ const bannerImg = shop.banner_img || '';
     const submitSpinner = document.getElementById('submit-spinner');
     const errorMessage = document.getElementById('error-message');
     const successMessage = document.getElementById('success-message');
-    const stripeConnectBtn = document.getElementById('stripe-connect-btn') as HTMLButtonElement | null;
-    const stripeErrorMessage = document.getElementById('stripe-error-message');
-
-    type StripeConnectResponse = {
-        url?: string;
-        ready?: boolean;
-        error?: string;
-    };
-
-    // Stripe Connect button
-    stripeConnectBtn?.addEventListener('click', async () => {
-        const action = stripeConnectBtn.dataset.action || 'onboarding';
-        const originalText = stripeConnectBtn.textContent || strings.sellerStripeConnectCta;
-
-        stripeConnectBtn.disabled = true;
-        stripeConnectBtn.textContent = stripeConnectBtn.dataset.loadingLabel || strings.sellerStripeConnecting;
-        stripeErrorMessage?.classList.add('hidden');
-
-        try {
-            const response = await fetch('/api/sell/stripe/connect', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action }),
-            });
-
-            const data = await response.json().catch(() => ({} as StripeConnectResponse)) as StripeConnectResponse;
-
-            if (!response.ok || !data.url) {
-                throw new Error(data.error || strings.sellerStripeError);
-            }
-
-            window.location.href = data.url;
-        } catch (error: unknown) {
-            if (stripeErrorMessage instanceof HTMLElement) {
-                stripeErrorMessage.textContent = error instanceof Error ? error.message : strings.sellerStripeError;
-                stripeErrorMessage.classList.remove('hidden');
-            }
-        } finally {
-            stripeConnectBtn.disabled = false;
-            stripeConnectBtn.textContent = originalText;
-        }
-    });
 
     type UploadResponse = { url: string; path?: string; error?: string };
 
