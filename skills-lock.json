@@ -14,7 +14,7 @@
     "cloudflare": {
       "source": "cloudflare/skills",
       "sourceType": "autoskills-registry",
-      "computedHash": "da4a0ac8024248882401e17848856237e063620c7781f47bd89fcdcf72f902b3"
+      "computedHash": "ed01e97370f2c5060338ebef9189ac5f7652addf325e1ec4b9b30ed9653122c2"
     },
     "cloudflare-deploy": {
       "source": "openai/skills",
