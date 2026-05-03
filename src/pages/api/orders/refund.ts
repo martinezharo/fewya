@@ -2,6 +2,7 @@ import type { APIRoute } from 'astro';
 import { createSupabaseAuthClient } from '../../../lib/auth';
 import { strings } from '../../../lib/i18n';
 import { getStripeClient } from '../../../lib/stripe';
+import { toMinorUnits } from '../../../lib/checkout';
 
 function jsonResponse(payload: Record<string, unknown>, status: number) {
     return new Response(JSON.stringify(payload), {
@@ -60,10 +61,11 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     const stripe = getStripeClient();
 
     try {
-        // Create Stripe refund
+        // Create partial Stripe refund for this shop's order only
         if (order.stripe_payment_intent_id) {
             await stripe.refunds.create({
                 payment_intent: order.stripe_payment_intent_id,
+                amount: toMinorUnits(order.total_amount),
                 reason: 'requested_by_customer',
                 metadata: {
                     orderId: order.id,

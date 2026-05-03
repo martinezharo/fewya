@@ -243,8 +243,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         });
     }
 
-    const orderTotal = calculateOrderTotal(resolvedItems);
-    const publicId = `ORD-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+    const checkoutGroupId = `ORD-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
     const stripe = getStripeClient();
     const successUrl = `${buildAbsoluteUrl(request, '/cart/success')}?session_id={CHECKOUT_SESSION_ID}`;
     const cancelUrl = buildAbsoluteUrl(request, '/cart/cancel');
@@ -259,15 +258,15 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             cancel_url: cancelUrl,
             customer_email: buyerEmail ?? undefined,
             payment_intent_data: {
-                transfer_group: `order_${publicId}`,
+                transfer_group: `order_${checkoutGroupId}`,
                 metadata: {
                     buyerId: user.id,
-                    publicId,
+                    checkoutGroupId,
                 },
             },
             metadata: {
                 buyerId: user.id,
-                publicId,
+                checkoutGroupId,
             },
         });
     } catch (error) {
@@ -282,36 +281,82 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         return jsonResponse({ error: strings.apiCheckoutSessionError }, 500);
     }
 
-    const { data: orderData, error: orderError } = await authClient.rpc('create_checkout_order', {
-        p_public_id: publicId,
-        p_total_amount: orderTotal,
-        p_currency: CHECKOUT_CURRENCY,
-        p_stripe_checkout_session_id: session.id,
-        p_buyer_email: buyerEmail,
-        p_shipping_full_name: shippingFullName,
-        p_shipping_phone: shippingPhone,
-        p_shipping_address: shippingAddress,
-        p_items: resolvedItems.map((item) => ({
-            variant_id: item.variantId,
-            quantity: item.quantity,
-            price_at_purchase: item.unitPrice,
-        })),
-    });
+    // Group items by shop and create one order per shop
+    const shopGroups = new Map<string, {
+        shopId: string;
+        shopName: string;
+        shopSlug: string;
+        stripeAccountId: string;
+        items: CheckoutResolvedItem[];
+        subtotal: number;
+        shipping: number;
+    }>();
 
-    if (orderError) {
-        console.error('checkout order creation failed', orderError);
-        await stripe.checkout.sessions.expire(session.id).catch((expireError) => {
-            console.error('failed to expire stripe session after order error', expireError);
-        });
-
-        return jsonResponse({ error: strings.apiOrderCreateError }, 500);
+    for (const item of resolvedItems) {
+        const existing = shopGroups.get(item.shopId);
+        if (existing) {
+            existing.items.push(item);
+            existing.subtotal += item.unitPrice * item.quantity;
+            existing.shipping = Math.max(existing.shipping, item.shippingCost);
+        } else {
+            shopGroups.set(item.shopId, {
+                shopId: item.shopId,
+                shopName: item.shopName,
+                shopSlug: item.shopSlug,
+                stripeAccountId: item.stripeAccountId,
+                items: [item],
+                subtotal: item.unitPrice * item.quantity,
+                shipping: item.shippingCost,
+            });
+        }
     }
 
-    const order = Array.isArray(orderData) ? orderData[0] : orderData;
+    const createdOrders: Array<{ id: string; publicId: string; shopId: string }> = [];
+
+    for (const group of shopGroups.values()) {
+        const shopPublicId = `ORD-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+        const shopTotal = group.subtotal + group.shipping;
+
+        const { data: orderData, error: orderError } = await authClient.rpc('create_checkout_order', {
+            p_public_id: shopPublicId,
+            p_checkout_group_id: checkoutGroupId,
+            p_shop_id: group.shopId,
+            p_total_amount: shopTotal,
+            p_currency: CHECKOUT_CURRENCY,
+            p_stripe_checkout_session_id: session.id,
+            p_buyer_email: buyerEmail,
+            p_shipping_full_name: shippingFullName,
+            p_shipping_phone: shippingPhone,
+            p_shipping_address: shippingAddress,
+            p_items: group.items.map((item) => ({
+                variant_id: item.variantId,
+                quantity: item.quantity,
+                price_at_purchase: item.unitPrice,
+            })),
+        });
+
+        if (orderError) {
+            console.error('checkout order creation failed for shop', group.shopId, orderError);
+            await stripe.checkout.sessions.expire(session.id).catch((expireError) => {
+                console.error('failed to expire stripe session after order error', expireError);
+            });
+
+            return jsonResponse({ error: strings.apiOrderCreateError }, 500);
+        }
+
+        const order = Array.isArray(orderData) ? orderData[0] : orderData;
+        if (order?.id) {
+            createdOrders.push({
+                id: order.id,
+                publicId: shopPublicId,
+                shopId: group.shopId,
+            });
+        }
+    }
 
     return jsonResponse({
         checkoutUrl: session.url,
-        orderId: order?.id ?? null,
-        publicId,
+        orders: createdOrders,
+        checkoutGroupId,
     }, 200);
 };

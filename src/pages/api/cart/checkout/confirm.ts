@@ -25,24 +25,24 @@ export const GET: APIRoute = async ({ url, request, cookies }) => {
         return jsonResponse({ error: strings.apiUnauthorized }, 401);
     }
 
-    const { data: order, error: orderLookupError } = await authClient
+    const { data: orders, error: orderLookupError } = await authClient
         .from('orders')
         .select('id, public_id, status, payment_status, stripe_checkout_session_id')
         .eq('buyer_id', user.id)
-        .eq('stripe_checkout_session_id', sessionId)
-        .maybeSingle();
+        .eq('stripe_checkout_session_id', sessionId);
 
     if (orderLookupError) {
         console.error('checkout confirmation order lookup failed', orderLookupError);
         return jsonResponse({ error: strings.apiCheckoutConfirmationError }, 500);
     }
 
-    if (!order) {
+    if (!orders || orders.length === 0) {
         return jsonResponse({ error: strings.apiCheckoutConfirmationError }, 404);
     }
 
-    if (order.payment_status === 'paid' || order.status === 'paid') {
-        return jsonResponse({ success: true, publicId: order.public_id }, 200);
+    const allPaid = orders.every((o) => o.payment_status === 'paid' || o.status === 'paid');
+    if (allPaid) {
+        return jsonResponse({ success: true, orders }, 200);
     }
 
     const stripe = getStripeClient();
@@ -62,10 +62,10 @@ export const GET: APIRoute = async ({ url, request, cookies }) => {
             return jsonResponse({ error: strings.apiCheckoutConfirmationError }, 500);
         }
 
-        // Mark order as paid. Funds are held by Fewya until delivery is confirmed.
+        // Mark ALL orders sharing this session as paid.
+        // Funds are held by Fewya until delivery is confirmed.
         // Transfers to sellers happen in /api/orders/release-funds when status becomes 'confirmed'.
         const { error: markPaidError } = await authClient.rpc('mark_order_paid', {
-            p_order_id: order.id,
             p_session_id: sessionId,
             p_payment_intent_id: paymentIntentId,
             p_payment_status: session.payment_status,
@@ -76,7 +76,7 @@ export const GET: APIRoute = async ({ url, request, cookies }) => {
             return jsonResponse({ error: strings.apiCheckoutConfirmationError }, 500);
         }
 
-        return jsonResponse({ success: true, publicId: order.public_id }, 200);
+        return jsonResponse({ success: true, orders }, 200);
     } catch (error) {
         console.error('checkout confirmation failed', error);
 
