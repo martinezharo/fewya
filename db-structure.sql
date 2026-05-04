@@ -239,6 +239,12 @@ CREATE TABLE public.orders (
   shipping_full_name text,
   shipping_phone text,
   shipping_address text,
+  delivery_type text DEFAULT 'home',
+  pickup_point_id text,
+  pickup_point_name text,
+  pickup_point_address text,
+  pickup_point_postal_code text,
+  pickup_point_city text,
   created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
   CONSTRAINT orders_pkey PRIMARY KEY (id),
   CONSTRAINT orders_buyer_id_fkey FOREIGN KEY (buyer_id) REFERENCES public.profiles(id),
@@ -357,7 +363,13 @@ CREATE OR REPLACE FUNCTION public.create_checkout_order(
   p_shipping_full_name text,
   p_shipping_phone text,
   p_shipping_address text,
-  p_items jsonb
+  p_items jsonb,
+  p_delivery_type text DEFAULT 'home',
+  p_pickup_point_id text DEFAULT NULL,
+  p_pickup_point_name text DEFAULT NULL,
+  p_pickup_point_address text DEFAULT NULL,
+  p_pickup_point_postal_code text DEFAULT NULL,
+  p_pickup_point_city text DEFAULT NULL
 )
 RETURNS public.orders AS $$
 DECLARE
@@ -384,7 +396,13 @@ BEGIN
     buyer_email,
     shipping_full_name,
     shipping_phone,
-    shipping_address
+    shipping_address,
+    delivery_type,
+    pickup_point_id,
+    pickup_point_name,
+    pickup_point_address,
+    pickup_point_postal_code,
+    pickup_point_city
   )
   VALUES (
     p_public_id,
@@ -399,7 +417,13 @@ BEGIN
     p_buyer_email,
     p_shipping_full_name,
     p_shipping_phone,
-    p_shipping_address
+    p_shipping_address,
+    COALESCE(NULLIF(p_delivery_type, ''), 'home'),
+    p_pickup_point_id,
+    p_pickup_point_name,
+    p_pickup_point_address,
+    p_pickup_point_postal_code,
+    p_pickup_point_city
   )
   RETURNING * INTO new_order;
 
@@ -621,7 +645,7 @@ CREATE POLICY "Allow inserting reviews if product was purchased" ON public.revie
   WHERE o.buyer_id = auth.uid() AND pv.product_id = public.reviews.product_id
 ));
 
-GRANT EXECUTE ON FUNCTION public.create_checkout_order(text, text, uuid, numeric, text, text, text, text, text, text, jsonb) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.create_checkout_order(text, text, uuid, numeric, text, text, text, text, text, text, jsonb, text, text, text, text, text, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.mark_order_paid(text, text, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.cancel_order(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.mark_order_processing(uuid) TO authenticated;
