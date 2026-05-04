@@ -1,0 +1,26 @@
+import type { APIRoute } from 'astro';
+import { getShipmentLabel } from '../../../lib/sendcloud';
+
+function jsonResponse(payload: Record<string, unknown>, status: number) {
+    return new Response(JSON.stringify(payload), {
+        status,
+        headers: { 'Content-Type': 'application/json' },
+    });
+}
+
+export const GET: APIRoute = async ({ request }) => {
+    const url = new URL(request.url);
+    const shipmentId = url.searchParams.get('shipmentId');
+
+    if (!shipmentId) {
+        return jsonResponse({ error: 'shipmentId is required' }, 400);
+    }
+
+    try {
+        const labelUrl = await getShipmentLabel(shipmentId);
+        return jsonResponse({ labelUrl }, 200);
+    } catch (err) {
+        console.error('Sendcloud label error:', err);
+        return jsonResponse({ error: 'Failed to get label' }, 500);
+    }
+};
