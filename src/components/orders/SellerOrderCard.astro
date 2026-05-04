@@ -400,7 +400,7 @@ const customerName = order.shippingFullName || order.buyerEmail || strings.profi
             btn.textContent = 'Generando…';
 
             try {
-                const res = await fetch('/api/packlink/mock-shipment', {
+                const res = await fetch('/api/sendcloud/mock-shipment', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ orderId }),
