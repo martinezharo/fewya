@@ -16,6 +16,15 @@ interface CheckoutItemPayload {
     quantity: number;
 }
 
+interface DeliveryPayload {
+    type: 'home' | 'pickup_point';
+    pickupPointId?: string;
+    pickupPointName?: string;
+    pickupPointAddress?: string;
+    pickupPointPostalCode?: string;
+    pickupPointCity?: string;
+}
+
 function jsonResponse(payload: Record<string, unknown>, status: number) {
     return new Response(JSON.stringify(payload), {
         status,
@@ -97,7 +106,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         return jsonResponse({ error: strings.apiUnauthorized }, 401);
     }
 
-    let body: { items: CheckoutItemPayload[] };
+    let body: { items: CheckoutItemPayload[]; delivery?: DeliveryPayload };
     try {
         body = await request.json();
     } catch {
@@ -317,6 +326,9 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         const shopPublicId = `ORD-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
         const shopTotal = group.subtotal + group.shipping;
 
+        const delivery = body.delivery;
+        const isPickup = delivery?.type === 'pickup_point';
+
         const { data: orderData, error: orderError } = await authClient.rpc('create_checkout_order', {
             p_public_id: shopPublicId,
             p_checkout_group_id: checkoutGroupId,
@@ -327,12 +339,20 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             p_buyer_email: buyerEmail,
             p_shipping_full_name: shippingFullName,
             p_shipping_phone: shippingPhone,
-            p_shipping_address: shippingAddress,
+            p_shipping_address: isPickup && delivery?.pickupPointAddress
+                ? delivery.pickupPointAddress
+                : shippingAddress,
             p_items: group.items.map((item) => ({
                 variant_id: item.variantId,
                 quantity: item.quantity,
                 price_at_purchase: item.unitPrice,
             })),
+            p_delivery_type: delivery?.type || 'home',
+            p_pickup_point_id: delivery?.pickupPointId || null,
+            p_pickup_point_name: delivery?.pickupPointName || null,
+            p_pickup_point_address: delivery?.pickupPointAddress || null,
+            p_pickup_point_postal_code: delivery?.pickupPointPostalCode || null,
+            p_pickup_point_city: delivery?.pickupPointCity || null,
         });
 
         if (orderError) {
