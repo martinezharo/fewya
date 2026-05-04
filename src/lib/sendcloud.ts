@@ -80,9 +80,14 @@ export interface SendcloudLabelResult {
 
 const SENDCLOUD_API_BASE = 'https://panel.sendcloud.sc/api/v2';
 
+function env(key: string): string | undefined {
+    // Astro/Vite exposes .env vars via import.meta.env; fallback to process.env for Node/CF compat
+    return (import.meta.env as Record<string, string | undefined>)?.[key] ?? process.env?.[key];
+}
+
 function getConfig(): SendcloudConfig {
-    const apiKey = process.env.SENDCLOUD_API_KEY;
-    const apiSecret = process.env.SENDCLOUD_API_SECRET;
+    const apiKey = env('SENDCLOUD_API_KEY');
+    const apiSecret = env('SENDCLOUD_API_SECRET');
     if (!apiKey || !apiSecret) {
         throw new Error('SENDCLOUD_API_KEY and SENDCLOUD_API_SECRET environment variables are required');
     }
@@ -90,14 +95,14 @@ function getConfig(): SendcloudConfig {
     return {
         apiKey,
         apiSecret,
-        senderName: process.env.SENDCLOUD_SENDER_NAME || 'Fewya',
-        senderCompany: process.env.SENDCLOUD_SENDER_COMPANY || 'Fewya Marketplace',
-        senderAddress: process.env.SENDCLOUD_SENDER_ADDRESS || 'Calle Principal 1',
-        senderCity: process.env.SENDCLOUD_SENDER_CITY || 'Madrid',
-        senderPostalCode: process.env.SENDCLOUD_SENDER_POSTAL_CODE || '28001',
-        senderCountry: process.env.SENDCLOUD_SENDER_COUNTRY || 'ES',
-        senderPhone: process.env.SENDCLOUD_SENDER_PHONE || '+34600000000',
-        senderEmail: process.env.SENDCLOUD_SENDER_EMAIL || 'envios@fewya.com',
+        senderName: env('SENDCLOUD_SENDER_NAME') || 'Fewya',
+        senderCompany: env('SENDCLOUD_SENDER_COMPANY') || 'Fewya Marketplace',
+        senderAddress: env('SENDCLOUD_SENDER_ADDRESS') || 'Calle Principal 1',
+        senderCity: env('SENDCLOUD_SENDER_CITY') || 'Madrid',
+        senderPostalCode: env('SENDCLOUD_SENDER_POSTAL_CODE') || '28001',
+        senderCountry: env('SENDCLOUD_SENDER_COUNTRY') || 'ES',
+        senderPhone: env('SENDCLOUD_SENDER_PHONE') || '+34600000000',
+        senderEmail: env('SENDCLOUD_SENDER_EMAIL') || 'envios@fewya.com',
     };
 }
 
@@ -359,6 +364,82 @@ export function calculateParcelFromItems(
     }
 
     return parcels;
+}
+
+export interface SendcloudServicePoint {
+    id: number;
+    name: string;
+    street: string;
+    houseNumber: string;
+    postalCode: string;
+    city: string;
+    latitude: string;
+    longitude: string;
+    carrier: string;
+    distance?: number;
+    formattedOpeningTimes: Record<string, string[]>;
+}
+
+export async function getServicePoints(
+    address: string,
+    country: string,
+    carriers: string[]
+): Promise<SendcloudServicePoint[]> {
+    const config = getConfig();
+    const token = Buffer.from(`${config.apiKey}:${config.apiSecret}`).toString('base64');
+
+    async function doRequest(requestedCarriers: string[]): Promise<SendcloudServicePoint[]> {
+        const url = new URL('https://servicepoints.sendcloud.sc/api/v2/service-points');
+        url.searchParams.set('country', country);
+        url.searchParams.set('address', address);
+        url.searchParams.set('radius', '5000');
+        for (const carrier of requestedCarriers) {
+            url.searchParams.append('carrier', carrier);
+        }
+
+        const response = await fetch(url.toString(), {
+            headers: {
+                'Authorization': `Basic ${token}`,
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            const errorBody = await response.text();
+            throw new Error(`Sendcloud Service Points API error: ${response.status} ${response.statusText} - ${errorBody}`);
+        }
+
+        const raw = await response.json();
+        // Sendcloud returns an array directly, but some versions may wrap it in service_points
+        const servicePoints = Array.isArray(raw)
+            ? raw
+            : (raw as { service_points?: unknown[] })?.service_points || [];
+
+        return servicePoints.map((sp: any) => ({
+            id: sp.id,
+            name: sp.name,
+            street: sp.street,
+            houseNumber: sp.house_number,
+            postalCode: sp.postal_code,
+            city: sp.city,
+            latitude: sp.latitude,
+            longitude: sp.longitude,
+            carrier: sp.carrier,
+            distance: sp.distance,
+            formattedOpeningTimes: sp.formatted_opening_times,
+        }));
+    }
+
+    try {
+        return await doRequest(carriers);
+    } catch (err) {
+        const msg = err instanceof Error ? err.message : '';
+        // If some carriers aren't activated, retry without carrier filter to show all available ones
+        if (msg.includes('haven\'t been activated')) {
+            return await doRequest([]);
+        }
+        throw err;
+    }
 }
 
 export function parseSpanishAddress(
