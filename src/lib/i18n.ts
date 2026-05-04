@@ -188,7 +188,7 @@ export const strings = {
     ordersTotal: 'Total',
     ordersOrder: 'Pedido',
 
-    // Shipping / Packlink
+    // Shipping / Sendcloud
     shippingCreateShipment: 'Crear envío',
     shippingCreatingShipment: 'Creando…',
     shippingShipmentCreated: 'Envío creado',
