@@ -60,6 +60,87 @@ import { strings } from '../../lib/i18n';
       <span id="cart-total-mobile" class="text-lg font-bold text-text-primary shrink-0"></span>
     </div>
   </div>
+
+  <!-- Delivery Selection Modal -->
+  <div id="delivery-modal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-end md:items-center justify-center">
+    <div class="bg-surface w-full md:w-[520px] md:rounded-2xl rounded-t-2xl max-h-[90dvh] flex flex-col shadow-2xl">
+      <!-- Header -->
+      <div class="flex items-center justify-between px-5 py-4 border-b border-border-light shrink-0">
+        <h2 id="delivery-modal-title" class="text-lg font-bold text-text-primary">{strings.deliveryTitle}</h2>
+        <button type="button" id="delivery-modal-close" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-border-light transition-colors" aria-label={strings.deliveryClose}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
+      </div>
+
+      <!-- Content -->
+      <div id="delivery-modal-content" class="flex-1 overflow-y-auto p-5">
+        <!-- Step 1: Delivery type selection -->
+        <div id="delivery-step-type" class="flex flex-col gap-3">
+          <button type="button" id="delivery-option-home" class="flex items-start gap-4 p-4 rounded-xl border-2 border-border-light hover:border-accent/50 transition-all text-left bg-surface">
+            <div class="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center shrink-0">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-accent"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            </div>
+            <div>
+              <p class="font-semibold text-text-primary text-sm">{strings.deliveryHome}</p>
+              <p class="text-xs text-text-secondary mt-0.5">{strings.deliveryHomeDesc}</p>
+            </div>
+            <div class="delivery-check hidden ml-auto self-center w-5 h-5 rounded-full bg-accent flex items-center justify-center">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+          </button>
+
+          <button type="button" id="delivery-option-pickup" class="flex items-start gap-4 p-4 rounded-xl border-2 border-border-light hover:border-accent/50 transition-all text-left bg-surface">
+            <div class="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center shrink-0">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-accent"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            </div>
+            <div>
+              <p class="font-semibold text-text-primary text-sm">{strings.deliveryPickup}</p>
+              <p class="text-xs text-text-secondary mt-0.5">{strings.deliveryPickupDesc}</p>
+            </div>
+            <div class="delivery-check hidden ml-auto self-center w-5 h-5 rounded-full bg-accent flex items-center justify-center">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+          </button>
+        </div>
+
+        <!-- Step 2: Pickup point search & selection -->
+        <div id="delivery-step-pickup" class="hidden flex-col gap-4">
+          <button type="button" id="delivery-back-to-type" class="self-start text-xs text-text-secondary hover:text-text-primary transition-colors flex items-center gap-1">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+            {strings.deliveryBack}
+          </button>
+
+          <div class="flex gap-2">
+            <input
+              type="text"
+              id="pickup-address"
+              placeholder="Dirección de búsqueda"
+              class="flex-1 px-3 py-2.5 bg-surface border border-border-light rounded-lg text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent"
+            />
+            <button type="button" id="pickup-search-btn" class="px-4 py-2.5 bg-accent text-bg text-sm font-semibold rounded-lg hover:bg-accent-hover transition-colors shrink-0">
+              {strings.deliverySearch}
+            </button>
+          </div>
+
+          <div id="pickup-search-status" class="hidden text-sm text-text-secondary text-center py-4"></div>
+
+          <div id="pickup-points-list" class="flex flex-col gap-2"></div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div id="delivery-modal-footer" class="shrink-0 px-5 py-4 border-t border-border-light">
+        <button
+          type="button"
+          id="delivery-continue-btn"
+          class="w-full py-3 bg-accent text-bg font-semibold text-sm rounded-lg transition-colors hover:bg-accent-hover active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled
+        >
+          {strings.deliveryContinue}
+        </button>
+      </div>
+    </div>
+  </div>
 </BuyerAppLayout>
 
 <script>
@@ -70,6 +151,16 @@ import { strings } from '../../lib/i18n';
     style: 'currency',
     currency: 'EUR',
   });
+
+  // Delivery modal state
+  let selectedDeliveryType: 'home' | 'pickup_point' | null = null;
+  let selectedPickupPoint: {
+    id: string;
+    name: string;
+    address: string;
+    postalCode: string;
+    city: string;
+  } | null = null;
 
   function renderCart() {
     const items = cart.get();
@@ -210,16 +301,217 @@ import { strings } from '../../lib/i18n';
     return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
-  async function handleCheckout() {
+  // ===== Delivery Modal =====
+  const deliveryModal = document.getElementById('delivery-modal');
+  const stepType = document.getElementById('delivery-step-type');
+  const stepPickup = document.getElementById('delivery-step-pickup');
+  const optionHome = document.getElementById('delivery-option-home');
+  const optionPickup = document.getElementById('delivery-option-pickup');
+  const btnClose = document.getElementById('delivery-modal-close');
+  const btnContinue = document.getElementById('delivery-continue-btn') as HTMLButtonElement | null;
+  const btnBack = document.getElementById('delivery-back-to-type');
+  const inputAddress = document.getElementById('pickup-address') as HTMLInputElement | null;
+  const btnSearch = document.getElementById('pickup-search-btn');
+  const searchStatus = document.getElementById('pickup-search-status');
+  const pointsList = document.getElementById('pickup-points-list');
+
+  function openDeliveryModal() {
+    selectedDeliveryType = null;
+    selectedPickupPoint = null;
+    updateDeliveryUI();
+    stepType?.classList.remove('hidden');
+    stepType?.classList.add('flex');
+    stepPickup?.classList.add('hidden');
+    stepPickup?.classList.remove('flex');
+    if (inputAddress) inputAddress.value = '';
+    if (pointsList) pointsList.innerHTML = '';
+    if (searchStatus) {
+      searchStatus.classList.add('hidden');
+      searchStatus.textContent = '';
+    }
+    deliveryModal?.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeDeliveryModal() {
+    deliveryModal?.classList.add('hidden');
+    document.body.style.overflow = '';
+  }
+
+  function updateDeliveryUI() {
+    // Update checkmarks
+    optionHome?.querySelector('.delivery-check')?.classList.toggle('hidden', selectedDeliveryType !== 'home');
+    optionHome?.classList.toggle('border-accent', selectedDeliveryType === 'home');
+    optionHome?.classList.toggle('border-border-light', selectedDeliveryType !== 'home');
+
+    optionPickup?.querySelector('.delivery-check')?.classList.toggle('hidden', selectedDeliveryType !== 'pickup_point');
+    optionPickup?.classList.toggle('border-accent', selectedDeliveryType === 'pickup_point');
+    optionPickup?.classList.toggle('border-border-light', selectedDeliveryType !== 'pickup_point');
+
+    // Enable/disable continue button
+    if (!btnContinue) return;
+    if (selectedDeliveryType === 'home') {
+      btnContinue.disabled = false;
+      btnContinue.textContent = strings.deliveryContinue;
+    } else if (selectedDeliveryType === 'pickup_point' && selectedPickupPoint) {
+      btnContinue.disabled = false;
+      btnContinue.textContent = strings.deliveryContinue;
+    } else {
+      btnContinue.disabled = true;
+      btnContinue.textContent = strings.deliveryContinue;
+    }
+  }
+
+  function selectDeliveryType(type: 'home' | 'pickup_point') {
+    selectedDeliveryType = type;
+    selectedPickupPoint = null;
+    updateDeliveryUI();
+
+    if (type === 'pickup_point') {
+      stepType?.classList.add('hidden');
+      stepType?.classList.remove('flex');
+      stepPickup?.classList.remove('hidden');
+      stepPickup?.classList.add('flex');
+      // Preload postal code from profile
+      preloadAddress();
+    }
+  }
+
+  async function preloadAddress() {
+    if (!inputAddress) return;
+    try {
+      const res = await fetch('/api/me/address');
+      if (res.ok) {
+        const data = await res.json() as { fullAddress?: string | null };
+        if (data.fullAddress) {
+          inputAddress.value = data.fullAddress;
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  async function searchPickupPoints() {
+    if (!inputAddress || !searchStatus || !pointsList || !btnSearch) return;
+    const address = inputAddress.value.trim();
+    if (!address || address.length < 5) {
+      searchStatus.textContent = 'Introduce una dirección válida';
+      searchStatus.classList.remove('hidden');
+      return;
+    }
+
+    searchStatus.textContent = strings.deliverySearching;
+    searchStatus.classList.remove('hidden');
+    pointsList.innerHTML = '';
+    btnSearch.disabled = true;
+    btnSearch.textContent = '...';
+
+    try {
+      const res = await fetch(`/api/sendcloud/service-points?address=${encodeURIComponent(address)}&country=ES`);
+      const data = await res.json();
+
+      if (!res.ok || !data.points) {
+        searchStatus.textContent = strings.deliverySearchError;
+        return;
+      }
+
+      if (data.points.length === 0) {
+        searchStatus.textContent = strings.deliveryNoResults;
+        return;
+      }
+
+      searchStatus.classList.add('hidden');
+      renderPickupPoints(data.points);
+    } catch {
+      searchStatus.textContent = strings.deliverySearchError;
+    } finally {
+      btnSearch.disabled = false;
+      btnSearch.textContent = strings.deliverySearch;
+    }
+  }
+
+  function renderPickupPoints(points: Array<{
+    id: number;
+    name: string;
+    street: string;
+    houseNumber: string;
+    postalCode: string;
+    city: string;
+    carrier: string;
+    distance?: number;
+    formattedOpeningTimes: Record<string, string[]>;
+  }>) {
+    if (!pointsList) return;
+    pointsList.innerHTML = '';
+
+    points.forEach((point) => {
+      const fullAddress = `${point.street} ${point.houseNumber}, ${point.postalCode} ${point.city}`;
+      const isSelected = selectedPickupPoint?.id === String(point.id);
+      const distanceText = point.distance ? strings.deliveryDistance.replace('{distance}', `${(point.distance / 1000).toFixed(1)} km`) : '';
+
+      // Build opening hours summary (today + tomorrow)
+      const today = new Date().getDay();
+      const todayHours = point.formattedOpeningTimes[String(today)]?.join(', ') || 'Cerrado';
+
+      const card = document.createElement('button');
+      card.type = 'button';
+      card.className = `w-full text-left p-3 rounded-xl border-2 transition-all ${isSelected ? 'border-accent bg-accent/5' : 'border-border-light hover:border-accent/30 bg-surface'}`;
+
+      card.innerHTML = `
+        <div class="flex items-start justify-between gap-2">
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-semibold text-text-primary">${escapeHtml(point.name)}</p>
+            <p class="text-xs text-text-secondary mt-0.5">${escapeHtml(fullAddress)}</p>
+            <div class="flex items-center gap-2 mt-1.5">
+              <span class="text-[10px] uppercase tracking-wider font-medium px-1.5 py-0.5 rounded bg-border-light text-text-secondary">${escapeHtml(point.carrier)}</span>
+              ${distanceText ? `<span class="text-xs text-text-secondary">${escapeHtml(distanceText)}</span>` : ''}
+            </div>
+            <p class="text-xs text-text-tertiary mt-1">${escapeHtml(strings.deliveryOpeningHours)}: ${escapeHtml(todayHours)}</p>
+          </div>
+          ${isSelected ? `<div class="shrink-0 w-5 h-5 rounded-full bg-accent flex items-center justify-center mt-0.5"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>` : ''}
+        </div>
+      `;
+
+      card.addEventListener('click', () => {
+        selectedPickupPoint = {
+          id: String(point.id),
+          name: point.name,
+          address: fullAddress,
+          postalCode: point.postalCode,
+          city: point.city,
+        };
+        renderPickupPoints(points);
+        updateDeliveryUI();
+      });
+
+      pointsList.appendChild(card);
+    });
+  }
+
+  async function proceedToCheckout() {
+    if (!selectedDeliveryType) return;
+
     const items = cart.get();
     if (items.length === 0) return;
 
     const checkoutBtnMobile = document.getElementById('checkout-btn-mobile') as HTMLButtonElement | null;
     const checkoutBtnDesktop = document.getElementById('checkout-btn-desktop') as HTMLButtonElement | null;
 
-    // Disable buttons during request
     if (checkoutBtnMobile) checkoutBtnMobile.disabled = true;
     if (checkoutBtnDesktop) checkoutBtnDesktop.disabled = true;
+    if (btnContinue) btnContinue.disabled = true;
+
+    const deliveryPayload = selectedDeliveryType === 'pickup_point' && selectedPickupPoint
+      ? {
+          type: 'pickup_point' as const,
+          pickupPointId: selectedPickupPoint.id,
+          pickupPointName: selectedPickupPoint.name,
+          pickupPointAddress: selectedPickupPoint.address,
+          pickupPointPostalCode: selectedPickupPoint.postalCode,
+          pickupPointCity: selectedPickupPoint.city,
+        }
+      : { type: 'home' as const };
 
     try {
       const res = await fetch('/api/cart/checkout', {
@@ -230,6 +522,7 @@ import { strings } from '../../lib/i18n';
             variantId: i.variantId,
             quantity: i.quantity,
           })),
+          delivery: deliveryPayload,
         }),
       });
 
@@ -267,7 +560,14 @@ import { strings } from '../../lib/i18n';
       if (checkoutBtnDesktop) checkoutBtnDesktop.disabled = false;
       if (checkoutBtnMobile) checkoutBtnMobile.textContent = strings.cartCheckout;
       if (checkoutBtnDesktop) checkoutBtnDesktop.textContent = strings.cartCheckout;
+      if (btnContinue) btnContinue.disabled = false;
     }
+  }
+
+  function handleCheckout() {
+    const items = cart.get();
+    if (items.length === 0) return;
+    openDeliveryModal();
   }
 
   function init() {
@@ -284,6 +584,34 @@ import { strings } from '../../lib/i18n';
       checkoutBtnDesktop.setAttribute('data-checkout-listener', 'true');
       checkoutBtnDesktop.addEventListener('click', handleCheckout);
     }
+
+    // Modal listeners
+    btnClose?.addEventListener('click', closeDeliveryModal);
+    deliveryModal?.addEventListener('click', (e) => {
+      if (e.target === deliveryModal) closeDeliveryModal();
+    });
+
+    optionHome?.addEventListener('click', () => selectDeliveryType('home'));
+    optionPickup?.addEventListener('click', () => selectDeliveryType('pickup_point'));
+
+    btnBack?.addEventListener('click', () => {
+      stepPickup?.classList.add('hidden');
+      stepPickup?.classList.remove('flex');
+      stepType?.classList.remove('hidden');
+      stepType?.classList.add('flex');
+      selectedPickupPoint = null;
+      updateDeliveryUI();
+    });
+
+    btnContinue?.addEventListener('click', () => {
+      closeDeliveryModal();
+      proceedToCheckout();
+    });
+
+    btnSearch?.addEventListener('click', searchPickupPoints);
+    inputAddress?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') searchPickupPoints();
+    });
   }
 
   document.addEventListener('astro:page-load', init);
