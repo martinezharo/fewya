@@ -90,7 +90,7 @@ CREATE TABLE public.product_variants (
 
 -- ============================================================
 -- Profile Address Fields - Split address into structured fields
--- (Migrations applied to existing databases via 002_packlink_shipping.sql)
+-- (Migrations applied to existing databases via 003_sendcloud_shipping.sql)
 -- ============================================================
 
 -- Migrate existing full_name to first_name if first_name is empty
@@ -113,11 +113,11 @@ CREATE TABLE public.product_variants (
 -- WHERE address IS NOT NULL AND address_postal_code IS NULL;
 
 -- ============================================================
--- Packlink Shipping Integration
+-- Sendcloud Shipping Integration
 -- ============================================================
 
--- Platform-wide Packlink configuration (single API key for all sellers)
-CREATE TABLE public.packlink_config (
+-- Platform-wide Sendcloud configuration (single API key for all sellers)
+CREATE TABLE public.sendcloud_config (
   id boolean PRIMARY KEY DEFAULT true CHECK (id = true),
   api_key text NOT NULL,
   sender_name text,
@@ -135,12 +135,12 @@ CREATE TABLE public.packlink_config (
 -- Shipment status enum
 CREATE TYPE shipment_status AS ENUM ('pending', 'label_ready', 'shipped', 'delivered', 'failed', 'cancelled');
 
--- Shipments created in Packlink
+-- Shipments created via Sendcloud
 CREATE TABLE public.shipments (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   order_id uuid NOT NULL,
-  packlink_shipment_id text UNIQUE,
-  packlink_reference text,
+  sendcloud_shipment_id text UNIQUE,
+  sendcloud_reference text,
   carrier_id text,
   carrier_name text,
   service_name text,
@@ -627,11 +627,11 @@ GRANT EXECUTE ON FUNCTION public.cancel_order(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.mark_order_processing(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.upsert_shop_payment_account(uuid, text, boolean, boolean, boolean) TO authenticated;
 
--- Packlink shipment functions
+-- Sendcloud shipment functions
 CREATE OR REPLACE FUNCTION public.create_shipment(
   p_order_id uuid,
-  p_packlink_shipment_id text,
-  p_packlink_reference text,
+  p_sendcloud_shipment_id text,
+  p_sendcloud_reference text,
   p_carrier_id text,
   p_carrier_name text,
   p_service_name text,
@@ -650,8 +650,8 @@ BEGIN
 
   INSERT INTO public.shipments (
     order_id,
-    packlink_shipment_id,
-    packlink_reference,
+    sendcloud_shipment_id,
+    sendcloud_reference,
     carrier_id,
     carrier_name,
     service_name,
@@ -662,8 +662,8 @@ BEGIN
   )
   VALUES (
     p_order_id,
-    p_packlink_shipment_id,
-    p_packlink_reference,
+    p_sendcloud_shipment_id,
+    p_sendcloud_reference,
     p_carrier_id,
     p_carrier_name,
     p_service_name,
