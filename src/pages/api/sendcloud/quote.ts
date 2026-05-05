@@ -17,7 +17,18 @@ function jsonResponse(payload: Record<string, unknown>, status: number) {
     });
 }
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ request, cookies }) => {
+    const { createSupabaseAuthClient } = await import('../../../lib/auth');
+    const authClient = createSupabaseAuthClient(cookies, request);
+
+    const {
+        data: { user },
+    } = await authClient.auth.getUser();
+
+    if (!user) {
+        return jsonResponse({ error: 'Unauthorized' }, 401);
+    }
+
     let body: {
         items: QuoteItem[];
         toPostalCode: string;

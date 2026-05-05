@@ -1,7 +1,6 @@
 import type { APIRoute } from 'astro';
 import {
     buildShopPayouts,
-    calculateOrderTotal,
     CHECKOUT_CURRENCY,
     type CheckoutResolvedItem,
     toMinorUnits,
