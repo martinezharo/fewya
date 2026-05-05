@@ -1,6 +1,8 @@
 import type { APIRoute } from 'astro';
 import { createSupabaseAuthClient } from '../../../lib/auth';
 import { strings } from '../../../lib/i18n';
+import { generateMockShippingLabel } from '../../../lib/shippingLabelPdf';
+import { parseSpanishAddress } from '../../../lib/sendcloud';
 
 function jsonResponse(payload: Record<string, unknown>, status: number) {
     return new Response(JSON.stringify(payload), {
@@ -10,8 +12,9 @@ function jsonResponse(payload: Record<string, unknown>, status: number) {
 }
 
 /**
- * Generates a mock shipping label for testing without calling Sendcloud.
- * Creates a fake shipment record so sellers can test the full flow.
+ * Generates a mock shipping label PDF for testing without calling Sendcloud.
+ * Differentiates between home delivery and pickup point.
+ * Uploads the PDF to Supabase Storage and creates a shipment record.
  */
 export const POST: APIRoute = async ({ request, cookies }) => {
     const authClient = createSupabaseAuthClient(cookies, request);
@@ -45,35 +48,166 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     }
 
     // Get order details
-    const { data: order } = await authClient
+    const { data: order, error: orderError } = await authClient
         .from('orders')
-        .select('public_id, shipping_full_name, shipping_address')
+        .select(`
+            id,
+            public_id,
+            shop_id,
+            delivery_type,
+            shipping_full_name,
+            shipping_phone,
+            shipping_address,
+            pickup_point_name,
+            pickup_point_address,
+            pickup_point_postal_code,
+            pickup_point_city,
+            pickup_point_carrier
+        `)
         .eq('id', orderId)
         .single();
 
-    if (!order) {
+    if (orderError || !order) {
+        console.error('mock-shipment: order lookup failed', orderError);
         return jsonResponse({ error: strings.apiShopNotFound }, 404);
+    }
+
+    // Get shop (sender) details
+    const { data: shop, error: shopError } = await authClient
+        .from('shops')
+        .select('name, location, contact_email, whatsapp')
+        .eq('id', order.shop_id)
+        .single();
+
+    if (shopError || !shop) {
+        console.error('mock-shipment: shop lookup failed', shopError);
+        return jsonResponse({ error: strings.apiShopNotFound }, 404);
+    }
+
+    const isPickup = order.delivery_type === 'pickup_point';
+
+    // Build sender info
+    const senderName = shop.name || 'Fewya Seller';
+    const senderAddress = shop.location || process.env.SENDCLOUD_SENDER_ADDRESS || 'Calle Principal 1';
+    const senderPhone = shop.whatsapp || process.env.SENDCLOUD_SENDER_PHONE || '+34600000000';
+    const { street: senderStreet, postalCode: senderPostalCode, city: senderCityName } = parseSpanishAddress(senderAddress);
+    const senderCity = senderCityName || process.env.SENDCLOUD_SENDER_CITY || 'Madrid';
+    const senderPostal = senderPostalCode || process.env.SENDCLOUD_SENDER_POSTAL_CODE || '28001';
+    const senderCountry = process.env.SENDCLOUD_SENDER_COUNTRY || 'ES';
+
+    // Build recipient info
+    const recipientName = isPickup
+        ? (order.shipping_full_name || 'Cliente')
+        : (order.shipping_full_name || 'Cliente');
+
+    let recipientAddress = order.shipping_address || '';
+    let recipientCity = '';
+    let recipientPostalCode = '';
+
+    if (isPickup && order.pickup_point_address) {
+        const parsed = parseSpanishAddress(order.pickup_point_address);
+        recipientAddress = parsed.street || order.pickup_point_address;
+        recipientCity = parsed.city || order.pickup_point_city || '';
+        recipientPostalCode = parsed.postalCode || order.pickup_point_postal_code || '';
+    } else {
+        const parsed = parseSpanishAddress(order.shipping_address || '');
+        recipientAddress = parsed.street || order.shipping_address || '';
+        recipientCity = parsed.city || '';
+        recipientPostalCode = parsed.postalCode || '';
+    }
+
+    const recipientCountry = 'ES';
+    const recipientPhone = order.shipping_phone || '';
+
+    // Determine carrier and service name based on delivery type
+    let carrierName: string;
+    let serviceName: string;
+
+    if (isPickup) {
+        const carrier = order.pickup_point_carrier || 'correos';
+        if (carrier.toLowerCase().includes('inpost')) {
+            carrierName = 'InPost';
+            serviceName = 'Punto Pack';
+        } else {
+            carrierName = 'Correos';
+            serviceName = 'Punto de Recogida';
+        }
+    } else {
+        carrierName = 'Correos';
+        serviceName = 'Envio a Domicilio (Paquete Azul)';
     }
 
     const mockShipmentId = `MOCK-${Date.now()}`;
     const mockTracking = `TEST${Math.random().toString(36).slice(2, 10).toUpperCase()}`;
     const mockReference = `REF-${order.public_id}`;
 
-    // Generate a simple test PDF URL (using a public test PDF)
-    const mockLabelUrl = `https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf`;
+    // Generate PDF
+    let pdfBytes: Uint8Array;
+    try {
+        pdfBytes = await generateMockShippingLabel({
+            orderPublicId: order.public_id,
+            senderName,
+            senderAddress: senderStreet || senderAddress,
+            senderCity,
+            senderPostalCode: senderPostal,
+            senderCountry,
+            senderPhone,
+            recipientName,
+            recipientAddress,
+            recipientCity,
+            recipientPostalCode,
+            recipientCountry,
+            recipientPhone,
+            carrierName,
+            serviceName,
+            trackingNumber: mockTracking,
+            isPickupPoint: isPickup,
+            pickupPointName: isPickup ? order.pickup_point_name : undefined,
+        });
+    } catch (pdfErr) {
+        console.error('mock-shipment: PDF generation failed', pdfErr);
+        return jsonResponse({ error: strings.sellerOrderLabelError }, 500);
+    }
+
+    // Upload PDF to Supabase Storage
+    const labelPath = `${orderId}/${crypto.randomUUID()}.pdf`;
+    let labelUrl: string;
+
+    try {
+        const { error: uploadError } = await authClient.storage
+            .from('labels')
+            .upload(labelPath, pdfBytes, {
+                contentType: 'application/pdf',
+                upsert: false,
+            });
+
+        if (uploadError) {
+            console.error('mock-shipment: storage upload failed', uploadError);
+            return jsonResponse({ error: strings.sellerOrderLabelError }, 500);
+        }
+
+        const { data: urlData } = authClient.storage
+            .from('labels')
+            .getPublicUrl(labelPath);
+
+        labelUrl = urlData.publicUrl;
+    } catch (storageErr) {
+        console.error('mock-shipment: storage error', storageErr);
+        return jsonResponse({ error: strings.sellerOrderLabelError }, 500);
+    }
 
     // Save mock shipment to DB
-    const { data: shipment, error: shipmentError } = await authClient.rpc('create_shipment', {
+    const { error: shipmentError } = await authClient.rpc('create_shipment', {
         p_order_id: orderId,
         p_sendcloud_shipment_id: mockShipmentId,
         p_sendcloud_reference: mockReference,
-        p_carrier_id: 'seur_mock',
-        p_carrier_name: 'SEUR Prueba',
-        p_service_name: 'Envío estándar (TEST)',
+        p_carrier_id: carrierName.toLowerCase(),
+        p_carrier_name: carrierName,
+        p_service_name: serviceName,
         p_price: 0,
         p_tracking_number: mockTracking,
-        p_tracking_url: `https://track.seur.com/?tracking=${mockTracking}`,
-        p_label_url: mockLabelUrl,
+        p_tracking_url: `https://track.${carrierName.toLowerCase().replace(/\s/g, '')}.com/?tracking=${mockTracking}`,
+        p_label_url: labelUrl,
     });
 
     if (shipmentError) {
@@ -88,8 +222,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         success: true,
         shipmentId: mockShipmentId,
         trackingNumber: mockTracking,
-        trackingUrl: `https://track.seur.com/?tracking=${mockTracking}`,
-        labelUrl: mockLabelUrl,
-        carrierName: 'SEUR Prueba',
+        trackingUrl: `https://track.${carrierName.toLowerCase().replace(/\s/g, '')}.com/?tracking=${mockTracking}`,
+        labelUrl,
+        carrierName,
     }, 200);
 };

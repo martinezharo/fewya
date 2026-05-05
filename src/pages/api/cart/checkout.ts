@@ -23,6 +23,7 @@ interface DeliveryPayload {
     pickupPointAddress?: string;
     pickupPointPostalCode?: string;
     pickupPointCity?: string;
+    pickupPointCarrier?: string;
 }
 
 function jsonResponse(payload: Record<string, unknown>, status: number) {
@@ -353,6 +354,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             p_pickup_point_address: delivery?.pickupPointAddress || null,
             p_pickup_point_postal_code: delivery?.pickupPointPostalCode || null,
             p_pickup_point_city: delivery?.pickupPointCity || null,
+            p_pickup_point_carrier: delivery?.pickupPointCarrier || null,
         });
 
         if (orderError) {
