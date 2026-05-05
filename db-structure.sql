@@ -34,6 +34,11 @@ CREATE TABLE public.shops (
   created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
   accent_color text,
   location text,
+  default_weight_kg decimal(8,3),
+  default_length_cm decimal(8,3),
+  default_width_cm decimal(8,3),
+  default_height_cm decimal(8,3),
+  default_shipping_cost numeric(8,2),
   CONSTRAINT shops_pkey PRIMARY KEY (id),
   CONSTRAINT shops_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES public.profiles(id)
 );
@@ -50,12 +55,6 @@ CREATE TABLE public.shop_payment_accounts (
   CONSTRAINT shop_payment_accounts_shop_id_fkey FOREIGN KEY (shop_id) REFERENCES public.shops(id) ON DELETE CASCADE
 );
 
-ALTER TABLE public.shops ADD COLUMN default_weight_kg decimal(8,3);
-ALTER TABLE public.shops ADD COLUMN default_length_cm decimal(8,3);
-ALTER TABLE public.shops ADD COLUMN default_width_cm decimal(8,3);
-ALTER TABLE public.shops ADD COLUMN default_height_cm decimal(8,3);
-ALTER TABLE public.shops ADD COLUMN default_shipping_cost numeric(8,2);
-ALTER TABLE public.product_variants ADD COLUMN shipping_cost numeric(8,2);
 CREATE TABLE public.products (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   shop_id uuid NOT NULL,
@@ -84,6 +83,7 @@ CREATE TABLE public.product_variants (
   length_cm decimal(8,3),
   width_cm decimal(8,3),
   height_cm decimal(8,3),
+  shipping_cost numeric(8,2),
   CONSTRAINT product_variants_pkey PRIMARY KEY (id),
   CONSTRAINT product_variants_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.products(id)
 );
