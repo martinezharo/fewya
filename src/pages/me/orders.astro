@@ -149,7 +149,7 @@ const orders: OrderCardData[] = (ordersData ?? []).map((order: any) => {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({}),
                 });
-                const data = await res.json();
+                const data = await res.json() as any;
                 if (data.autoConfirmed > 0) {
                     window.location.reload();
                 }

@@ -272,8 +272,8 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', {
             const total = cards.length;
 
             function applyFilters() {
-                const selectedStatus = select.value;
-                const showPending = toggle.checked;
+                const selectedStatus = select!.value;
+                const showPending = toggle!.checked;
 
                 let visible = 0;
 
@@ -292,13 +292,13 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', {
                     if (shouldShow) visible++;
                 });
 
-                countLabel.textContent = visible === total
+                countLabel!.textContent = visible === total
                     ? `Mostrando ${total} pedidos`
                     : `Mostrando ${visible} de ${total} pedidos`;
             }
 
-            toggle.addEventListener('change', applyFilters);
-            select.addEventListener('change', applyFilters);
+            toggle!.addEventListener('change', applyFilters);
+            select!.addEventListener('change', applyFilters);
 
             // Initial state: toggle off, select "all" -> hide pending
             applyFilters();
@@ -315,7 +315,7 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({}),
                 });
-                const data = await res.json();
+                const data = await res.json() as any;
                 if (data.autoConfirmed > 0) {
                     window.location.reload();
                 }

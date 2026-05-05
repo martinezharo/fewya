@@ -217,7 +217,7 @@ const defaults = {
 
         saveBtn.addEventListener('click', async () => {
             errorMsg.classList.add('hidden');
-            successMsg.classList.add('hidden');
+            settingsSuccessMsg.classList.add('hidden');
 
             const payload = {
                 default_weight_kg: weightInput.value === '' ? null : parseFloat(weightInput.value),

@@ -317,8 +317,8 @@ import { strings } from '../../lib/i18n';
   const btnClose = document.getElementById('delivery-modal-close');
   const btnContinue = document.getElementById('delivery-continue-btn') as HTMLButtonElement | null;
   const btnBack = document.getElementById('delivery-back-to-type');
-  const inputAddress = document.getElementById('pickup-address') as HTMLInputElement | null;
-  const btnSearch = document.getElementById('pickup-search-btn');
+    const inputAddress = document.getElementById('pickup-address') as HTMLInputElement | null;
+    const btnSearch = document.getElementById('pickup-search-btn') as HTMLButtonElement | null;
   const searchStatus = document.getElementById('pickup-search-status');
   const pointsList = document.getElementById('pickup-points-list');
 
@@ -430,20 +430,20 @@ import { strings } from '../../lib/i18n';
 
     try {
       const res = await fetch(`/api/sendcloud/service-points?address=${encodeURIComponent(address)}&country=ES`);
-      const data = await res.json();
+      const data = await res.json() as any;
 
       if (!res.ok || !data.points) {
         searchStatus.textContent = strings.deliverySearchError;
         return;
       }
 
-      if (data.points.length === 0) {
+      if ((data.points as any[]).length === 0) {
         searchStatus.textContent = strings.deliveryNoResults;
         return;
       }
 
       searchStatus.classList.add('hidden');
-      renderPickupPoints(data.points);
+      renderPickupPoints(data.points as any[]);
     } catch {
       searchStatus.textContent = strings.deliverySearchError;
     } finally {
