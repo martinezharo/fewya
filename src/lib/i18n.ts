@@ -262,7 +262,7 @@ export const strings = {
     // Seller order management
     sellerOrderManage: 'Gestionar venta',
     sellerOrderCreateLabel: 'Generar etiqueta de envío',
-    sellerOrderMockLabelHint: 'Modo prueba: genera una etiqueta simulada sin coste',
+    sellerOrderMockLabelHint: 'Modo prueba: genera una etiqueta PDF simulada sin coste (Correos o InPost según el tipo de entrega)',
     sellerOrderCancelOrder: 'Cancelar pedido',
     sellerOrderCancelConfirm: '¿Cancelar este pedido? Se reembolsará el importe total al comprador.',
     sellerOrderRefundSuccess: 'Pedido cancelado y reembolsado',
