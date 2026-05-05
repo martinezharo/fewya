@@ -62,8 +62,8 @@ import { strings } from '../../lib/i18n';
   </div>
 
   <!-- Delivery Selection Modal -->
-  <div id="delivery-modal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-end md:items-center justify-center">
-    <div class="bg-surface w-full md:w-[520px] md:rounded-2xl rounded-t-2xl max-h-[90dvh] flex flex-col shadow-2xl">
+  <div id="delivery-modal" class="hidden fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm flex items-end md:items-center justify-center">
+    <div class="bg-surface w-full md:w-[520px] md:rounded-2xl rounded-t-2xl max-h-[90dvh] flex flex-col shadow-2xl pb-[env(safe-area-inset-bottom,0px)] md:pb-0">
       <!-- Header -->
       <div class="flex items-center justify-between px-5 py-4 border-b border-border-light shrink-0">
         <h2 id="delivery-modal-title" class="text-lg font-bold text-text-primary">{strings.deliveryTitle}</h2>
@@ -378,7 +378,13 @@ import { strings } from '../../lib/i18n';
   }
 
   async function preloadAddress() {
-    if (!inputAddress) return;
+    if (!inputAddress || !searchStatus || !btnSearch) return;
+
+    searchStatus.textContent = strings.deliveryLoadingAddress;
+    searchStatus.classList.remove('hidden');
+    inputAddress.disabled = true;
+    btnSearch.disabled = true;
+
     try {
       const res = await fetch('/api/me/address');
       if (res.ok) {
@@ -389,6 +395,10 @@ import { strings } from '../../lib/i18n';
       }
     } catch {
       // ignore
+    } finally {
+      searchStatus.classList.add('hidden');
+      inputAddress.disabled = false;
+      btnSearch.disabled = false;
     }
   }
 
