@@ -225,10 +225,10 @@ const profileImg = shopData.profile_img || '';
             });
         }
 
-        document.querySelectorAll('.color-preset').forEach(btn => {
+        document.querySelectorAll<HTMLElement>('.color-preset').forEach(btn => {
             btn.addEventListener('click', () => {
-                if ((btn as HTMLElement).closest('#color-presets')?.dataset.dragged) return;
-                const color = (btn as HTMLElement).dataset.color!;
+                if ((btn.closest('#color-presets') as HTMLElement | null)?.dataset.dragged) return;
+                const color = btn.dataset.color!;
                 updateAll(color);
             });
         });

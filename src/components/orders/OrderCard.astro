@@ -197,7 +197,7 @@ const showActions = normalizedStatus === 'delivered';
                         body: JSON.stringify({ orderId }),
                     });
 
-                    const data = await res.json();
+                    const data = await res.json() as any;
                     if (data.success) {
                         alert('Pedido confirmado correctamente');
                         window.location.reload();
@@ -226,7 +226,7 @@ const showActions = normalizedStatus === 'delivered';
                         body: JSON.stringify({ orderId }),
                     });
 
-                    const data = await res.json();
+                    const data = await res.json() as any;
                     if (data.success) {
                         alert('Incidencia reportada');
                         window.location.reload();

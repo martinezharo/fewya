@@ -371,20 +371,13 @@ const customerName = order.shippingFullName || order.buyerEmail || strings.profi
     }
 
     document.querySelectorAll('.funds-badge').forEach((badge) => {
-        const tooltip = badge.querySelector('.tooltip');
+        const tooltip = badge.querySelector('.tooltip') as HTMLElement | null;
         if (!tooltip) return;
 
-        function show() {
-            tooltip.classList.remove('hidden');
-        }
-        function hide() {
-            tooltip.classList.add('hidden');
-        }
-
-        badge.addEventListener('mouseenter', show);
-        badge.addEventListener('mouseleave', hide);
-        badge.addEventListener('focus', show);
-        badge.addEventListener('blur', hide);
+        badge.addEventListener('mouseenter', () => tooltip.classList.remove('hidden'));
+        badge.addEventListener('mouseleave', () => tooltip.classList.add('hidden'));
+        badge.addEventListener('focus', () => tooltip.classList.remove('hidden'));
+        badge.addEventListener('blur', () => tooltip.classList.add('hidden'));
     });
 
     // Mock label generation
@@ -406,7 +399,7 @@ const customerName = order.shippingFullName || order.buyerEmail || strings.profi
                     body: JSON.stringify({ orderId }),
                 });
 
-                const data = await res.json();
+                const data = await res.json() as any;
                 if (data.success) {
                     alert('Etiqueta generada correctamente');
                     window.location.reload();
@@ -444,7 +437,7 @@ const customerName = order.shippingFullName || order.buyerEmail || strings.profi
                     body: JSON.stringify({ orderId }),
                 });
 
-                const data = await res.json();
+                const data = await res.json() as any;
                 if (data.success) {
                     alert('Pedido cancelado y reembolsado');
                     window.location.reload();
