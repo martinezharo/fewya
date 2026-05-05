@@ -8,6 +8,13 @@ function jsonResponse(payload: Record<string, unknown>, status: number) {
 }
 
 export const POST: APIRoute = async ({ request }) => {
+    // Verify webhook secret
+    const webhookSecret = process.env.SENDCLOUD_WEBHOOK_SECRET || '';
+    const requestSecret = request.headers.get('X-Webhook-Secret') || '';
+    if (webhookSecret && requestSecret !== webhookSecret) {
+        return jsonResponse({ error: 'Unauthorized' }, 401);
+    }
+
     let body: {
         action?: string;
         parcel?: {

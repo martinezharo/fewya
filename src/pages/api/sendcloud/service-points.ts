@@ -9,7 +9,18 @@ function jsonResponse(payload: Record<string, unknown>, status: number) {
     });
 }
 
-export const GET: APIRoute = async ({ url }) => {
+export const GET: APIRoute = async ({ url, request, cookies }) => {
+    const { createSupabaseAuthClient } = await import('../../../lib/auth');
+    const authClient = createSupabaseAuthClient(cookies, request);
+
+    const {
+        data: { user },
+    } = await authClient.auth.getUser();
+
+    if (!user) {
+        return jsonResponse({ error: 'Unauthorized' }, 401);
+    }
+
     const address = url.searchParams.get('address');
     const country = url.searchParams.get('country') || 'ES';
 

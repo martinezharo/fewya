@@ -73,8 +73,6 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     }
 
     const senderAddress = process.env.SENDCLOUD_SENDER_ADDRESS || 'Calle Principal 1';
-    const senderCity = process.env.SENDCLOUD_SENDER_CITY || 'Madrid';
-    const senderPostal = process.env.SENDCLOUD_SENDER_POSTAL_CODE || '28001';
     const senderCountry = process.env.SENDCLOUD_SENDER_COUNTRY || 'ES';
     const senderPhone = process.env.SENDCLOUD_SENDER_PHONE || '+34600000000';
     const senderEmail = process.env.SENDCLOUD_SENDER_EMAIL || 'envios@fewya.com';
@@ -120,7 +118,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             requestedService: { shippingOptionCode },
         });
 
-        const { data: shipment, error: shipmentError } = await authClient.rpc('create_shipment', {
+        const { error: shipmentError } = await authClient.rpc('create_shipment', {
             p_order_id: orderId,
             p_sendcloud_shipment_id: result.shipmentId,
             p_sendcloud_reference: result.reference,
