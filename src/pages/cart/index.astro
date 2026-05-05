@@ -396,9 +396,13 @@ import { strings } from '../../lib/i18n';
     } catch {
       // ignore
     } finally {
-      searchStatus.classList.add('hidden');
       inputAddress.disabled = false;
       btnSearch.disabled = false;
+      if (inputAddress.value.trim().length >= 5) {
+        await searchPickupPoints();
+      } else {
+        searchStatus.classList.add('hidden');
+      }
     }
   }
 
