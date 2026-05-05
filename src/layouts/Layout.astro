@@ -33,6 +33,10 @@ const {
     <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="theme-color" content="#F5F7FF" />
     <meta name="generator" content={Astro.generator} />
+
+    <!-- Stripe checkout preconnect to reduce redirect latency -->
+    <link rel="dns-prefetch" href="https://checkout.stripe.com" />
+    <link rel="preconnect" href="https://checkout.stripe.com" />
     <script>
       import { registerSW } from 'virtual:pwa-register'
       registerSW({ immediate: true })
