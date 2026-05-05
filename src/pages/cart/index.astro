@@ -166,6 +166,7 @@ import { strings } from '../../lib/i18n';
     address: string;
     postalCode: string;
     city: string;
+    carrier: string;
   } | null = null;
 
   function renderCart() {
@@ -500,6 +501,7 @@ import { strings } from '../../lib/i18n';
           address: fullAddress,
           postalCode: point.postalCode,
           city: point.city,
+          carrier: point.carrier,
         };
         renderPickupPoints(points);
         updateDeliveryUI();
@@ -537,6 +539,7 @@ import { strings } from '../../lib/i18n';
           pickupPointAddress: selectedPickupPoint.address,
           pickupPointPostalCode: selectedPickupPoint.postalCode,
           pickupPointCity: selectedPickupPoint.city,
+          pickupPointCarrier: selectedPickupPoint.carrier,
         }
       : { type: 'home' as const };
 
