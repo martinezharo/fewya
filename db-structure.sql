@@ -245,6 +245,7 @@ CREATE TABLE public.orders (
   pickup_point_address text,
   pickup_point_postal_code text,
   pickup_point_city text,
+  pickup_point_carrier text,
   created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
   CONSTRAINT orders_pkey PRIMARY KEY (id),
   CONSTRAINT orders_buyer_id_fkey FOREIGN KEY (buyer_id) REFERENCES public.profiles(id),
@@ -369,7 +370,8 @@ CREATE OR REPLACE FUNCTION public.create_checkout_order(
   p_pickup_point_name text DEFAULT NULL,
   p_pickup_point_address text DEFAULT NULL,
   p_pickup_point_postal_code text DEFAULT NULL,
-  p_pickup_point_city text DEFAULT NULL
+  p_pickup_point_city text DEFAULT NULL,
+  p_pickup_point_carrier text DEFAULT NULL
 )
 RETURNS public.orders AS $$
 DECLARE
@@ -402,7 +404,8 @@ BEGIN
     pickup_point_name,
     pickup_point_address,
     pickup_point_postal_code,
-    pickup_point_city
+    pickup_point_city,
+    pickup_point_carrier
   )
   VALUES (
     p_public_id,
@@ -423,7 +426,8 @@ BEGIN
     p_pickup_point_name,
     p_pickup_point_address,
     p_pickup_point_postal_code,
-    p_pickup_point_city
+    p_pickup_point_city,
+    p_pickup_point_carrier
   )
   RETURNING * INTO new_order;
 
@@ -645,7 +649,7 @@ CREATE POLICY "Allow inserting reviews if product was purchased" ON public.revie
   WHERE o.buyer_id = auth.uid() AND pv.product_id = public.reviews.product_id
 ));
 
-GRANT EXECUTE ON FUNCTION public.create_checkout_order(text, text, uuid, numeric, text, text, text, text, text, text, jsonb, text, text, text, text, text, text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.create_checkout_order(text, text, uuid, numeric, text, text, text, text, text, text, jsonb, text, text, text, text, text, text, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.mark_order_paid(text, text, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.cancel_order(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.mark_order_processing(uuid) TO authenticated;
@@ -849,3 +853,14 @@ CREATE POLICY "Allow public read of shop banner images" ON storage.objects FOR S
 CREATE POLICY "Allow authenticated users to upload shop banner images" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'imgs' AND (storage.foldername(name))[1] = 'banners' AND (storage.foldername(name))[2] = auth.uid()::text);
 CREATE POLICY "Allow authenticated users to update shop banner images" ON storage.objects FOR UPDATE TO authenticated USING (bucket_id = 'imgs' AND (storage.foldername(name))[1] = 'banners' AND (storage.foldername(name))[2] = auth.uid()::text);
 CREATE POLICY "Allow owners to delete their shop banner images" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'imgs' AND (storage.foldername(name))[1] = 'banners' AND (storage.foldername(name))[2] = auth.uid()::text);
+
+-- Storage bucket and policies for shipping labels (PDFs)
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES ('labels', 'labels', true, 10485760, null)
+ON CONFLICT (id) DO NOTHING;
+
+DROP POLICY IF EXISTS "Allow public read of shipping labels" ON storage.objects;
+DROP POLICY IF EXISTS "Allow authenticated users to upload shipping labels" ON storage.objects;
+
+CREATE POLICY "Allow public read of shipping labels" ON storage.objects FOR SELECT USING (bucket_id = 'labels');
+CREATE POLICY "Allow authenticated users to upload shipping labels" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'labels');
