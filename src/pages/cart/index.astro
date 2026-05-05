@@ -141,6 +141,12 @@ import { strings } from '../../lib/i18n';
       </div>
     </div>
   </div>
+
+  <!-- Checkout Loading Overlay -->
+  <div id="checkout-loading" class="hidden fixed inset-0 z-[70] bg-bg/90 backdrop-blur-sm flex-col items-center justify-center gap-4">
+    <div class="w-10 h-10 border-4 border-border-light border-t-accent rounded-full animate-spin"></div>
+    <p class="text-sm font-medium text-text-secondary">{strings.cartCheckoutRedirecting}</p>
+  </div>
 </BuyerAppLayout>
 
 <script>
@@ -511,10 +517,17 @@ import { strings } from '../../lib/i18n';
 
     const checkoutBtnMobile = document.getElementById('checkout-btn-mobile') as HTMLButtonElement | null;
     const checkoutBtnDesktop = document.getElementById('checkout-btn-desktop') as HTMLButtonElement | null;
+    const checkoutLoading = document.getElementById('checkout-loading');
 
     if (checkoutBtnMobile) checkoutBtnMobile.disabled = true;
     if (checkoutBtnDesktop) checkoutBtnDesktop.disabled = true;
     if (btnContinue) btnContinue.disabled = true;
+
+    checkoutLoading?.classList.remove('hidden');
+    checkoutLoading?.classList.add('flex');
+    document.body.style.overflow = 'hidden';
+
+    let success = false;
 
     const deliveryPayload = selectedDeliveryType === 'pickup_point' && selectedPickupPoint
       ? {
@@ -549,6 +562,7 @@ import { strings } from '../../lib/i18n';
           alert(strings.cartLoginRequired);
         } else if (data.redirectTo) {
           window.location.href = data.redirectTo;
+          success = true;
         } else {
           alert(data.error || strings.cartCheckoutError);
         }
@@ -565,16 +579,21 @@ import { strings } from '../../lib/i18n';
         return;
       }
 
-      if (checkoutBtnMobile) checkoutBtnMobile.textContent = strings.cartCheckoutRedirecting;
-      if (checkoutBtnDesktop) checkoutBtnDesktop.textContent = strings.cartCheckoutRedirecting;
-
+      success = true;
       window.location.href = data.checkoutUrl;
+    } catch {
+      alert(strings.cartCheckoutError);
     } finally {
-      if (checkoutBtnMobile) checkoutBtnMobile.disabled = false;
-      if (checkoutBtnDesktop) checkoutBtnDesktop.disabled = false;
-      if (checkoutBtnMobile) checkoutBtnMobile.textContent = strings.cartCheckout;
-      if (checkoutBtnDesktop) checkoutBtnDesktop.textContent = strings.cartCheckout;
-      if (btnContinue) btnContinue.disabled = false;
+      if (!success) {
+        checkoutLoading?.classList.add('hidden');
+        checkoutLoading?.classList.remove('flex');
+        document.body.style.overflow = '';
+        if (checkoutBtnMobile) checkoutBtnMobile.disabled = false;
+        if (checkoutBtnDesktop) checkoutBtnDesktop.disabled = false;
+        if (checkoutBtnMobile) checkoutBtnMobile.textContent = strings.cartCheckout;
+        if (checkoutBtnDesktop) checkoutBtnDesktop.textContent = strings.cartCheckout;
+        if (btnContinue) btnContinue.disabled = false;
+      }
     }
   }
 
