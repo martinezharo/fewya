@@ -128,6 +128,7 @@ export const strings = {
     deliverySearching: 'Buscando puntos cercanos…',
     deliveryNoResults: 'No hay puntos de recogida disponibles en esta zona',
     deliverySearchError: 'Error al buscar puntos de recogida',
+    deliveryLoadingAddress: 'Cargando tu dirección…',
     deliveryPostalCodePlaceholder: 'Código postal',
     deliverySearch: 'Buscar',
     deliveryOpeningHours: 'Horario',
