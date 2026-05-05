@@ -19,6 +19,7 @@
     "astro": "^6.0.8",
     "countries-list": "^3.3.0",
     "my-canvas-confetti": "npm:canvas-confetti@^1.9.4",
+    "pdf-lib": "^1.17.1",
     "stripe": "^22.1.0",
     "typescript": "^5.9.3",
     "workbox-window": "^7.4.0",
