@@ -1,5 +1,3 @@
-import type { ProductVariant } from './types';
-
 export interface ProductCompletenessResult {
     complete: boolean;
     missing: string[];

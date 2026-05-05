@@ -138,9 +138,9 @@ async function sendcloudRequest<T>(
 }
 
 export async function getShippingQuotes(
-    fromPostalCode: string,
+    _fromPostalCode: string,
     fromCountry: string,
-    toPostalCode: string,
+    _toPostalCode: string,
     toCountry: string,
     parcels: SendcloudParcel[]
 ): Promise<SendcloudShippingQuote[]> {
