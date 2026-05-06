@@ -23,7 +23,35 @@ function initCartButtons() {
 
             if (!variantId || stock <= 0) return;
 
-            cart.add({
+            const existing = cart.get().find(i => i.variantId === variantId);
+            const currentQty = existing?.quantity ?? 0;
+            const totalAfterAdd = currentQty + qty;
+
+            if (totalAfterAdd > stock) {
+              const maxAdd = Math.max(0, stock - currentQty);
+              if (maxAdd === 0 && existing) {
+                cart.remove(variantId);
+              } else if (maxAdd > 0) {
+                cart.add({
+                  productId,
+                  variantId,
+                  title,
+                  image,
+                  price,
+                  stock,
+                  variantName,
+                  shopId,
+                  shopName,
+                  shopSlug,
+                  productSlug,
+                  shippingCost,
+                }, maxAdd);
+              }
+              window.dispatchEvent(new CustomEvent('cart-stock-error', {
+                detail: { variantId, title: existing ? null : title }
+              }));
+            } else {
+              cart.add({
                 productId,
                 variantId,
                 title,
@@ -36,7 +64,8 @@ function initCartButtons() {
                 shopSlug,
                 productSlug,
                 shippingCost,
-            }, qty);
+              }, qty);
+            }
 
             // Visual feedback
             const original = btn.innerHTML;

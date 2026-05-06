@@ -347,6 +347,10 @@ export const strings = {
     apiCheckoutConfirmationError: 'No se pudo confirmar el pago',
     apiCheckoutSessionPending: 'El pago aún no está completado',
     apiCheckoutStockReservationFailed: 'El pago se ha confirmado pero hubo un problema al reservar el stock. El vendedor lo revisará.',
+    apiCartStockExceeded: 'No hay suficiente stock disponible',
+
+    // Product page
+    productStockWarning: 'Solo quedan {stock} unidades',
     apiShopNotFound: 'No se encontró la tienda',
     apiStripeConnectError: 'No se pudo preparar la conexión con Stripe',
     apiStripeDashboardUnavailable: 'La cuenta de Stripe aún no está lista para recibir pagos',
