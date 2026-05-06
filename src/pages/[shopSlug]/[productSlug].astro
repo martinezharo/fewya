@@ -58,6 +58,7 @@ const price = activeVariant?.price ?? 0;
 const shippingCost = activeVariant?.shipping_cost ?? 0;
 const shippingDisplay = shippingCost === 0 ? 'Envío gratis' : `+${shippingCost.toFixed(2).replace('.', ',')}€ envío`;
 const hasVariants = sortedVariants.length > 1;
+const activeVariantStock = activeVariant?.stock ?? 0;
 
 // Check wishlist status
 const authClient = createSupabaseAuthClient(Astro.cookies, Astro.request);
@@ -116,6 +117,11 @@ if (user) {
               {(activeVariant?.stock ?? 0) > 0 ? strings.productInStock : strings.productOutOfStock}
             </span>
           </div>
+          {activeVariantStock > 0 && activeVariantStock <= 5 && (
+            <p class="text-xs text-orange-500 dark:text-orange-400 font-medium" data-stock-warning>
+              Solo quedan {activeVariantStock} unidades
+            </p>
+          )}
 
           {hasVariants && (
             <VariantSelector variants={sortedVariants} defaultImage={images[0]} />
@@ -211,23 +217,35 @@ if (user) {
     const minus = selector.querySelector('[data-qty-minus]');
     const plus = selector.querySelector('[data-qty-plus]');
     const value = selector.querySelector('[data-qty-value]');
-    let qty = 1;
+    const addBtn = document.querySelector<HTMLButtonElement>('[data-add-to-cart]');
+    const stock = parseInt(addBtn?.dataset.cartStock ?? '0', 10);
+    let qty = Math.min(1, stock);
+
+    const updateUI = () => {
+      if (value) value.textContent = String(qty);
+      if (addBtn) addBtn.dataset.cartQty = String(qty);
+      if (plus) (plus as HTMLButtonElement).disabled = qty >= stock || stock <= 0;
+      if (minus) (minus as HTMLButtonElement).disabled = qty <= 1 || stock <= 0;
+      if (addBtn) {
+        addBtn.disabled = stock <= 0 || qty < 1;
+      }
+    };
 
     plus?.addEventListener('click', () => {
-      qty++;
-      if (value) value.textContent = String(qty);
-      const addBtn = document.querySelector<HTMLButtonElement>('[data-add-to-cart]');
-      if (addBtn) addBtn.dataset.cartQty = String(qty);
+      if (qty < stock) {
+        qty++;
+        updateUI();
+      }
     });
 
     minus?.addEventListener('click', () => {
       if (qty > 1) {
         qty--;
-        if (value) value.textContent = String(qty);
-        const addBtn = document.querySelector<HTMLButtonElement>('[data-add-to-cart]');
-        if (addBtn) addBtn.dataset.cartQty = String(qty);
+        updateUI();
       }
     });
+
+    updateUI();
   });
 
   // Update add-to-cart data when variant changes
@@ -237,7 +255,7 @@ if (user) {
       const addBtn = document.querySelector<HTMLButtonElement>('[data-add-to-cart]');
       if (!addBtn) return;
       const price = btn.dataset.variantPrice ?? '0';
-      const stock = btn.dataset.variantStock ?? '0';
+      const stock = parseInt(btn.dataset.variantStock ?? '0', 10);
       const variantImage = btn.dataset.variantImage ?? '';
       const variantShipping = parseFloat(btn.dataset.variantShipping ?? '0');
 
@@ -245,7 +263,7 @@ if (user) {
         addBtn.dataset.cartVariantId = btn.dataset.variantId;
       }
       addBtn.dataset.cartPrice = price;
-      addBtn.dataset.cartStock = stock;
+      addBtn.dataset.cartStock = String(stock);
       addBtn.dataset.cartShipping = String(variantShipping);
       if (variantImage) addBtn.dataset.cartImage = variantImage;
       if (btn.querySelector('[data-variant-name]')) {
@@ -258,6 +276,20 @@ if (user) {
         const display = variantShipping === 0 ? 'Envío gratis' : `+${variantShipping.toFixed(2).replace('.', ',')}€ envío`;
         shippingEl.textContent = display;
       }
+
+      // Cap qty selector to new stock
+      const qtySelector = document.querySelector('[data-qty-selector]');
+      const minus = qtySelector?.querySelector('[data-qty-minus]');
+      const plus = qtySelector?.querySelector('[data-qty-plus]');
+      const value = qtySelector?.querySelector('[data-qty-value]');
+      let qty = Math.min(parseInt(value?.textContent ?? '1', 10), stock);
+      qty = Math.max(1, qty);
+
+      if (value) value.textContent = String(qty);
+      if (addBtn) addBtn.dataset.cartQty = String(qty);
+      if (plus) (plus as HTMLButtonElement).disabled = qty >= stock || stock <= 0;
+      if (minus) (minus as HTMLButtonElement).disabled = qty <= 1 || stock <= 0;
+      if (addBtn) addBtn.disabled = stock <= 0 || qty < 1;
     });
   });
 </script>
