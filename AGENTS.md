@@ -44,6 +44,6 @@ Haz siempre versiones para modo claro y modo oscuro.
 - **Autenticación:** Supabase Auth (Inicialmente solo Google).
 
 ### Herramientas de Desarrollo
-- **Gestor de paquetes:** PNPM.
+- **Gestor de paquetes:** Bun.
 - **Linter:** ESLint con `eslint-plugin-astro`.
 - **PWA:** `vite-plugin-pwa` para funcionalidad offline e instalación.

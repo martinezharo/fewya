@@ -5,10 +5,10 @@
   "scripts": {
     "typegen": "wrangler types",
     "dev": "astro dev",
-    "start": "pnpm run dev",
-    "check": "pnpm run typegen && astro check",
-    "build": "pnpm run typegen && astro check && astro build",
-    "preview": "pnpm run typegen && astro preview",
+    "start": "bun run dev",
+    "check": "bun run typegen && astro check",
+    "build": "bun run typegen && astro check && astro build",
+    "preview": "bun run typegen && astro preview",
     "astro": "astro"
   },
   "dependencies": {
@@ -35,16 +35,5 @@
     "supabase": "^2.82.0",
     "tailwindcss": "^4.2.1",
     "vite-plugin-pwa": "^1.2.0"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild",
-      "miniflare",
-      "sharp",
-      "workerd"
-    ],
-    "patchedDependencies": {
-      "@cloudflare/vite-plugin@1.28.0": "patches/@cloudflare__vite-plugin@1.28.0.patch"
-    }
   }
 }
