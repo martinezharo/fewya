@@ -346,6 +346,7 @@ export const strings = {
     apiCheckoutSessionError: 'No se pudo iniciar el pago con Stripe',
     apiCheckoutConfirmationError: 'No se pudo confirmar el pago',
     apiCheckoutSessionPending: 'El pago aún no está completado',
+    apiCheckoutStockReservationFailed: 'El pago se ha confirmado pero hubo un problema al reservar el stock. El vendedor lo revisará.',
     apiShopNotFound: 'No se encontró la tienda',
     apiStripeConnectError: 'No se pudo preparar la conexión con Stripe',
     apiStripeDashboardUnavailable: 'La cuenta de Stripe aún no está lista para recibir pagos',

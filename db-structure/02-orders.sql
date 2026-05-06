@@ -178,16 +178,68 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
+CREATE OR REPLACE FUNCTION public.reserve_stock(p_variant_id uuid, p_quantity integer)
+RETURNS integer AS $$
+DECLARE
+  new_stock integer;
+BEGIN
+  UPDATE public.product_variants
+  SET stock = stock - p_quantity
+  WHERE id = p_variant_id AND stock >= p_quantity
+  RETURNING stock INTO new_stock;
+
+  IF new_stock IS NULL THEN
+    RAISE EXCEPTION 'insufficient_stock';
+  END IF;
+
+  RETURN new_stock;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION public.restore_stock(p_variant_id uuid, p_quantity integer)
+RETURNS void AS $$
+BEGIN
+  UPDATE public.product_variants
+  SET stock = stock + p_quantity
+  WHERE id = p_variant_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 CREATE OR REPLACE FUNCTION public.mark_order_paid(
   p_session_id text,
   p_payment_intent_id text,
   p_payment_status text
 )
 RETURNS SETOF public.orders AS $$
+DECLARE
+  order_rec RECORD;
+  item_rec RECORD;
 BEGIN
   IF auth.uid() IS NULL THEN
     RAISE EXCEPTION 'Not authenticated';
   END IF;
+
+  -- Reserve stock for all items in all orders with this session.
+  -- Best-effort: if stock reservation fails (very rare race condition),
+  -- log a warning but don't block payment confirmation.
+  FOR order_rec IN
+    SELECT o.id FROM public.orders o
+    WHERE o.buyer_id = auth.uid()
+      AND o.stripe_checkout_session_id = p_session_id
+      AND o.payment_status <> 'paid'
+  LOOP
+    FOR item_rec IN
+      SELECT oi.variant_id, oi.quantity FROM public.order_items oi
+      WHERE oi.order_id = order_rec.id AND oi.variant_id IS NOT NULL
+    LOOP
+      BEGIN
+        PERFORM public.reserve_stock(item_rec.variant_id, item_rec.quantity);
+      EXCEPTION WHEN OTHERS THEN
+        RAISE WARNING 'Could not reserve stock for variant % (qty %): %',
+          item_rec.variant_id, item_rec.quantity, SQLERRM;
+      END;
+    END LOOP;
+  END LOOP;
 
   RETURN QUERY
   UPDATE public.orders
@@ -212,6 +264,7 @@ CREATE OR REPLACE FUNCTION public.cancel_order(p_order_id uuid)
 RETURNS public.orders AS $$
 DECLARE
   updated_order public.orders;
+  item_rec RECORD;
 BEGIN
   IF auth.uid() IS NULL THEN
     RAISE EXCEPTION 'Not authenticated';
@@ -220,6 +273,14 @@ BEGIN
   IF NOT public.order_belongs_to_seller(p_order_id) THEN
     RAISE EXCEPTION 'Not authorized';
   END IF;
+
+  -- Restore stock for all items in the order BEFORE cancelling.
+  FOR item_rec IN
+    SELECT oi.variant_id, oi.quantity FROM public.order_items oi
+    WHERE oi.order_id = p_order_id AND oi.variant_id IS NOT NULL
+  LOOP
+    PERFORM public.restore_stock(item_rec.variant_id, item_rec.quantity);
+  END LOOP;
 
   UPDATE public.orders
   SET status = 'cancelled'
@@ -355,6 +416,8 @@ CREATE POLICY "Allow inserting items if order is own" ON public.order_items FOR 
 
 GRANT EXECUTE ON FUNCTION public.order_belongs_to_user(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.order_belongs_to_seller(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.reserve_stock(uuid, integer) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.restore_stock(uuid, integer) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.create_checkout_order(text, text, uuid, numeric, text, text, text, text, text, text, jsonb, text, text, text, text, text, text, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.mark_order_paid(text, text, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.cancel_order(uuid) TO authenticated;
