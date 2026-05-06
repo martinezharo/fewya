@@ -46,6 +46,7 @@ const { variants, defaultImage } = Astro.props;
         );
       })}
     </div>
+    <p class="text-xs text-orange-500 dark:text-orange-400 font-medium hidden" data-stock-warning></p>
   </div>
 )}
 
@@ -124,6 +125,17 @@ const { variants, defaultImage } = Astro.props;
           el.classList.remove('text-green-600', 'dark:text-green-400');
         }
       });
+
+      // Update stock warning
+      const stockWarning = document.querySelector<HTMLElement>('[data-stock-warning]');
+      if (stockWarning) {
+        if (stock > 0 && stock <= 5) {
+          stockWarning.textContent = strings.productStockWarning.replace('{stock}', String(stock));
+          stockWarning.style.display = '';
+        } else {
+          stockWarning.style.display = 'none';
+        }
+      }
 
       // Dispatch variant image change event for gallery
       const variantImage = btn.dataset.variantImage;
