@@ -8,7 +8,7 @@
 - Explica en el chat siempre lo que has hecho y no te cortes en proponer mejoras o reportar malas prácticas o errores que encuentres.
 - No hardcodees texto, crea archivos con variables para facilitar futuros cambios o traducciónes.
 - Las rutas de las páginas deben estar siempre en inglés.
-- Cuando hagas un cambio en la estructura de la base de datos actualiza db-structure.sql y crea un nuevo archivo SQL con los cambios listos para ser importados a Supabase.
+- Cuando hagas un cambio en la estructura de la base de datos actualiza db-structure y genera un nuevo archivo SQL en una carpeta diferente con los cambios listos para ser importados en Supabase.
 
 ## Fewya
 
