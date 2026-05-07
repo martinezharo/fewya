@@ -160,7 +160,7 @@ export const strings = {
     meMyOrders: 'Mis pedidos',
     meMyData: 'Mis datos',
     meSettings: 'Ajustes',
-    meItemsCount: '+{count}',
+    meItemsCount: '{count}',
 
     // Me / Mis datos
     meDataPageTitle: 'Mis datos',
