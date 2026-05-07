@@ -1,9 +1,9 @@
 {
   "extends": "astro/tsconfigs/strict",
   "compilerOptions": {
-    "types": ["vite-plugin-pwa/client", "astro/client"],
+    "types": ["vite-plugin-pwa/client", "astro/client", "vitest/globals"],
     "lib": ["ESNext", "DOM"]
   },
   "include": [".astro/types.d.ts", ".astro/env.d.ts", "**/*"],
-  "exclude": ["dist"]
+  "exclude": ["dist", "tests", "dev-dist", "coverage"]
 }

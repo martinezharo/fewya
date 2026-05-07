@@ -9,7 +9,24 @@
     "check": "bun run typegen && astro check",
     "build": "bun run typegen && astro check && astro build",
     "preview": "bun run typegen && astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:changed": "vitest run --changed",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "prepare": "simple-git-hooks"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "bun run lint-staged",
+    "pre-push": "bun run test && bun run check"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,astro}": [
+      "eslint --fix",
+      "vitest run"
+    ]
   },
   "dependencies": {
     "@astrojs/check": "^0.9.8",
@@ -29,11 +46,17 @@
     "@tailwindcss/vite": "^4.2.1",
     "@types/canvas-confetti": "^1.9.0",
     "@types/node": "^25.3.5",
+    "@vitest/coverage-v8": "^4.1.5",
     "eslint": "^10.0.3",
     "eslint-plugin-astro": "^1.6.0",
+    "happy-dom": "^20.9.0",
+    "lint-staged": "^17.0.2",
     "miniflare": "^4.20260312.1",
+    "simple-git-hooks": "^2.13.1",
     "supabase": "^2.82.0",
     "tailwindcss": "^4.2.1",
-    "vite-plugin-pwa": "^1.2.0"
+    "typescript-eslint": "^8.59.2",
+    "vite-plugin-pwa": "^1.2.0",
+    "vitest": "^4.1.5"
   }
 }
