@@ -25,7 +25,7 @@
   "lint-staged": {
     "*.{ts,tsx,astro}": [
       "eslint --fix",
-      "vitest run"
+      "vitest run --changed"
     ]
   },
   "dependencies": {
