@@ -1,4 +1,4 @@
-Fewya es el nombre en clave de un marketplace donde pequeños negocios pueden vender de una forma más profesional que Wallapop o Vinted, pero igual de fácil de usar sin las complicaciones de una propia web o de vender en Amazon.
+Fewya es un marketplace donde pequeños negocios pueden vender de una forma más profesional que Wallapop o Vinted, pero igual de fácil de usar sin las complicaciones de una propia web o de vender en Amazon.
 
 ## Entorno
 
@@ -6,7 +6,11 @@ Para desarrollo local, usa un archivo `.env` con:
 
 - `SUPABASE_URL`
 - `SUPABASE_KEY`
+- `SUPABASE_SECRET_KEY=sb_secret_...`
 - `STRIPE_SECRET_KEY=sk_test_...`
+- `SENDCLOUD_API_KEY`
+- `SENDCLOUD_API_SECRET`
+- `SENDCLOUD_WEBHOOK_SECRET`
 
 `STRIPE_WEBHOOK_SECRET` está preparado en la configuración del proyecto, pero el flujo actual confirma el pago al volver desde Stripe Checkout, así que para empezar en modo prueba te basta con `STRIPE_SECRET_KEY`.
 
@@ -14,4 +18,4 @@ Si tu base de datos ya existe, aplica la migración [supabase/migrations/2026042
 
 Estas dos variables se resuelven en build desde `.env` o `process.env`, por lo que no dependen de bindings runtime del Worker en Cloudflare. Si despliegas desde CI, define `SUPABASE_URL` y `SUPABASE_KEY` en el entorno de build.
 
-Para Stripe, define también `STRIPE_SECRET_KEY` en el entorno de build o como secreto de Wrangler en despliegue.
+Para despliegue, define `SUPABASE_SECRET_KEY`, `STRIPE_SECRET_KEY`, `SENDCLOUD_API_KEY`, `SENDCLOUD_API_SECRET` y `SENDCLOUD_WEBHOOK_SECRET` como secretos de Wrangler, no como `vars`. Usa una Secret API key moderna (`sb_secret_...`), no la legacy `service_role` JWT.
