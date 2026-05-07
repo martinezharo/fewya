@@ -72,6 +72,14 @@
     }
 }
 
+/* Suppress transitions during page swaps and initial load to prevent color flash */
+.no-transitions *,
+.no-transitions *::before,
+.no-transitions *::after {
+    transition: none !important;
+    animation: none !important;
+}
+
 @theme {
   --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
 
