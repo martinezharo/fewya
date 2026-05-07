@@ -6,6 +6,7 @@ import {
     toMinorUnits,
 } from '../../../lib/cart/checkout';
 import { createSupabaseAuthClient } from '../../../lib/core/auth';
+import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
 import { strings } from '../../../lib/core/i18n';
 import { validateCheckoutReadiness } from '../../../lib/products/productValidation';
 import { buildAbsoluteUrl, getStripeClient } from '../../../lib/payments/stripe';
@@ -252,7 +253,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         });
     }
 
-    const checkoutGroupId = `ORD-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+    const checkoutGroupId = `ORD-${Date.now()}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
     const stripe = getStripeClient();
     const successUrl = `${buildAbsoluteUrl(request, '/cart/success')}?session_id={CHECKOUT_SESSION_ID}`;
     const cancelUrl = buildAbsoluteUrl(request, '/cart/cancel');
@@ -323,13 +324,15 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     const createdOrders: Array<{ id: string; publicId: string; shopId: string }> = [];
 
     for (const group of shopGroups.values()) {
-        const shopPublicId = `ORD-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+        const shopPublicId = `ORD-${Date.now()}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
         const shopTotal = group.subtotal + group.shipping;
 
         const delivery = body.delivery;
         const isPickup = delivery?.type === 'pickup_point';
 
-        const { data: orderData, error: orderError } = await authClient.rpc('create_checkout_order', {
+        const adminClient = createSupabaseAdminClient();
+        const { data: orderData, error: orderError } = await adminClient.rpc('create_checkout_order', {
+            p_buyer_id: user.id,
             p_public_id: shopPublicId,
             p_checkout_group_id: checkoutGroupId,
             p_shop_id: group.shopId,

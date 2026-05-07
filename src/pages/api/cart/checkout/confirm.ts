@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { createSupabaseAuthClient } from '../../../../lib/core/auth';
+import { createSupabaseAdminClient } from '../../../../lib/core/supabase-admin';
 import { strings } from '../../../../lib/core/i18n';
 import { getStripeClient } from '../../../../lib/payments/stripe';
 
@@ -65,7 +66,9 @@ export const GET: APIRoute = async ({ url, request, cookies }) => {
         // Mark ALL orders sharing this session as paid.
         // Funds are held by Fewya until delivery is confirmed.
         // Transfers to sellers happen in /api/orders/release-funds when status becomes 'confirmed'.
-        const { error: markPaidError } = await authClient.rpc('mark_order_paid', {
+        const adminClient = createSupabaseAdminClient();
+        const { error: markPaidError } = await adminClient.rpc('mark_order_paid', {
+            p_buyer_id: user.id,
             p_session_id: sessionId,
             p_payment_intent_id: paymentIntentId,
             p_payment_status: session.payment_status,
