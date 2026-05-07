@@ -1,6 +1,6 @@
 ---
 import '../styles/global.css';
-import { strings } from '../lib/i18n';
+import { strings } from '../lib/core/i18n';
 
 interface Props {
   title?: string;
@@ -54,10 +54,10 @@ const {
   <body class="font-sans bg-bg text-text-primary min-h-dvh">
     <slot />
     <script>
-      import '../lib/wishlist-client';
+      import '../lib/wishlist/wishlist-client';
     </script>
     <script>
-      import '../lib/cart-client';
+      import '../lib/cart/cart-client';
     </script>
     <script>
       function initWishlistBadge() {

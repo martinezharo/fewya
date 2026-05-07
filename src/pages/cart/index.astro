@@ -1,7 +1,7 @@
 ---
 import BuyerAppLayout from '../../layouts/BuyerAppLayout.astro';
 import Icon from '../../components/icons/Icon.astro';
-import { strings } from '../../lib/i18n';
+import { strings } from '../../lib/core/i18n';
 ---
 
 <BuyerAppLayout title={strings.cartPageTitle}>
@@ -156,8 +156,8 @@ import { strings } from '../../lib/i18n';
 </BuyerAppLayout>
 
 <script>
-  import { cart, type CartItem } from '../../lib/cart';
-  import { strings } from '../../lib/i18n';
+  import { cart, type CartItem } from '../../lib/cart/cart';
+  import { strings } from '../../lib/core/i18n';
 
   const currencyFormatter = new Intl.NumberFormat('es-ES', {
     style: 'currency',

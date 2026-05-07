@@ -1,9 +1,9 @@
 ---
 import BuyerAppLayout from "../../layouts/BuyerAppLayout.astro";
 import Icon from "../../components/icons/Icon.astro";
-import { strings } from "../../lib/i18n";
-import { createSupabaseAuthClient } from "../../lib/auth";
-import { orderStatusLabels } from "../../lib/orderStatus";
+import { strings } from "../../lib/core/i18n";
+import { createSupabaseAuthClient } from "../../lib/core/auth";
+import { orderStatusLabels } from "../../lib/orders/orderStatus";
 
 // Auth Server-Side Verification:
 const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);

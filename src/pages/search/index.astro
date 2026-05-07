@@ -4,12 +4,12 @@ import ProductGrid from "../../components/ProductGrid.astro";
 import SearchToolbar from "../../components/search/SearchToolbar.astro";
 import SortModal from "../../components/search/SortModal.astro";
 import FilterModal from "../../components/search/FilterModal.astro";
-import { supabase } from "../../lib/supabase";
-import { createSupabaseAuthClient } from "../../lib/auth";
-import { enrichProductsWithRatings } from "../../lib/productUtils";
-import { parseSearchParams } from "../../lib/search";
-import { strings } from "../../lib/i18n";
-import type { Product } from "../../lib/types";
+import { supabase } from "../../lib/core/supabase";
+import { createSupabaseAuthClient } from "../../lib/core/auth";
+import { enrichProductsWithRatings } from "../../lib/products/productUtils";
+import { parseSearchParams } from "../../lib/products/search";
+import { strings } from "../../lib/core/i18n";
+import type { Product } from "../../lib/core/types";
 
 const url = new URL(Astro.request.url);
 const params = parseSearchParams(url);

@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { createSupabaseAuthClient } from '../../../lib/auth';
+import { createSupabaseAuthClient } from '../../../lib/core/auth';
 
 export const GET: APIRoute = async ({ cookies, request }) => {
     const authClient = createSupabaseAuthClient(cookies, request);

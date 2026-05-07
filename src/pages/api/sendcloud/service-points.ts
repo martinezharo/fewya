@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
-import { getServicePoints } from '../../../lib/sendcloud';
-import { strings } from '../../../lib/i18n';
+import { getServicePoints } from '../../../lib/shipping/sendcloud';
+import { strings } from '../../../lib/core/i18n';
 
 function jsonResponse(payload: Record<string, unknown>, status: number) {
     return new Response(JSON.stringify(payload), {
@@ -10,7 +10,7 @@ function jsonResponse(payload: Record<string, unknown>, status: number) {
 }
 
 export const GET: APIRoute = async ({ url, request, cookies }) => {
-    const { createSupabaseAuthClient } = await import('../../../lib/auth');
+    const { createSupabaseAuthClient } = await import('../../../lib/core/auth');
     const authClient = createSupabaseAuthClient(cookies, request);
 
     const {

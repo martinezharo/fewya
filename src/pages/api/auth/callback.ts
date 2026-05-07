@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { exchangeAuthCodeForSession, normalizeAuthRedirectPath } from '../../../lib/auth';
+import { exchangeAuthCodeForSession, normalizeAuthRedirectPath } from '../../../lib/core/auth';
 
 export const GET: APIRoute = async ({ cookies, request, redirect, url }) => {
     const authRedirect = await exchangeAuthCodeForSession(cookies, request, url);

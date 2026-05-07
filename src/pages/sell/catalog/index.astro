@@ -1,10 +1,10 @@
 ---
 import SellerLayout from '../../../layouts/SellerLayout.astro';
 import Icon from '../../../components/icons/Icon.astro';
-import { createSupabaseAuthClient } from '../../../lib/auth';
-import { strings, getCategoryLabel } from '../../../lib/i18n';
-import { validateProductCompleteness } from '../../../lib/productValidation';
-import type { Product, ProductVariant } from '../../../lib/types';
+import { createSupabaseAuthClient } from '../../../lib/core/auth';
+import { strings, getCategoryLabel } from '../../../lib/core/i18n';
+import { validateProductCompleteness } from '../../../lib/products/productValidation';
+import type { Product, ProductVariant } from '../../../lib/core/types';
 
 const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
 const { data: sessionData } = await supabase.auth.getSession();
@@ -232,7 +232,7 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', { style: 'currency', cu
 </div>
 
 <script>
-    import { strings } from '../../../lib/i18n';
+    import { strings } from '../../../lib/core/i18n';
 
     function initCatalogPage() {
         const toggleBtns = document.querySelectorAll<HTMLButtonElement>('.toggle-active-btn');

@@ -3,12 +3,12 @@ import BuyerDetailLayout from '../../layouts/BuyerDetailLayout.astro';
 import ProductGrid from '../../components/ProductGrid.astro';
 import ShopContact from '../../components/product/ShopContact.astro';
 import Icon from '../../components/icons/Icon.astro';
-import { supabase } from '../../lib/supabase';
-import { createSupabaseAuthClient } from '../../lib/auth';
-import { enrichProductsWithRatings } from '../../lib/productUtils';
-import { isProductComplete } from '../../lib/productValidation';
-import { strings } from '../../lib/i18n';
-import type { Shop, Product } from '../../lib/types';
+import { supabase } from '../../lib/core/supabase';
+import { createSupabaseAuthClient } from '../../lib/core/auth';
+import { enrichProductsWithRatings } from '../../lib/products/productUtils';
+import { isProductComplete } from '../../lib/products/productValidation';
+import { strings } from '../../lib/core/i18n';
+import type { Shop, Product } from '../../lib/core/types';
 
 const { shopSlug } = Astro.params;
 

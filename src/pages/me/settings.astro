@@ -3,8 +3,8 @@ import BuyerAppLayout from "../../layouts/BuyerAppLayout.astro";
 import Icon from "../../components/icons/Icon.astro";
 import ThemeSelector from "../../components/settings/ThemeSelector.astro";
 import SignOutButton from "../../components/settings/SignOutButton.astro";
-import { strings } from "../../lib/i18n";
-import { createSupabaseAuthClient } from "../../lib/auth";
+import { strings } from "../../lib/core/i18n";
+import { createSupabaseAuthClient } from "../../lib/core/auth";
 
 const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
 const { data: { user } } = await supabase.auth.getUser();

@@ -4,11 +4,11 @@ import {
     CHECKOUT_CURRENCY,
     type CheckoutResolvedItem,
     toMinorUnits,
-} from '../../../lib/checkout';
-import { createSupabaseAuthClient } from '../../../lib/auth';
-import { strings } from '../../../lib/i18n';
-import { validateCheckoutReadiness } from '../../../lib/productValidation';
-import { buildAbsoluteUrl, getStripeClient } from '../../../lib/stripe';
+} from '../../../lib/cart/checkout';
+import { createSupabaseAuthClient } from '../../../lib/core/auth';
+import { strings } from '../../../lib/core/i18n';
+import { validateCheckoutReadiness } from '../../../lib/products/productValidation';
+import { buildAbsoluteUrl, getStripeClient } from '../../../lib/payments/stripe';
 
 interface CheckoutItemPayload {
     variantId: string;

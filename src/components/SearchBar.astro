@@ -1,6 +1,6 @@
 ---
 import Icon from "./icons/Icon.astro";
-import { strings } from "../lib/i18n";
+import { strings } from "../lib/core/i18n";
 
 interface Props {
     value?: string;
@@ -53,7 +53,7 @@ const { value = '', autofocus = false } = Astro.props;
 </div>
 
 <script>
-    import { RECENT_SEARCHES_KEY, MAX_RECENT_SEARCHES } from "../lib/search";
+    import { RECENT_SEARCHES_KEY, MAX_RECENT_SEARCHES } from "../lib/products/search";
 
     document.addEventListener('astro:page-load', initSearchBars);
     if (document.readyState === 'loading') {

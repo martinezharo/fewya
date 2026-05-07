@@ -2,8 +2,8 @@
 import SellerLayout from '../../layouts/SellerLayout.astro';
 import ThemeSelector from '../../components/settings/ThemeSelector.astro';
 import SignOutButton from '../../components/settings/SignOutButton.astro';
-import { strings } from '../../lib/i18n';
-import { createSupabaseAuthClient } from '../../lib/auth';
+import { strings } from '../../lib/core/i18n';
+import { createSupabaseAuthClient } from '../../lib/core/auth';
 
 const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
 const { data: sessionData } = await supabase.auth.getSession();
@@ -198,7 +198,7 @@ const defaults = {
 <div id="delete-success-message" class="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 text-green-600 font-medium text-sm hidden p-4 bg-green-50 dark:bg-green-900/20 rounded-xl shadow-lg"></div>
 
 <script>
-    import { strings } from '../../lib/i18n';
+    import { strings } from '../../lib/core/i18n';
 
     function initSettingsPage() {
         const saveBtn = document.getElementById('save-settings-btn') as HTMLButtonElement;

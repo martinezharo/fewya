@@ -1,8 +1,8 @@
 ---
 import Icon from "../icons/Icon.astro";
-import { strings } from "../../lib/i18n";
-import type { SearchParams } from "../../lib/search";
-import { buildSearchUrl } from "../../lib/search";
+import { strings } from "../../lib/core/i18n";
+import type { SearchParams } from "../../lib/products/search";
+import { buildSearchUrl } from "../../lib/products/search";
 
 interface Props {
     params: SearchParams;

@@ -1,6 +1,6 @@
 ---
 import Icon from '../icons/Icon.astro';
-import { strings } from '../../lib/i18n';
+    import { strings } from '../../lib/core/i18n';
 
 interface Props {
     mode: 'onboarding' | 'edit';
@@ -171,7 +171,7 @@ const profileImg = shopData.profile_img || '';
 </div>
 
 <script>
-    import { strings } from '../../lib/i18n';
+import { strings } from '../../lib/core/i18n';
 
     const initShopForm = () => {
         const nameInput = document.getElementById('shop-name') as HTMLInputElement;

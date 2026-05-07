@@ -1,10 +1,10 @@
 ---
 import BuyerAppLayout from "../../layouts/BuyerAppLayout.astro";
 import Icon from "../../components/icons/Icon.astro";
-import { strings } from "../../lib/i18n";
-import { createSupabaseAuthClient } from "../../lib/auth";
-import { getAllCountries } from "../../lib/countries";
-import { spainProvinces } from "../../lib/spain-provinces";
+import { strings } from "../../lib/core/i18n";
+import { createSupabaseAuthClient } from "../../lib/core/auth";
+import { getAllCountries } from "../../lib/shipping/countries";
+import { spainProvinces } from "../../lib/shipping/spain-provinces";
 
 const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
 const { data: { user } } = await supabase.auth.getUser();
@@ -313,9 +313,9 @@ const isSpain = currentCountry === 'ES';
 </BuyerAppLayout>
 
 <script>
-    import { strings } from '../../lib/i18n';
-    import { spainProvinces } from '../../lib/spain-provinces';
-    import { validateProfileForm, type ProfileFormData } from '../../lib/validation';
+    import { strings } from '../../lib/core/i18n';
+    import { spainProvinces } from '../../lib/shipping/spain-provinces';
+    import { validateProfileForm, type ProfileFormData } from '../../lib/core/validation';
 
     const form = document.getElementById('profile-form') as HTMLFormElement;
     const btn = document.getElementById('save-btn') as HTMLButtonElement;

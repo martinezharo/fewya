@@ -1,9 +1,9 @@
 ---
 import Layout from '../../../layouts/Layout.astro';
-import { createSupabaseAuthClient } from '../../../lib/auth';
+import { createSupabaseAuthClient } from '../../../lib/core/auth';
 import ShopForm from '../../../components/seller/ShopForm.astro';
-import { strings } from '../../../lib/i18n';
-import { getStripeClient, getStripeAccountStatus } from '../../../lib/stripe';
+import { strings } from '../../../lib/core/i18n';
+import { getStripeClient, getStripeAccountStatus } from '../../../lib/payments/stripe';
 
 const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
 const { data: sessionData } = await supabase.auth.getSession();
@@ -212,7 +212,7 @@ if (Astro.request.method === 'POST') {
 </Layout>
 
 <script>
-    import { strings } from '../../../lib/i18n';
+    import { strings } from '../../../lib/core/i18n';
 
     const initOnboarding = () => {
         type OnboardingResponse = {

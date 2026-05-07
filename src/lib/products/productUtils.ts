@@ -1,4 +1,4 @@
-import type { Product } from './types';
+import type { Product } from '../core/types';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 /**

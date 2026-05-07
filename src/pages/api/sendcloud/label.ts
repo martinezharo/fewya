@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { getShipmentLabel } from '../../../lib/sendcloud';
+import { getShipmentLabel } from '../../../lib/shipping/sendcloud';
 
 function jsonResponse(payload: Record<string, unknown>, status: number) {
     return new Response(JSON.stringify(payload), {

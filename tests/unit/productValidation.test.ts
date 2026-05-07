@@ -4,7 +4,7 @@ import {
     formatShippingDisplay,
     isProductComplete,
     validateCheckoutReadiness,
-} from '../../src/lib/productValidation';
+} from '../../src/lib/products/productValidation';
 
 describe('validateProductCompleteness', () => {
     it('devuelve completo para producto válido con variantes', () => {

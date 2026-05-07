@@ -1,4 +1,4 @@
-import { spainProvinces } from './spain-provinces';
+import { spainProvinces } from '../shipping/spain-provinces';
 
 export interface ValidationError {
     field: string;

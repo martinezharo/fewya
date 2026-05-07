@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { createSupabaseAuthClient } from '../../../lib/auth';
+import { createSupabaseAuthClient } from '../../../lib/core/auth';
 
 type WishlistToggleBody = {
     productId?: unknown;

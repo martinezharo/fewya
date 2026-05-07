@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { validateProfileForm, getFieldError, type ProfileFormData } from '../../src/lib/validation';
+import { validateProfileForm, getFieldError, type ProfileFormData } from '../../src/lib/core/validation';
 
 function createProfile(overrides: Partial<ProfileFormData> = {}): ProfileFormData {
     return {

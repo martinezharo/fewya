@@ -5,7 +5,7 @@ import {
     buildShopPayouts,
     calculateOrderTotal,
     type CheckoutPricedItem,
-} from '../../src/lib/checkout';
+} from '../../src/lib/cart/checkout';
 
 function createItem(overrides: Partial<CheckoutPricedItem> = {}): CheckoutPricedItem {
     return {

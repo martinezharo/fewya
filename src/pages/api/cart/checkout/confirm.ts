@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro';
-import { createSupabaseAuthClient } from '../../../../lib/auth';
-import { strings } from '../../../../lib/i18n';
-import { getStripeClient } from '../../../../lib/stripe';
+import { createSupabaseAuthClient } from '../../../../lib/core/auth';
+import { strings } from '../../../../lib/core/i18n';
+import { getStripeClient } from '../../../../lib/payments/stripe';
 
 function jsonResponse(payload: Record<string, unknown>, status: number) {
     return new Response(JSON.stringify(payload), {

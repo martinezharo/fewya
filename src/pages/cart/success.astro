@@ -1,6 +1,6 @@
 ---
 import BuyerAppLayout from '../../layouts/BuyerAppLayout.astro';
-import { strings } from '../../lib/i18n';
+import { strings } from '../../lib/core/i18n';
 ---
 
 <BuyerAppLayout title={strings.cartSuccessPageTitle}>
@@ -59,8 +59,8 @@ import { strings } from '../../lib/i18n';
 </BuyerAppLayout>
 
 <script>
-    import { cart } from '../../lib/cart';
-    import { strings } from '../../lib/i18n';
+    import { cart } from '../../lib/cart/cart';
+    import { strings } from '../../lib/core/i18n';
 
     let confirmationStarted = false;
 

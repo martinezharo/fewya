@@ -1,4 +1,4 @@
-import { strings } from './i18n';
+import { strings } from '../core/i18n';
 
 export const ORDER_STATUSES = ['pending', 'paid', 'processing', 'shipped', 'delivered', 'confirmed', 'incident', 'cancelled'] as const;
 export type OrderStatus = typeof ORDER_STATUSES[number];

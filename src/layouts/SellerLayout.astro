@@ -2,8 +2,8 @@
 import Layout from './Layout.astro';
 import SellerSidebar from '../components/seller/SellerSidebar.astro';
 import Icon from '../components/icons/Icon.astro';
-import { strings } from '../lib/i18n';
-import { createSupabaseAuthClient } from '../lib/auth';
+import { strings } from '../lib/core/i18n';
+import { createSupabaseAuthClient } from '../lib/core/auth';
 
 interface Props {
     title?: string;

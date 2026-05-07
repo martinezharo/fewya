@@ -1,6 +1,6 @@
 import { STRIPE_SECRET_KEY } from 'astro:env/server';
 import Stripe from 'stripe';
-import { strings } from './i18n';
+import { strings } from '../core/i18n';
 
 export const DEFAULT_STRIPE_ACCOUNT_COUNTRY = 'ES';
 

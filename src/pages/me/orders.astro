@@ -3,8 +3,8 @@ import BuyerAppLayout from "../../layouts/BuyerAppLayout.astro";
 import Icon from "../../components/icons/Icon.astro";
 import OrderCard from "../../components/orders/OrderCard.astro";
 import type { OrderCardData } from "../../components/orders/OrderCard.astro";
-import { strings } from "../../lib/i18n";
-import { createSupabaseAuthClient } from "../../lib/auth";
+import { strings } from "../../lib/core/i18n";
+import { createSupabaseAuthClient } from "../../lib/core/auth";
 
 const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
 const {

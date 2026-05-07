@@ -1,5 +1,5 @@
 import { defineMiddleware } from 'astro:middleware';
-import { exchangeAuthCodeForSession } from './lib/auth';
+import { exchangeAuthCodeForSession } from './lib/core/auth';
 
 export const onRequest = defineMiddleware(async (context, next) => {
     if (context.request.method !== 'GET' || context.url.pathname === '/api/auth/callback') {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ORDER_STATUSES, orderStatusLabels } from '../../src/lib/orderStatus';
+import { ORDER_STATUSES, orderStatusLabels } from '../../src/lib/orders/orderStatus';
 
 describe('ORDER_STATUSES', () => {
     it('contiene todos los estados esperados', () => {

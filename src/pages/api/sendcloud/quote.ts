@@ -3,7 +3,7 @@ import {
     getShippingQuotes,
     calculateParcelFromItems,
     DEFAULT_SHOP_SHIPPING_EUR,
-} from '../../../lib/sendcloud';
+} from '../../../lib/shipping/sendcloud';
 
 interface QuoteItem {
     variantId: string;
@@ -18,7 +18,7 @@ function jsonResponse(payload: Record<string, unknown>, status: number) {
 }
 
 export const POST: APIRoute = async ({ request, cookies }) => {
-    const { createSupabaseAuthClient } = await import('../../../lib/auth');
+    const { createSupabaseAuthClient } = await import('../../../lib/core/auth');
     const authClient = createSupabaseAuthClient(cookies, request);
 
     const {

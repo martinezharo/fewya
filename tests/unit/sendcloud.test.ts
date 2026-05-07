@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calculateParcelFromItems, parseSpanishAddress } from '../../src/lib/sendcloud';
+import { calculateParcelFromItems, parseSpanishAddress } from '../../src/lib/shipping/sendcloud';
 
 describe('calculateParcelFromItems', () => {
     it('calcula un parcel por unidad de cada item', () => {

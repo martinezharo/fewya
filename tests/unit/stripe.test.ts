@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getStripeAccountStatus } from '../../src/lib/stripe';
+import { getStripeAccountStatus } from '../../src/lib/payments/stripe';
 
 describe('getStripeAccountStatus', () => {
     it('devuelve isReady true cuando todos los flags están activos', () => {

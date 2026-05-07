@@ -1,6 +1,6 @@
 import type { AstroCookies } from 'astro';
-import { createSupabaseAuthClient } from './auth';
-import { getWishlistCount } from './wishlist';
+import { createSupabaseAuthClient } from '../core/auth';
+import { getWishlistCount } from '../wishlist/wishlist';
 
 export interface BuyerShellState {
     isLoggedIn: boolean;

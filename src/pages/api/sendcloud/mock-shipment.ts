@@ -1,8 +1,8 @@
 import type { APIRoute } from 'astro';
-import { createSupabaseAuthClient } from '../../../lib/auth';
-import { strings } from '../../../lib/i18n';
-import { generateMockShippingLabel } from '../../../lib/shippingLabelPdf';
-import { parseSpanishAddress } from '../../../lib/sendcloud';
+import { createSupabaseAuthClient } from '../../../lib/core/auth';
+import { strings } from '../../../lib/core/i18n';
+import { generateMockShippingLabel } from '../../../lib/shipping/shippingLabelPdf';
+import { parseSpanishAddress } from '../../../lib/shipping/sendcloud';
 
 function jsonResponse(payload: Record<string, unknown>, status: number) {
     return new Response(JSON.stringify(payload), {

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { cart, type CartItem } from '../../src/lib/cart';
+import { cart, type CartItem } from '../../src/lib/cart/cart';
 
 const CART_KEY = 'fewya_cart';
 

@@ -9,11 +9,11 @@ import ProductSpecs from '../../components/product/ProductSpecs.astro';
 import ProductReviews from '../../components/product/ProductReviews.astro';
 import ShopContact from '../../components/product/ShopContact.astro';
 import ReportButton from '../../components/product/ReportButton.astro';
-import { supabase } from '../../lib/supabase';
-import { createSupabaseAuthClient } from '../../lib/auth';
-import { isProductComplete } from '../../lib/productValidation';
-import { strings } from '../../lib/i18n';
-import type { Product, Review, Shop } from '../../lib/types';
+import { supabase } from '../../lib/core/supabase';
+import { createSupabaseAuthClient } from '../../lib/core/auth';
+import { isProductComplete } from '../../lib/products/productValidation';
+import { strings } from '../../lib/core/i18n';
+import type { Product, Review, Shop } from '../../lib/core/types';
 
 const { shopSlug, productSlug } = Astro.params;
 
@@ -216,7 +216,7 @@ if (user) {
 </BuyerDetailLayout>
 
 <script>
-  import { strings } from '../../lib/i18n';
+  import { strings } from '../../lib/core/i18n';
 
   document.querySelectorAll('[data-qty-selector]').forEach(selector => {
     const minus = selector.querySelector('[data-qty-minus]');

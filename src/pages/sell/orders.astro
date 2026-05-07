@@ -4,8 +4,8 @@ import type { SellerOrderCardData } from '../../components/orders/SellerOrderCar
 import type { SellerOrderItem } from '../../components/orders/SellerOrderCard.astro';
 import Icon from '../../components/icons/Icon.astro';
 import SellerLayout from '../../layouts/SellerLayout.astro';
-import { createSupabaseAuthClient } from '../../lib/auth';
-import { strings } from '../../lib/i18n';
+import { createSupabaseAuthClient } from '../../lib/core/auth';
+import { strings } from '../../lib/core/i18n';
 
 const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
 const {

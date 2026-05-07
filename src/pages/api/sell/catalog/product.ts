@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro';
-import { createSupabaseAuthClient } from '../../../../lib/auth';
-import { strings } from '../../../../lib/i18n';
-import { validateProductCompleteness } from '../../../../lib/productValidation';
+import { createSupabaseAuthClient } from '../../../../lib/core/auth';
+import { strings } from '../../../../lib/core/i18n';
+import { validateProductCompleteness } from '../../../../lib/products/productValidation';
 
 type VariantInput = {
     id?: string;

@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
-import { createSupabaseAuthClient, normalizeAuthRedirectPath, storePendingAuthFlowState } from '../../../lib/auth';
-import { strings } from '../../../lib/i18n';
+import { createSupabaseAuthClient, normalizeAuthRedirectPath, storePendingAuthFlowState } from '../../../lib/core/auth';
+import { strings } from '../../../lib/core/i18n';
 
 export const GET: APIRoute = async ({ cookies, request, redirect, url }) => {
     const supabase = createSupabaseAuthClient(cookies, request);

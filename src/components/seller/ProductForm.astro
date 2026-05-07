@@ -1,6 +1,6 @@
 ---
 import Icon from '../icons/Icon.astro';
-import { strings, categories } from '../../lib/i18n';
+import { strings, categories } from '../../lib/core/i18n';
 
 interface VariantData {
     id?: string;
@@ -418,7 +418,7 @@ const defaultsJson = JSON.stringify(shippingDefaults ?? {});
 </div>
 
 <script>
-    import { strings } from '../../lib/i18n';
+    import { strings } from '../../lib/core/i18n';
 
     function initProductForm() {
         const root = document.getElementById('product-form-root');

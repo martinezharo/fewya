@@ -2,12 +2,12 @@
 import BuyerAppLayout from "../../layouts/BuyerAppLayout.astro";
 import ProductGrid from "../../components/ProductGrid.astro";
 import Icon from "../../components/icons/Icon.astro";
-import { createSupabaseAuthClient } from "../../lib/auth";
-import { supabase } from "../../lib/supabase";
-import { enrichProductsWithRatings } from "../../lib/productUtils";
-import { isProductComplete } from "../../lib/productValidation";
-import { strings } from "../../lib/i18n";
-import type { Product } from "../../lib/types";
+import { createSupabaseAuthClient } from "../../lib/core/auth";
+import { supabase } from "../../lib/core/supabase";
+import { enrichProductsWithRatings } from "../../lib/products/productUtils";
+import { isProductComplete } from "../../lib/products/productValidation";
+import { strings } from "../../lib/core/i18n";
+import type { Product } from "../../lib/core/types";
 
 const authClient = createSupabaseAuthClient(Astro.cookies, Astro.request);
 const { data: { user } } = await authClient.auth.getUser();

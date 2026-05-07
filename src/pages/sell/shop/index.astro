@@ -1,9 +1,9 @@
 ---
 import SellerLayout from '../../../layouts/SellerLayout.astro';
-import { createSupabaseAuthClient } from '../../../lib/auth';
+import { createSupabaseAuthClient } from '../../../lib/core/auth';
 import ShopForm from '../../../components/seller/ShopForm.astro';
 import Icon from '../../../components/icons/Icon.astro';
-import { strings } from '../../../lib/i18n';
+import { strings } from '../../../lib/core/i18n';
 
 const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
 const { data: sessionData } = await supabase.auth.getSession();
@@ -157,7 +157,7 @@ const bannerImg = shop.banner_img || '';
 </SellerLayout>
 
 <script>
-    import { strings } from '../../../lib/i18n';
+    import { strings } from '../../../lib/core/i18n';
 
     type ShopUpdateResponse = {
         success?: boolean;
