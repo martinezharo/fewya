@@ -18,6 +18,7 @@ export interface OrderCardData {
     status: string;
     totalAmount: number;
     createdAt: Date;
+    cancellationReason?: string | null;
     items: OrderItem[];
     hasShipment?: boolean;
     trackingNumber?: string | null;
@@ -126,6 +127,17 @@ const showActions = normalizedStatus === 'delivered';
             class="hidden md:block flex-shrink-0 text-text-tertiary group-hover:text-text-primary transition-colors"
         />
     </a>
+
+    {normalizedStatus === 'cancelled' && order.cancellationReason && (
+        <div class="px-4 pb-3 -mt-1 md:px-5 md:pb-4">
+            <div class="p-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800">
+                <p class="text-[11px] font-semibold uppercase tracking-wider text-red-700 dark:text-red-400 mb-1">
+                    {strings.orderCancellationReason}
+                </p>
+                <p class="text-sm text-red-800 dark:text-red-300 leading-relaxed">{order.cancellationReason}</p>
+            </div>
+        </div>
+    )}
 
     {showTracking && (
         <div class="flex flex-wrap items-center gap-2 px-4 pb-4 -mt-2 md:px-5 md:pb-5">

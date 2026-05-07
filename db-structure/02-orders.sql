@@ -21,6 +21,7 @@ CREATE TABLE public.orders (
   paid_at timestamp with time zone,
   delivered_at timestamp with time zone,
   funds_released_at timestamp with time zone,
+  cancellation_reason text,
   buyer_email text,
   shipping_full_name text,
   shipping_phone text,
@@ -260,7 +261,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
-CREATE OR REPLACE FUNCTION public.cancel_order(p_order_id uuid)
+CREATE OR REPLACE FUNCTION public.cancel_order(p_order_id uuid, p_cancellation_reason text DEFAULT NULL)
 RETURNS public.orders AS $$
 DECLARE
   updated_order public.orders;
@@ -283,7 +284,8 @@ BEGIN
   END LOOP;
 
   UPDATE public.orders
-  SET status = 'cancelled'
+  SET status = 'cancelled',
+      cancellation_reason = NULLIF(TRIM(p_cancellation_reason), '')
   WHERE id = p_order_id
     AND status IN ('paid', 'processing')
   RETURNING * INTO updated_order;
@@ -420,7 +422,7 @@ GRANT EXECUTE ON FUNCTION public.reserve_stock(uuid, integer) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.restore_stock(uuid, integer) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.create_checkout_order(text, text, uuid, numeric, text, text, text, text, text, text, jsonb, text, text, text, text, text, text, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.mark_order_paid(text, text, text) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.cancel_order(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.cancel_order(uuid, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.mark_order_processing(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.confirm_order_delivery(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.report_order_incident(uuid) TO authenticated;

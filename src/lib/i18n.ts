@@ -258,6 +258,7 @@ export const strings = {
     orderFundsReleased: 'Fondos liberados',
     orderAutoConfirmHint: 'Se confirmará automáticamente en 48h si no hay incidencias',
     orderIncidentReported: 'Incidencia reportada por el comprador',
+    orderCancellationReason: 'Motivo de cancelación',
 
     // Seller order management
     sellerOrderManage: 'Gestionar venta',
@@ -265,6 +266,9 @@ export const strings = {
     sellerOrderMockLabelHint: 'Modo prueba: genera una etiqueta PDF simulada sin coste (Correos o InPost según el tipo de entrega)',
     sellerOrderCancelOrder: 'Cancelar pedido',
     sellerOrderCancelConfirm: '¿Cancelar este pedido? Se reembolsará el importe total al comprador.',
+    sellerOrderCancelReasonLabel: 'Motivo de cancelación',
+    sellerOrderCancelReasonPlaceholder: 'Explica brevemente por qué cancelas el pedido...',
+    sellerOrderCancelReasonRequired: 'El motivo de cancelación es obligatorio',
     sellerOrderRefundSuccess: 'Pedido cancelado y reembolsado',
     sellerOrderRefundError: 'Error al cancelar el pedido',
     sellerOrderLabelSuccess: 'Etiqueta generada correctamente',

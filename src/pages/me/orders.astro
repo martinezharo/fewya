@@ -21,6 +21,7 @@ const { data: ordersData } = await supabase
         status,
         total_amount,
         created_at,
+        cancellation_reason,
         order_items (
             quantity,
             product_variants (
@@ -83,6 +84,7 @@ const orders: OrderCardData[] = (ordersData ?? []).map((order: any) => {
         status: order.status ?? "pending",
         totalAmount: order.total_amount ?? 0,
         createdAt: new Date(order.created_at),
+        cancellationReason: order.cancellation_reason ?? null,
         items,
         hasShipment: !!shipment,
         trackingNumber: shipment?.tracking_number ?? null,

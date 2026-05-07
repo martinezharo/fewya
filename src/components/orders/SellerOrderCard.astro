@@ -18,6 +18,7 @@ export interface SellerOrderCardData {
     publicId: string;
     status: string;
     createdAt: Date;
+    cancellationReason?: string | null;
     buyerEmail: string | null;
     shippingFullName: string | null;
     shippingPhone: string | null;
@@ -97,6 +98,12 @@ const customerName = order.shippingFullName || order.buyerEmail || strings.profi
                     <span class="shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800">
                         <Icon name="alert-circle" size={9} class="mr-1" />
                         {strings.orderIncidentReported}
+                    </span>
+                )}
+                {normalizedStatus === 'cancelled' && order.cancellationReason && (
+                    <span class="shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800">
+                        <Icon name="message-circle" size={9} class="mr-1" />
+                        {strings.orderCancellationReason}
                     </span>
                 )}
                 <order-id-popover class="relative inline-flex min-w-0 max-w-full" data-id={order.publicId}>
@@ -295,7 +302,7 @@ const customerName = order.shippingFullName || order.buyerEmail || strings.profi
                             </button>
                             <button
                                 type="button"
-                                class="cancel-order-btn inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/60 transition-colors"
+                                class="open-cancel-modal-btn inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/60 transition-colors"
                                 data-order-id={order.orderId}
                             >
                                 <Icon name="x" size={12} />
@@ -308,6 +315,44 @@ const customerName = order.shippingFullName || order.buyerEmail || strings.profi
                 )}
             </div>
         </section>
+    </div>
+
+    {normalizedStatus === 'cancelled' && order.cancellationReason && (
+        <div class="p-4 rounded-2xl bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800">
+            <p class="text-[11px] font-semibold uppercase tracking-wider text-red-700 dark:text-red-400 mb-1">
+                {strings.orderCancellationReason}
+            </p>
+            <p class="text-sm text-red-800 dark:text-red-300 leading-relaxed">{order.cancellationReason}</p>
+        </div>
+    )}
+
+    {/* Cancel Modal */}
+    <div class="cancel-modal hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" data-order-id={order.orderId}>
+        <div class="w-full max-w-sm rounded-2xl border border-border bg-surface p-5 shadow-xl">
+            <h3 class="text-base font-semibold text-text-primary">{strings.sellerOrderCancelOrder}</h3>
+            <p class="mt-1 text-sm text-text-secondary">{strings.sellerOrderCancelConfirm}</p>
+            <div class="mt-4">
+                <label for={`cancel-reason-${order.orderId}`} class="block text-sm font-medium text-text-primary mb-1.5">
+                    {strings.sellerOrderCancelReasonLabel}
+                </label>
+                <textarea
+                    id={`cancel-reason-${order.orderId}`}
+                    class="cancel-reason-input w-full rounded-xl border border-border bg-bg px-3 py-2 text-sm text-text-primary shadow-sm outline-none ring-accent focus:ring-2 transition-shadow resize-none"
+                    rows="3"
+                    placeholder={strings.sellerOrderCancelReasonPlaceholder}
+                    maxlength="500"
+                ></textarea>
+                <p class="cancel-reason-error hidden mt-1.5 text-xs text-red-600">{strings.sellerOrderCancelReasonRequired}</p>
+            </div>
+            <div class="mt-5 flex gap-2 justify-end">
+                <button type="button" class="close-cancel-modal-btn px-3 py-1.5 text-sm font-medium text-text-secondary hover:text-text-primary transition-colors">
+                    {strings.productClose}
+                </button>
+                <button type="button" class="confirm-cancel-btn px-3 py-1.5 text-sm font-semibold rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors" data-order-id={order.orderId}>
+                    {strings.sellerOrderCancelOrder}
+                </button>
+            </div>
+        </div>
     </div>
 </article>
 
@@ -416,15 +461,52 @@ const customerName = order.shippingFullName || order.buyerEmail || strings.profi
         });
     });
 
-    // Cancel order + refund
-    document.querySelectorAll('.cancel-order-btn').forEach((btn) => {
+    // Cancel order modal
+    document.querySelectorAll('.open-cancel-modal-btn').forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const orderId = (btn as HTMLElement).dataset.orderId;
+            if (!orderId) return;
+            const modal = document.querySelector(`.cancel-modal[data-order-id="${orderId}"]`);
+            if (modal) modal.classList.remove('hidden');
+        });
+    });
+
+    document.querySelectorAll('.close-cancel-modal-btn').forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const modal = btn.closest('.cancel-modal');
+            if (modal) modal.classList.add('hidden');
+        });
+    });
+
+    document.querySelectorAll('.cancel-modal').forEach((modal) => {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) modal.classList.add('hidden');
+        });
+    });
+
+    // Confirm cancel order + refund
+    document.querySelectorAll('.confirm-cancel-btn').forEach((btn) => {
         btn.addEventListener('click', async (e) => {
             e.preventDefault();
             e.stopPropagation();
             const orderId = (btn as HTMLElement).dataset.orderId;
             if (!orderId) return;
 
-            if (!confirm('¿Cancelar este pedido? Se reembolsará el importe total al comprador.')) return;
+            const modal = btn.closest('.cancel-modal');
+            const textarea = modal?.querySelector('.cancel-reason-input') as HTMLTextAreaElement | null;
+            const errorText = modal?.querySelector('.cancel-reason-error') as HTMLElement | null;
+            const reason = textarea?.value.trim() ?? '';
+
+            if (!reason) {
+                errorText?.classList.remove('hidden');
+                textarea?.focus();
+                return;
+            }
+            errorText?.classList.add('hidden');
 
             btn.setAttribute('disabled', 'true');
             const originalText = btn.textContent || '';
@@ -434,7 +516,7 @@ const customerName = order.shippingFullName || order.buyerEmail || strings.profi
                 const res = await fetch('/api/orders/refund', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ orderId }),
+                    body: JSON.stringify({ orderId, cancellationReason: reason }),
                 });
 
                 const data = await res.json() as any;
