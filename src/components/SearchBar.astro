@@ -109,6 +109,12 @@ const { value = '', autofocus = false } = Astro.props;
                 renderRecentSearches();
             };
 
+            const escapeHtml = (value: string) => {
+                const div = document.createElement('div');
+                div.textContent = value;
+                return div.innerHTML;
+            };
+
             const renderRecentSearches = () => {
                 const searches = getRecentSearches();
                 if (searches.length === 0) {
@@ -119,9 +125,9 @@ const { value = '', autofocus = false } = Astro.props;
                 recentList.innerHTML = searches.map(s => `
                     <li>
                         <a href="/search?q=${encodeURIComponent(s)}" class="flex items-center gap-3 px-4 py-3 text-[14px] text-text-primary no-underline hover:bg-border-light transition-colors">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" class="text-text-tertiary"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.75"/><polyline points="12 6 12 12 16 14" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                            <span class="flex-1 truncate">${s}</span>
-                        </a>
+	                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" class="text-text-tertiary"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.75"/><polyline points="12 6 12 12 16 14" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
+	                            <span class="flex-1 truncate">${escapeHtml(s)}</span>
+	                        </a>
                     </li>
                 `).join('');
                 

@@ -215,7 +215,7 @@ import { strings } from '../../lib/core/i18n';
 
         if (colorHex) {
             colorHex.addEventListener('input', (e) => {
-                let raw = (e.target as HTMLInputElement).value.replace(/[^0-9A-Fa-f]/g, '').toUpperCase().slice(0, 6);
+                const raw = (e.target as HTMLInputElement).value.replace(/[^0-9A-Fa-f]/g, '').toUpperCase().slice(0, 6);
                 (e.target as HTMLInputElement).value = raw;
                 if (isValidHex(raw)) {
                     const full = `#${raw}`;
