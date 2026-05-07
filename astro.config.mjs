@@ -13,6 +13,7 @@ export default defineConfig({
     schema: {
       SUPABASE_URL: envField.string({ context: 'server', access: 'public' }),
       SUPABASE_KEY: envField.string({ context: 'server', access: 'public' }),
+      SUPABASE_SECRET_KEY: envField.string({ context: 'server', access: 'secret', optional: true }),
       STRIPE_SECRET_KEY: envField.string({ context: 'server', access: 'secret', optional: true }),
       STRIPE_WEBHOOK_SECRET: envField.string({ context: 'server', access: 'secret', optional: true }),
       SENDCLOUD_API_KEY: envField.string({ context: 'server', access: 'secret', optional: true }),
