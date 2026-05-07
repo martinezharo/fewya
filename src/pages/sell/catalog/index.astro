@@ -119,7 +119,7 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', { style: 'currency', cu
                                         <div class="flex items-center gap-2 flex-wrap">
                                             <h3 class="text-sm font-semibold text-text-primary truncate">{product.title}</h3>
                                             {!product.isComplete && (
-                                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border border-amber-200 dark:border-amber-800" title={strings.sellerCatalogIncompleteTooltip}>
+                                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 border border-amber-200 dark:border-amber-800" title={strings.sellerCatalogIncompleteTooltip}>
                                                     <Icon name="alert-triangle" size={12} />
                                                     {strings.sellerCatalogIncompleteWarning}
                                                 </span>
