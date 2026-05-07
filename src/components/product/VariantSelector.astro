@@ -36,7 +36,7 @@ const { variants, defaultImage } = Astro.props;
             </div>
             <div class="w-16 overflow-hidden">
               <span
-                class={`block text-[11px] font-medium whitespace-nowrap text-center transition-colors ${i === 0 ? 'text-secondary' : 'text-text-secondary'}`}
+                class={`block text-[11px] font-medium whitespace-nowrap text-center transition-colors ${i === 0 ? 'text-amber-700 dark:text-secondary' : 'text-text-secondary'}`}
                 data-variant-name
               >
                 {displayName}
@@ -46,7 +46,6 @@ const { variants, defaultImage } = Astro.props;
         );
       })}
     </div>
-    <p class="text-xs text-orange-500 dark:text-orange-400 font-medium hidden" data-stock-warning></p>
   </div>
 )}
 
@@ -90,7 +89,7 @@ const { variants, defaultImage } = Astro.props;
           ring.classList.add('border-border-light');
         }
         if (nameEl) {
-          nameEl.classList.remove('text-secondary');
+          nameEl.classList.remove('text-amber-700', 'dark:text-secondary');
           nameEl.classList.add('text-text-secondary');
         }
       });
@@ -102,7 +101,7 @@ const { variants, defaultImage } = Astro.props;
         ring.classList.remove('border-border-light');
       }
       if (nameEl) {
-        nameEl.classList.add('text-secondary');
+        nameEl.classList.add('text-amber-700', 'dark:text-secondary');
         nameEl.classList.remove('text-text-secondary');
       }
 
@@ -125,17 +124,6 @@ const { variants, defaultImage } = Astro.props;
           el.classList.remove('text-green-600', 'dark:text-green-400');
         }
       });
-
-      // Update stock warning
-      const stockWarning = document.querySelector<HTMLElement>('[data-stock-warning]');
-      if (stockWarning) {
-        if (stock > 0 && stock <= 5) {
-          stockWarning.textContent = strings.productStockWarning.replace('{stock}', String(stock));
-          stockWarning.style.display = '';
-        } else {
-          stockWarning.style.display = 'none';
-        }
-      }
 
       // Dispatch variant image change event for gallery
       const variantImage = btn.dataset.variantImage;
