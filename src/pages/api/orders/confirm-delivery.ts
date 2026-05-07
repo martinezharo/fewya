@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { createSupabaseAuthClient } from '../../../lib/core/auth';
+import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
 import { strings } from '../../../lib/core/i18n';
 import { getStripeClient } from '../../../lib/payments/stripe';
 import { releaseOrderFunds, type CheckoutPricedItem } from '../../../lib/cart/checkout';
@@ -41,9 +42,10 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     }
 
     // 1. Confirm delivery in DB
-    const { data: confirmedOrder, error: confirmError } = await authClient.rpc(
+    const adminClient = createSupabaseAdminClient();
+    const { data: confirmedOrder, error: confirmError } = await adminClient.rpc(
         'confirm_order_delivery',
-        { p_order_id: orderId }
+        { p_actor_id: user.id, p_order_id: orderId }
     );
 
     if (confirmError) {

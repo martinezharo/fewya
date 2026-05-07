@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { createSupabaseAuthClient } from '../../../lib/core/auth';
+import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
 import { strings } from '../../../lib/core/i18n';
 
 function jsonResponse(payload: Record<string, unknown>, status: number) {
@@ -31,9 +32,10 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         return jsonResponse({ error: strings.apiInvalidBody }, 400);
     }
 
-    const { data: updatedOrder, error } = await authClient.rpc(
+    const adminClient = createSupabaseAdminClient();
+    const { data: updatedOrder, error } = await adminClient.rpc(
         'report_order_incident',
-        { p_order_id: orderId }
+        { p_actor_id: user.id, p_order_id: orderId }
     );
 
     if (error) {

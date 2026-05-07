@@ -4,6 +4,7 @@ import {
     parseSpanishAddress,
     calculateParcelFromItems,
 } from '../../../lib/shipping/sendcloud';
+import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
 
 function jsonResponse(payload: Record<string, unknown>, status: number) {
     return new Response(JSON.stringify(payload), {
@@ -118,7 +119,9 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             requestedService: { shippingOptionCode },
         });
 
-        const { error: shipmentError } = await authClient.rpc('create_shipment', {
+        const adminClient = createSupabaseAdminClient();
+        const { error: shipmentError } = await adminClient.rpc('create_shipment', {
+            p_actor_id: user.id,
             p_order_id: orderId,
             p_sendcloud_shipment_id: result.shipmentId,
             p_sendcloud_reference: result.reference,
@@ -136,7 +139,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         }
 
         // Mark order as processing
-        await authClient.rpc('mark_order_processing', { p_order_id: orderId });
+        await adminClient.rpc('mark_order_processing', { p_actor_id: user.id, p_order_id: orderId });
 
         return jsonResponse({
             success: true,

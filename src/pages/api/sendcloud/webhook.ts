@@ -1,4 +1,6 @@
 import type { APIRoute } from 'astro';
+import { SENDCLOUD_WEBHOOK_SECRET } from 'astro:env/server';
+import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
 
 function jsonResponse(payload: Record<string, unknown>, status: number) {
     return new Response(JSON.stringify(payload), {
@@ -9,9 +11,9 @@ function jsonResponse(payload: Record<string, unknown>, status: number) {
 
 export const POST: APIRoute = async ({ request }) => {
     // Verify webhook secret
-    const webhookSecret = process.env.SENDCLOUD_WEBHOOK_SECRET || '';
+    const webhookSecret = SENDCLOUD_WEBHOOK_SECRET || '';
     const requestSecret = request.headers.get('X-Webhook-Secret') || '';
-    if (webhookSecret && requestSecret !== webhookSecret) {
+    if (!webhookSecret || requestSecret !== webhookSecret) {
         return jsonResponse({ error: 'Unauthorized' }, 401);
     }
 
@@ -42,9 +44,7 @@ export const POST: APIRoute = async ({ request }) => {
         return jsonResponse({ error: 'parcel.id is required' }, 400);
     }
 
-    const { createClient } = await import('@supabase/supabase-js');
-    const { SUPABASE_URL, SUPABASE_KEY } = await import('astro:env/server');
-    const supabase = createClient(SUPABASE_URL as string, SUPABASE_KEY as string);
+    const supabase = createSupabaseAdminClient();
 
     // Find shipment by sendcloud_shipment_id (parcel id)
     const { data: shipmentRow } = await supabase

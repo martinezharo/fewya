@@ -30,7 +30,6 @@ export const GET: APIRoute = async ({ url, request, cookies }) => {
 
     try {
         const points = await getServicePoints(address, country, ['correos', 'inpost']);
-        console.log('[sendcloud service-points]', address, '=> found', points.length, 'points');
         return jsonResponse({ points }, 200);
     } catch (err) {
         console.error('Sendcloud service points error:', err);

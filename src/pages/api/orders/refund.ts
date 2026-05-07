@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { createSupabaseAuthClient } from '../../../lib/core/auth';
+import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
 import { strings } from '../../../lib/core/i18n';
 import { getStripeClient } from '../../../lib/payments/stripe';
 import { toMinorUnits } from '../../../lib/cart/checkout';
@@ -78,9 +79,10 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         }
 
         // Mark order as cancelled via RPC (bypasses RLS)
-        const { data: cancelledOrder, error: cancelError } = await authClient.rpc(
+        const adminClient = createSupabaseAdminClient();
+        const { data: cancelledOrder, error: cancelError } = await adminClient.rpc(
             'cancel_order',
-            { p_order_id: orderId, p_cancellation_reason: cancellationReason }
+            { p_actor_id: user.id, p_order_id: orderId, p_cancellation_reason: cancellationReason }
         );
 
         if (cancelError || !cancelledOrder) {

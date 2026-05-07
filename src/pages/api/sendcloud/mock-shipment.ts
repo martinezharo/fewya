@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { createSupabaseAuthClient } from '../../../lib/core/auth';
+import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
 import { strings } from '../../../lib/core/i18n';
 import { generateMockShippingLabel } from '../../../lib/shipping/shippingLabelPdf';
 import { parseSpanishAddress } from '../../../lib/shipping/sendcloud';
@@ -138,7 +139,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     }
 
     const mockShipmentId = `MOCK-${Date.now()}`;
-    const mockTracking = `TEST${Math.random().toString(36).slice(2, 10).toUpperCase()}`;
+    const mockTracking = `TEST${crypto.randomUUID().replace(/-/g, '').slice(0, 10).toUpperCase()}`;
     const mockReference = `REF-${order.public_id}`;
 
     // Generate PDF
@@ -169,12 +170,14 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         return jsonResponse({ error: strings.sellerOrderLabelError }, 500);
     }
 
-    // Upload PDF to Supabase Storage
+    // Upload PDF to Supabase Storage (use admin client to bypass RLS;
+    // ownership is already verified above via order_belongs_to_seller.)
     const labelPath = `${orderId}/${crypto.randomUUID()}.pdf`;
     let labelUrl: string;
+    const adminClient = createSupabaseAdminClient();
 
     try {
-        const { error: uploadError } = await authClient.storage
+        const { error: uploadError } = await adminClient.storage
             .from('labels')
             .upload(labelPath, pdfBytes, {
                 contentType: 'application/pdf',
@@ -186,18 +189,15 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             return jsonResponse({ error: strings.sellerOrderLabelError }, 500);
         }
 
-        const { data: urlData } = authClient.storage
-            .from('labels')
-            .getPublicUrl(labelPath);
-
-        labelUrl = urlData.publicUrl;
+        labelUrl = `labels:${labelPath}`;
     } catch (storageErr) {
         console.error('mock-shipment: storage error', storageErr);
         return jsonResponse({ error: strings.sellerOrderLabelError }, 500);
     }
 
     // Save mock shipment to DB
-    const { error: shipmentError } = await authClient.rpc('create_shipment', {
+    const { error: shipmentError } = await adminClient.rpc('create_shipment', {
+        p_actor_id: user.id,
         p_order_id: orderId,
         p_sendcloud_shipment_id: mockShipmentId,
         p_sendcloud_reference: mockReference,
@@ -216,14 +216,14 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     }
 
     // Update order status to processing via RPC (bypasses RLS)
-    await authClient.rpc('mark_order_processing', { p_order_id: orderId });
+    await adminClient.rpc('mark_order_processing', { p_actor_id: user.id, p_order_id: orderId });
 
     return jsonResponse({
         success: true,
         shipmentId: mockShipmentId,
         trackingNumber: mockTracking,
         trackingUrl: `https://track.${carrierName.toLowerCase().replace(/\s/g, '')}.com/?tracking=${mockTracking}`,
-        labelUrl,
+        labelUrl: `/api/sendcloud/label?shipmentId=${encodeURIComponent(mockShipmentId)}`,
         carrierName,
     }, 200);
 };

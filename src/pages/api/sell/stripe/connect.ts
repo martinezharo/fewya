@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
-import { createSupabaseAuthClient } from '../../../../lib/core/auth';
+import { createSupabaseAuthClient, normalizeAuthRedirectPath } from '../../../../lib/core/auth';
+import { createSupabaseAdminClient } from '../../../../lib/core/supabase-admin';
 import { strings } from '../../../../lib/core/i18n';
 import {
     buildAbsoluteUrl,
@@ -77,7 +78,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             action = 'dashboard';
         }
         if (body?.returnTo) {
-            returnTo = body.returnTo;
+            returnTo = normalizeAuthRedirectPath(body.returnTo);
         }
     } catch {
         action = 'onboarding';
@@ -110,7 +111,9 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         const account = await stripe.accounts.retrieve(stripeAccountId);
         const accountStatus = getStripeAccountStatus(account);
 
-        const { error: syncError } = await authClient.rpc('upsert_shop_payment_account', {
+        const adminClient = createSupabaseAdminClient();
+        const { error: syncError } = await adminClient.rpc('upsert_shop_payment_account', {
+            p_actor_id: user.id,
             p_shop_id: shop.id,
             p_stripe_account_id: accountStatus.stripeAccountId,
             p_charges_enabled: accountStatus.chargesEnabled,

@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { createSupabaseAuthClient } from '../../../lib/core/auth';
+import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
 import { strings } from '../../../lib/core/i18n';
 import { getStripeClient } from '../../../lib/payments/stripe';
 import { releaseOrderFunds, type CheckoutPricedItem } from '../../../lib/cart/checkout';
@@ -29,8 +30,10 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     }
 
     // 1. Auto-confirm all delivered orders past 48h
-    const { data: confirmedRows, error: autoConfirmError } = await authClient.rpc(
-        'auto_confirm_delivered_orders'
+    const adminClient = createSupabaseAdminClient();
+    const { data: confirmedRows, error: autoConfirmError } = await adminClient.rpc(
+        'auto_confirm_delivered_orders',
+        { p_actor_id: user.id }
     );
 
     if (autoConfirmError) {
