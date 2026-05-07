@@ -4,6 +4,7 @@ import { createSupabaseAuthClient } from '../../../lib/core/auth';
 import ShopForm from '../../../components/seller/ShopForm.astro';
 import { strings } from '../../../lib/core/i18n';
 import { getStripeClient, getStripeAccountStatus } from '../../../lib/payments/stripe';
+import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
 
 const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
 const { data: sessionData } = await supabase.auth.getSession();
@@ -68,7 +69,9 @@ if (existingShop) {
             if (existingAccount?.stripe_account_id) {
                 const account = await stripe.accounts.retrieve(existingAccount.stripe_account_id);
                 const status = getStripeAccountStatus(account);
-                await supabase.rpc('upsert_shop_payment_account', {
+                const adminClient = createSupabaseAdminClient();
+                await adminClient.rpc('upsert_shop_payment_account', {
+                    p_actor_id: user.id,
                     p_shop_id: existingShop.id,
                     p_stripe_account_id: status.stripeAccountId,
                     p_charges_enabled: status.chargesEnabled,
@@ -362,7 +365,9 @@ if (Astro.request.method === 'POST') {
         if (stripeConnectBtn) {
             stripeConnectBtn.addEventListener('click', async () => {
                 stripeConnectBtn.setAttribute('disabled', 'true');
-                stripeConnectText && (stripeConnectText.textContent = strings.sellerOnboardingStripeConnecting);
+                if (stripeConnectText) {
+                    stripeConnectText.textContent = strings.sellerOnboardingStripeConnecting;
+                }
                 stripeConnectSpinner?.classList.remove('hidden');
                 stripeError?.classList.add('hidden');
 
@@ -385,7 +390,9 @@ if (Astro.request.method === 'POST') {
                         stripeError.classList.remove('hidden');
                     }
                     stripeConnectBtn.removeAttribute('disabled');
-                    stripeConnectText && (stripeConnectText.textContent = strings.sellerOnboardingStripeConnectCta);
+                    if (stripeConnectText) {
+                        stripeConnectText.textContent = strings.sellerOnboardingStripeConnectCta;
+                    }
                     stripeConnectSpinner?.classList.add('hidden');
                 }
             });

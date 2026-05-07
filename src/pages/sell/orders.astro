@@ -137,7 +137,7 @@ const orders: SellerOrderCardData[] = (ordersData ?? []).map((order: any) => {
         shipmentId: shipment?.id,
         trackingNumber: shipment?.tracking_number ?? null,
         trackingUrl: shipment?.tracking_url ?? null,
-        labelUrl: shipment?.label_url ?? null,
+        labelUrl: shipment?.sendcloud_shipment_id ? `/api/sendcloud/label?shipmentId=${encodeURIComponent(shipment.sendcloud_shipment_id)}` : undefined,
         carrierName: shipment?.carrier_name ?? null,
         serviceName: shipment?.service_name ?? null,
     };
