@@ -26,11 +26,36 @@ CREATE POLICY "Allow owners to delete their shop banner images" ON storage.objec
 
 -- Storage bucket and policies for shipping labels (PDFs)
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-VALUES ('labels', 'labels', true, 10485760, null)
+VALUES ('labels', 'labels', false, 10485760, ARRAY['application/pdf'])
 ON CONFLICT (id) DO NOTHING;
+
+UPDATE storage.buckets
+SET public = false,
+    file_size_limit = 10485760,
+    allowed_mime_types = ARRAY['application/pdf']
+WHERE id = 'labels';
 
 DROP POLICY IF EXISTS "Allow public read of shipping labels" ON storage.objects;
 DROP POLICY IF EXISTS "Allow authenticated users to upload shipping labels" ON storage.objects;
+DROP POLICY IF EXISTS "Allow buyers and sellers to read shipping labels" ON storage.objects;
+DROP POLICY IF EXISTS "Allow sellers to upload shipping labels" ON storage.objects;
 
-CREATE POLICY "Allow public read of shipping labels" ON storage.objects FOR SELECT USING (bucket_id = 'labels');
-CREATE POLICY "Allow authenticated users to upload shipping labels" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'labels');
+CREATE POLICY "Allow buyers and sellers to read shipping labels" ON storage.objects FOR SELECT TO authenticated USING (
+  bucket_id = 'labels'
+  AND EXISTS (
+    SELECT 1 FROM public.orders o
+    LEFT JOIN public.shops s ON s.id = o.shop_id
+    WHERE o.id = (storage.foldername(name))[1]::uuid
+      AND (o.buyer_id = auth.uid() OR s.owner_id = auth.uid())
+  )
+);
+
+CREATE POLICY "Allow sellers to upload shipping labels" ON storage.objects FOR INSERT TO authenticated WITH CHECK (
+  bucket_id = 'labels'
+  AND EXISTS (
+    SELECT 1 FROM public.orders o
+    JOIN public.shops s ON s.id = o.shop_id
+    WHERE o.id = (storage.foldername(name))[1]::uuid
+      AND s.owner_id = auth.uid()
+  )
+);

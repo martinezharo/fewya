@@ -63,6 +63,7 @@ CREATE TABLE public.shipment_tracking (
 -- ============================================================
 
 CREATE OR REPLACE FUNCTION public.create_shipment(
+  p_actor_id uuid,
   p_order_id uuid,
   p_sendcloud_shipment_id text,
   p_sendcloud_reference text,
@@ -78,8 +79,16 @@ RETURNS public.shipments AS $$
 DECLARE
   new_shipment public.shipments;
 BEGIN
-  IF auth.uid() IS NULL THEN
+  IF p_actor_id IS NULL THEN
     RAISE EXCEPTION 'Not authenticated';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM public.orders o
+    JOIN public.shops s ON o.shop_id = s.id
+    WHERE o.id = p_order_id AND s.owner_id = p_actor_id
+  ) THEN
+    RAISE EXCEPTION 'Not authorized';
   END IF;
 
   INSERT INTO public.shipments (
@@ -126,10 +135,6 @@ RETURNS public.shipments AS $$
 DECLARE
   updated_shipment public.shipments;
 BEGIN
-  IF auth.uid() IS NULL THEN
-    RAISE EXCEPTION 'Not authenticated';
-  END IF;
-
   INSERT INTO public.shipment_tracking (shipment_id, status, description, location, event_timestamp, raw_data)
   VALUES (p_shipment_id, p_status, p_description, p_location, p_event_timestamp, p_raw_data);
 
@@ -164,7 +169,16 @@ $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 CREATE OR REPLACE FUNCTION public.get_order_shipment(p_order_id uuid)
 RETURNS public.shipments AS $$
-  SELECT s.* FROM public.shipments s WHERE s.order_id = p_order_id;
+  SELECT s.* FROM public.shipments s
+  JOIN public.orders o ON o.id = s.order_id
+  WHERE s.order_id = p_order_id
+    AND (
+      o.buyer_id = auth.uid()
+      OR EXISTS (
+        SELECT 1 FROM public.shops sh
+        WHERE sh.id = o.shop_id AND sh.owner_id = auth.uid()
+      )
+    );
 $$ LANGUAGE sql SECURITY DEFINER;
 
 -- ============================================================
@@ -185,10 +199,7 @@ CREATE POLICY "Sellers can view shipments for their shop orders" ON public.shipm
   FOR SELECT TO authenticated
   USING (EXISTS (
     SELECT 1 FROM public.orders o
-    JOIN public.order_items oi ON o.id = oi.order_id
-    JOIN public.product_variants pv ON oi.variant_id = pv.id
-    JOIN public.products p ON pv.product_id = p.id
-    JOIN public.shops s ON p.shop_id = s.id
+    JOIN public.shops s ON s.id = o.shop_id
     WHERE o.id = shipments.order_id AND s.owner_id = auth.uid()
   ));
 
@@ -197,23 +208,17 @@ CREATE POLICY "Users can view tracking for shipments they have access to" ON pub
   USING (EXISTS (
     SELECT 1 FROM public.shipments s
     JOIN public.orders o ON s.order_id = o.id
-    WHERE s.id = shipment_tracking.shipment_id AND (
-      o.buyer_id = auth.uid() OR
-      EXISTS (
-        SELECT 1 FROM public.orders o2
-        JOIN public.order_items oi ON o2.id = oi.order_id
-        JOIN public.product_variants pv ON oi.variant_id = pv.id
-        JOIN public.products p ON pv.product_id = p.id
-        JOIN public.shops sh ON p.shop_id = sh.id
-        WHERE o2.id = s.order_id AND sh.owner_id = auth.uid()
-      )
-    )
+    LEFT JOIN public.shops sh ON sh.id = o.shop_id
+    WHERE s.id = shipment_tracking.shipment_id
+      AND (o.buyer_id = auth.uid() OR sh.owner_id = auth.uid())
   ));
 
 -- ============================================================
 -- Grants
 -- ============================================================
 
-GRANT EXECUTE ON FUNCTION public.create_shipment(uuid, text, text, text, text, text, numeric, text, text, text) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.update_shipment_tracking(uuid, text, text, text, timestamp with time zone, text, text, jsonb) TO authenticated;
+REVOKE EXECUTE ON FUNCTION public.create_shipment(uuid, uuid, text, text, text, text, text, numeric, text, text, text) FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.update_shipment_tracking(uuid, text, text, text, timestamp with time zone, text, text, jsonb) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.create_shipment(uuid, uuid, text, text, text, text, text, numeric, text, text, text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.update_shipment_tracking(uuid, text, text, text, timestamp with time zone, text, text, jsonb) TO service_role;
 GRANT EXECUTE ON FUNCTION public.get_order_shipment(uuid) TO authenticated;

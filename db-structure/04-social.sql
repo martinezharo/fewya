@@ -29,6 +29,9 @@ CREATE TABLE public.wishlist (
 -- Policies
 -- ============================================================
 
+ALTER TABLE public.reviews ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.wishlist ENABLE ROW LEVEL SECURITY;
+
 CREATE POLICY "Allow public read access to reviews" ON public.reviews FOR SELECT TO public USING (true);
 CREATE POLICY "Allow inserting reviews if product was purchased" ON public.reviews FOR INSERT TO authenticated WITH CHECK (EXISTS (
   SELECT 1 FROM public.orders o

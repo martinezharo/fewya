@@ -63,6 +63,7 @@ CREATE TRIGGER on_product_created
 -- ============================================================
 
 ALTER TABLE public.product_variants ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Allow public read access to products" ON public.products FOR SELECT TO anon USING (true);
 CREATE POLICY "Allow authenticated read access to products" ON public.products FOR SELECT TO authenticated USING (true);

@@ -90,6 +90,7 @@ RETURNS boolean AS $$
 $$ LANGUAGE sql SECURITY DEFINER;
 
 CREATE OR REPLACE FUNCTION public.create_checkout_order(
+  p_buyer_id uuid,
   p_public_id text,
   p_checkout_group_id text,
   p_shop_id uuid,
@@ -113,8 +114,8 @@ RETURNS public.orders AS $$
 DECLARE
   new_order public.orders;
 BEGIN
-  IF auth.uid() IS NULL THEN
-    RAISE EXCEPTION 'Not authenticated';
+  IF p_buyer_id IS NULL THEN
+    RAISE EXCEPTION 'Buyer required';
   END IF;
 
   IF p_items IS NULL OR jsonb_typeof(p_items) <> 'array' OR jsonb_array_length(p_items) = 0 THEN
@@ -146,7 +147,7 @@ BEGIN
   VALUES (
     p_public_id,
     p_checkout_group_id,
-    auth.uid(),
+    p_buyer_id,
     p_shop_id,
     'pending',
     'pending',
@@ -184,6 +185,10 @@ RETURNS integer AS $$
 DECLARE
   new_stock integer;
 BEGIN
+  IF p_quantity IS NULL OR p_quantity <= 0 THEN
+    RAISE EXCEPTION 'invalid_quantity';
+  END IF;
+
   UPDATE public.product_variants
   SET stock = stock - p_quantity
   WHERE id = p_variant_id AND stock >= p_quantity
@@ -200,6 +205,10 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE OR REPLACE FUNCTION public.restore_stock(p_variant_id uuid, p_quantity integer)
 RETURNS void AS $$
 BEGIN
+  IF p_quantity IS NULL OR p_quantity <= 0 THEN
+    RAISE EXCEPTION 'invalid_quantity';
+  END IF;
+
   UPDATE public.product_variants
   SET stock = stock + p_quantity
   WHERE id = p_variant_id;
@@ -207,6 +216,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 CREATE OR REPLACE FUNCTION public.mark_order_paid(
+  p_buyer_id uuid,
   p_session_id text,
   p_payment_intent_id text,
   p_payment_status text
@@ -216,16 +226,13 @@ DECLARE
   order_rec RECORD;
   item_rec RECORD;
 BEGIN
-  IF auth.uid() IS NULL THEN
-    RAISE EXCEPTION 'Not authenticated';
+  IF p_buyer_id IS NULL THEN
+    RAISE EXCEPTION 'Buyer required';
   END IF;
 
-  -- Reserve stock for all items in all orders with this session.
-  -- Best-effort: if stock reservation fails (very rare race condition),
-  -- log a warning but don't block payment confirmation.
   FOR order_rec IN
     SELECT o.id FROM public.orders o
-    WHERE o.buyer_id = auth.uid()
+    WHERE o.buyer_id = p_buyer_id
       AND o.stripe_checkout_session_id = p_session_id
       AND o.payment_status <> 'paid'
   LOOP
@@ -233,12 +240,7 @@ BEGIN
       SELECT oi.variant_id, oi.quantity FROM public.order_items oi
       WHERE oi.order_id = order_rec.id AND oi.variant_id IS NOT NULL
     LOOP
-      BEGIN
-        PERFORM public.reserve_stock(item_rec.variant_id, item_rec.quantity);
-      EXCEPTION WHEN OTHERS THEN
-        RAISE WARNING 'Could not reserve stock for variant % (qty %): %',
-          item_rec.variant_id, item_rec.quantity, SQLERRM;
-      END;
+      PERFORM public.reserve_stock(item_rec.variant_id, item_rec.quantity);
     END LOOP;
   END LOOP;
 
@@ -255,23 +257,27 @@ BEGIN
       WHEN lower(COALESCE(p_payment_status, '')) = 'paid' THEN COALESCE(paid_at, timezone('utc'::text, now()))
       ELSE paid_at
     END
-  WHERE buyer_id = auth.uid()
+  WHERE buyer_id = p_buyer_id
     AND stripe_checkout_session_id = p_session_id
   RETURNING *;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
-CREATE OR REPLACE FUNCTION public.cancel_order(p_order_id uuid, p_cancellation_reason text DEFAULT NULL)
+CREATE OR REPLACE FUNCTION public.cancel_order(p_actor_id uuid, p_order_id uuid, p_cancellation_reason text DEFAULT NULL)
 RETURNS public.orders AS $$
 DECLARE
   updated_order public.orders;
   item_rec RECORD;
 BEGIN
-  IF auth.uid() IS NULL THEN
+  IF p_actor_id IS NULL THEN
     RAISE EXCEPTION 'Not authenticated';
   END IF;
 
-  IF NOT public.order_belongs_to_seller(p_order_id) THEN
+  IF NOT EXISTS (
+    SELECT 1 FROM public.orders o
+    JOIN public.shops s ON o.shop_id = s.id
+    WHERE o.id = p_order_id AND s.owner_id = p_actor_id
+  ) THEN
     RAISE EXCEPTION 'Not authorized';
   END IF;
 
@@ -298,16 +304,20 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
-CREATE OR REPLACE FUNCTION public.mark_order_processing(p_order_id uuid)
+CREATE OR REPLACE FUNCTION public.mark_order_processing(p_actor_id uuid, p_order_id uuid)
 RETURNS public.orders AS $$
 DECLARE
   updated_order public.orders;
 BEGIN
-  IF auth.uid() IS NULL THEN
+  IF p_actor_id IS NULL THEN
     RAISE EXCEPTION 'Not authenticated';
   END IF;
 
-  IF NOT public.order_belongs_to_seller(p_order_id) THEN
+  IF NOT EXISTS (
+    SELECT 1 FROM public.orders o
+    JOIN public.shops s ON o.shop_id = s.id
+    WHERE o.id = p_order_id AND s.owner_id = p_actor_id
+  ) THEN
     RAISE EXCEPTION 'Not authorized';
   END IF;
 
@@ -325,12 +335,12 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
-CREATE OR REPLACE FUNCTION public.confirm_order_delivery(p_order_id uuid)
+CREATE OR REPLACE FUNCTION public.confirm_order_delivery(p_actor_id uuid, p_order_id uuid)
 RETURNS public.orders AS $$
 DECLARE
   updated_order public.orders;
 BEGIN
-  IF auth.uid() IS NULL THEN
+  IF p_actor_id IS NULL THEN
     RAISE EXCEPTION 'Not authenticated';
   END IF;
 
@@ -339,7 +349,7 @@ BEGIN
     status = 'confirmed',
     funds_released_at = timezone('utc'::text, now())
   WHERE id = p_order_id
-    AND buyer_id = auth.uid()
+    AND buyer_id = p_actor_id
     AND status = 'delivered'
   RETURNING * INTO updated_order;
 
@@ -351,19 +361,19 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
-CREATE OR REPLACE FUNCTION public.report_order_incident(p_order_id uuid)
+CREATE OR REPLACE FUNCTION public.report_order_incident(p_actor_id uuid, p_order_id uuid)
 RETURNS public.orders AS $$
 DECLARE
   updated_order public.orders;
 BEGIN
-  IF auth.uid() IS NULL THEN
+  IF p_actor_id IS NULL THEN
     RAISE EXCEPTION 'Not authenticated';
   END IF;
 
   UPDATE public.orders
   SET status = 'incident'
   WHERE id = p_order_id
-    AND buyer_id = auth.uid()
+    AND buyer_id = p_actor_id
     AND status IN ('delivered', 'confirmed')
   RETURNING * INTO updated_order;
 
@@ -375,9 +385,13 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
-CREATE OR REPLACE FUNCTION public.auto_confirm_delivered_orders()
+CREATE OR REPLACE FUNCTION public.auto_confirm_delivered_orders(p_actor_id uuid)
 RETURNS TABLE(order_id uuid, public_id text) AS $$
 BEGIN
+  IF p_actor_id IS NULL THEN
+    RAISE EXCEPTION 'Not authenticated';
+  END IF;
+
   RETURN QUERY
   UPDATE public.orders
   SET
@@ -386,6 +400,13 @@ BEGIN
   WHERE status = 'delivered'
     AND delivered_at < timezone('utc'::text, now()) - interval '48 hours'
     AND funds_released_at IS NULL
+    AND (
+      buyer_id = p_actor_id
+      OR EXISTS (
+        SELECT 1 FROM public.shops s
+        WHERE s.id = orders.shop_id AND s.owner_id = p_actor_id
+      )
+    )
   RETURNING orders.id, orders.public_id;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
@@ -395,6 +416,8 @@ $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 -- ============================================================
 
 ALTER TABLE public.order_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.refunds ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Buyers can create their own orders" ON public.orders FOR INSERT TO authenticated WITH CHECK ((auth.uid() = buyer_id));
 CREATE POLICY "Buyers can view their own orders" ON public.orders FOR SELECT TO authenticated USING ((auth.uid() = buyer_id));
@@ -402,6 +425,21 @@ CREATE POLICY "Sellers can view orders from their shop" ON public.orders FOR SEL
   shop_id IS NOT NULL AND EXISTS (
     SELECT 1 FROM public.shops s
     WHERE s.id = orders.shop_id AND s.owner_id = auth.uid()
+  )
+);
+CREATE POLICY "Sellers can view refunds from their shop" ON public.refunds FOR SELECT TO authenticated USING (
+  EXISTS (
+    SELECT 1 FROM public.orders o
+    JOIN public.shops s ON o.shop_id = s.id
+    WHERE o.id = refunds.order_id AND s.owner_id = auth.uid()
+  )
+);
+CREATE POLICY "Sellers can insert refunds for their shop" ON public.refunds FOR INSERT TO authenticated WITH CHECK (
+  processed_by = auth.uid()
+  AND EXISTS (
+    SELECT 1 FROM public.orders o
+    JOIN public.shops s ON o.shop_id = s.id
+    WHERE o.id = refunds.order_id AND s.owner_id = auth.uid()
   )
 );
 CREATE POLICY "View items if you have access to the order" ON public.order_items FOR SELECT TO authenticated USING (order_belongs_to_user(order_id));
@@ -418,12 +456,21 @@ CREATE POLICY "Allow inserting items if order is own" ON public.order_items FOR 
 
 GRANT EXECUTE ON FUNCTION public.order_belongs_to_user(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.order_belongs_to_seller(uuid) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.reserve_stock(uuid, integer) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.restore_stock(uuid, integer) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.create_checkout_order(text, text, uuid, numeric, text, text, text, text, text, text, jsonb, text, text, text, text, text, text, text) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.mark_order_paid(text, text, text) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.cancel_order(uuid, text) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.mark_order_processing(uuid) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.confirm_order_delivery(uuid) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.report_order_incident(uuid) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.auto_confirm_delivered_orders() TO authenticated;
+REVOKE EXECUTE ON FUNCTION public.reserve_stock(uuid, integer) FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.restore_stock(uuid, integer) FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.create_checkout_order(uuid, text, text, uuid, numeric, text, text, text, text, text, text, jsonb, text, text, text, text, text, text, text) FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.mark_order_paid(uuid, text, text, text) FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.cancel_order(uuid, uuid, text) FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.mark_order_processing(uuid, uuid) FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.confirm_order_delivery(uuid, uuid) FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.report_order_incident(uuid, uuid) FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.auto_confirm_delivered_orders(uuid) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.reserve_stock(uuid, integer) TO service_role;
+GRANT EXECUTE ON FUNCTION public.restore_stock(uuid, integer) TO service_role;
+GRANT EXECUTE ON FUNCTION public.create_checkout_order(uuid, text, text, uuid, numeric, text, text, text, text, text, text, jsonb, text, text, text, text, text, text, text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.mark_order_paid(uuid, text, text, text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.cancel_order(uuid, uuid, text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.mark_order_processing(uuid, uuid) TO service_role;
+GRANT EXECUTE ON FUNCTION public.confirm_order_delivery(uuid, uuid) TO service_role;
+GRANT EXECUTE ON FUNCTION public.report_order_incident(uuid, uuid) TO service_role;
+GRANT EXECUTE ON FUNCTION public.auto_confirm_delivered_orders(uuid) TO service_role;

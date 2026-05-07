@@ -105,6 +105,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 CREATE OR REPLACE FUNCTION public.upsert_shop_payment_account(
+  p_actor_id uuid,
   p_shop_id uuid,
   p_stripe_account_id text,
   p_charges_enabled boolean,
@@ -115,13 +116,13 @@ RETURNS public.shop_payment_accounts AS $$
 DECLARE
   account_row public.shop_payment_accounts;
 BEGIN
-  IF auth.uid() IS NULL THEN
+  IF p_actor_id IS NULL THEN
     RAISE EXCEPTION 'Not authenticated';
   END IF;
 
   IF NOT EXISTS (
     SELECT 1 FROM public.shops
-    WHERE id = p_shop_id AND owner_id = auth.uid()
+    WHERE id = p_shop_id AND owner_id = p_actor_id
   ) THEN
     RAISE EXCEPTION 'Shop not found';
   END IF;
@@ -179,6 +180,8 @@ CREATE TRIGGER on_auth_user_created
 -- ============================================================
 
 ALTER TABLE public.shop_payment_accounts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.shops ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Users can manage own profile" ON public.profiles FOR ALL TO public USING ((auth.uid() = id)) WITH CHECK ((auth.uid() = id));
 CREATE POLICY "Allow public read access to shops" ON public.shops FOR SELECT TO anon USING (true);
@@ -192,4 +195,5 @@ CREATE POLICY "Allow authenticated read access to payment accounts" ON public.sh
 -- Grants
 -- ============================================================
 
-GRANT EXECUTE ON FUNCTION public.upsert_shop_payment_account(uuid, text, boolean, boolean, boolean) TO authenticated;
+REVOKE EXECUTE ON FUNCTION public.upsert_shop_payment_account(uuid, uuid, text, boolean, boolean, boolean) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.upsert_shop_payment_account(uuid, uuid, text, boolean, boolean, boolean) TO service_role;
