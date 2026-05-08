@@ -19,8 +19,8 @@
     "prepare": "simple-git-hooks"
   },
   "simple-git-hooks": {
-    "pre-commit": "bun run lint-staged",
-    "pre-push": "bun run test && bun run check"
+    "pre-commit": "bun run lint-staged && bun run check",
+    "pre-push": "bun run test"
   },
   "lint-staged": {
     "*.{ts,tsx,astro}": [
