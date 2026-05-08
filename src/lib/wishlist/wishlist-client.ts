@@ -1,4 +1,6 @@
-/** Handles wishlist toggle for all buttons with [data-wishlist-btn] or .wishlist-btn */
+/** Handles wishlist toggle for all buttons with .wishlist-btn */
+import { toggleLocalWishlist, syncLocalWishlistFromCookie, getLocalWishlistIds } from './wishlist-local';
+
 const HEART_SVG = `<svg width="SIZE" height="SIZE" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>`;
 const HEART_FILLED_SVG = `<svg width="SIZE" height="SIZE" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" fill="currentColor"/></svg>`;
 
@@ -33,20 +35,35 @@ function initWishlistButtons() {
                     body: JSON.stringify({ productId }),
                 });
 
-                if (!res.ok) {
-                    // Revert on error
-                    applyWishState(btn, wasWished, size);
-                    if (res.status === 401) {
-                        window.location.href = '/api/auth/login';
+                if (res.ok) {
+                    const payload = await res.json() as { wishlisted?: boolean; removedFromLocal?: boolean };
+                    const wishlisted = payload.wishlisted === true;
+
+                    if (payload.removedFromLocal) {
+                        // Ensure it's also removed from localStorage so it doesn't resurface
+                        const localIds = getLocalWishlistIds();
+                        if (localIds.includes(productId)) {
+                            toggleLocalWishlist(productId);
+                        }
                     }
+
+                    applyWishState(btn, wishlisted, size);
+                    window.dispatchEvent(new CustomEvent('wishlist-updated', { detail: { wishlisted } }));
                     return;
                 }
 
-                const payload = await res.json() as { wishlisted?: boolean };
-                const wishlisted = payload.wishlisted === true;
-                applyWishState(btn, wishlisted, size);
-                window.dispatchEvent(new CustomEvent('wishlist-updated', { detail: { wishlisted } }));
+                if (res.status === 401) {
+                    // Not authenticated — use localStorage fallback
+                    const localWished = toggleLocalWishlist(productId);
+                    applyWishState(btn, localWished, size);
+                    window.dispatchEvent(new CustomEvent('wishlist-updated', { detail: { wishlisted: localWished } }));
+                    return;
+                }
+
+                // Any other error: revert
+                applyWishState(btn, wasWished, size);
             } catch {
+                // Network failure: revert for now (could be extended to offline queue)
                 applyWishState(btn, wasWished, size);
             }
         });
@@ -65,6 +82,9 @@ function applyWishState(btn: HTMLButtonElement, wished: boolean, size: number) {
         btn.classList.add('text-text-secondary');
     }
 }
+
+// Sync cookie -> localStorage on first load (in case user closed tab and reopened)
+syncLocalWishlistFromCookie();
 
 // Init on page load and on Astro page transitions
 document.addEventListener('DOMContentLoaded', initWishlistButtons);

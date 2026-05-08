@@ -1,6 +1,6 @@
 import type { AstroCookies } from 'astro';
 import { createSupabaseAuthClient } from '../core/auth';
-import { getWishlistCount } from '../wishlist/wishlist';
+import { getMergedWishlistCount } from '../wishlist/wishlist';
 
 export interface BuyerShellState {
     isLoggedIn: boolean;
@@ -11,8 +11,10 @@ export async function getBuyerShellState(cookies: AstroCookies, request: Request
     const authClient = createSupabaseAuthClient(cookies, request);
     const { data: { user } } = await authClient.auth.getUser();
 
+    const wishlistCount = await getMergedWishlistCount(authClient, cookies, user?.id ?? null);
+
     return {
         isLoggedIn: !!user,
-        wishlistCount: user ? await getWishlistCount(authClient, user.id) : 0,
+        wishlistCount,
     };
 }
