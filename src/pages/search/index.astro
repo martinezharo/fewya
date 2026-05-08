@@ -8,6 +8,7 @@ import { supabase } from "../../lib/core/supabase";
 import { createSupabaseAuthClient } from "../../lib/core/auth";
 import { enrichProductsWithRatings } from "../../lib/products/productUtils";
 import { parseSearchParams } from "../../lib/products/search";
+import { getMergedWishlistIds } from "../../lib/wishlist/wishlist";
 import { strings } from "../../lib/core/i18n";
 import type { Product } from "../../lib/core/types";
 
@@ -72,14 +73,7 @@ const currentUrl = url.pathname + url.search;
 
 const authClient = createSupabaseAuthClient(Astro.cookies, Astro.request);
 const { data: { user } } = await authClient.auth.getUser();
-let wishedProductIds = new Set<string>();
-if (user) {
-    const { data: wishData } = await authClient
-        .from('wishlist')
-        .select('product_id')
-        .eq('profile_id', user.id);
-    wishedProductIds = new Set((wishData ?? []).map((w: any) => w.product_id));
-}
+const wishedProductIds = await getMergedWishlistIds(authClient, Astro.cookies, user?.id ?? null);
 ---
 
 <BuyerAppLayout title={`${strings.searchPageTitlePrefix}: ${params.q} | ${strings.siteTitle}`}>

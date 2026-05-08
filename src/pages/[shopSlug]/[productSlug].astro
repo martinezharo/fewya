@@ -60,19 +60,13 @@ const shippingDisplay = shippingCost === 0 ? 'Envío gratis' : `+${shippingCost.
 const hasVariants = sortedVariants.length > 1;
 const activeVariantStock = activeVariant?.stock ?? 0;
 
+import { getMergedWishlistIds } from '../../lib/wishlist/wishlist';
+
 // Check wishlist status
 const authClient = createSupabaseAuthClient(Astro.cookies, Astro.request);
 const { data: { user } } = await authClient.auth.getUser();
-let isWished = false;
-if (user) {
-  const { data: wishEntry } = await authClient
-    .from('wishlist')
-    .select('id')
-    .eq('profile_id', user.id)
-    .eq('product_id', product.id)
-    .maybeSingle();
-  isWished = !!wishEntry;
-}
+const mergedWishlist = await getMergedWishlistIds(authClient, Astro.cookies, user?.id ?? null);
+const isWished = mergedWishlist.has(product.id);
 ---
 
 <BuyerDetailLayout title={`${product.title} — ${shop.name}`}>

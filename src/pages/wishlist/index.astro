@@ -6,37 +6,43 @@ import { createSupabaseAuthClient } from "../../lib/core/auth";
 import { supabase } from "../../lib/core/supabase";
 import { enrichProductsWithRatings } from "../../lib/products/productUtils";
 import { isProductComplete } from "../../lib/products/productValidation";
+import { getWishlistIdsFromCookie } from "../../lib/wishlist/wishlist";
 import { strings } from "../../lib/core/i18n";
 import type { Product } from "../../lib/core/types";
 
 const authClient = createSupabaseAuthClient(Astro.cookies, Astro.request);
 const { data: { user } } = await authClient.auth.getUser();
 
-if (!user) return Astro.redirect('/api/auth/login');
+const localIds = [...getWishlistIdsFromCookie(Astro.cookies)].reverse(); // newest first
 
-const { data: wishlistData } = await authClient
-    .from('wishlist')
-    .select('product_id')
-    .eq('profile_id', user.id)
-    .order('created_at', { ascending: false });
+let dbIds: string[] = [];
+if (user) {
+    const { data: wishlistData } = await authClient
+        .from('wishlist')
+        .select('product_id')
+        .eq('profile_id', user.id)
+        .order('created_at', { ascending: false });
+    dbIds = (wishlistData ?? []).map((w: any) => w.product_id);
+}
 
-const productIds = (wishlistData ?? []).map((w: any) => w.product_id);
+// Build ordered unique list: DB first (newest), then locals not already in DB
+const dbSet = new Set(dbIds);
+const orderedIds = [...dbIds, ...localIds.filter(id => !dbSet.has(id))];
+const wishedProductIds = new Set(orderedIds);
 
 let products: Product[] = [];
-if (productIds.length > 0) {
+if (orderedIds.length > 0) {
     const { data: productsData } = await supabase
         .from('products')
         .select('*, shop:shops(*), variants:product_variants(*)')
-        .in('id', productIds)
+        .in('id', orderedIds)
         .eq('is_active', true);
 
     // Preserve wishlist order
     const byId = Object.fromEntries((productsData ?? []).map((p: any) => [p.id, p]));
-    products = productIds.map((id: string) => byId[id]).filter(Boolean).filter(isProductComplete) as Product[];
+    products = orderedIds.map((id: string) => byId[id]).filter(Boolean).filter(isProductComplete) as Product[];
     await enrichProductsWithRatings(products, supabase);
 }
-
-const wishedProductIds = new Set(productIds);
 ---
 
 <BuyerAppLayout title={strings.wishlistPageTitle}>
