@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { createSupabaseAuthClient } from '../../../lib/core/auth';
+import { getWishlistIdsFromCookie } from '../../../lib/wishlist/wishlist';
 
 type WishlistToggleBody = {
     productId?: unknown;
@@ -20,7 +21,10 @@ export const POST: APIRoute = async ({ cookies, request }) => {
         return new Response(JSON.stringify({ error: 'missing productId' }), { status: 400 });
     }
 
-    // Check if already wishlisted
+    const localIds = getWishlistIdsFromCookie(cookies);
+    const isInLocal = localIds.includes(productId);
+
+    // Check if already wishlisted in DB
     const { data: existing } = await authClient
         .from('wishlist')
         .select('id')
@@ -29,16 +33,31 @@ export const POST: APIRoute = async ({ cookies, request }) => {
         .maybeSingle();
 
     if (existing) {
-        // Remove from wishlist
+        // Remove from DB wishlist
         await authClient
             .from('wishlist')
             .delete()
             .eq('id', existing.id);
 
+        // If it also exists locally, tell client to remove it there too
+        if (isInLocal) {
+            return new Response(
+                JSON.stringify({ wishlisted: false, removedFromLocal: true }),
+                { status: 200 }
+            );
+        }
         return new Response(JSON.stringify({ wishlisted: false }), { status: 200 });
     }
 
-    // Add to wishlist
+    if (isInLocal) {
+        // Product is only in local wishlist — remove it from local
+        return new Response(
+            JSON.stringify({ wishlisted: false, removedFromLocal: true }),
+            { status: 200 }
+        );
+    }
+
+    // Add to DB wishlist
     await authClient
         .from('wishlist')
         .insert({ profile_id: user.id, product_id: productId });
