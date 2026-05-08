@@ -5,6 +5,15 @@ import { strings } from "../../lib/core/i18n";
 import { createSupabaseAuthClient } from "../../lib/core/auth";
 import { orderStatusLabels } from "../../lib/orders/orderStatus";
 
+interface PurchaseGroup {
+    orderId: string;
+    shopId: string;
+    shopName: string;
+    date: Date;
+    status: string;
+    items: { imageUrl: string; productName: string }[];
+}
+
 // Auth Server-Side Verification:
 const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
 const { data: { user } } = await supabase.auth.getUser();
