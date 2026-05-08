@@ -39,14 +39,16 @@ const { data: ordersData } = await supabase
     .eq('buyer_id', user.id)
     .order('created_at', { ascending: false });
 
-interface PurchaseGroup {
-    orderId: string;
-    shopId: string;
-    shopName: string;
-    date: Date;
-    status: string;
-    items: { imageUrl: string, productName: string }[];
-}
+const statusColorMap: Record<string, string> = {
+    pending: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
+    paid: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400",
+    processing: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400",
+    shipped: "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-400",
+    delivered: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400",
+    confirmed: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400",
+    incident: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400",
+    cancelled: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400",
+};
 
 // Group order items by shop and handle quantity
 const purchaseGroups: PurchaseGroup[] = [];
@@ -115,7 +117,9 @@ const recentPurchases = purchaseGroups.slice(0, 5);
                 {/* Slider horizontal de compras */}
                 <div id="purchases-slider" class="w-[100vw] -ml-4 md:w-full md:ml-0 overflow-x-auto scrollbar-hide snap-x snap-mandatory cursor-grab active:cursor-grabbing select-none">
                     <div class="flex gap-4 px-4 md:px-0 min-w-max pb-4">
-                        {recentPurchases.map(purchase => (
+                        {recentPurchases.map(purchase => {
+                            const statusColor = statusColorMap[purchase.status?.toLowerCase() ?? "pending"] ?? statusColorMap.pending;
+                            return (
                             <article class="flex-shrink-0 w-32 md:w-40 flex flex-col snap-start">
                                 <div class="relative aspect-square w-full rounded-2xl overflow-hidden bg-surface border border-border-light shadow-sm mb-3">
                                     {purchase.items.length === 1 ? (
@@ -145,12 +149,13 @@ const recentPurchases = purchaseGroups.slice(0, 5);
                                     <h3 class="text-[14px] font-semibold leading-tight text-text-primary truncate pointer-events-none" title={purchase.shopName}>
                                         {purchase.shopName}
                                     </h3>
-                                    <span class="text-[12px] font-medium text-text-secondary mt-1 block pointer-events-none">
+                                    <span class={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${statusColor}`}>
                                         {orderStatusLabels[purchase.status?.toLowerCase() as keyof typeof orderStatusLabels] || purchase.status || strings.orderStatusPending}
                                     </span>
                                 </div>
                             </article>
-                        ))}
+                            );
+                        })}
 
                         {/* Tarjeta de Ver Todos */}
                         <div class="flex-shrink-0 w-32 md:w-40 flex flex-col snap-start">
