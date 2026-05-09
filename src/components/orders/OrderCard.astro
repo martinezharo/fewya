@@ -25,6 +25,9 @@ export interface OrderCardData {
     trackingUrl?: string | null;
     labelUrl?: string | null;
     carrierName?: string | null;
+    incidentDescription?: string | null;
+    incidentPhotos?: string[] | null;
+    sellerEmail?: string | null;
 }
 
 interface Props {
@@ -65,6 +68,7 @@ const priceFormatted = new Intl.NumberFormat("es-ES", {
 
 const showTracking = order.hasShipment && (order.trackingNumber || order.trackingUrl || order.labelUrl);
 const showActions = normalizedStatus === 'delivered';
+const showIncident = normalizedStatus === 'incident' && order.incidentDescription;
 ---
 
 <article class="bg-surface rounded-2xl border border-border-light overflow-hidden" data-order-id={order.orderId} data-order-status={normalizedStatus}>
@@ -180,7 +184,7 @@ const showActions = normalizedStatus === 'delivered';
                 </button>
                 <button
                     type="button"
-                    class="order-incident-btn inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/60 transition-colors"
+                    class="open-incident-modal-btn inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/60 transition-colors"
                     data-order-id={order.orderId}
                 >
                     <Icon name="alert-circle" size={12} />
@@ -189,6 +193,128 @@ const showActions = normalizedStatus === 'delivered';
             </div>
         </div>
     )}
+
+    {showIncident && (
+        <div class="px-4 pb-4 md:px-5 md:pb-5 flex flex-col gap-4">
+            <div class="p-4 rounded-2xl bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800">
+                <p class="text-[11px] font-semibold uppercase tracking-wider text-red-700 dark:text-red-400 mb-2">
+                    {strings.orderIncidentReported}
+                </p>
+                <p class="text-sm text-red-800 dark:text-red-300 leading-relaxed whitespace-pre-line">
+                    {order.incidentDescription}
+                </p>
+            </div>
+
+            {order.incidentPhotos && order.incidentPhotos.length > 0 && (
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-text-secondary mb-2">
+                        {strings.incidentPanelPhotosLabel}
+                    </p>
+                    <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+                        {order.incidentPhotos.map((photo) => (
+                            <a href={photo} target="_blank" rel="noopener noreferrer" class="block aspect-square rounded-xl overflow-hidden border border-border-light bg-border-light hover:opacity-90 transition-opacity">
+                                <img src={photo} alt="Evidencia" class="w-full h-full object-cover" loading="lazy" />
+                            </a>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            <div class="p-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800">
+                <p class="text-xs text-blue-800 dark:text-blue-300 leading-relaxed">
+                    {strings.incidentUnderReviewNotice}{' '}
+                    {order.sellerEmail ? (
+                        <a href={`mailto:${order.sellerEmail}`} class="font-semibold underline hover:no-underline text-blue-900 dark:text-blue-200">
+                            {order.sellerEmail}
+                        </a>
+                    ) : (
+                        <span class="font-semibold">el vendedor</span>
+                    )}
+                    {strings.incidentReturnPolicyNoticeSuffix}
+                </p>
+            </div>
+        </div>
+    )}
+
+    {/* Incident Modal */}
+    <div class="incident-modal hidden fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4" data-order-id={order.orderId}>
+        <div class="w-full max-w-lg rounded-t-2xl sm:rounded-2xl border border-border bg-surface p-5 shadow-xl max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-base font-semibold text-text-primary">{strings.orderReportIncident}</h3>
+                <button type="button" class="close-incident-modal-btn p-1.5 rounded-lg hover:bg-border-light transition-colors text-text-secondary">
+                    <Icon name="x" size={18} />
+                </button>
+            </div>
+
+            <div class="p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 mb-4">
+                <p class="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
+                    {strings.incidentReturnPolicyNotice}{' '}
+                    {order.sellerEmail ? (
+                        <a href={`mailto:${order.sellerEmail}`} class="font-semibold underline hover:no-underline text-amber-900 dark:text-amber-200">
+                            {order.sellerEmail}
+                        </a>
+                    ) : (
+                        <span class="font-semibold">el vendedor</span>
+                    )}
+                    {strings.incidentReturnPolicyNoticeSuffix}
+                </p>
+            </div>
+
+            <div class="flex flex-col gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-text-primary mb-1.5">
+                        {strings.incidentDescriptionLabel}
+                    </label>
+                    <textarea
+                        class="incident-desc-input w-full rounded-xl border border-border bg-bg px-3 py-2.5 text-sm text-text-primary shadow-sm outline-none ring-accent focus:ring-2 transition-shadow resize-none"
+                        rows="4"
+                        placeholder={strings.incidentDescriptionPlaceholder}
+                    ></textarea>
+                    <p class="incident-desc-error hidden mt-1.5 text-xs text-red-600">{strings.incidentDescriptionError}</p>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-text-primary mb-1.5">
+                        {strings.incidentPhotosLabel}
+                    </label>
+                    <p class="text-xs text-text-secondary mb-2">{strings.incidentPhotosHint}</p>
+                    <div class="flex flex-wrap gap-2 mb-2">
+                        <span class="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 text-[11px] font-medium">
+                            <Icon name="tag" size={10} />
+                            {strings.incidentPhotoTypeShippingLabel}
+                        </span>
+                        <span class="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 text-[11px] font-medium">
+                            <Icon name="package" size={10} />
+                            {strings.incidentPhotoTypePackagingLabel}
+                        </span>
+                        <span class="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300 text-[11px] font-medium">
+                            <Icon name="alert-circle" size={10} />
+                            {strings.incidentPhotoTypeDefectLabel}
+                        </span>
+                    </div>
+
+                    <label class="flex items-center justify-center gap-2 w-full rounded-xl border-2 border-dashed border-border bg-bg px-4 py-6 cursor-pointer hover:bg-border-light/50 transition-colors">
+                        <Icon name="image" size={20} class="text-text-tertiary" />
+                        <span class="text-sm text-text-secondary">Seleccionar imágenes</span>
+                        <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple class="incident-file-input hidden" />
+                    </label>
+
+                    <p class="incident-photos-error hidden mt-1.5 text-xs text-red-600">{strings.incidentMinPhotosError}</p>
+
+                    <div class="incident-photo-preview grid grid-cols-4 gap-2 mt-3"></div>
+                </div>
+
+                <div class="flex gap-2 justify-end pt-2">
+                    <button type="button" class="close-incident-modal-btn px-3 py-1.5 text-sm font-medium text-text-secondary hover:text-text-primary transition-colors">
+                        {strings.incidentCancel}
+                    </button>
+                    <button type="button" class="submit-incident-btn px-3 py-1.5 text-sm font-semibold rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                        {strings.incidentSubmit}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 </article>
 
 <script>
@@ -209,7 +335,7 @@ const showActions = normalizedStatus === 'delivered';
                         body: JSON.stringify({ orderId }),
                     });
 
-                    const data = await res.json() as any;
+                    const data = await res.json() as { success?: boolean; error?: string };
                     if (data.success) {
                         alert('Pedido confirmado correctamente');
                         window.location.reload();
@@ -222,31 +348,179 @@ const showActions = normalizedStatus === 'delivered';
             });
         });
 
-        document.querySelectorAll('.order-incident-btn').forEach((btn) => {
-            btn.addEventListener('click', async (e) => {
+        // Incident modal logic
+        document.querySelectorAll('.open-incident-modal-btn').forEach((btn) => {
+            btn.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 const orderId = (btn as HTMLElement).dataset.orderId;
                 if (!orderId) return;
+                const modal = document.querySelector(`.incident-modal[data-order-id="${orderId}"]`);
+                if (modal) {
+                    modal.classList.remove('hidden');
+                    document.body.style.overflow = 'hidden';
+                }
+            });
+        });
 
-                if (!confirm('¿Quieres reportar una incidencia con este pedido? El vendedor será notificado.')) return;
+        document.querySelectorAll('.close-incident-modal-btn').forEach((btn) => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const modal = btn.closest('.incident-modal');
+                if (modal) {
+                    modal.classList.add('hidden');
+                    document.body.style.overflow = '';
+                }
+            });
+        });
+
+        document.querySelectorAll('.incident-modal').forEach((modal) => {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.classList.add('hidden');
+                    document.body.style.overflow = '';
+                }
+            });
+        });
+
+        // Photo upload & preview logic
+        document.querySelectorAll('.incident-modal').forEach((modal) => {
+            const fileInput = modal.querySelector('.incident-file-input') as HTMLInputElement | null;
+            const previewContainer = modal.querySelector('.incident-photo-preview') as HTMLElement | null;
+            const descInput = modal.querySelector('.incident-desc-input') as HTMLTextAreaElement | null;
+            const descError = modal.querySelector('.incident-desc-error') as HTMLElement | null;
+            const photosError = modal.querySelector('.incident-photos-error') as HTMLElement | null;
+            const submitBtn = modal.querySelector('.submit-incident-btn') as HTMLButtonElement | null;
+            const orderId = (modal as HTMLElement).dataset.orderId;
+
+            if (!fileInput || !previewContainer || !descInput || !submitBtn || !orderId) return;
+
+            const uploadedPhotos: string[] = [];
+
+            function renderPreviews() {
+                if (!previewContainer) return;
+                previewContainer.innerHTML = '';
+                uploadedPhotos.forEach((url, index) => {
+                    const div = document.createElement('div');
+                    div.className = 'relative aspect-square rounded-xl overflow-hidden border border-border-light bg-border-light';
+                    div.innerHTML = `
+                        <img src="${url}" alt="" class="w-full h-full object-cover" />
+                        <button type="button" data-index="${index}" class="remove-photo-btn absolute top-1 right-1 p-1 rounded-md bg-black/60 text-white hover:bg-black/80 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                        </button>
+                    `;
+                    previewContainer.appendChild(div);
+                });
+
+                previewContainer.querySelectorAll('.remove-photo-btn').forEach((btn) => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const idx = parseInt((btn as HTMLElement).dataset.index || '0', 10);
+                        uploadedPhotos.splice(idx, 1);
+                        renderPreviews();
+                    });
+                });
+            }
+
+            fileInput.addEventListener('change', async () => {
+                const files = Array.from(fileInput.files || []);
+                if (files.length === 0) return;
+
+                const remainingSlots = 20 - uploadedPhotos.length;
+                const toUpload = files.slice(0, remainingSlots);
+
+                if (toUpload.length < files.length) {
+                    alert('Máximo 20 imágenes permitidas');
+                }
+
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.textContent = 'Subiendo...';
+                }
+
+                for (const file of toUpload) {
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    formData.append('orderId', orderId);
+
+                    try {
+                        const res = await fetch('/api/orders/incident-upload', {
+                            method: 'POST',
+                            body: formData,
+                        });
+                        const data = await res.json() as { url?: string; error?: string };
+                        if (data.url) {
+                            uploadedPhotos.push(data.url);
+                        } else {
+                            console.error('Upload error', data.error);
+                        }
+                    } catch (err) {
+                        console.error('Upload failed', err);
+                    }
+                }
+
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Reportar incidencia';
+                }
+                fileInput.value = '';
+                renderPreviews();
+            });
+
+            submitBtn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const description = descInput.value || '';
+                const nonSpaceLength = description.replace(/\s/g, '').length;
+
+                let hasError = false;
+
+                if (nonSpaceLength < 50) {
+                    descError?.classList.remove('hidden');
+                    descInput.focus();
+                    hasError = true;
+                } else {
+                    descError?.classList.add('hidden');
+                }
+
+                if (uploadedPhotos.length < 3) {
+                    photosError?.classList.remove('hidden');
+                    hasError = true;
+                } else {
+                    photosError?.classList.add('hidden');
+                }
+
+                if (hasError) return;
+
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Reportando...';
 
                 try {
                     const res = await fetch('/api/orders/report-incident', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ orderId }),
+                        body: JSON.stringify({
+                            orderId,
+                            description,
+                            photos: uploadedPhotos,
+                        }),
                     });
 
-                    const data = await res.json() as any;
+                    const data = await res.json() as { success?: boolean; error?: string };
                     if (data.success) {
-                        alert('Incidencia reportada');
+                        alert('Incidencia reportada correctamente');
                         window.location.reload();
                     } else {
-                        alert(data.error || 'Error al reportar');
+                        alert(data.error || 'Error al reportar la incidencia');
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = 'Reportar incidencia';
                     }
                 } catch {
                     alert('Error de red');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Reportar incidencia';
                 }
             });
         });
