@@ -64,8 +64,14 @@ export const strings = {
     shopProductsCount: 'productos',
     shopNoDescription: 'Sin descripción disponible.',
 
-    // Auth
+    // Auth / Login
     heroGoogleSignIn: 'Continuar con Google',
+    loginPageTitle: 'Iniciar sesión — Fewya',
+    loginPageDescription: 'Inicia sesión en Fewya para continuar.',
+    loginSubtitle: 'Inicia sesión para comprar, vender y gestionar tus pedidos.',
+    loginGoogleCta: 'Continuar con Google',
+    loginTermsHint: 'Al continuar, aceptas nuestras condiciones de uso y política de privacidad.',
+    loginBackToHome: 'Volver al inicio',
 
     // Profile Page
     profilePageTitle: 'Mi perfil — Fewya',

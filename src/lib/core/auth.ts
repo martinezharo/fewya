@@ -1,6 +1,7 @@
 import { createServerClient, parseCookieHeader } from '@supabase/ssr';
 import type { AstroCookies } from 'astro';
 import { SUPABASE_URL, SUPABASE_KEY } from 'astro:env/server';
+import type { User } from '@supabase/supabase-js';
 import { strings } from './i18n';
 
 const AUTH_REDIRECT_COOKIE = 'fewya-auth-redirect';
@@ -87,6 +88,17 @@ export function clearPendingAuthFlowState(cookies: AstroCookies, url: URL) {
     clearAuthStateCookie(cookies, AUTH_ROLE_COOKIE, url);
 }
 
+function isNewlyRegisteredUser(user: User): boolean {
+    if (!user.last_sign_in_at) {
+        return false;
+    }
+    const createdAt = new Date(user.created_at).getTime();
+    const lastSignInAt = new Date(user.last_sign_in_at).getTime();
+    // If the account was created within 60 seconds of the last sign-in,
+    // we treat it as a first-time registration.
+    return Math.abs(lastSignInAt - createdAt) < 60_000;
+}
+
 export async function exchangeAuthCodeForSession(cookies: AstroCookies, request: Request, url: URL) {
     const code = url.searchParams.get('code');
 
@@ -116,6 +128,11 @@ export async function exchangeAuthCodeForSession(cookies: AstroCookies, request:
             .from('profiles')
             .update({ is_seller: true })
             .eq('id', data.session.user.id);
+    }
+
+    // First-time buyers: redirect to profile completion page
+    if (!role && data.session?.user && isNewlyRegisteredUser(data.session.user)) {
+        return '/me/details';
     }
 
     return redirectTo;
