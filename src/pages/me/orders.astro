@@ -32,7 +32,8 @@ const { data: ordersData } = await supabase
                     slug,
                     gallery_images,
                     shops (
-                        slug
+                        slug,
+                        contact_email
                     )
                 )
             )
@@ -45,6 +46,10 @@ const { data: ordersData } = await supabase
             tracking_url,
             label_url,
             carrier_name
+        ),
+        order_incidents (
+            description,
+            photos
         )
     `)
     .eq("buyer_id", user.id)
@@ -79,6 +84,26 @@ const orders: OrderCardData[] = (ordersData ?? []).map((order: any) => {
     const rawShipments = order.shipments;
     const shipment = Array.isArray(rawShipments) ? rawShipments[0] : rawShipments;
 
+    const rawIncidents = order.order_incidents;
+    const incident = Array.isArray(rawIncidents) ? rawIncidents[0] : rawIncidents;
+
+    // Extract seller email from first item
+    const firstValidItem = items[0];
+    let sellerEmail: string | null = null;
+    if (firstValidItem) {
+        const oi = order.order_items?.find((item: any) => {
+            const v = Array.isArray(item.product_variants) ? item.product_variants[0] : item.product_variants;
+            const p = v?.products ? (Array.isArray(v.products) ? v.products[0] : v.products) : null;
+            return p?.shops;
+        });
+        if (oi) {
+            const v = Array.isArray(oi.product_variants) ? oi.product_variants[0] : oi.product_variants;
+            const p = v?.products ? (Array.isArray(v.products) ? v.products[0] : v.products) : null;
+            const s = p?.shops ? (Array.isArray(p.shops) ? p.shops[0] : p.shops) : null;
+            sellerEmail = s?.contact_email ?? null;
+        }
+    }
+
     return {
         orderId: order.id,
         publicId: order.public_id,
@@ -92,6 +117,9 @@ const orders: OrderCardData[] = (ordersData ?? []).map((order: any) => {
         trackingUrl: shipment?.tracking_url ?? null,
         labelUrl: shipment?.sendcloud_shipment_id ? `/api/sendcloud/label?shipmentId=${encodeURIComponent(shipment.sendcloud_shipment_id)}` : null,
         carrierName: shipment?.carrier_name ?? null,
+        incidentDescription: incident?.description ?? null,
+        incidentPhotos: incident?.photos ?? null,
+        sellerEmail,
     };
 });
 ---

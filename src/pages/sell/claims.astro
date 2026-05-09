@@ -1,0 +1,221 @@
+---
+import SellerLayout from '../../layouts/SellerLayout.astro';
+import Icon from '../../components/icons/Icon.astro';
+import { strings } from '../../lib/core/i18n';
+import { createSupabaseAuthClient } from '../../lib/core/auth';
+
+const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
+const {
+    data: { user },
+} = await supabase.auth.getUser();
+
+if (!user) {
+    return Astro.redirect('/sell');
+}
+
+const { data: profile } = await supabase
+    .from('profiles')
+    .select('is_seller')
+    .eq('id', user.id)
+    .single();
+
+if (!profile?.is_seller) {
+    return Astro.redirect('/sell');
+}
+
+const { data: shop } = await supabase
+    .from('shops')
+    .select('id, name, slug')
+    .eq('owner_id', user.id)
+    .maybeSingle();
+
+if (!shop) {
+    return Astro.redirect('/sell/onboarding');
+}
+
+const { data: ordersData } = await supabase
+    .from('orders')
+    .select(`
+        id,
+        public_id,
+        status,
+        created_at,
+        buyer_email,
+        shipping_full_name,
+        order_items (
+            quantity,
+            product_variants (
+                variant_name,
+                variant_image,
+                products (
+                    title,
+                    gallery_images
+                )
+            )
+        ),
+        order_incidents (
+            description,
+            photos,
+            created_at
+        )
+    `)
+    .eq('shop_id', shop.id)
+    .eq('status', 'incident')
+    .order('created_at', { ascending: false });
+
+interface ClaimOrder {
+    orderId: string;
+    publicId: string;
+    createdAt: Date;
+    buyerEmail: string | null;
+    buyerName: string | null;
+    incidentDescription: string;
+    incidentPhotos: string[];
+    incidentCreatedAt: Date;
+    firstProductTitle: string;
+    firstProductImage: string;
+    itemCount: number;
+}
+
+const claims: ClaimOrder[] = (ordersData ?? []).map((order: any) => {
+    const rawItems = order.order_items ?? [];
+    let itemCount = 0;
+    let firstProductTitle = strings.fallbackProductName;
+    let firstProductImage = '';
+
+    for (const oi of rawItems) {
+        const rawVariant = oi.product_variants;
+        const variant = Array.isArray(rawVariant) ? rawVariant[0] : rawVariant;
+        if (!variant) continue;
+
+        const rawProduct = variant.products;
+        const product = Array.isArray(rawProduct) ? rawProduct[0] : rawProduct;
+        if (!product) continue;
+
+        const qty = Number(oi.quantity ?? 0);
+        if (qty <= 0) continue;
+
+        itemCount += qty;
+        if (!firstProductImage) {
+            firstProductTitle = product.title ?? strings.fallbackProductName;
+            firstProductImage = variant.variant_image || product.gallery_images?.[0] || '';
+        }
+    }
+
+    const rawIncidents = order.order_incidents;
+    const incident = Array.isArray(rawIncidents) ? rawIncidents[0] : rawIncidents;
+
+    return {
+        orderId: order.id,
+        publicId: order.public_id,
+        createdAt: new Date(order.created_at),
+        buyerEmail: order.buyer_email ?? null,
+        buyerName: order.shipping_full_name ?? null,
+        incidentDescription: incident?.description ?? '',
+        incidentPhotos: incident?.photos ?? [],
+        incidentCreatedAt: incident?.created_at ? new Date(incident.created_at) : new Date(order.created_at),
+        firstProductTitle,
+        firstProductImage,
+        itemCount,
+    };
+});
+
+const dateFormatter = new Intl.DateTimeFormat('es-ES', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+});
+---
+
+<SellerLayout title={strings.incidentPanelTitle} shopSlug={shop.slug} shopId={shop.id}>
+    <div class="p-6 lg:p-10">
+        <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-text-tertiary">{shop.name}</p>
+            <h1 class="mt-2 text-2xl font-semibold tracking-tight text-text-primary">
+                {strings.incidentPanelTitle}
+            </h1>
+            <p class="mt-2 text-sm text-text-secondary">
+                Revisa las incidencias reportadas por tus compradores.
+            </p>
+        </div>
+
+        {claims.length > 0 ? (
+            <div class="mt-8 flex flex-col gap-4">
+                {claims.map((claim) => (
+                    <article class="rounded-3xl border border-border bg-surface p-5 sm:p-6 shadow-sm flex flex-col gap-5">
+                        <div class="flex items-start gap-4">
+                            <div class="h-14 w-14 sm:h-16 sm:w-16 shrink-0 overflow-hidden rounded-2xl border border-border-light bg-border-light">
+                                {claim.firstProductImage ? (
+                                    <img src={claim.firstProductImage} alt={claim.firstProductTitle} class="h-full w-full object-cover" loading="lazy" />
+                                ) : (
+                                    <div class="flex h-full w-full items-center justify-center text-text-tertiary">
+                                        <Icon name="package" size={20} />
+                                    </div>
+                                )}
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <span class="shrink-0 inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400">
+                                        {strings.orderStatusIncident}
+                                    </span>
+                                    <span class="text-[11px] font-bold uppercase tracking-[0.12em] text-text-secondary">
+                                        #{claim.publicId}
+                                    </span>
+                                </div>
+                                <p class="mt-1 text-sm font-semibold text-text-primary truncate">
+                                    {claim.itemCount > 1 ? `${claim.itemCount} ${strings.ordersItemsPlural}` : claim.firstProductTitle}
+                                </p>
+                                <p class="text-xs text-text-secondary mt-0.5">
+                                    {claim.buyerName || claim.buyerEmail || strings.profileAnonymous}
+                                    {' · '}
+                                    {dateFormatter.format(claim.incidentCreatedAt)}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="p-4 rounded-2xl bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800">
+                            <p class="text-[11px] font-semibold uppercase tracking-wider text-red-700 dark:text-red-400 mb-2">
+                                {strings.incidentPanelDescriptionLabel}
+                            </p>
+                            <p class="text-sm text-red-800 dark:text-red-300 leading-relaxed whitespace-pre-line">
+                                {claim.incidentDescription}
+                            </p>
+                        </div>
+
+                        {claim.incidentPhotos.length > 0 && (
+                            <div>
+                                <p class="text-xs font-semibold uppercase tracking-wider text-text-secondary mb-2">
+                                    {strings.incidentPanelPhotosLabel}
+                                </p>
+                                <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
+                                    {claim.incidentPhotos.map((photo) => (
+                                        <a
+                                            href={photo}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            class="block aspect-square rounded-xl overflow-hidden border border-border-light bg-border-light hover:opacity-90 transition-opacity"
+                                        >
+                                            <img src={photo} alt="Evidencia" class="w-full h-full object-cover" loading="lazy" />
+                                        </a>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </article>
+                ))}
+            </div>
+        ) : (
+            <section class="mt-8 flex min-h-[360px] flex-col items-center justify-center rounded-[32px] border border-dashed border-border bg-surface px-6 py-12 text-center">
+                <div class="flex h-16 w-16 items-center justify-center rounded-full border border-border text-text-tertiary">
+                    <Icon name="check" size={26} />
+                </div>
+                <h2 class="mt-5 text-xl font-semibold tracking-tight text-text-primary">
+                    {strings.incidentPanelEmpty}
+                </h2>
+                <p class="mt-2 max-w-md text-sm text-text-secondary">
+                    {strings.incidentPanelEmptySub}
+                </p>
+            </section>
+        )}
+    </div>
+</SellerLayout>
