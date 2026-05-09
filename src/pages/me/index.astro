@@ -18,9 +18,9 @@ interface PurchaseGroup {
 const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
 const { data: { user } } = await supabase.auth.getUser();
 
-// If unauthorized, redirect to home (which will probably prompt login via PWA)
+// If unauthorized, redirect to login
 if (!user) {
-    return Astro.redirect('/');
+    return Astro.redirect('/login?redirect_to=/me');
 }
 
 // Fetch real orders data

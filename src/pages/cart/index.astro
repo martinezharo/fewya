@@ -2,11 +2,16 @@
 import BuyerAppLayout from '../../layouts/BuyerAppLayout.astro';
 import Icon from '../../components/icons/Icon.astro';
 import { strings } from '../../lib/core/i18n';
+import { createSupabaseAuthClient } from '../../lib/core/auth';
+
+const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
+const { data: { user } } = await supabase.auth.getUser();
+const isLoggedIn = !!user;
 ---
 
 <BuyerAppLayout title={strings.cartPageTitle}>
 
-  <main class="min-h-[60dvh] pb-36 md:pb-16">
+  <main class="min-h-[60dvh] pb-36 md:pb-16" data-is-logged-in={isLoggedIn ? 'true' : 'false'}>
     <div class="max-w-[960px] mx-auto px-4 md:px-10 py-4 md:py-8">
       <!-- Empty state -->
       <div id="cart-empty" class="hidden flex-col items-center justify-center gap-4 pt-20 text-center">
@@ -641,6 +646,12 @@ import { strings } from '../../lib/core/i18n';
   function handleCheckout() {
     const items = cart.get();
     if (items.length === 0) return;
+    const main = document.querySelector('main');
+    const isLoggedIn = main?.dataset.isLoggedIn === 'true';
+    if (!isLoggedIn) {
+      window.location.href = '/login?redirect_to=/cart';
+      return;
+    }
     openDeliveryModal();
   }
 

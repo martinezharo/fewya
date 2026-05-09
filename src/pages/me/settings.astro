@@ -10,7 +10,7 @@ const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
 const { data: { user } } = await supabase.auth.getUser();
 
 if (!user) {
-    return Astro.redirect('/');
+    return Astro.redirect('/login?redirect_to=/me/settings');
 }
 ---
 

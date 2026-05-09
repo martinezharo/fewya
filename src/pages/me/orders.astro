@@ -11,7 +11,7 @@ const {
     data: { user },
 } = await supabase.auth.getUser();
 
-if (!user) return Astro.redirect("/");
+if (!user) return Astro.redirect("/login?redirect_to=/me/orders");
 
 const { data: ordersData } = await supabase
     .from("orders")
