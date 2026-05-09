@@ -68,6 +68,18 @@ CREATE TABLE public.refunds (
   CONSTRAINT refunds_order_id_fkey FOREIGN KEY (order_id) REFERENCES public.orders(id)
 );
 
+CREATE TABLE public.order_incidents (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  order_id uuid NOT NULL,
+  description text NOT NULL,
+  photos text[] DEFAULT '{}'::text[],
+  created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
+  CONSTRAINT order_incidents_pkey PRIMARY KEY (id),
+  CONSTRAINT order_incidents_order_id_fkey FOREIGN KEY (order_id) REFERENCES public.orders(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_order_incidents_order_id ON public.order_incidents(order_id);
+
 -- ============================================================
 -- Functions
 -- ============================================================
@@ -361,13 +373,32 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
-CREATE OR REPLACE FUNCTION public.report_order_incident(p_actor_id uuid, p_order_id uuid)
+CREATE OR REPLACE FUNCTION public.report_order_incident(
+  p_actor_id uuid,
+  p_order_id uuid,
+  p_description text,
+  p_photos text[] DEFAULT '{}'::text[]
+)
 RETURNS public.orders AS $$
 DECLARE
   updated_order public.orders;
+  desc_length integer;
 BEGIN
   IF p_actor_id IS NULL THEN
     RAISE EXCEPTION 'Not authenticated';
+  END IF;
+
+  desc_length := LENGTH(REGEXP_REPLACE(COALESCE(p_description, ''), '\s', '', 'g'));
+  IF desc_length < 50 THEN
+    RAISE EXCEPTION 'Description too short. Minimum 50 non-space characters required.';
+  END IF;
+
+  IF array_length(p_photos, 1) IS NULL OR array_length(p_photos, 1) < 3 THEN
+    RAISE EXCEPTION 'At least 3 photos are required.';
+  END IF;
+
+  IF array_length(p_photos, 1) > 20 THEN
+    RAISE EXCEPTION 'Maximum 20 photos allowed.';
   END IF;
 
   UPDATE public.orders
@@ -380,6 +411,9 @@ BEGIN
   IF updated_order.id IS NULL THEN
     RAISE EXCEPTION 'Order not found or cannot be reported';
   END IF;
+
+  INSERT INTO public.order_incidents (order_id, description, photos)
+  VALUES (p_order_id, p_description, p_photos);
 
   RETURN updated_order;
 END;
@@ -418,6 +452,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 ALTER TABLE public.order_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.refunds ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.order_incidents ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Buyers can create their own orders" ON public.orders FOR INSERT TO authenticated WITH CHECK ((auth.uid() = buyer_id));
 CREATE POLICY "Buyers can view their own orders" ON public.orders FOR SELECT TO authenticated USING ((auth.uid() = buyer_id));
@@ -449,6 +484,19 @@ CREATE POLICY "Sellers can view order items from their shop" ON public.order_ite
       JOIN shops s ON ((p.shop_id = s.id)))
     WHERE ((pv.id = order_items.variant_id) AND (s.owner_id = auth.uid())))));
 CREATE POLICY "Allow inserting items if order is own" ON public.order_items FOR INSERT TO authenticated WITH CHECK (order_belongs_to_user(order_id));
+CREATE POLICY "Buyers can view their own incidents" ON public.order_incidents FOR SELECT TO authenticated USING (
+  EXISTS (
+    SELECT 1 FROM public.orders o
+    WHERE o.id = order_incidents.order_id AND o.buyer_id = auth.uid()
+  )
+);
+CREATE POLICY "Sellers can view incidents from their shop" ON public.order_incidents FOR SELECT TO authenticated USING (
+  EXISTS (
+    SELECT 1 FROM public.orders o
+    JOIN public.shops s ON o.shop_id = s.id
+    WHERE o.id = order_incidents.order_id AND s.owner_id = auth.uid()
+  )
+);
 
 -- ============================================================
 -- Grants
@@ -463,7 +511,7 @@ REVOKE EXECUTE ON FUNCTION public.mark_order_paid(uuid, text, text, text) FROM P
 REVOKE EXECUTE ON FUNCTION public.cancel_order(uuid, uuid, text) FROM PUBLIC, anon, authenticated;
 REVOKE EXECUTE ON FUNCTION public.mark_order_processing(uuid, uuid) FROM PUBLIC, anon, authenticated;
 REVOKE EXECUTE ON FUNCTION public.confirm_order_delivery(uuid, uuid) FROM PUBLIC, anon, authenticated;
-REVOKE EXECUTE ON FUNCTION public.report_order_incident(uuid, uuid) FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.report_order_incident(uuid, uuid, text, text[]) FROM PUBLIC, anon, authenticated;
 REVOKE EXECUTE ON FUNCTION public.auto_confirm_delivered_orders(uuid) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.reserve_stock(uuid, integer) TO service_role;
 GRANT EXECUTE ON FUNCTION public.restore_stock(uuid, integer) TO service_role;
@@ -472,5 +520,5 @@ GRANT EXECUTE ON FUNCTION public.mark_order_paid(uuid, text, text, text) TO serv
 GRANT EXECUTE ON FUNCTION public.cancel_order(uuid, uuid, text) TO service_role;
 GRANT EXECUTE ON FUNCTION public.mark_order_processing(uuid, uuid) TO service_role;
 GRANT EXECUTE ON FUNCTION public.confirm_order_delivery(uuid, uuid) TO service_role;
-GRANT EXECUTE ON FUNCTION public.report_order_incident(uuid, uuid) TO service_role;
+GRANT EXECUTE ON FUNCTION public.report_order_incident(uuid, uuid, text, text[]) TO service_role;
 GRANT EXECUTE ON FUNCTION public.auto_confirm_delivered_orders(uuid) TO service_role;
