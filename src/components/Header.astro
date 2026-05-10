@@ -8,11 +8,13 @@ import { strings } from "../lib/core/i18n";
 interface Props {
     currentPath?: string;
     wishlistCount?: number;
+    profileIncomplete?: boolean;
 }
 
 const {
     currentPath = Astro.url.pathname,
     wishlistCount = 0,
+    profileIncomplete = false,
 } = Astro.props;
 ---
 
@@ -40,6 +42,7 @@ const {
                 const isActive = href === '/' ? currentPath === '/' : currentPath.startsWith(href);
                 const isWishlistBadge = badgeType === 'wishlist';
                 const isCartBadge = badgeType === 'cart';
+                const isMeBadge = href === '/me' && profileIncomplete;
                 return (
                     <a
                         href={href}
@@ -67,6 +70,11 @@ const {
                                 style="display: none"
                             >
                                 0
+                            </span>
+                        )}
+                        {isMeBadge && (
+                            <span class="absolute top-0.5 right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white ring-2 ring-bg">
+                                !
                             </span>
                         )}
                     </a>
