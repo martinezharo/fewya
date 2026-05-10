@@ -19,6 +19,11 @@ export interface ProfileFormData {
     address_country: string;
 }
 
+export interface ProfileCompletenessResult {
+    complete: boolean;
+    missingFields: string[];
+}
+
 const POSTAL_CODE_RANGES: Record<string, { min: number; max: number }> = {
     ES: { min: 1000, max: 52999 },
 };
@@ -33,6 +38,40 @@ const phoneRegexMap: Record<string, RegExp> = {
 
 function getPhoneRegex(prefix: string): RegExp | null {
     return phoneRegexMap[prefix] || null;
+}
+
+/**
+ * Checks whether a profile has all required fields filled for checkout.
+ * Works with raw DB values (null/undefined/empty strings).
+ */
+export function isProfileComplete(profile: {
+    first_name?: string | null;
+    last_name?: string | null;
+    phone?: string | null;
+    address_street?: string | null;
+    address_number?: string | null;
+    address_postal_code?: string | null;
+    address_city?: string | null;
+    address_province?: string | null;
+    address_country?: string | null;
+}): ProfileCompletenessResult {
+    const missingFields: string[] = [];
+
+    if (!profile.first_name?.trim()) missingFields.push('nombre');
+    if (!profile.last_name?.trim()) missingFields.push('apellidos');
+    if (!profile.phone?.trim()) missingFields.push('teléfono');
+    if (!profile.address_street?.trim()) missingFields.push('calle');
+    if (!profile.address_number?.trim()) missingFields.push('número');
+    if (!profile.address_postal_code?.trim()) missingFields.push('código postal');
+    if (!profile.address_city?.trim()) missingFields.push('ciudad');
+    if (profile.address_country === 'ES' && !profile.address_province?.trim()) {
+        missingFields.push('provincia');
+    }
+
+    return {
+        complete: missingFields.length === 0,
+        missingFields,
+    };
 }
 
 export function validateProfileForm(data: ProfileFormData): ValidationError[] {

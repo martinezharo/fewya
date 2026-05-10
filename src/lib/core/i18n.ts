@@ -184,6 +184,8 @@ export const strings = {
     meDataAvatarNote: 'Foto de perfil',
     meDataCheckoutNoticeTitle: 'Completa tus datos para pagar',
     meDataCheckoutNoticeSubtitle: 'Guarda tu nombre y tu dirección de envío para volver al carrito y terminar la compra.',
+    meDataIncompleteNoticeTitle: 'Perfil incompleto',
+    meDataIncompleteNoticeSubtitle: 'Necesitamos tu nombre, teléfono y dirección de envío para que puedas realizar compras.',
 
     // Form validation errors
     validationRequired: 'Este campo es obligatorio',
