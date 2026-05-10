@@ -502,8 +502,25 @@ const isSpain = currentCountry === 'ES';
 
     if (fromCheckout) {
         const firstNameInput = form.querySelector('#first_name') as HTMLInputElement | null;
+        const lastNameInput = form.querySelector('#last_name') as HTMLInputElement | null;
+        const phoneInput = form.querySelector('#phone') as HTMLInputElement | null;
         const streetInput = form.querySelector('#address_street') as HTMLInputElement | null;
-        const firstMissingField = firstNameInput?.value.trim() ? streetInput : firstNameInput;
+        const numberInput = form.querySelector('#address_number') as HTMLInputElement | null;
+        const postalCodeInput = form.querySelector('#address_postal_code') as HTMLInputElement | null;
+        const cityInput = form.querySelector('#address_city') as HTMLInputElement | null;
+        const provinceInput = form.querySelector('#address_province') as HTMLInputElement | HTMLSelectElement | null;
+
+        const firstMissingField =
+            !firstNameInput?.value.trim() ? firstNameInput :
+            !lastNameInput?.value.trim() ? lastNameInput :
+            !phoneInput?.value.trim() ? phoneInput :
+            !streetInput?.value.trim() ? streetInput :
+            !numberInput?.value.trim() ? numberInput :
+            !postalCodeInput?.value.trim() ? postalCodeInput :
+            !cityInput?.value.trim() ? cityInput :
+            !provinceInput?.value.trim() ? provinceInput :
+            null;
+
         firstMissingField?.focus();
     }
 </script>

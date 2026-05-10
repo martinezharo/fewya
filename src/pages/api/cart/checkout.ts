@@ -132,7 +132,9 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     const firstName = profile?.first_name?.trim() || user.user_metadata?.full_name?.trim() || null;
     const lastName = profile?.last_name?.trim() || null;
     const shippingFullName = [firstName, lastName].filter(Boolean).join(' ') || null;
-    const shippingPhone = [(profile as any)?.phone_prefix || '+34', profile?.phone?.trim()].filter(Boolean).join(' ') || null;
+    const phonePrefix = ((profile as any)?.phone_prefix || '+34').trim();
+    const phone = profile?.phone?.trim() || null;
+    const shippingPhone = phone ? `${phonePrefix} ${phone}` : null;
 
     const street = profile?.address_street?.trim() || '';
     const number = profile?.address_number?.trim() || '';
@@ -153,7 +155,17 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     const shippingAddress = addressParts.length > 0 ? addressParts.join(', ') : null;
     const buyerEmail = user.email || profile?.email || null;
 
-    if (!shippingFullName || !shippingAddress) {
+    const missingFields: string[] = [];
+    if (!firstName) missingFields.push('nombre');
+    if (!lastName) missingFields.push('apellidos');
+    if (!phone) missingFields.push('teléfono');
+    if (!street) missingFields.push('calle');
+    if (!number) missingFields.push('número');
+    if (!postalCode) missingFields.push('código postal');
+    if (!city) missingFields.push('ciudad');
+    if (country === 'ES' && !province) missingFields.push('provincia');
+
+    if (missingFields.length > 0) {
         const redirectParams = new URLSearchParams({
             checkout: '1',
             return_to: '/cart',

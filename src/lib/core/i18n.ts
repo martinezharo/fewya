@@ -381,7 +381,7 @@ export const strings = {
     apiInvalidProductData: 'Datos de producto invalidos',
     apiOrderCreateError: 'Error al crear el pedido',
     apiOrderItemsSaveError: 'Error al guardar los productos del pedido',
-    apiProfileIncomplete: 'Completa tu nombre y dirección de envío antes de pagar',
+    apiProfileIncomplete: 'Completa tu nombre, teléfono y dirección de envío antes de pagar',
     apiCheckoutOutOfStock: 'Algunos productos ya no tienen stock suficiente',
     apiCheckoutProductUnavailable: 'Hay productos del carrito que ya no están disponibles',
     apiCheckoutSellerNotReady: 'Una de las tiendas aún no puede cobrar con Stripe',
