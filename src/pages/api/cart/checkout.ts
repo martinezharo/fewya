@@ -10,6 +10,7 @@ import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
 import { strings } from '../../../lib/core/i18n';
 import { validateCheckoutReadiness } from '../../../lib/products/productValidation';
 import { buildAbsoluteUrl, getStripeClient } from '../../../lib/payments/stripe';
+import { isProfileComplete } from '../../../lib/core/validation';
 
 interface CheckoutItemPayload {
     variantId: string;
@@ -129,6 +130,20 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         .eq('id', user.id)
         .single();
 
+    const profileCheck = isProfileComplete(profile ?? {});
+
+    if (!profileCheck.complete) {
+        const redirectParams = new URLSearchParams({
+            checkout: '1',
+            return_to: '/cart',
+        });
+
+        return jsonResponse({
+            error: strings.apiProfileIncomplete,
+            redirectTo: `/me/details?${redirectParams.toString()}`,
+        }, 400);
+    }
+
     const firstName = profile?.first_name?.trim() || user.user_metadata?.full_name?.trim() || null;
     const lastName = profile?.last_name?.trim() || null;
     const shippingFullName = [firstName, lastName].filter(Boolean).join(' ') || null;
@@ -154,28 +169,6 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     const shippingAddress = addressParts.length > 0 ? addressParts.join(', ') : null;
     const buyerEmail = user.email || profile?.email || null;
-
-    const missingFields: string[] = [];
-    if (!firstName) missingFields.push('nombre');
-    if (!lastName) missingFields.push('apellidos');
-    if (!phone) missingFields.push('teléfono');
-    if (!street) missingFields.push('calle');
-    if (!number) missingFields.push('número');
-    if (!postalCode) missingFields.push('código postal');
-    if (!city) missingFields.push('ciudad');
-    if (country === 'ES' && !province) missingFields.push('provincia');
-
-    if (missingFields.length > 0) {
-        const redirectParams = new URLSearchParams({
-            checkout: '1',
-            return_to: '/cart',
-        });
-
-        return jsonResponse({
-            error: strings.apiProfileIncomplete,
-            redirectTo: `/me/details?${redirectParams.toString()}`,
-        }, 400);
-    }
 
     const variantIds = normalizedItems.map((item) => item.variantId);
     const { data: variantRows, error: variantsError } = await authClient
