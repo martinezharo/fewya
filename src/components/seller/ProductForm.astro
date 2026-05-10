@@ -769,6 +769,11 @@ const defaultsJson = JSON.stringify(shippingDefaults ?? {});
                     window.location.href = `/sell/catalog/${data.product.id}`;
                     return;
                 }
+
+                if (mode === 'edit') {
+                    window.location.href = '/sell/catalog';
+                    return;
+                }
             } catch (err) {
                 errorMsg.textContent = err instanceof Error ? err.message : strings.sellerProductSaveError;
                 errorMsg.classList.remove('hidden');
