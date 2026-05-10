@@ -2,7 +2,7 @@
 import BuyerAppLayout from "../../layouts/BuyerAppLayout.astro";
 import Icon from "../../components/icons/Icon.astro";
 import OrderCard from "../../components/orders/OrderCard.astro";
-import type { OrderCardData } from "../../components/orders/OrderCard.astro";
+import type { OrderCardData, OrderItem } from "../../components/orders/OrderCard.astro";
 import { strings } from "../../lib/core/i18n";
 import { createSupabaseAuthClient } from "../../lib/core/auth";
 
@@ -24,6 +24,7 @@ const { data: ordersData } = await supabase
         cancellation_reason,
         order_items (
             quantity,
+            price_at_purchase,
             product_variants (
                 variant_name,
                 variant_image,
@@ -78,8 +79,12 @@ const orders: OrderCardData[] = (ordersData ?? []).map((order: any) => {
             shopSlug: shop.slug,
             variantName: variant.variant_name ?? null,
             quantity: oi.quantity ?? 1,
+            unitPrice: Number(oi.price_at_purchase ?? 0),
         };
-    }).filter(Boolean);
+    }).filter(Boolean) as OrderItem[];
+
+    const subtotal = items.reduce((sum: number, item) => sum + ((item.unitPrice ?? 0) * (item.quantity ?? 1)), 0);
+    const shipping = Math.max(0, (order.total_amount ?? 0) - subtotal);
 
     const rawShipments = order.shipments;
     const shipment = Array.isArray(rawShipments) ? rawShipments[0] : rawShipments;
@@ -109,6 +114,8 @@ const orders: OrderCardData[] = (ordersData ?? []).map((order: any) => {
         publicId: order.public_id,
         status: order.status ?? "pending",
         totalAmount: order.total_amount ?? 0,
+        subtotal,
+        shipping,
         createdAt: new Date(order.created_at),
         cancellationReason: order.cancellation_reason ?? null,
         items,

@@ -10,6 +10,7 @@ export interface OrderItem {
     shopSlug: string;
     variantName: string | null;
     quantity?: number;
+    unitPrice?: number;
 }
 
 export interface OrderCardData {
@@ -17,6 +18,8 @@ export interface OrderCardData {
     publicId: string;
     status: string;
     totalAmount: number;
+    subtotal: number;
+    shipping: number;
     createdAt: Date;
     cancellationReason?: string | null;
     items: OrderItem[];
@@ -53,7 +56,6 @@ const statusColor = statusColorMap[normalizedStatus] ?? statusColorMap.pending;
 
 const firstItem = order.items[0];
 const itemCount = order.items.reduce((sum, item) => sum + (item.quantity ?? 1), 0);
-const href = firstItem ? `/${firstItem.shopSlug}/${firstItem.productSlug}` : "#";
 
 const dateFormatted = order.createdAt.toLocaleDateString("es-ES", {
     day: "numeric",
@@ -61,10 +63,12 @@ const dateFormatted = order.createdAt.toLocaleDateString("es-ES", {
     year: "numeric",
 });
 
-const priceFormatted = new Intl.NumberFormat("es-ES", {
+const currencyFormatter = new Intl.NumberFormat("es-ES", {
     style: "currency",
     currency: "EUR",
-}).format(order.totalAmount);
+});
+
+const totalFormatted = currencyFormatter.format(order.totalAmount);
 
 const showTracking = order.hasShipment && (order.trackingNumber || order.trackingUrl);
 const showActions = normalizedStatus === 'delivered';
@@ -72,9 +76,12 @@ const showIncident = normalizedStatus === 'incident' && order.incidentDescriptio
 ---
 
 <article class="bg-surface rounded-2xl border border-border-light overflow-hidden" data-order-id={order.orderId} data-order-status={normalizedStatus}>
-    <a
-        href={href}
-        class="group flex items-center gap-4 py-4 px-4 md:py-5 md:px-5 hover:border-border-default hover:shadow-sm transition-all duration-200 select-none"
+    {/* Collapsible header */}
+    <button
+        type="button"
+        class="order-toggle-btn group w-full flex items-center gap-4 py-4 px-4 md:py-5 md:px-5 text-left hover:bg-bg transition-colors duration-200 select-none"
+        aria-expanded="false"
+        aria-controls={`order-details-${order.orderId}`}
     >
         {/* Thumbnail */}
         <div class="relative flex-shrink-0 w-16 h-16 md:w-[72px] md:h-[72px] rounded-xl overflow-hidden bg-border-light">
@@ -115,7 +122,7 @@ const showIncident = normalizedStatus === 'incident' && order.incidentDescriptio
                 </div>
                 <div class="flex flex-col items-end gap-1.5 flex-shrink-0">
                     <span class="text-[15px] font-bold text-text-primary tabular-nums">
-                        {priceFormatted}
+                        {totalFormatted}
                     </span>
                     <span class={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${statusColor}`}>
                         {statusLabel}
@@ -124,13 +131,75 @@ const showIncident = normalizedStatus === 'incident' && order.incidentDescriptio
             </div>
         </div>
 
-        {/* Chevron (desktop only) */}
+        {/* Chevron */}
         <Icon
-            name="chevron-right"
+            name="chevron-down"
             size={18}
-            class="hidden md:block flex-shrink-0 text-text-tertiary group-hover:text-text-primary transition-colors"
+            class="toggle-icon flex-shrink-0 text-text-tertiary group-hover:text-text-primary transition-transform duration-200"
         />
-    </a>
+    </button>
+
+    {/* Expandable details */}
+    <div id={`order-details-${order.orderId}`} class="order-details hidden border-t border-border-light">
+        <div class="px-4 py-4 md:px-5 md:py-5 flex flex-col gap-4">
+            {/* Items list */}
+            <div class="flex flex-col gap-3">
+                {order.items.map((item) => (
+                    <a
+                        href={`/${item.shopSlug}/${item.productSlug}`}
+                        class="flex items-center gap-3 rounded-xl border border-border-light bg-bg/50 p-3 hover:border-border hover:bg-bg transition-colors"
+                    >
+                        <div class="relative flex-shrink-0 w-14 h-14 rounded-lg overflow-hidden bg-border-light">
+                            {item.imageUrl ? (
+                                <img src={item.imageUrl} alt={item.productTitle} class="w-full h-full object-cover" loading="lazy" />
+                            ) : (
+                                <div class="w-full h-full flex items-center justify-center text-text-tertiary">
+                                    <Icon name="shopping-cart" size={18} />
+                                </div>
+                            )}
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-semibold text-text-primary truncate leading-snug">
+                                {item.productTitle}
+                            </p>
+                            {item.variantName && (
+                                <p class="text-[12px] text-text-secondary truncate mt-0.5">
+                                    {item.variantName}
+                                </p>
+                            )}
+                            <p class="text-[12px] font-medium text-text-tertiary mt-0.5">
+                                {item.quantity ?? 1} {strings.ordersItemsUnit} · {currencyFormatter.format(item.unitPrice ?? 0)}
+                            </p>
+                        </div>
+                        <div class="flex-shrink-0">
+                            <span class="text-sm font-bold text-text-primary tabular-nums">
+                                {currencyFormatter.format((item.unitPrice ?? 0) * (item.quantity ?? 1))}
+                            </span>
+                        </div>
+                        <Icon name="chevron-right" size={16} class="flex-shrink-0 text-text-tertiary" />
+                    </a>
+                ))}
+            </div>
+
+            {/* Price breakdown */}
+            <div class="rounded-xl border border-border-light bg-bg/50 p-4 flex flex-col gap-2">
+                <div class="flex items-center justify-between text-sm">
+                    <span class="text-text-secondary">{strings.ordersSubtotal}</span>
+                    <span class="font-semibold text-text-primary tabular-nums">{currencyFormatter.format(order.subtotal)}</span>
+                </div>
+                <div class="flex items-center justify-between text-sm">
+                    <span class="text-text-secondary">{strings.cartShipping}</span>
+                    <span class="font-semibold text-text-primary tabular-nums">
+                        {order.shipping > 0 ? currencyFormatter.format(order.shipping) : strings.ordersFreeShipping}
+                    </span>
+                </div>
+                <div class="mt-1 pt-2 border-t border-border-light flex items-center justify-between text-sm">
+                    <span class="font-semibold text-text-primary">{strings.cartTotal}</span>
+                    <span class="font-bold text-text-primary tabular-nums">{currencyFormatter.format(order.totalAmount)}</span>
+                </div>
+            </div>
+        </div>
+    </div>
 
     {normalizedStatus === 'cancelled' && order.cancellationReason && (
         <div class="px-4 pb-3 -mt-1 md:px-5 md:pb-4">
@@ -311,6 +380,24 @@ const showIncident = normalizedStatus === 'incident' && order.incidentDescriptio
 
 <script>
     (function () {
+        // Toggle expandable order details
+        document.querySelectorAll('.order-toggle-btn').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const article = btn.closest('article');
+                const details = article?.querySelector('.order-details') as HTMLElement | null;
+                const icon = btn.querySelector('.toggle-icon') as HTMLElement | null;
+                const expanded = btn.getAttribute('aria-expanded') === 'true';
+
+                if (details) {
+                    details.classList.toggle('hidden', expanded);
+                }
+                if (icon) {
+                    icon.style.transform = expanded ? 'rotate(0deg)' : 'rotate(180deg)';
+                }
+                btn.setAttribute('aria-expanded', String(!expanded));
+            });
+        });
+
         document.querySelectorAll('.order-confirm-btn').forEach((btn) => {
             btn.addEventListener('click', async (e) => {
                 e.preventDefault();

@@ -215,8 +215,11 @@ export const strings = {
     ordersExploreCta: 'Explorar productos',
     ordersItemsSingular: 'artículo',
     ordersItemsPlural: 'artículos',
+    ordersItemsUnit: 'ud.',
     ordersTotal: 'Total',
     ordersOrder: 'Pedido',
+    ordersSubtotal: 'Subtotal',
+    ordersFreeShipping: 'Gratis',
 
     // Shipping / Sendcloud
     shippingCreateShipment: 'Crear envío',
