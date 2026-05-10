@@ -492,11 +492,9 @@ const isSpain = currentCountry === 'ES';
             if (res.ok) {
                 showFeedback(fromCheckout ? strings.meDataSaveAndReturnSuccess : strings.meDataSaveSuccess, false);
 
-                if (fromCheckout && returnTo) {
-                    window.setTimeout(() => {
-                        window.location.href = returnTo;
-                    }, 900);
-                }
+                window.setTimeout(() => {
+                    window.location.href = fromCheckout && returnTo ? returnTo : '/me';
+                }, 900);
             } else {
                 showFeedback(strings.meDataSaveError, true);
             }
