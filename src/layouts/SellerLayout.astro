@@ -17,6 +17,7 @@ const currentPath = Astro.url.pathname;
 
 let stripeStatus: 'not_connected' | 'pending' | 'ready' = 'not_connected';
 let activeIncidents = 0;
+let pendingOrdersCount = 0;
 
 if (shopId) {
     const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
@@ -34,19 +35,27 @@ if (shopId) {
         }
     }
 
-    const { count } = await supabase
+    const { count: incidentsCount } = await supabase
         .from('orders')
         .select('id', { count: 'exact', head: true })
         .eq('shop_id', shopId)
         .eq('status', 'incident');
 
-    activeIncidents = count ?? 0;
+    activeIncidents = incidentsCount ?? 0;
+
+    const { count: pendingCount } = await supabase
+        .from('orders')
+        .select('id', { count: 'exact', head: true })
+        .eq('shop_id', shopId)
+        .in('status', ['paid', 'processing']);
+
+    pendingOrdersCount = pendingCount ?? 0;
 }
 ---
 
 <Layout title={title} description={description}>
     <div class="flex h-dvh overflow-hidden bg-bg">
-        <SellerSidebar currentPath={currentPath} shopSlug={shopSlug} stripeStatus={stripeStatus} activeIncidents={activeIncidents} />
+        <SellerSidebar currentPath={currentPath} shopSlug={shopSlug} stripeStatus={stripeStatus} activeIncidents={activeIncidents} pendingOrdersCount={pendingOrdersCount} />
 
         <div class="flex flex-col flex-1 min-w-0 overflow-hidden">
             <!-- Mobile top bar (hidden on lg+) -->

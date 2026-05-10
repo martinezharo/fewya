@@ -8,9 +8,10 @@ interface Props {
     shopSlug?: string;
     stripeStatus?: 'not_connected' | 'pending' | 'ready';
     activeIncidents?: number;
+    pendingOrdersCount?: number;
 }
 
-const { currentPath, shopSlug, stripeStatus = 'not_connected', activeIncidents = 0 } = Astro.props;
+const { currentPath, shopSlug, stripeStatus = 'not_connected', activeIncidents = 0, pendingOrdersCount = 0 } = Astro.props;
 
 function isActive(href: string) {
     if (href === '/sell') return currentPath === '/sell';
@@ -80,6 +81,14 @@ function isActive(href: string) {
                     >
                         <Icon name={item.icon} size={20} class="shrink-0" />
                         <span class="sidebar-label truncate">{item.label}</span>
+                        {item.href === '/sell/orders' && pendingOrdersCount > 0 && (
+                            <span class:list={[
+                                'sidebar-label ml-auto inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold leading-none',
+                                isActive(item.href) ? 'bg-bg text-accent' : 'bg-accent text-bg',
+                            ]}>
+                                {pendingOrdersCount}
+                            </span>
+                        )}
                         {item.href === '/sell/claims' && activeIncidents > 0 && (
                             <span class="sidebar-label ml-auto inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold leading-none">
                                 {activeIncidents}
