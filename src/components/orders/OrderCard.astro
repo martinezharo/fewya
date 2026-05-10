@@ -66,7 +66,7 @@ const priceFormatted = new Intl.NumberFormat("es-ES", {
     currency: "EUR",
 }).format(order.totalAmount);
 
-const showTracking = order.hasShipment && (order.trackingNumber || order.trackingUrl || order.labelUrl);
+const showTracking = order.hasShipment && (order.trackingNumber || order.trackingUrl);
 const showActions = normalizedStatus === 'delivered';
 const showIncident = normalizedStatus === 'incident' && order.incidentDescription;
 ---
@@ -146,26 +146,18 @@ const showIncident = normalizedStatus === 'incident' && order.incidentDescriptio
     {showTracking && (
         <div class="flex flex-wrap items-center gap-2 px-4 pb-4 -mt-2 md:px-5 md:pb-5">
             {order.trackingUrl && (
-                <a
-                    href={order.trackingUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-400 hover:bg-purple-200 dark:hover:bg-purple-900/60 transition-colors"
-                >
-                    <Icon name="truck" size={10} />
-                    {order.trackingNumber || 'Seguir'}
-                </a>
-            )}
-            {order.labelUrl && (
-                <a
-                    href={order.labelUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded-full bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors"
-                >
-                    <Icon name="file-text" size={10} />
-                    Etiqueta
-                </a>
+                <>
+                    <span class="text-[11px] text-text-secondary">Seguir envío:</span>
+                    <a
+                        href={order.trackingUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-semibold rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-400 hover:bg-purple-200 dark:hover:bg-purple-900/60 transition-colors"
+                    >
+                        {order.trackingNumber || 'Seguir'}
+                        <Icon name="arrow-up-right" size={10} />
+                    </a>
+                </>
             )}
         </div>
     )}
