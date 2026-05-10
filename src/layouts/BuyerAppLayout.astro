@@ -10,13 +10,13 @@ interface Props {
 }
 
 const { title, description } = Astro.props;
-const { wishlistCount } = await getBuyerShellState(Astro.cookies, Astro.request);
+const { wishlistCount, profileIncomplete } = await getBuyerShellState(Astro.cookies, Astro.request);
 const currentPath = Astro.url.pathname;
 ---
 
 <Layout title={title} description={description}>
-    <Header currentPath={currentPath} wishlistCount={wishlistCount} />
+    <Header currentPath={currentPath} wishlistCount={wishlistCount} profileIncomplete={profileIncomplete} />
     <slot name="afterHeader" />
     <slot />
-    <BottomNav currentPath={currentPath} wishlistCount={wishlistCount} />
+    <BottomNav currentPath={currentPath} wishlistCount={wishlistCount} profileIncomplete={profileIncomplete} />
 </Layout>
