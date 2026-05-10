@@ -5,6 +5,7 @@ import { strings } from "../../lib/core/i18n";
 import { createSupabaseAuthClient } from "../../lib/core/auth";
 import { getAllCountries } from "../../lib/shipping/countries";
 import { spainProvinces } from "../../lib/shipping/spain-provinces";
+import { isProfileComplete } from "../../lib/core/validation";
 
 const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
 const { data: { user } } = await supabase.auth.getUser();
@@ -21,6 +22,9 @@ const { data: profile } = await supabase
 
 const returnTo = Astro.url.searchParams.get('return_to');
 const fromCheckout = Astro.url.searchParams.get('checkout') === '1' && returnTo === '/cart';
+
+const profileCheck = isProfileComplete(profile ?? {});
+const profileIncomplete = !profileCheck.complete;
 
 const allCountries = getAllCountries();
 const currentCountry = profile?.address_country || 'ES';
@@ -40,6 +44,18 @@ const isSpain = currentCountry === 'ES';
                 {strings.meDataPageTitle}
             </h1>
         </div>
+
+        {profileIncomplete && (
+            <div class="mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-4 text-red-800 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300">
+                <div class="flex items-start gap-3">
+                    <span class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white mt-0.5">!</span>
+                    <div>
+                        <p class="text-sm font-semibold">{strings.meDataIncompleteNoticeTitle}</p>
+                        <p class="mt-1 text-sm">{strings.meDataIncompleteNoticeSubtitle}</p>
+                    </div>
+                </div>
+            </div>
+        )}
 
         {fromCheckout && (
             <div class="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300">

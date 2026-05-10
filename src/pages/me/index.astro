@@ -4,6 +4,7 @@ import Icon from "../../components/icons/Icon.astro";
 import { strings } from "../../lib/core/i18n";
 import { createSupabaseAuthClient } from "../../lib/core/auth";
 import { orderStatusLabels } from "../../lib/orders/orderStatus";
+import { isProfileComplete } from "../../lib/core/validation";
 
 interface PurchaseGroup {
     orderId: string;
@@ -22,6 +23,16 @@ const { data: { user } } = await supabase.auth.getUser();
 if (!user) {
     return Astro.redirect('/login?redirect_to=/me');
 }
+
+// Fetch profile for completeness check
+const { data: profile } = await supabase
+    .from('profiles')
+    .select('first_name, last_name, phone, address_street, address_number, address_postal_code, address_city, address_province, address_country')
+    .eq('id', user.id)
+    .single();
+
+const profileCheck = isProfileComplete(profile ?? {});
+const profileIncomplete = !profileCheck.complete;
 
 // Fetch real orders data
 const { data: ordersData } = await supabase
@@ -194,13 +205,23 @@ const recentPurchases = purchaseGroups.slice(0, 5);
                         <Icon name="chevron-right" size={18} class="text-text-secondary/50 group-hover:text-text-primary transition-colors" />
                     </a>
 
-                    <a href="/me/details" class="flex items-center gap-4 py-4 rounded-xl hover:bg-border-light transition-colors cursor-pointer group px-2 -mx-2">
-                        <div class="w-9 h-9 rounded-full bg-surface border border-border-light flex items-center justify-center text-text-secondary group-hover:text-text-primary transition-colors">
+                    <a href="/me/details" class="flex items-center gap-4 py-4 rounded-xl hover:bg-border-light transition-colors cursor-pointer group px-2 -mx-2 relative">
+                        <div class="w-9 h-9 rounded-full bg-surface border border-border-light flex items-center justify-center text-text-secondary group-hover:text-text-primary transition-colors relative">
                             <Icon name="user" size={18} strokeWidth={2} />
+                            {profileIncomplete && (
+                                <span class="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white ring-2 ring-surface">
+                                    !
+                                </span>
+                            )}
                         </div>
                         <span class="flex-1 font-medium text-text-primary text-[15px]">
                             {strings.meMyData}
                         </span>
+                        {profileIncomplete && (
+                            <span class="text-xs font-medium text-red-500 dark:text-red-400 mr-1">
+                                Completa tus datos
+                            </span>
+                        )}
                         <Icon name="chevron-right" size={18} class="text-text-secondary/50 group-hover:text-text-primary transition-colors" />
                     </a>
 
