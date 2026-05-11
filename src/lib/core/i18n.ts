@@ -587,6 +587,32 @@ export const strings = {
     sellerCatalogIncompleteWarning: 'Incompleto',
     sellerCatalogIncompleteTooltip: 'Faltan datos obligatorios. Los compradores no pueden ver este producto hasta que lo completes.',
 
+    // Loading / feedback genericos
+    toastSuccessGeneric: 'Listo',
+    toastErrorGeneric: 'Algo salió mal',
+    toastErrorNetwork: 'Error de red. Comprueba tu conexión',
+    toastDismiss: 'Cerrar notificación',
+    loadingProducts: 'Cargando productos…',
+    loadingOrders: 'Cargando pedidos…',
+    loadingShop: 'Cargando tienda…',
+    loadingGeneric: 'Cargando…',
+    imageLoadFailed: 'No se pudo cargar la imagen',
+    spinnerLabel: 'Cargando',
+    progressBarLabel: 'Cargando página',
+
+    // Toasts especificos
+    cartAddedToast: 'Añadido al carrito',
+    cartStockExceededToast: 'No hay más stock disponible',
+    wishlistAddedToast: 'Añadido a favoritos',
+    wishlistRemovedToast: 'Quitado de favoritos',
+    orderConfirmedToast: 'Pedido confirmado',
+    incidentReportedToast: 'Incidencia reportada',
+    labelGeneratedToast: 'Etiqueta generada',
+    productSavedToast: 'Producto guardado',
+    shopSavedToast: 'Tienda actualizada',
+    settingsSavedToast: 'Ajustes guardados',
+    profileSavedToast: 'Datos guardados',
+
     // Categories
     categoryRopa: 'Ropa',
     categoryAccesorios: 'Accesorios',
