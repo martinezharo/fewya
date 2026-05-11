@@ -9,6 +9,8 @@ const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
 const { data: { user } } = await supabase.auth.getUser();
 
 let orders: OrderCardData[] = [];
+let userReviews: Map<string, { rating: number; comment: string | null }> = new Map();
+
 if (user) {
     const { data: ordersData } = await supabase
         .from("orders")
@@ -25,7 +27,9 @@ if (user) {
                 product_variants (
                     variant_name,
                     variant_image,
+                    product_id,
                     products (
+                        id,
                         title,
                         slug,
                         gallery_images,
@@ -53,6 +57,30 @@ if (user) {
         .eq("buyer_id", user.id)
         .order("created_at", { ascending: false });
 
+    // Collect all product IDs to fetch user reviews in one query
+    const productIds = new Set<string>();
+    (ordersData ?? []).forEach((order: any) => {
+        (order.order_items ?? []).forEach((oi: any) => {
+            const rawVariant = oi.product_variants;
+            const variant = Array.isArray(rawVariant) ? rawVariant[0] : rawVariant;
+            const rawProduct = variant?.products;
+            const product = Array.isArray(rawProduct) ? rawProduct[0] : rawProduct;
+            if (product?.id) productIds.add(product.id);
+        });
+    });
+
+    if (productIds.size > 0) {
+        const { data: reviewsData } = await supabase
+            .from('reviews')
+            .select('product_id, rating, comment')
+            .eq('profile_id', user.id)
+            .in('product_id', Array.from(productIds));
+
+        (reviewsData ?? []).forEach((r: any) => {
+            userReviews.set(r.product_id, { rating: r.rating, comment: r.comment });
+        });
+    }
+
     orders = (ordersData ?? []).map((order: any) => {
         const items = (order.order_items ?? []).map((oi: any) => {
             const rawVariant = oi.product_variants;
@@ -77,6 +105,7 @@ if (user) {
                 variantName: variant.variant_name ?? null,
                 quantity: oi.quantity ?? 1,
                 unitPrice: Number(oi.price_at_purchase ?? 0),
+                productId: product.id,
             };
         }).filter(Boolean) as OrderItem[];
 
@@ -105,6 +134,14 @@ if (user) {
             }
         }
 
+        // Build reviews map for this order
+        const orderReviews: Record<string, { rating: number; comment: string | null }> = {};
+        items.forEach((item) => {
+            if (item.productId && userReviews.has(item.productId)) {
+                orderReviews[item.productId] = userReviews.get(item.productId)!;
+            }
+        });
+
         return {
             orderId: order.id,
             publicId: order.public_id,
@@ -123,6 +160,7 @@ if (user) {
             incidentDescription: incident?.description ?? null,
             incidentPhotos: incident?.photos ?? null,
             sellerEmail,
+            reviews: orderReviews,
         };
     });
 }

@@ -11,6 +11,12 @@ export interface OrderItem {
     variantName: string | null;
     quantity?: number;
     unitPrice?: number;
+    productId?: string;
+}
+
+export interface OrderReview {
+    rating: number;
+    comment: string | null;
 }
 
 export interface OrderCardData {
@@ -31,6 +37,7 @@ export interface OrderCardData {
     incidentDescription?: string | null;
     incidentPhotos?: string[] | null;
     sellerEmail?: string | null;
+    reviews?: Record<string, OrderReview>;
 }
 
 interface Props {
@@ -74,6 +81,9 @@ const showTracking = order.hasShipment && (order.trackingNumber || order.trackin
 const showActions = normalizedStatus === 'delivered';
 const showIncident = normalizedStatus === 'incident' && order.incidentDescription;
 const showCancelIncident = normalizedStatus === 'incident';
+const showReview = normalizedStatus === 'confirmed' && order.items.length > 0;
+const hasAnyReview = order.items.some(item => item.productId && order.reviews?.[item.productId]);
+const reviewableItems = order.items.filter(item => item.productId);
 ---
 
 <article class="bg-surface rounded-2xl border border-border-light overflow-hidden" data-order-id={order.orderId} data-order-status={normalizedStatus}>
@@ -260,6 +270,19 @@ const showCancelIncident = normalizedStatus === 'incident';
         </div>
     )}
 
+    {showReview && (
+        <div class="px-4 pb-4 md:px-5 md:pb-5 flex flex-col gap-2">
+            <button
+                type="button"
+                class="open-review-modal-btn inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 hover:bg-amber-200 dark:hover:bg-amber-900/60 transition-colors self-start"
+                data-order-id={order.orderId}
+            >
+                <Icon name={hasAnyReview ? 'pencil' : 'star'} size={12} />
+                {hasAnyReview ? strings.reviewEditBtn : strings.reviewAddBtn}
+            </button>
+        </div>
+    )}
+
     {showIncident && (
         <div class="px-4 pb-4 md:px-5 md:pb-5 flex flex-col gap-4">
             <div class="p-4 rounded-2xl bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800">
@@ -414,6 +437,104 @@ const showCancelIncident = normalizedStatus === 'incident';
                         {strings.incidentSubmit}
                     </button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    {/* Review Modal */}
+    <div class="review-modal hidden fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4" data-order-id={order.orderId}>
+        <div class="w-full max-w-md rounded-t-2xl sm:rounded-2xl border border-border bg-surface p-5 shadow-xl">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-base font-semibold text-text-primary">
+                    {hasAnyReview ? strings.reviewModalTitleEdit : strings.reviewModalTitleAdd}
+                </h3>
+                <button type="button" class="close-review-modal-btn p-1.5 rounded-lg hover:bg-border-light transition-colors text-text-secondary">
+                    <Icon name="x" size={18} />
+                </button>
+            </div>
+
+            <div class="review-slides">
+                {reviewableItems.map((item, idx) => {
+                    const existing = item.productId ? order.reviews?.[item.productId] : undefined;
+                    return (
+                        <div class="review-slide" data-index={idx} data-product-id={item.productId} style={idx === 0 ? '' : 'display:none'}>
+                            <div class="flex items-center gap-3 mb-4">
+                                <div class="w-12 h-12 rounded-lg overflow-hidden bg-border-light flex-shrink-0">
+                                    {item.imageUrl ? (
+                                        <img src={item.imageUrl} alt={item.productTitle} class="w-full h-full object-cover" loading="lazy" />
+                                    ) : (
+                                        <div class="w-full h-full flex items-center justify-center text-text-tertiary">
+                                            <Icon name="shopping-cart" size={18} />
+                                        </div>
+                                    )}
+                                </div>
+                                <p class="text-sm font-semibold text-text-primary truncate">{item.productTitle}</p>
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium text-text-primary mb-2">
+                                    {strings.reviewRatingLabel}
+                                </label>
+                                <div class="review-stars flex gap-1" data-rating={existing?.rating ?? 0}>
+                                    {[1, 2, 3, 4, 5].map((star) => (
+                                        <button
+                                            type="button"
+                                            class="review-star-btn p-1 rounded-md hover:bg-border-light transition-colors"
+                                            data-value={star}
+                                            aria-label={`${star} estrellas`}
+                                        >
+                                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class={`review-star-icon ${(existing?.rating ?? 0) >= star ? 'text-amber-400' : 'text-text-tertiary'}`} data-filled={(existing?.rating ?? 0) >= star ? 'true' : 'false'}>
+                                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" fill={(existing?.rating ?? 0) >= star ? 'currentColor' : 'none'} stroke="currentColor" />
+                                            </svg>
+                                        </button>
+                                    ))}
+                                </div>
+                                <p class="review-rating-error hidden mt-1.5 text-xs text-red-600">{strings.reviewRatingRequired}</p>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-text-primary mb-1.5">
+                                    {strings.reviewCommentLabel}
+                                </label>
+                                <textarea
+                                    class="review-comment-input w-full rounded-xl border border-border bg-bg px-3 py-2.5 text-sm text-text-primary shadow-sm outline-none ring-accent focus:ring-2 transition-shadow resize-none"
+                                    rows="3"
+                                    placeholder={strings.reviewCommentPlaceholder}
+                                >{existing?.comment ?? ''}</textarea>
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+
+            {reviewableItems.length > 1 && (
+                <div class="flex items-center justify-between mt-4">
+                    <button
+                        type="button"
+                        class="review-prev-btn p-2 rounded-lg hover:bg-border-light transition-colors text-text-secondary disabled:opacity-30 disabled:cursor-not-allowed"
+                        disabled
+                    >
+                        <Icon name="chevron-left" size={20} />
+                    </button>
+                    <span class="text-sm text-text-secondary review-counter font-medium">
+                        1 / {reviewableItems.length}
+                    </span>
+                    <button
+                        type="button"
+                        class="review-next-btn p-2 rounded-lg hover:bg-border-light transition-colors text-text-secondary disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                        <Icon name="chevron-right" size={20} />
+                    </button>
+                </div>
+            )}
+
+            <div class="flex gap-2 justify-end pt-4 mt-2 border-t border-border-light">
+                <button type="button" class="close-review-modal-btn px-3 py-1.5 text-sm font-medium text-text-secondary hover:text-text-primary transition-colors">
+                    {strings.incidentCancel}
+                </button>
+                <button type="button" class="submit-review-btn px-3 py-1.5 text-sm font-semibold rounded-lg bg-accent text-bg hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                    {strings.reviewSubmit}
+                </button>
             </div>
         </div>
     </div>
@@ -701,6 +822,164 @@ const showCancelIncident = normalizedStatus === 'incident';
                     progress.fail();
                     toast.error(strings.toastErrorNetwork);
                     setBusy(confirmCancelBtn, false);
+                }
+                return;
+            }
+
+            // Open review modal
+            const openReviewBtn = target.closest<HTMLElement>('.open-review-modal-btn');
+            if (openReviewBtn) {
+                e.preventDefault();
+                e.stopPropagation();
+                const orderId = openReviewBtn.dataset.orderId;
+                if (!orderId) return;
+                const modal = document.querySelector(`.review-modal[data-order-id="${orderId}"]`) as HTMLElement | null;
+                if (modal) {
+                    const slides = modal.querySelectorAll<HTMLElement>('.review-slide');
+                    slides.forEach((s, i) => { s.style.display = i === 0 ? '' : 'none'; });
+                    const prevBtn = modal.querySelector<HTMLButtonElement>('.review-prev-btn');
+                    const nextBtn = modal.querySelector<HTMLButtonElement>('.review-next-btn');
+                    const counter = modal.querySelector<HTMLElement>('.review-counter');
+                    if (prevBtn) prevBtn.disabled = true;
+                    if (nextBtn) nextBtn.disabled = slides.length <= 1;
+                    if (counter) counter.textContent = `${strings.reviewCounter}`.replace('{current}', '1').replace('{total}', String(slides.length));
+                    modal.classList.remove('hidden');
+                    document.body.style.overflow = 'hidden';
+                }
+                return;
+            }
+
+            // Close review modal (button or backdrop)
+            const closeReviewBtn = target.closest<HTMLElement>('.close-review-modal-btn');
+            if (closeReviewBtn) {
+                e.preventDefault();
+                e.stopPropagation();
+                const modal = closeReviewBtn.closest('.review-modal');
+                if (modal) { modal.classList.add('hidden'); document.body.style.overflow = ''; }
+                return;
+            }
+            const reviewBackdrop = target.closest<HTMLElement>('.review-modal');
+            if (reviewBackdrop && e.target === reviewBackdrop) {
+                reviewBackdrop.classList.add('hidden');
+                document.body.style.overflow = '';
+                return;
+            }
+
+            // Review prev/next navigation
+            const prevReviewBtn = target.closest<HTMLButtonElement>('.review-prev-btn');
+            if (prevReviewBtn) {
+                e.preventDefault();
+                e.stopPropagation();
+                const modal = prevReviewBtn.closest('.review-modal') as HTMLElement | null;
+                if (!modal) return;
+                const slides = modal.querySelectorAll<HTMLElement>('.review-slide');
+                const active = Array.from(slides).findIndex(s => s.style.display !== 'none');
+                const next = Math.max(0, active - 1);
+                slides.forEach((s, i) => { s.style.display = i === next ? '' : 'none'; });
+                prevReviewBtn.disabled = next === 0;
+                const nextBtn = modal.querySelector<HTMLButtonElement>('.review-next-btn');
+                if (nextBtn) nextBtn.disabled = false;
+                const counter = modal.querySelector<HTMLElement>('.review-counter');
+                if (counter) counter.textContent = `${strings.reviewCounter}`.replace('{current}', String(next + 1)).replace('{total}', String(slides.length));
+                return;
+            }
+            const nextReviewBtn = target.closest<HTMLButtonElement>('.review-next-btn');
+            if (nextReviewBtn) {
+                e.preventDefault();
+                e.stopPropagation();
+                const modal = nextReviewBtn.closest('.review-modal') as HTMLElement | null;
+                if (!modal) return;
+                const slides = modal.querySelectorAll<HTMLElement>('.review-slide');
+                const active = Array.from(slides).findIndex(s => s.style.display !== 'none');
+                const next = Math.min(slides.length - 1, active + 1);
+                slides.forEach((s, i) => { s.style.display = i === next ? '' : 'none'; });
+                nextReviewBtn.disabled = next === slides.length - 1;
+                const prevBtn = modal.querySelector<HTMLButtonElement>('.review-prev-btn');
+                if (prevBtn) prevBtn.disabled = false;
+                const counter = modal.querySelector<HTMLElement>('.review-counter');
+                if (counter) counter.textContent = `${strings.reviewCounter}`.replace('{current}', String(next + 1)).replace('{total}', String(slides.length));
+                return;
+            }
+
+            // Review star selection
+            const starBtn = target.closest<HTMLElement>('.review-star-btn');
+            if (starBtn) {
+                e.preventDefault();
+                e.stopPropagation();
+                const value = parseInt(starBtn.dataset.value || '0', 10);
+                const starsContainer = starBtn.closest('.review-stars') as HTMLElement | null;
+                if (starsContainer) {
+                    starsContainer.dataset.rating = String(value);
+                    starsContainer.querySelectorAll<HTMLElement>('.review-star-icon').forEach((icon, idx) => {
+                        const filled = idx < value;
+                        icon.dataset.filled = filled ? 'true' : 'false';
+                        icon.classList.toggle('text-amber-400', filled);
+                        icon.classList.toggle('text-text-tertiary', !filled);
+                        const polygon = icon.querySelector('polygon');
+                        if (polygon) polygon.setAttribute('fill', filled ? 'currentColor' : 'none');
+                    });
+                }
+                return;
+            }
+
+            // Submit review batch
+            const submitReviewBtn = target.closest<HTMLButtonElement>('.submit-review-btn');
+            if (submitReviewBtn && !submitReviewBtn.disabled) {
+                e.preventDefault();
+                e.stopPropagation();
+                const modal = submitReviewBtn.closest('.review-modal') as HTMLElement | null;
+                if (!modal) return;
+
+                const slides = modal.querySelectorAll<HTMLElement>('.review-slide');
+                const reviews: { productId: string; rating: number; comment: string }[] = [];
+                let hasError = false;
+
+                slides.forEach((slide) => {
+                    const productId = slide.dataset.productId;
+                    if (!productId) return;
+                    const starsContainer = slide.querySelector('.review-stars') as HTMLElement | null;
+                    const rating = parseInt(starsContainer?.dataset.rating || '0', 10);
+                    const commentInput = slide.querySelector('.review-comment-input') as HTMLTextAreaElement | null;
+                    const comment = commentInput?.value?.trim() ?? '';
+                    const ratingError = slide.querySelector('.review-rating-error') as HTMLElement | null;
+
+                    if (rating < 1 || rating > 5) {
+                        ratingError?.classList.remove('hidden');
+                        hasError = true;
+                    } else {
+                        ratingError?.classList.add('hidden');
+                        reviews.push({ productId, rating, comment });
+                    }
+                });
+
+                if (hasError) return;
+                if (reviews.length === 0) return;
+
+                setBusy(submitReviewBtn, true, { label: strings.reviewSubmitting });
+                progress.start();
+
+                try {
+                    const res = await fetch('/api/reviews/submit-batch', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ reviews }),
+                    });
+                    const data = await res.json() as { success?: boolean; error?: string };
+                    if (data.success) {
+                        progress.done();
+                        modal.classList.add('hidden');
+                        document.body.style.overflow = '';
+                        toast.success(strings.reviewSubmitSuccess);
+                        window.setTimeout(() => window.location.reload(), 800);
+                    } else {
+                        progress.fail();
+                        toast.error(data.error || strings.reviewSubmitError);
+                        setBusy(submitReviewBtn, false);
+                    }
+                } catch {
+                    progress.fail();
+                    toast.error(strings.toastErrorNetwork);
+                    setBusy(submitReviewBtn, false);
                 }
                 return;
             }
