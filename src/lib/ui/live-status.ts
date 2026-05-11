@@ -14,7 +14,7 @@ function ensureRoot(): HTMLDivElement {
         root.style.padding = '0';
         root.style.margin = '-1px';
         root.style.overflow = 'hidden';
-        root.style.clip = 'rect(0,0,0,0)';
+        root.style.clipPath = 'inset(50%)';
         root.style.whiteSpace = 'nowrap';
         root.style.border = '0';
         document.body.appendChild(root);
