@@ -312,16 +312,13 @@ const isSpain = currentCountry === 'ES';
                 <p id="address_province_error" class="hidden text-[12px] text-red-500"></p>
             </div>
 
-            {/* Feedback */}
-            <p id="form-feedback" class="hidden text-[13px] font-medium text-center rounded-xl py-2 px-4"></p>
-
             {/* Submit */}
             <button
                 type="submit"
                 id="save-btn"
-                class="w-full rounded-xl bg-accent text-bg font-semibold text-[15px] py-3.5 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed mt-1"
+                class="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-accent text-bg font-semibold text-[15px] py-3.5 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed mt-1"
             >
-                {strings.meDataSave}
+                <span data-busy-label>{strings.meDataSave}</span>
             </button>
 
         </form>
@@ -332,10 +329,12 @@ const isSpain = currentCountry === 'ES';
     import { strings } from '../../lib/core/i18n';
     import { spainProvinces } from '../../lib/shipping/spain-provinces';
     import { validateProfileForm, type ProfileFormData } from '../../lib/core/validation';
+    import { setBusy } from '../../lib/ui/busy';
+    import { toast } from '../../lib/ui/toast';
+    import { progress } from '../../lib/ui/progress-bar';
 
     const form = document.getElementById('profile-form') as HTMLFormElement;
     const btn = document.getElementById('save-btn') as HTMLButtonElement;
-    const feedback = document.getElementById('form-feedback') as HTMLParagraphElement;
     const countrySelect = document.getElementById('address_country') as unknown as HTMLSelectElement;
     const provinceContainer = document.getElementById('province-container') as unknown as HTMLDivElement;
     const currentUrl = new URL(window.location.href);
@@ -362,18 +361,6 @@ const isSpain = currentCountry === 'ES';
         validationNameFormat: strings.validationNameFormat,
         validationCityFormat: strings.validationCityFormat,
     };
-
-    function showFeedback(message: string, isError: boolean) {
-        feedback.textContent = message;
-        feedback.className = [
-            'text-[13px] font-medium text-center rounded-xl py-2 px-4',
-            isError
-                ? 'bg-red-500/10 text-red-500'
-                : 'bg-green-500/10 text-green-600 dark:text-green-400'
-        ].join(' ');
-        feedback.classList.remove('hidden');
-        setTimeout(() => feedback.classList.add('hidden'), 4000);
-    }
 
     function showFieldError(fieldId: string, message: string | null) {
         const errorEl = document.getElementById(`${fieldId}_error`);
@@ -479,8 +466,8 @@ const isSpain = currentCountry === 'ES';
             return;
         }
 
-        btn.disabled = true;
-        btn.textContent = strings.meDataSaving;
+        setBusy(btn, true, { label: strings.meDataSaving });
+        progress.start();
 
         try {
             const res = await fetch('/api/profile/update', {
@@ -490,19 +477,21 @@ const isSpain = currentCountry === 'ES';
             });
 
             if (res.ok) {
-                showFeedback(fromCheckout ? strings.meDataSaveAndReturnSuccess : strings.meDataSaveSuccess, false);
+                progress.done();
+                toast.success(fromCheckout ? strings.meDataSaveAndReturnSuccess : strings.profileSavedToast);
 
                 window.setTimeout(() => {
                     window.location.href = fromCheckout && returnTo ? returnTo : '/me';
                 }, 900);
             } else {
-                showFeedback(strings.meDataSaveError, true);
+                progress.fail();
+                toast.error(strings.meDataSaveError);
+                setBusy(btn, false);
             }
         } catch {
-            showFeedback(strings.meDataSaveError, true);
-        } finally {
-            btn.disabled = false;
-            btn.textContent = strings.meDataSave;
+            progress.fail();
+            toast.error(strings.toastErrorNetwork);
+            setBusy(btn, false);
         }
     });
 
