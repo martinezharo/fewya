@@ -233,6 +233,9 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', { style: 'currency', cu
 
 <script>
     import { strings } from '../../../lib/core/i18n';
+    import { setBusy } from '../../../lib/ui/busy';
+    import { toast } from '../../../lib/ui/toast';
+    import { progress } from '../../../lib/ui/progress-bar';
 
     function initCatalogPage() {
         const toggleBtns = document.querySelectorAll<HTMLButtonElement>('.toggle-active-btn');
@@ -248,25 +251,51 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', { style: 'currency', cu
                 const productId = btn.dataset.productId!;
                 const isActive = btn.dataset.active === 'true';
                 const newActive = !isActive;
+                const article = btn.closest('article');
+                const dot = btn.querySelector('span');
 
-                const res = await fetch(`/api/sell/catalog/toggle?id=${productId}`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ is_active: newActive }),
-                });
+                // Optimistic UI update
+                btn.dataset.active = String(newActive);
+                if (dot) {
+                    dot.className = `inline-block w-1.5 h-1.5 rounded-full ${newActive ? 'bg-green-500' : 'bg-text-tertiary'}`;
+                }
+                btn.lastChild!.textContent = newActive ? ` ${strings.sellerCatalogActive}` : ` ${strings.sellerCatalogInactive}`;
+                if (article) {
+                    article.classList.toggle('opacity-60', !newActive);
+                }
+                setBusy(btn, true);
 
-                if (res.ok) {
-                    btn.dataset.active = String(newActive);
-                    const dot = btn.querySelector('span');
+                try {
+                    const res = await fetch(`/api/sell/catalog/toggle?id=${productId}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ is_active: newActive }),
+                    });
+
+                    if (!res.ok) {
+                        // Revert
+                        btn.dataset.active = String(isActive);
+                        if (dot) {
+                            dot.className = `inline-block w-1.5 h-1.5 rounded-full ${isActive ? 'bg-green-500' : 'bg-text-tertiary'}`;
+                        }
+                        btn.lastChild!.textContent = isActive ? ` ${strings.sellerCatalogActive}` : ` ${strings.sellerCatalogInactive}`;
+                        if (article) {
+                            article.classList.toggle('opacity-60', !isActive);
+                        }
+                        toast.error(strings.toastErrorGeneric);
+                    }
+                } catch {
+                    btn.dataset.active = String(isActive);
                     if (dot) {
-                        dot.className = `inline-block w-1.5 h-1.5 rounded-full ${newActive ? 'bg-green-500' : 'bg-text-tertiary'}`;
+                        dot.className = `inline-block w-1.5 h-1.5 rounded-full ${isActive ? 'bg-green-500' : 'bg-text-tertiary'}`;
                     }
-                    btn.lastChild!.textContent = newActive ? ` ${strings.sellerCatalogActive}` : ` ${strings.sellerCatalogInactive}`;
-                    const article = btn.closest('article');
+                    btn.lastChild!.textContent = isActive ? ` ${strings.sellerCatalogActive}` : ` ${strings.sellerCatalogInactive}`;
                     if (article) {
-                        if (!newActive) article.classList.add('opacity-60');
-                        else article.classList.remove('opacity-60');
+                        article.classList.toggle('opacity-60', !isActive);
                     }
+                    toast.error(strings.toastErrorNetwork);
+                } finally {
+                    setBusy(btn, false);
                 }
             });
         });
@@ -296,27 +325,37 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', { style: 'currency', cu
 
         confirmBtn.addEventListener('click', async () => {
             if (!pendingDeleteId) return;
-            confirmBtn.disabled = true;
+            setBusy(confirmBtn, true, { label: strings.loadingGeneric });
+            progress.start();
 
-            const res = await fetch(`/api/sell/catalog/product?id=${pendingDeleteId}`, {
-                method: 'DELETE',
-            });
+            try {
+                const res = await fetch(`/api/sell/catalog/product?id=${pendingDeleteId}`, {
+                    method: 'DELETE',
+                });
 
-            if (res.ok) {
-                const article = document.querySelector(`[data-product-id="${pendingDeleteId}"]`) as HTMLElement;
-                article?.remove();
-                pendingDeleteId = null;
-                dialog.classList.add('hidden');
-                dialog.classList.remove('flex');
+                if (res.ok) {
+                    progress.done();
+                    toast.success(strings.sellerProductDeleteSuccess);
+                    const article = document.querySelector(`[data-product-id="${pendingDeleteId}"]`) as HTMLElement;
+                    article?.remove();
+                    pendingDeleteId = null;
+                    dialog.classList.add('hidden');
+                    dialog.classList.remove('flex');
 
-                const list = document.getElementById('product-list');
-                if (list && list.children.length === 0) {
-                    window.location.reload();
+                    const list = document.getElementById('product-list');
+                    if (list && list.children.length === 0) {
+                        window.location.reload();
+                    }
+                } else {
+                    progress.fail();
+                    toast.error(strings.sellerProductDeleteError);
                 }
-            } else {
-                alert(strings.sellerProductDeleteError);
+            } catch {
+                progress.fail();
+                toast.error(strings.toastErrorNetwork);
+            } finally {
+                setBusy(confirmBtn, false);
             }
-            confirmBtn.disabled = false;
         });
     }
 
