@@ -4,6 +4,7 @@ import { createSupabaseAuthClient } from '../../../lib/core/auth';
 type ProfileUpdateBody = {
     first_name?: unknown;
     last_name?: unknown;
+    avatar_url?: unknown;
     phone?: unknown;
     phone_prefix?: unknown;
     address_street?: unknown;
@@ -27,6 +28,7 @@ export const POST: APIRoute = async ({ cookies, request }) => {
     const {
         first_name,
         last_name,
+        avatar_url,
         phone,
         phone_prefix,
         address_street,
@@ -38,7 +40,7 @@ export const POST: APIRoute = async ({ cookies, request }) => {
         address_country,
     } = body ?? {};
 
-    const updates: Record<string, string> = {};
+    const updates: Record<string, string | null> = {};
 
     if (first_name !== undefined) {
         if (typeof first_name !== 'string') {
@@ -52,6 +54,16 @@ export const POST: APIRoute = async ({ cookies, request }) => {
             return new Response(JSON.stringify({ error: 'invalid_last_name' }), { status: 400 });
         }
         updates.last_name = last_name.trim();
+    }
+
+    if (avatar_url !== undefined) {
+        if (avatar_url === null) {
+            updates.avatar_url = null;
+        } else if (typeof avatar_url === 'string') {
+            updates.avatar_url = avatar_url.trim() || null;
+        } else {
+            return new Response(JSON.stringify({ error: 'invalid_avatar_url' }), { status: 400 });
+        }
     }
 
     if (phone !== undefined) {

@@ -1,0 +1,84 @@
+import type { APIRoute } from 'astro';
+import { createSupabaseAuthClient } from '../../../lib/core/auth';
+import { strings } from '../../../lib/core/i18n';
+
+export const POST: APIRoute = async ({ cookies, request }) => {
+    const supabase = createSupabaseAuthClient(cookies, request);
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        return new Response(JSON.stringify({ error: strings.apiUnauthorized }), { status: 401 });
+    }
+
+    const formData = await request.formData();
+    const file = formData.get('file') as File | null;
+
+    if (!file) {
+        return new Response(JSON.stringify({ error: 'Invalid request' }), { status: 400 });
+    }
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if (!allowedTypes.includes(file.type)) {
+        return new Response(JSON.stringify({ error: 'Invalid file type. Allowed: JPEG, PNG, WebP, GIF' }), { status: 400 });
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+        return new Response(JSON.stringify({ error: 'File too large. Max 2MB.' }), { status: 400 });
+    }
+
+    const ext = file.name.split('.').pop() || 'jpg';
+    const filename = `${user.id}/${crypto.randomUUID()}.${ext}`;
+    const path = `avatars/${filename}`;
+
+    const buffer = Buffer.from(await file.arrayBuffer());
+
+    const { error: uploadError } = await supabase.storage
+        .from('imgs')
+        .upload(path, buffer, {
+            contentType: file.type,
+            upsert: false,
+        });
+
+    if (uploadError) {
+        return new Response(JSON.stringify({ error: uploadError.message }), { status: 500 });
+    }
+
+    const { data: urlData } = supabase.storage
+        .from('imgs')
+        .getPublicUrl(path);
+
+    return new Response(JSON.stringify({ url: urlData.publicUrl, path }), { status: 200 });
+};
+
+export const DELETE: APIRoute = async ({ cookies, request, url }) => {
+    const supabase = createSupabaseAuthClient(cookies, request);
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        return new Response(JSON.stringify({ error: strings.apiUnauthorized }), { status: 401 });
+    }
+
+    const path = url.searchParams.get('path');
+    if (!path) {
+        return new Response(JSON.stringify({ error: 'No path provided' }), { status: 400 });
+    }
+
+    const segments = path.split('/');
+    if (segments.length < 3 || segments[0] !== 'avatars') {
+        return new Response(JSON.stringify({ error: strings.apiForbidden }), { status: 403 });
+    }
+
+    if (segments[1] !== user.id) {
+        return new Response(JSON.stringify({ error: strings.apiForbidden }), { status: 403 });
+    }
+
+    const { error } = await supabase.storage
+        .from('imgs')
+        .remove([path]);
+
+    if (error) {
+        return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+    }
+
+    return new Response(JSON.stringify({ ok: true }), { status: 200 });
+};
