@@ -120,6 +120,10 @@ const {
     </script>
     <script>
       function initWishlistBadge() {
+        const w = window as unknown as { __fewyaWishlistBadgeInit?: boolean };
+        if (w.__fewyaWishlistBadgeInit) return;
+        w.__fewyaWishlistBadgeInit = true;
+
         window.addEventListener('wishlist-updated', (e: Event) => {
           const { wishlisted } = (e as CustomEvent<{ wishlisted: boolean }>).detail;
           document.querySelectorAll<HTMLElement>('[data-wishlist-badge]').forEach(badge => {
