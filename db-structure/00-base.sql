@@ -93,12 +93,11 @@ CREATE TABLE public.shop_payment_accounts (
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.profiles (id, email, full_name, avatar_url)
+  INSERT INTO public.profiles (id, email, full_name)
   VALUES (
-    NEW.id, 
-    NEW.email, 
-    NEW.raw_user_meta_data->>'full_name', 
-    NEW.raw_user_meta_data->>'avatar_url'
+    NEW.id,
+    NEW.email,
+    NEW.raw_user_meta_data->>'full_name'
   );
   RETURN NEW;
 END;
