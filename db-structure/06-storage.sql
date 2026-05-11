@@ -24,6 +24,17 @@ CREATE POLICY "Allow authenticated users to upload shop banner images" ON storag
 CREATE POLICY "Allow authenticated users to update shop banner images" ON storage.objects FOR UPDATE TO authenticated USING (bucket_id = 'imgs' AND (storage.foldername(name))[1] = 'banners' AND (storage.foldername(name))[2] = auth.uid()::text);
 CREATE POLICY "Allow owners to delete their shop banner images" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'imgs' AND (storage.foldername(name))[1] = 'banners' AND (storage.foldername(name))[2] = auth.uid()::text);
 
+-- Storage policies for user avatars
+DROP POLICY IF EXISTS "Allow public read of user avatars" ON storage.objects;
+DROP POLICY IF EXISTS "Allow authenticated users to upload avatars" ON storage.objects;
+DROP POLICY IF EXISTS "Allow authenticated users to update avatars" ON storage.objects;
+DROP POLICY IF EXISTS "Allow owners to delete avatars" ON storage.objects;
+
+CREATE POLICY "Allow public read of user avatars" ON storage.objects FOR SELECT USING (bucket_id = 'imgs' AND (storage.foldername(name))[1] = 'avatars');
+CREATE POLICY "Allow authenticated users to upload avatars" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'imgs' AND (storage.foldername(name))[1] = 'avatars' AND (storage.foldername(name))[2] = auth.uid()::text);
+CREATE POLICY "Allow authenticated users to update avatars" ON storage.objects FOR UPDATE TO authenticated USING (bucket_id = 'imgs' AND (storage.foldername(name))[1] = 'avatars' AND (storage.foldername(name))[2] = auth.uid()::text);
+CREATE POLICY "Allow owners to delete avatars" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'imgs' AND (storage.foldername(name))[1] = 'avatars' AND (storage.foldername(name))[2] = auth.uid()::text);
+
 -- Storage bucket and policies for shipping labels (PDFs)
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 VALUES ('labels', 'labels', false, 10485760, ARRAY['application/pdf'])
