@@ -135,17 +135,9 @@ const defaults = {
                     id="save-settings-btn"
                     class="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-accent text-bg font-medium text-sm hover:scale-[1.02] transition-transform"
                 >
-                    <span id="save-settings-text">{strings.sellerSettingsSave}</span>
-                    <svg id="save-settings-spinner" class="animate-spin h-4 w-4 hidden" viewBox="0 0 24 24" fill="none">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                    </svg>
+                    <span data-busy-label>{strings.sellerSettingsSave}</span>
                 </button>
             </div>
-
-            <!-- Messages -->
-            <div id="settings-error-message" class="text-red-500 font-medium text-sm hidden p-4 bg-red-50 dark:bg-red-900/20 rounded-xl"></div>
-            <div id="settings-success-message" class="text-green-600 font-medium text-sm hidden p-4 bg-green-50 dark:bg-green-900/20 rounded-xl">{strings.sellerSettingsSaveSuccess}</div>
 
             <!-- Appearance -->
             <section class="space-y-5">
@@ -195,17 +187,14 @@ const defaults = {
     </div>
 </div>
 
-<div id="delete-success-message" class="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 text-green-600 font-medium text-sm hidden p-4 bg-green-50 dark:bg-green-900/20 rounded-xl shadow-lg"></div>
-
 <script>
     import { strings } from '../../lib/core/i18n';
+    import { setBusy } from '../../lib/ui/busy';
+    import { toast } from '../../lib/ui/toast';
+    import { progress } from '../../lib/ui/progress-bar';
 
     function initSettingsPage() {
         const saveBtn = document.getElementById('save-settings-btn') as HTMLButtonElement;
-        const saveText = document.getElementById('save-settings-text') as HTMLSpanElement;
-        const saveSpinner = document.getElementById('save-settings-spinner') as HTMLElement;
-        const errorMsg = document.getElementById('settings-error-message') as HTMLDivElement;
-        const settingsSuccessMsg = document.getElementById('settings-success-message') as HTMLDivElement;
 
         const weightInput = document.getElementById('default-weight') as HTMLInputElement;
         const lengthInput = document.getElementById('default-length') as HTMLInputElement;
@@ -213,12 +202,10 @@ const defaults = {
         const heightInput = document.getElementById('default-height') as HTMLInputElement;
         const shippingInput = document.getElementById('default-shipping') as HTMLInputElement;
 
-        if (!saveBtn) return;
+        if (!saveBtn || saveBtn.dataset.bound === 'true') return;
+        saveBtn.dataset.bound = 'true';
 
         saveBtn.addEventListener('click', async () => {
-            errorMsg.classList.add('hidden');
-            settingsSuccessMsg.classList.add('hidden');
-
             const payload = {
                 default_weight_kg: weightInput.value === '' ? null : parseFloat(weightInput.value),
                 default_length_cm: lengthInput.value === '' ? null : parseFloat(lengthInput.value),
@@ -227,9 +214,8 @@ const defaults = {
                 default_shipping_cost: shippingInput.value === '' ? null : parseFloat(shippingInput.value),
             };
 
-            saveBtn.disabled = true;
-            saveText.textContent = strings.sellerSettingsSaving;
-            saveSpinner.classList.remove('hidden');
+            setBusy(saveBtn, true, { label: strings.sellerSettingsSaving });
+            progress.start();
 
             try {
                 const res = await fetch('/api/sell/settings/shipping', {
@@ -241,18 +227,18 @@ const defaults = {
                 const data = await res.json() as { error?: string };
 
                 if (!res.ok) {
-                    throw new Error(data.error || strings.sellerSettingsSaveError);
+                    progress.fail();
+                    toast.error(data.error || strings.sellerSettingsSaveError);
+                    return;
                 }
 
-                settingsSuccessMsg.classList.remove('hidden');
-                setTimeout(() => settingsSuccessMsg.classList.add('hidden'), 4000);
-            } catch (err) {
-                errorMsg.textContent = err instanceof Error ? err.message : strings.sellerSettingsSaveError;
-                errorMsg.classList.remove('hidden');
+                progress.done();
+                toast.success(strings.settingsSavedToast);
+            } catch {
+                progress.fail();
+                toast.error(strings.toastErrorNetwork);
             } finally {
-                saveBtn.disabled = false;
-                saveText.textContent = strings.sellerSettingsSave;
-                saveSpinner.classList.add('hidden');
+                setBusy(saveBtn, false);
             }
         });
 
@@ -261,7 +247,6 @@ const defaults = {
         const dialogText = document.getElementById('delete-dialog-text') as HTMLParagraphElement;
         const cancelBtn = document.getElementById('delete-cancel-btn') as HTMLButtonElement;
         const confirmBtn = document.getElementById('delete-confirm-btn') as HTMLButtonElement;
-        const deleteSuccessMsg = document.getElementById('delete-success-message') as HTMLDivElement;
 
         deleteBtn?.addEventListener('click', () => {
             dialogText.textContent = strings.sellerSettingsDeleteShopConfirm;
@@ -275,24 +260,29 @@ const defaults = {
         });
 
         confirmBtn?.addEventListener('click', async () => {
-            confirmBtn.disabled = true;
-            confirmBtn.textContent = '...';
+            setBusy(confirmBtn, true, { label: strings.loadingGeneric });
+            progress.start();
 
             try {
                 const res = await fetch('/api/sell/shop/delete', { method: 'DELETE' });
                 const data = await res.json() as { error?: string };
 
-                if (!res.ok) throw new Error(data.error || strings.sellerSettingsDeleteShopError);
+                if (!res.ok) {
+                    progress.fail();
+                    toast.error(data.error || strings.sellerSettingsDeleteShopError);
+                    setBusy(confirmBtn, false);
+                    return;
+                }
 
-                deleteSuccessMsg.textContent = strings.sellerSettingsDeleteShopSuccess;
-                deleteSuccessMsg.classList.remove('hidden');
+                progress.done();
+                toast.success(strings.sellerSettingsDeleteShopSuccess);
                 setTimeout(() => {
                     window.location.href = '/';
-                }, 1500);
-            } catch (err) {
-                alert(err instanceof Error ? err.message : strings.sellerSettingsDeleteShopError);
-                confirmBtn.disabled = false;
-                confirmBtn.textContent = strings.sellerSettingsDeleteShop;
+                }, 1200);
+            } catch {
+                progress.fail();
+                toast.error(strings.toastErrorNetwork);
+                setBusy(confirmBtn, false);
             }
         });
     }

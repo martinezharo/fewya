@@ -158,6 +158,7 @@ const bannerImg = shop.banner_img || '';
 
 <script>
     import { strings } from '../../../lib/core/i18n';
+    import { toast } from '../../../lib/ui/toast';
 
     type ShopUpdateResponse = {
         success?: boolean;
@@ -217,12 +218,12 @@ const bannerImg = shop.banner_img || '';
             const data = await res.json() as UploadResponse;
             if (!res.ok) {
                 const errorMsg = data.error || strings.sellerOnboardingGenericError;
-                alert(errorMsg);
+                toast.error(errorMsg);
                 return null;
             }
             return { url: data.url };
         } catch {
-            alert(strings.sellerOnboardingGenericError);
+            toast.error(strings.toastErrorNetwork);
             return null;
         }
     };
