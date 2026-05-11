@@ -8,6 +8,7 @@ export interface ValidationError {
 export interface ProfileFormData {
     first_name: string;
     last_name: string;
+    avatar_url?: string | null;
     phone: string;
     phone_prefix: string;
     address_street: string;
