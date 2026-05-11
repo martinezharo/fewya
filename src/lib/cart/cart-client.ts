@@ -1,4 +1,6 @@
 import { cart } from './cart';
+import { toast } from '../ui/toast';
+import { strings } from '../core/i18n';
 
 function initCartButtons() {
     document.querySelectorAll<HTMLButtonElement>('[data-add-to-cart]:not([data-cart-listener])').forEach(btn => {
@@ -50,6 +52,7 @@ function initCartButtons() {
               window.dispatchEvent(new CustomEvent('cart-stock-error', {
                 detail: { variantId, title: existing ? null : title }
               }));
+              toast.error(strings.cartStockExceededToast);
             } else {
               cart.add({
                 productId,
@@ -65,15 +68,18 @@ function initCartButtons() {
                 productSlug,
                 shippingCost,
               }, qty);
+              toast.success(strings.cartAddedToast, { id: 'cart-added' });
             }
 
-            // Visual feedback
+            // Visual feedback: brief disabled + check icon
             const original = btn.innerHTML;
-            btn.innerHTML = '<span class="flex items-center justify-center gap-1.5">✓</span>';
+            btn.innerHTML = '<span class="flex items-center justify-center gap-1.5" aria-hidden="true">✓</span>';
             btn.disabled = true;
+            btn.setAttribute('aria-busy', 'true');
             setTimeout(() => {
                 btn.innerHTML = original;
                 btn.disabled = false;
+                btn.removeAttribute('aria-busy');
             }, 800);
         });
     });
