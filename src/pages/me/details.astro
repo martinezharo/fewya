@@ -66,20 +66,51 @@ const isSpain = currentCountry === 'ES';
 
         {/* Avatar */}
         <div class="flex flex-col items-center mb-8">
-            <div class="relative">
-                {profile?.avatar_url ? (
-                    <img
-                        src={profile.avatar_url}
-                        alt={profile?.first_name ?? strings.meDataAvatarNote}
-                        class="w-24 h-24 rounded-full object-cover border-2 border-border-light"
-                    />
-                ) : (
-                    <div class="w-24 h-24 rounded-full bg-surface border-2 border-border-light flex items-center justify-center text-text-tertiary">
-                        <Icon name="user" size={40} />
+            <div class="relative group">
+                <input
+                    type="file"
+                    id="avatar-input"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    class="hidden"
+                />
+                <button
+                    type="button"
+                    id="avatar-trigger"
+                    class="relative w-24 h-24 rounded-full overflow-hidden border-2 border-border-light focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
+                    aria-label={profile?.avatar_url ? strings.meDataAvatarChange : strings.meDataAvatarUpload}
+                >
+                    <div id="avatar-preview" class="w-full h-full">
+                        {profile?.avatar_url ? (
+                            <img
+                                src={profile.avatar_url}
+                                alt={profile?.first_name ?? strings.meDataAvatarNote}
+                                class="w-full h-full object-cover"
+                            />
+                        ) : (
+                            <div class="w-full h-full bg-surface flex items-center justify-center text-text-tertiary">
+                                <Icon name="user" size={40} />
+                            </div>
+                        )}
                     </div>
+                    <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span class="text-white text-[11px] font-medium px-2 text-center leading-tight">
+                            {profile?.avatar_url ? strings.meDataAvatarChange : strings.meDataAvatarUpload}
+                        </span>
+                    </div>
+                </button>
+                {profile?.avatar_url && (
+                    <button
+                        type="button"
+                        id="avatar-remove-btn"
+                        class="absolute -top-1 -right-1 w-7 h-7 rounded-full bg-bg border border-border-light text-text-secondary flex items-center justify-center hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-colors"
+                        aria-label={strings.meDataAvatarRemove}
+                    >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                    </button>
                 )}
             </div>
-            <p class="mt-2 text-[13px] text-text-tertiary">{strings.meDataAvatarNote}</p>
+            <p id="avatar-status" class="mt-2 text-[13px] text-text-tertiary">{strings.meDataAvatarNote}</p>
+            <input type="hidden" name="avatar_url" id="avatar_url" value={profile?.avatar_url ?? ''} />
         </div>
 
         {/* Form */}
@@ -432,6 +463,151 @@ const isSpain = currentCountry === 'ES';
     }
 
     countrySelect.addEventListener('change', updateProvinceField);
+
+    // Avatar upload
+    const avatarInput = document.getElementById('avatar-input') as HTMLInputElement | null;
+    const avatarTrigger = document.getElementById('avatar-trigger') as HTMLButtonElement | null;
+    const avatarPreview = document.getElementById('avatar-preview') as HTMLDivElement | null;
+    const avatarRemoveBtn = document.getElementById('avatar-remove-btn') as HTMLButtonElement | null;
+    const avatarStatus = document.getElementById('avatar-status') as HTMLParagraphElement | null;
+    const avatarHidden = document.getElementById('avatar_url') as HTMLInputElement | null;
+    let currentAvatarPath: string | null = null;
+
+    function setAvatarStatus(text: string, type: 'default' | 'success' | 'error' = 'default') {
+        if (!avatarStatus) return;
+        avatarStatus.textContent = text;
+        avatarStatus.className = 'mt-2 text-[13px] ' + (
+            type === 'success' ? 'text-green-600' :
+            type === 'error' ? 'text-red-500' :
+            'text-text-tertiary'
+        );
+    }
+
+    async function uploadAvatarFile(file: File): Promise<{ url: string; path: string } | null> {
+        const formData = new FormData();
+        formData.append('file', file);
+        try {
+            const res = await fetch('/api/profile/avatar-upload', { method: 'POST', body: formData });
+            const data = await res.json() as { url?: string; path?: string; error?: string };
+            if (!res.ok) {
+                toast.error(data.error || strings.meDataAvatarError);
+                return null;
+            }
+            return { url: data.url!, path: data.path! };
+        } catch {
+            toast.error(strings.toastErrorNetwork);
+            return null;
+        }
+    }
+
+    async function deleteAvatarFile(path: string): Promise<boolean> {
+        try {
+            const res = await fetch(`/api/profile/avatar-upload?path=${encodeURIComponent(path)}`, { method: 'DELETE' });
+            return res.ok;
+        } catch {
+            return false;
+        }
+    }
+
+    async function saveAvatarUrl(url: string | null) {
+        try {
+            const res = await fetch('/api/profile/update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ avatar_url: url }),
+            });
+            return res.ok;
+        } catch {
+            return false;
+        }
+    }
+
+    function updateAvatarPreview(url: string | null) {
+        if (!avatarPreview) return;
+        if (url) {
+            avatarPreview.innerHTML = `<img src="${url}" alt="" class="w-full h-full object-cover" />`;
+        } else {
+            avatarPreview.innerHTML = `<div class="w-full h-full bg-surface flex items-center justify-center text-text-tertiary"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>`;
+        }
+        if (avatarHidden) avatarHidden.value = url || '';
+    }
+
+    function addRemoveAvatarButton() {
+        if (document.getElementById('avatar-remove-btn')) return;
+        const container = avatarTrigger?.parentElement;
+        if (!container) return;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.id = 'avatar-remove-btn';
+        btn.className = 'absolute -top-1 -right-1 w-7 h-7 rounded-full bg-bg border border-border-light text-text-secondary flex items-center justify-center hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-colors';
+        btn.setAttribute('aria-label', strings.meDataAvatarRemove);
+        btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>';
+        btn.addEventListener('click', removeAvatar);
+        container.appendChild(btn);
+    }
+
+    function removeRemoveAvatarButton() {
+        document.getElementById('avatar-remove-btn')?.remove();
+    }
+
+    async function removeAvatar() {
+        if (currentAvatarPath) {
+            await deleteAvatarFile(currentAvatarPath);
+        }
+        const saved = await saveAvatarUrl(null);
+        if (saved) {
+            updateAvatarPreview(null);
+            removeRemoveAvatarButton();
+            setAvatarStatus(strings.meDataAvatarNote);
+            currentAvatarPath = null;
+        } else {
+            toast.error(strings.meDataSaveError);
+        }
+    }
+
+    avatarTrigger?.addEventListener('click', () => avatarInput?.click());
+
+    avatarInput?.addEventListener('change', async () => {
+        if (!avatarInput.files || !avatarInput.files[0]) return;
+        const file = avatarInput.files[0];
+        avatarInput.value = '';
+
+        setAvatarStatus(strings.meDataAvatarUploading);
+        const result = await uploadAvatarFile(file);
+        if (!result) {
+            setAvatarStatus(strings.meDataAvatarError, 'error');
+            return;
+        }
+
+        // Delete previous avatar if exists
+        if (currentAvatarPath) {
+            await deleteAvatarFile(currentAvatarPath);
+        }
+
+        const saved = await saveAvatarUrl(result.url);
+        if (saved) {
+            updateAvatarPreview(result.url);
+            addRemoveAvatarButton();
+            setAvatarStatus(strings.meDataAvatarSaved, 'success');
+            currentAvatarPath = result.path;
+            window.setTimeout(() => setAvatarStatus(strings.meDataAvatarNote), 2000);
+        } else {
+            setAvatarStatus(strings.meDataSaveError, 'error');
+        }
+    });
+
+    avatarRemoveBtn?.addEventListener('click', removeAvatar);
+
+    // Extract existing avatar path from current URL if present
+    const initialAvatarUrl = avatarHidden?.value || '';
+    if (initialAvatarUrl.includes('/avatars/')) {
+        const urlObj = new URL(initialAvatarUrl);
+        const pathParts = urlObj.pathname.split('/');
+        const bucketIndex = pathParts.indexOf('imgs');
+        if (bucketIndex !== -1) {
+            currentAvatarPath = pathParts.slice(bucketIndex + 1).join('/');
+        }
+    }
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
