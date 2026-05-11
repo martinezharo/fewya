@@ -343,6 +343,21 @@ export const strings = {
     sellerSidebarViewShop: 'Ver tienda',
     sellerBrandName: 'Fewya seller',
 
+    // Reviews
+    reviewAddBtn: 'Añadir reseña',
+    reviewEditBtn: 'Editar reseña',
+    reviewModalTitleAdd: 'Añadir reseña',
+    reviewModalTitleEdit: 'Editar reseña',
+    reviewRatingLabel: 'Valoración',
+    reviewCommentLabel: 'Comentario',
+    reviewCommentPlaceholder: 'Comparte tu experiencia con este producto...',
+    reviewSubmit: 'Guardar reseña',
+    reviewSubmitting: 'Guardando...',
+    reviewSubmitError: 'No se pudo guardar la reseña',
+    reviewSubmitSuccess: 'Reseña guardada',
+    reviewRatingRequired: 'Selecciona una valoración',
+    reviewCounter: '{current} / {total}',
+
     // Incident reporting
     incidentDescriptionLabel: 'Explica qué ha pasado con tu pedido',
     incidentDescriptionPlaceholder: 'Describe detalladamente el problema: qué recibiste, en qué estado, qué no coincide con lo comprado...',
