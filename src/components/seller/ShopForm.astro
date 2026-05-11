@@ -172,6 +172,7 @@ const profileImg = shopData.profile_img || '';
 
 <script>
 import { strings } from '../../lib/core/i18n';
+import { toast } from '../../lib/ui/toast';
 
     const initShopForm = () => {
         const nameInput = document.getElementById('shop-name') as HTMLInputElement;
@@ -297,8 +298,8 @@ import { strings } from '../../lib/core/i18n';
                     const data = await res.json() as UploadResponse;
 
                     if (!res.ok) {
-                        const errorMsg = 'error' in data ? data.error : strings.sellerOnboardingGenericError;
-                        alert(errorMsg);
+                        const errorMsg = ('error' in data ? data.error : null) ?? strings.sellerOnboardingGenericError;
+                        toast.error(errorMsg);
                         return;
                     }
 
@@ -307,8 +308,9 @@ import { strings } from '../../lib/core/i18n';
                         profilePreview.innerHTML = `<img src="${data.url}" alt="" class="w-full h-full object-cover" />`;
                     }
                     if (profileBtn) profileBtn.textContent = strings.sellerShopProfileImgChange;
+                    toast.success(strings.sellerShopImageSaved);
                 } catch {
-                    alert(strings.sellerOnboardingGenericError);
+                    toast.error(strings.toastErrorNetwork);
                 } finally {
                     if (profileBtn) profileBtn.removeAttribute('disabled');
                     profileInput.value = '';

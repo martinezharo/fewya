@@ -401,24 +401,19 @@ const defaultsJson = JSON.stringify(shippingDefaults ?? {});
             id="save-product-btn"
             class="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-accent text-bg font-medium text-sm hover:scale-[1.02] transition-transform"
         >
-            <span id="save-product-text">{strings.sellerProductSave}</span>
-            <svg id="save-product-spinner" class="animate-spin h-4 w-4 hidden" viewBox="0 0 24 24" fill="none">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-            </svg>
+            <span data-busy-label>{strings.sellerProductSave}</span>
         </button>
         <a href="/sell/catalog" class="px-6 py-2.5 rounded-full border border-border text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-border-light transition-colors no-underline">
             {strings.sellerProductBackToCatalog}
         </a>
     </div>
-
-    <!-- Messages -->
-    <div id="error-message" class="text-red-500 font-medium text-sm mt-6 hidden p-4 bg-red-50 dark:bg-red-900/20 rounded-xl"></div>
-    <div id="success-message" class="text-green-600 font-medium text-sm mt-6 hidden p-4 bg-green-50 dark:bg-green-900/20 rounded-xl">{strings.sellerProductSaveSuccess}</div>
 </div>
 
 <script>
     import { strings } from '../../lib/core/i18n';
+    import { setBusy } from '../../lib/ui/busy';
+    import { toast } from '../../lib/ui/toast';
+    import { progress } from '../../lib/ui/progress-bar';
 
     function initProductForm() {
         const root = document.getElementById('product-form-root');
@@ -435,10 +430,6 @@ const defaultsJson = JSON.stringify(shippingDefaults ?? {});
         const brandInput = document.getElementById('product-brand') as HTMLInputElement;
         const activeCheckbox = document.getElementById('product-active') as HTMLInputElement;
         const saveBtn = document.getElementById('save-product-btn') as HTMLButtonElement;
-        const saveText = document.getElementById('save-product-text') as HTMLSpanElement;
-        const saveSpinner = document.getElementById('save-product-spinner') as unknown as HTMLElement;
-        const errorMsg = document.getElementById('error-message') as HTMLDivElement;
-        const successMsg = document.getElementById('success-message') as HTMLDivElement;
         const imageGallery = document.getElementById('image-gallery') as HTMLDivElement;
         const imageUploadInput = document.getElementById('image-upload-input') as HTMLInputElement;
         const variantsContainer = document.getElementById('variants-container') as HTMLDivElement;
@@ -466,10 +457,10 @@ const defaultsJson = JSON.stringify(shippingDefaults ?? {});
                 try {
                     const res = await fetch('/api/sell/catalog/upload', { method: 'POST', body: formData });
                     const data: { error?: string; url?: string } = await res.json();
-                    if (!res.ok) { alert(data.error || 'Upload failed'); continue; }
+                    if (!res.ok) { toast.error(data.error || strings.incidentUploadError); continue; }
                     galleryUrls.push(data.url!);
                     renderGallery();
-                } catch { alert('Upload failed'); }
+                } catch { toast.error(strings.incidentUploadError); }
             }
             imageUploadInput.value = '';
         });
@@ -506,11 +497,11 @@ const defaultsJson = JSON.stringify(shippingDefaults ?? {});
                     preview.innerHTML = `<img src="${data.url}" alt="" class="w-full h-full object-cover" />`;
                     btn.textContent = 'Cambiar';
                 } else {
-                    alert(data.error || 'Upload failed');
+                    toast.error(data.error || strings.incidentUploadError);
                     btn.textContent = 'Subir';
                 }
             } catch {
-                alert('Upload failed');
+                toast.error(strings.incidentUploadError);
                 btn.textContent = 'Subir';
             } finally {
                 btn.disabled = false;
@@ -645,9 +636,6 @@ const defaultsJson = JSON.stringify(shippingDefaults ?? {});
         });
 
         saveBtn.addEventListener('click', async () => {
-            errorMsg.classList.add('hidden');
-            successMsg.classList.add('hidden');
-
             const title = titleInput.value.trim();
             const slug = slugInput.value.trim();
             const category = categorySelect.value;
@@ -656,13 +644,11 @@ const defaultsJson = JSON.stringify(shippingDefaults ?? {});
             const is_active = activeCheckbox.checked;
 
             if (!title) {
-                errorMsg.textContent = strings.sellerProductTitleRequired;
-                errorMsg.classList.remove('hidden');
+                toast.error(strings.sellerProductTitleRequired);
                 return;
             }
             if (!category) {
-                errorMsg.textContent = strings.sellerProductCategoryRequired;
-                errorMsg.classList.remove('hidden');
+                toast.error(strings.sellerProductCategoryRequired);
                 return;
             }
 
@@ -686,8 +672,7 @@ const defaultsJson = JSON.stringify(shippingDefaults ?? {});
             });
 
             if (variants.length === 0) {
-                errorMsg.textContent = strings.sellerProductNoVariantsError;
-                errorMsg.classList.remove('hidden');
+                toast.error(strings.sellerProductNoVariantsError);
                 return;
             }
 
@@ -712,8 +697,7 @@ const defaultsJson = JSON.stringify(shippingDefaults ?? {});
 
             if (missingFields.length > 0) {
                 const list = missingFields.join(', ');
-                errorMsg.textContent = strings.sellerProductIncompleteError.replace('{fields}', list);
-                errorMsg.classList.remove('hidden');
+                toast.error(strings.sellerProductIncompleteError.replace('{fields}', list));
                 return;
             }
 
@@ -736,9 +720,8 @@ const defaultsJson = JSON.stringify(shippingDefaults ?? {});
                 variants,
             };
 
-            saveBtn.disabled = true;
-            saveText.textContent = strings.sellerProductSaving;
-            saveSpinner.classList.remove('hidden');
+            setBusy(saveBtn, true, { label: strings.sellerProductSaving });
+            progress.start();
 
             try {
                 let url = '/api/sell/catalog/product';
@@ -759,11 +742,14 @@ const defaultsJson = JSON.stringify(shippingDefaults ?? {});
                 const data: { product?: { id: string }; error?: string } = await res.json();
 
                 if (!res.ok) {
-                    throw new Error(data.error || strings.sellerProductSaveError);
+                    progress.fail();
+                    toast.error(data.error || strings.sellerProductSaveError);
+                    setBusy(saveBtn, false);
+                    return;
                 }
 
-                successMsg.classList.remove('hidden');
-                setTimeout(() => successMsg.classList.add('hidden'), 4000);
+                progress.done();
+                toast.success(strings.productSavedToast);
 
                 if (mode === 'create' && data.product?.id) {
                     window.location.href = `/sell/catalog/${data.product.id}`;
@@ -774,13 +760,12 @@ const defaultsJson = JSON.stringify(shippingDefaults ?? {});
                     window.location.href = '/sell/catalog';
                     return;
                 }
-            } catch (err) {
-                errorMsg.textContent = err instanceof Error ? err.message : strings.sellerProductSaveError;
-                errorMsg.classList.remove('hidden');
-            } finally {
-                saveBtn.disabled = false;
-                saveText.textContent = strings.sellerProductSave;
-                saveSpinner.classList.add('hidden');
+
+                setBusy(saveBtn, false);
+            } catch {
+                progress.fail();
+                toast.error(strings.toastErrorNetwork);
+                setBusy(saveBtn, false);
             }
         });
     }

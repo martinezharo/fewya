@@ -84,13 +84,17 @@ const showIncident = normalizedStatus === 'incident' && order.incidentDescriptio
         aria-controls={`order-details-${order.orderId}`}
     >
         {/* Thumbnail */}
-        <div class="relative flex-shrink-0 w-16 h-16 md:w-[72px] md:h-[72px] rounded-xl overflow-hidden bg-border-light">
+        <div class="relative flex-shrink-0 w-16 h-16 md:w-[72px] md:h-[72px] rounded-xl overflow-hidden bg-skeleton" data-img-wrap>
             {firstItem?.imageUrl ? (
                 <img
                     src={firstItem.imageUrl}
                     alt={firstItem.productTitle}
-                    class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    class="w-full h-full object-cover opacity-0 transition-opacity duration-300 group-hover:scale-105"
                     draggable="false"
+                    loading="lazy"
+                    decoding="async"
+                    onload="this.classList.remove('opacity-0'); this.closest('[data-img-wrap]')?.classList.remove('bg-skeleton')"
+                    onerror="this.classList.remove('opacity-0'); this.closest('[data-img-wrap]')?.classList.remove('bg-skeleton')"
                 />
             ) : (
                 <div class="w-full h-full flex items-center justify-center text-text-tertiary">
@@ -379,7 +383,12 @@ const showIncident = normalizedStatus === 'incident' && order.incidentDescriptio
 </article>
 
 <script>
-    (function () {
+    import { setBusy } from '../../lib/ui/busy';
+    import { toast } from '../../lib/ui/toast';
+    import { progress } from '../../lib/ui/progress-bar';
+    import { strings } from '../../lib/core/i18n';
+
+    function initOrderCards() {
         // Toggle expandable order details
         document.querySelectorAll('.order-toggle-btn').forEach((btn) => {
             btn.addEventListener('click', () => {
@@ -398,14 +407,19 @@ const showIncident = normalizedStatus === 'incident' && order.incidentDescriptio
             });
         });
 
-        document.querySelectorAll('.order-confirm-btn').forEach((btn) => {
+        document.querySelectorAll<HTMLButtonElement>('.order-confirm-btn').forEach((btn) => {
+            if (btn.dataset.bound === 'true') return;
+            btn.dataset.bound = 'true';
             btn.addEventListener('click', async (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                const orderId = (btn as HTMLElement).dataset.orderId;
+                const orderId = btn.dataset.orderId;
                 if (!orderId) return;
 
                 if (!confirm('¿Confirmas que has recibido el pedido correctamente?')) return;
+
+                setBusy(btn, true, { label: strings.loadingGeneric });
+                progress.start();
 
                 try {
                     const res = await fetch('/api/orders/confirm-delivery', {
@@ -416,13 +430,18 @@ const showIncident = normalizedStatus === 'incident' && order.incidentDescriptio
 
                     const data = await res.json() as { success?: boolean; error?: string };
                     if (data.success) {
-                        alert('Pedido confirmado correctamente');
-                        window.location.reload();
+                        progress.done();
+                        toast.success(strings.orderConfirmedToast);
+                        window.setTimeout(() => window.location.reload(), 800);
                     } else {
-                        alert(data.error || 'Error al confirmar');
+                        progress.fail();
+                        toast.error(data.error || strings.orderConfirmDeliveryError);
+                        setBusy(btn, false);
                     }
                 } catch {
-                    alert('Error de red');
+                    progress.fail();
+                    toast.error(strings.toastErrorNetwork);
+                    setBusy(btn, false);
                 }
             });
         });
@@ -510,12 +529,11 @@ const showIncident = normalizedStatus === 'incident' && order.incidentDescriptio
                 const toUpload = files.slice(0, remainingSlots);
 
                 if (toUpload.length < files.length) {
-                    alert('Máximo 20 imágenes permitidas');
+                    toast.error(strings.incidentMaxPhotosError);
                 }
 
                 if (submitBtn) {
-                    submitBtn.disabled = true;
-                    submitBtn.textContent = 'Subiendo...';
+                    setBusy(submitBtn, true, { label: strings.incidentUploading });
                 }
 
                 for (const file of toUpload) {
@@ -540,8 +558,7 @@ const showIncident = normalizedStatus === 'incident' && order.incidentDescriptio
                 }
 
                 if (submitBtn) {
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = 'Reportar incidencia';
+                    setBusy(submitBtn, false);
                 }
                 fileInput.value = '';
                 renderPreviews();
@@ -573,8 +590,8 @@ const showIncident = normalizedStatus === 'incident' && order.incidentDescriptio
 
                 if (hasError) return;
 
-                submitBtn.disabled = true;
-                submitBtn.textContent = 'Reportando...';
+                setBusy(submitBtn, true, { label: strings.incidentSubmitting });
+                progress.start();
 
                 try {
                     const res = await fetch('/api/orders/report-incident', {
@@ -589,19 +606,24 @@ const showIncident = normalizedStatus === 'incident' && order.incidentDescriptio
 
                     const data = await res.json() as { success?: boolean; error?: string };
                     if (data.success) {
-                        alert('Incidencia reportada correctamente');
-                        window.location.reload();
+                        progress.done();
+                        toast.success(strings.incidentReportedToast);
+                        window.setTimeout(() => window.location.reload(), 800);
                     } else {
-                        alert(data.error || 'Error al reportar la incidencia');
-                        submitBtn.disabled = false;
-                        submitBtn.textContent = 'Reportar incidencia';
+                        progress.fail();
+                        toast.error(data.error || strings.orderReportIncidentError);
+                        setBusy(submitBtn, false);
                     }
                 } catch {
-                    alert('Error de red');
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = 'Reportar incidencia';
+                    progress.fail();
+                    toast.error(strings.toastErrorNetwork);
+                    setBusy(submitBtn, false);
                 }
             });
         });
-    })();
+    }
+
+    document.addEventListener('astro:page-load', initOrderCards);
+    if (document.readyState !== 'loading') initOrderCards();
+    else document.addEventListener('DOMContentLoaded', initOrderCards);
 </script>

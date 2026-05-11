@@ -368,6 +368,11 @@ const customerName = order.shippingFullName || order.buyerEmail || strings.profi
 </article>
 
 <script>
+    import { setBusy } from '../../lib/ui/busy';
+    import { toast } from '../../lib/ui/toast';
+    import { progress } from '../../lib/ui/progress-bar';
+    import { strings } from '../../lib/core/i18n';
+
     class OrderIdPopover extends HTMLElement {
         constructor() {
             super();
@@ -437,16 +442,15 @@ const customerName = order.shippingFullName || order.buyerEmail || strings.profi
     });
 
     // Mock label generation
-    document.querySelectorAll('.mock-label-btn').forEach((btn) => {
+    document.querySelectorAll<HTMLButtonElement>('.mock-label-btn').forEach((btn) => {
         btn.addEventListener('click', async (e) => {
             e.preventDefault();
             e.stopPropagation();
-            const orderId = (btn as HTMLElement).dataset.orderId;
+            const orderId = btn.dataset.orderId;
             if (!orderId) return;
 
-            btn.setAttribute('disabled', 'true');
-            const originalText = btn.textContent || '';
-            btn.textContent = 'Generando…';
+            setBusy(btn, true, { label: strings.shippingCreatingShipment });
+            progress.start();
 
             try {
                 const res = await fetch('/api/sendcloud/mock-shipment', {
@@ -457,17 +461,18 @@ const customerName = order.shippingFullName || order.buyerEmail || strings.profi
 
                 const data = await res.json() as { success?: boolean; error?: string };
                 if (data.success) {
-                    alert('Etiqueta generada correctamente');
-                    window.location.reload();
+                    progress.done();
+                    toast.success(strings.labelGeneratedToast);
+                    window.setTimeout(() => window.location.reload(), 800);
                 } else {
-                    alert(data.error || 'Error al generar etiqueta');
-                    btn.removeAttribute('disabled');
-                    btn.textContent = originalText;
+                    progress.fail();
+                    toast.error(data.error || strings.sellerOrderLabelError);
+                    setBusy(btn, false);
                 }
             } catch {
-                alert('Error de red');
-                btn.removeAttribute('disabled');
-                btn.textContent = originalText;
+                progress.fail();
+                toast.error(strings.toastErrorNetwork);
+                setBusy(btn, false);
             }
         });
     });
@@ -500,11 +505,11 @@ const customerName = order.shippingFullName || order.buyerEmail || strings.profi
     });
 
     // Confirm cancel order + refund
-    document.querySelectorAll('.confirm-cancel-btn').forEach((btn) => {
+    document.querySelectorAll<HTMLButtonElement>('.confirm-cancel-btn').forEach((btn) => {
         btn.addEventListener('click', async (e) => {
             e.preventDefault();
             e.stopPropagation();
-            const orderId = (btn as HTMLElement).dataset.orderId;
+            const orderId = btn.dataset.orderId;
             if (!orderId) return;
 
             const modal = btn.closest('.cancel-modal');
@@ -519,9 +524,8 @@ const customerName = order.shippingFullName || order.buyerEmail || strings.profi
             }
             errorText?.classList.add('hidden');
 
-            btn.setAttribute('disabled', 'true');
-            const originalText = btn.textContent || '';
-            btn.textContent = 'Cancelando…';
+            setBusy(btn, true, { label: strings.loadingGeneric });
+            progress.start();
 
             try {
                 const res = await fetch('/api/orders/refund', {
@@ -532,17 +536,18 @@ const customerName = order.shippingFullName || order.buyerEmail || strings.profi
 
                 const data = await res.json() as { success?: boolean; error?: string };
                 if (data.success) {
-                    alert('Pedido cancelado y reembolsado');
-                    window.location.reload();
+                    progress.done();
+                    toast.success(strings.sellerOrderRefundSuccess);
+                    window.setTimeout(() => window.location.reload(), 800);
                 } else {
-                    alert(data.error || 'Error al cancelar');
-                    btn.removeAttribute('disabled');
-                    btn.textContent = originalText;
+                    progress.fail();
+                    toast.error(data.error || strings.sellerOrderRefundError);
+                    setBusy(btn, false);
                 }
             } catch {
-                alert('Error de red');
-                btn.removeAttribute('disabled');
-                btn.textContent = originalText;
+                progress.fail();
+                toast.error(strings.toastErrorNetwork);
+                setBusy(btn, false);
             }
         });
     });

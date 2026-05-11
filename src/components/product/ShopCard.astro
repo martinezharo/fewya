@@ -10,12 +10,17 @@ const { shop } = Astro.props;
 
 <a href={`/${shop.slug}`} class="flex items-center gap-3 p-3 rounded-lg border border-border-light no-underline transition-colors hover:bg-border-light/30">
   {shop.profile_img ? (
-    <img
-      src={shop.profile_img}
-      alt={shop.name}
-      class="w-10 h-10 rounded-full object-cover flex-none"
-      loading="lazy"
-    />
+    <div class="w-10 h-10 rounded-full overflow-hidden flex-none bg-skeleton" data-img-wrap>
+      <img
+        src={shop.profile_img}
+        alt={shop.name}
+        class="w-10 h-10 rounded-full object-cover opacity-0 transition-opacity duration-300"
+        loading="lazy"
+        decoding="async"
+        onload="this.classList.remove('opacity-0'); this.closest('[data-img-wrap]')?.classList.remove('bg-skeleton')"
+        onerror="this.classList.remove('opacity-0'); this.closest('[data-img-wrap]')?.classList.remove('bg-skeleton')"
+      />
+    </div>
   ) : (
     <div
       class="w-10 h-10 rounded-full flex items-center justify-center flex-none bg-border-light"
