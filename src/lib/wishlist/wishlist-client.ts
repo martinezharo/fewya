@@ -11,74 +11,75 @@ function getHeartSvg(filled: boolean, size: number): string {
     return templateArr.join(String(size));
 }
 
-function initWishlistButtons() {
-    document.querySelectorAll<HTMLButtonElement>('.wishlist-btn').forEach(btn => {
-        if (btn.dataset.wishlistBound) return;
-        btn.dataset.wishlistBound = 'true';
+function mountWishlistDelegation() {
+    const w = window as Window & { __fewyaWishlistDelegated?: boolean };
+    if (w.__fewyaWishlistDelegated) return;
+    w.__fewyaWishlistDelegated = true;
 
-        btn.addEventListener('click', async (e) => {
-            e.preventDefault();
-            e.stopPropagation();
+    document.addEventListener('click', async (e) => {
+        const btn = (e.target as Element).closest<HTMLButtonElement>('.wishlist-btn');
+        if (!btn) return;
 
-            const productId = btn.dataset.productId;
-            if (!productId) return;
+        e.preventDefault();
+        e.stopPropagation();
 
-            const wasWished = btn.dataset.wished === 'true';
-            const size = parseInt(btn.dataset.iconSize || '18');
+        const productId = btn.dataset.productId;
+        if (!productId) return;
 
-            // Optimistic update
-            const nowWished = !wasWished;
-            applyWishState(btn, nowWished, size);
+        const wasWished = btn.dataset.wished === 'true';
+        const size = parseInt(btn.dataset.iconSize || '18');
 
-            try {
-                const res = await fetch('/api/wishlist/toggle', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ productId }),
-                });
+        // Optimistic update
+        const nowWished = !wasWished;
+        applyWishState(btn, nowWished, size);
 
-                if (res.ok) {
-                    const payload = await res.json() as { wishlisted?: boolean; removedFromLocal?: boolean };
-                    const wishlisted = payload.wishlisted === true;
+        try {
+            const res = await fetch('/api/wishlist/toggle', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ productId }),
+            });
 
-                    if (payload.removedFromLocal) {
-                        // Ensure it's also removed from localStorage so it doesn't resurface
-                        const localIds = getLocalWishlistIds();
-                        if (localIds.includes(productId)) {
-                            toggleLocalWishlist(productId);
-                        }
+            if (res.ok) {
+                const payload = await res.json() as { wishlisted?: boolean; removedFromLocal?: boolean };
+                const wishlisted = payload.wishlisted === true;
+
+                if (payload.removedFromLocal) {
+                    const localIds = getLocalWishlistIds();
+                    if (localIds.includes(productId)) {
+                        toggleLocalWishlist(productId);
                     }
-
-                    applyWishState(btn, wishlisted, size);
-                    window.dispatchEvent(new CustomEvent('wishlist-updated', { detail: { wishlisted } }));
-                    toast.success(
-                        wishlisted ? strings.wishlistAddedToast : strings.wishlistRemovedToast,
-                        { id: 'wishlist-toggle' }
-                    );
-                    return;
                 }
 
-                if (res.status === 401) {
-                    // Not authenticated — use localStorage fallback
-                    const localWished = toggleLocalWishlist(productId);
-                    applyWishState(btn, localWished, size);
-                    window.dispatchEvent(new CustomEvent('wishlist-updated', { detail: { wishlisted: localWished } }));
-                    toast.success(
-                        localWished ? strings.wishlistAddedToast : strings.wishlistRemovedToast,
-                        { id: 'wishlist-toggle' }
-                    );
-                    return;
-                }
-
-                // Any other error: revert
-                applyWishState(btn, wasWished, size);
-                toast.error(strings.toastErrorGeneric);
-            } catch {
-                // Network failure: revert and notify
-                applyWishState(btn, wasWished, size);
-                toast.error(strings.toastErrorNetwork);
+                applyWishState(btn, wishlisted, size);
+                window.dispatchEvent(new CustomEvent('wishlist-updated', { detail: { wishlisted } }));
+                toast.success(
+                    wishlisted ? strings.wishlistAddedToast : strings.wishlistRemovedToast,
+                    { id: 'wishlist-toggle' }
+                );
+                return;
             }
-        });
+
+            if (res.status === 401) {
+                // Not authenticated — use localStorage fallback
+                const localWished = toggleLocalWishlist(productId);
+                applyWishState(btn, localWished, size);
+                window.dispatchEvent(new CustomEvent('wishlist-updated', { detail: { wishlisted: localWished } }));
+                toast.success(
+                    localWished ? strings.wishlistAddedToast : strings.wishlistRemovedToast,
+                    { id: 'wishlist-toggle' }
+                );
+                return;
+            }
+
+            // Any other error: revert
+            applyWishState(btn, wasWished, size);
+            toast.error(strings.toastErrorGeneric);
+        } catch {
+            // Network failure: revert and notify
+            applyWishState(btn, wasWished, size);
+            toast.error(strings.toastErrorNetwork);
+        }
     });
 }
 
@@ -98,8 +99,6 @@ function applyWishState(btn: HTMLButtonElement, wished: boolean, size: number) {
 // Sync cookie -> localStorage on first load (in case user closed tab and reopened)
 syncLocalWishlistFromCookie();
 
-// Init on page load and on Astro page transitions
-document.addEventListener('DOMContentLoaded', initWishlistButtons);
-document.addEventListener('astro:page-load', initWishlistButtons);
-// Also run immediately in case DOMContentLoaded already fired
-if (document.readyState !== 'loading') initWishlistButtons();
+// Mount delegation once — works for all buttons including those in server islands
+mountWishlistDelegation();
+document.addEventListener('astro:page-load', mountWishlistDelegation);
