@@ -1,0 +1,28 @@
+---
+interface Props {
+    width?: string;
+    height?: string;
+    rounded?: "sm" | "md" | "lg" | "full" | "none";
+    class?: string;
+}
+
+const { width, height, rounded = "md", class: className = "" } = Astro.props;
+
+const roundedClass: Record<string, string> = {
+    none: "",
+    sm: "rounded-sm",
+    md: "rounded-md",
+    lg: "rounded-lg",
+    full: "rounded-full",
+};
+
+const style: string[] = [];
+if (width) style.push(`width: ${width}`);
+if (height) style.push(`height: ${height}`);
+---
+
+<span
+    class={`block bg-skeleton ${roundedClass[rounded]} ${className}`}
+    style={style.join("; ")}
+    aria-hidden="true"
+></span>

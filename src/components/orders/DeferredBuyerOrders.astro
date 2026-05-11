@@ -1,0 +1,175 @@
+---
+import Icon from "../icons/Icon.astro";
+import OrderCard from "./OrderCard.astro";
+import type { OrderCardData, OrderItem } from "./OrderCard.astro";
+import { strings } from "../../lib/core/i18n";
+import { createSupabaseAuthClient } from "../../lib/core/auth";
+
+const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
+const { data: { user } } = await supabase.auth.getUser();
+
+let orders: OrderCardData[] = [];
+if (user) {
+    const { data: ordersData } = await supabase
+        .from("orders")
+        .select(`
+            id,
+            public_id,
+            status,
+            total_amount,
+            created_at,
+            cancellation_reason,
+            order_items (
+                quantity,
+                price_at_purchase,
+                product_variants (
+                    variant_name,
+                    variant_image,
+                    products (
+                        title,
+                        slug,
+                        gallery_images,
+                        shops (
+                            slug,
+                            contact_email
+                        )
+                    )
+                )
+            ),
+            shipments (
+                id,
+                sendcloud_shipment_id,
+                status,
+                tracking_number,
+                tracking_url,
+                label_url,
+                carrier_name
+            ),
+            order_incidents (
+                description,
+                photos
+            )
+        `)
+        .eq("buyer_id", user.id)
+        .order("created_at", { ascending: false });
+
+    orders = (ordersData ?? []).map((order: any) => {
+        const items = (order.order_items ?? []).map((oi: any) => {
+            const rawVariant = oi.product_variants;
+            const variant = Array.isArray(rawVariant) ? rawVariant[0] : rawVariant;
+            if (!variant) return null;
+
+            const rawProduct = variant.products;
+            const product = Array.isArray(rawProduct) ? rawProduct[0] : rawProduct;
+            if (!product) return null;
+
+            const rawShop = product.shops;
+            const shop = Array.isArray(rawShop) ? rawShop[0] : rawShop;
+            if (!shop) return null;
+
+            const imageUrl = variant.variant_image || product.gallery_images?.[0] || "";
+
+            return {
+                productTitle: product.title ?? strings.fallbackProductName,
+                imageUrl,
+                productSlug: product.slug,
+                shopSlug: shop.slug,
+                variantName: variant.variant_name ?? null,
+                quantity: oi.quantity ?? 1,
+                unitPrice: Number(oi.price_at_purchase ?? 0),
+            };
+        }).filter(Boolean) as OrderItem[];
+
+        const subtotal = items.reduce((sum: number, item) => sum + ((item.unitPrice ?? 0) * (item.quantity ?? 1)), 0);
+        const shipping = Math.max(0, (order.total_amount ?? 0) - subtotal);
+
+        const rawShipments = order.shipments;
+        const shipment = Array.isArray(rawShipments) ? rawShipments[0] : rawShipments;
+
+        const rawIncidents = order.order_incidents;
+        const incident = Array.isArray(rawIncidents) ? rawIncidents[0] : rawIncidents;
+
+        const firstValidItem = items[0];
+        let sellerEmail: string | null = null;
+        if (firstValidItem) {
+            const oi = order.order_items?.find((item: any) => {
+                const v = Array.isArray(item.product_variants) ? item.product_variants[0] : item.product_variants;
+                const p = v?.products ? (Array.isArray(v.products) ? v.products[0] : v.products) : null;
+                return p?.shops;
+            });
+            if (oi) {
+                const v = Array.isArray(oi.product_variants) ? oi.product_variants[0] : oi.product_variants;
+                const p = v?.products ? (Array.isArray(v.products) ? v.products[0] : v.products) : null;
+                const s = p?.shops ? (Array.isArray(p.shops) ? p.shops[0] : p.shops) : null;
+                sellerEmail = s?.contact_email ?? null;
+            }
+        }
+
+        return {
+            orderId: order.id,
+            publicId: order.public_id,
+            status: order.status ?? "pending",
+            totalAmount: order.total_amount ?? 0,
+            subtotal,
+            shipping,
+            createdAt: new Date(order.created_at),
+            cancellationReason: order.cancellation_reason ?? null,
+            items,
+            hasShipment: !!shipment,
+            trackingNumber: shipment?.tracking_number ?? null,
+            trackingUrl: shipment?.tracking_url ?? null,
+            labelUrl: shipment?.sendcloud_shipment_id ? `/api/sendcloud/label?shipmentId=${encodeURIComponent(shipment.sendcloud_shipment_id)}` : null,
+            carrierName: shipment?.carrier_name ?? null,
+            incidentDescription: incident?.description ?? null,
+            incidentPhotos: incident?.photos ?? null,
+            sellerEmail,
+        };
+    });
+}
+---
+
+{orders.length > 0 ? (
+    <div id="buyer-orders-list" class="flex flex-col gap-3">
+        {orders.map((order) => (
+            <OrderCard order={order} />
+        ))}
+    </div>
+) : (
+    <div class="flex flex-col items-center justify-center text-center px-6 py-20">
+        <div class="w-16 h-16 mb-4 rounded-full bg-surface border border-border-light flex items-center justify-center text-text-tertiary">
+            <Icon name="shopping-cart" size={26} />
+        </div>
+        <h2 class="text-[18px] font-semibold text-text-primary mb-2">
+            {strings.ordersEmpty}
+        </h2>
+        <p class="text-[14px] text-text-secondary mb-6 max-w-xs">
+            {strings.ordersEmptySub}
+        </p>
+        <a
+            href="/"
+            class="inline-flex items-center px-6 py-2.5 bg-accent text-bg text-sm font-semibold rounded-lg transition-colors hover:bg-accent-hover"
+        >
+            {strings.ordersExploreCta}
+        </a>
+    </div>
+)}
+
+<script is:inline>
+    (async function () {
+        const hasDelivered = document.querySelector('[data-order-status="delivered"]');
+        if (!hasDelivered) return;
+        try {
+            const res = await fetch('/api/orders/auto-confirm', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({}),
+            });
+            const data = await res.json();
+            if (data.autoConfirmed > 0) {
+                window.location.reload();
+            }
+        } catch {
+            // Silent fail
+        }
+    })();
+</script>

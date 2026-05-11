@@ -1,0 +1,19 @@
+---
+import SkeletonOrderCard from "./SkeletonOrderCard.astro";
+import { strings } from "../../lib/core/i18n";
+
+interface Props {
+    count?: number;
+}
+
+const { count = 3 } = Astro.props;
+const items = Array.from({ length: count });
+---
+
+<div
+    class="flex flex-col gap-3 px-4 md:px-6 pb-24 md:pb-12"
+    aria-busy="true"
+    aria-label={strings.loadingOrders}
+>
+    {items.map(() => <SkeletonOrderCard />)}
+</div>

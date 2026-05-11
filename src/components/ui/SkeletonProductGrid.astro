@@ -1,0 +1,19 @@
+---
+import SkeletonProductCard from "./SkeletonProductCard.astro";
+import { strings } from "../../lib/core/i18n";
+
+interface Props {
+    count?: number;
+}
+
+const { count = 10 } = Astro.props;
+const items = Array.from({ length: count });
+---
+
+<section
+    class="grid grid-cols-1 gap-3 px-4 pb-[120px] md:grid-cols-4 lg:grid-cols-5 md:gap-3 md:px-10 md:pb-[60px] md:max-w-[1400px] md:mx-auto"
+    aria-busy="true"
+    aria-label={strings.loadingProducts}
+>
+    {items.map(() => <SkeletonProductCard />)}
+</section>

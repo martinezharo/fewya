@@ -1,0 +1,34 @@
+---
+// Mirrors src/components/ProductCard.astro: mobile horizontal + desktop vertical
+---
+
+{/* MOBILE */}
+<article class="md:hidden flex bg-surface rounded-lg overflow-hidden" aria-hidden="true">
+    <div class="relative shrink-0 w-[140px]">
+        <div class="py-3 h-full">
+            <div class="w-full h-full aspect-square rounded-md bg-skeleton"></div>
+        </div>
+    </div>
+    <div class="flex flex-col justify-between flex-1 min-w-0 p-3 gap-1.5">
+        <div class="flex flex-col gap-1.5">
+            <span class="block bg-skeleton h-3 w-1/2 rounded"></span>
+            <span class="block bg-skeleton h-4 w-3/4 rounded"></span>
+            <span class="block bg-skeleton h-3 w-1/3 rounded"></span>
+        </div>
+        <span class="block bg-skeleton h-9 w-full rounded-md"></span>
+    </div>
+</article>
+
+{/* DESKTOP */}
+<article class="hidden md:flex flex-col bg-surface rounded-xl overflow-hidden" aria-hidden="true">
+    <div class="relative aspect-square bg-skeleton"></div>
+    <div class="flex flex-col gap-2 p-3">
+        <span class="block bg-skeleton h-2.5 w-1/2 rounded"></span>
+        <span class="block bg-skeleton h-3.5 w-3/4 rounded"></span>
+        <span class="block bg-skeleton h-3 w-1/3 rounded"></span>
+        <div class="flex items-center justify-between gap-2 mt-auto pt-1">
+            <span class="block bg-skeleton h-4 w-14 rounded"></span>
+            <span class="block bg-skeleton h-7 w-20 rounded-lg"></span>
+        </div>
+    </div>
+</article>

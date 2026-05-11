@@ -1,0 +1,34 @@
+---
+import { strings } from "../../lib/core/i18n";
+
+interface Props {
+    size?: "sm" | "md" | "lg";
+    label?: string;
+    class?: string;
+    inline?: boolean;
+}
+
+const { size = "md", label = strings.spinnerLabel, class: className = "", inline = false } = Astro.props;
+
+const dimensions: Record<string, string> = {
+    sm: "w-4 h-4 border-2",
+    md: "w-6 h-6 border-2",
+    lg: "w-10 h-10 border-[3px]",
+};
+
+const wrapperBase = inline ? "inline-flex" : "flex";
+---
+
+<span
+    role="status"
+    aria-live="polite"
+    aria-label={label}
+    class={`${wrapperBase} items-center justify-center ${className}`}
+>
+    <span
+        class={`${dimensions[size]} rounded-full border-current border-r-transparent`}
+        style="animation: fewya-spin 0.7s linear infinite;"
+        aria-hidden="true"
+    ></span>
+    <span class="sr-only">{label}</span>
+</span>

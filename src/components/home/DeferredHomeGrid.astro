@@ -1,0 +1,29 @@
+---
+import ProductGrid from "../ProductGrid.astro";
+import { supabase } from "../../lib/core/supabase";
+import { createSupabaseAuthClient } from "../../lib/core/auth";
+import { enrichProductsWithRatings } from "../../lib/products/productUtils";
+import { isProductComplete } from "../../lib/products/productValidation";
+import { getMergedWishlistIds } from "../../lib/wishlist/wishlist";
+import type { Product } from "../../lib/core/types";
+
+const { data, error } = await supabase
+    .from("products")
+    .select("*, shop:shops(*), variants:product_variants(*)")
+    .eq("is_active", true)
+    .order("created_at", { ascending: false });
+
+if (error) {
+    console.error("Error al obtener productos:", error);
+}
+
+const rawProducts: Product[] = data ?? [];
+const products = rawProducts.filter(p => isProductComplete(p));
+await enrichProductsWithRatings(products, supabase);
+
+const authClient = createSupabaseAuthClient(Astro.cookies, Astro.request);
+const { data: { user } } = await authClient.auth.getUser();
+const wishedProductIds = await getMergedWishlistIds(authClient, Astro.cookies, user?.id ?? null);
+---
+
+<ProductGrid products={products} wishedProductIds={wishedProductIds} />
