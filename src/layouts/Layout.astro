@@ -1,6 +1,7 @@
 ---
 import '../styles/global.css';
 import { strings } from '../lib/core/i18n';
+import { ClientRouter } from 'astro:transitions';
 
 interface Props {
   title?: string;
@@ -39,8 +40,13 @@ const {
     <link rel="preconnect" href="https://checkout.stripe.com" />
     <script>
       import { registerSW } from 'virtual:pwa-register'
-      registerSW({ immediate: true })
+      const w = window as unknown as { __fewyaSW?: boolean };
+      if (!w.__fewyaSW) {
+        w.__fewyaSW = true;
+        registerSW({ immediate: true });
+      }
     </script>
+    <ClientRouter />
 
     <!-- SEO -->
     <title>{title}</title>
@@ -58,6 +64,34 @@ const {
     </script>
     <script>
       import '../lib/cart/cart-client';
+    </script>
+    <script>
+      import { mountProgressBar } from '../lib/ui/progress-bar';
+      import { mountToastRoot } from '../lib/ui/toast';
+      import { mountLiveStatus } from '../lib/ui/live-status';
+
+      const PERSIST_IDS = ['fewya-progress', 'fewya-toast-root', 'fewya-live-status'];
+
+      function init() {
+        mountProgressBar();
+        mountToastRoot();
+        mountLiveStatus();
+      }
+
+      init();
+
+      document.addEventListener('astro:before-swap', (event) => {
+        const newDoc = (event as unknown as { newDocument: Document }).newDocument;
+        if (!newDoc?.body) return;
+        PERSIST_IDS.forEach((id) => {
+          const live = document.getElementById(id);
+          const incoming = newDoc.getElementById(id);
+          if (incoming) incoming.remove();
+          if (live) newDoc.body.appendChild(live.cloneNode(true));
+        });
+      });
+
+      document.addEventListener('astro:page-load', init);
     </script>
     <script>
       // Remove no-transitions class after first paint to prevent color flash during load
