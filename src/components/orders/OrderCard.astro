@@ -73,6 +73,7 @@ const totalFormatted = currencyFormatter.format(order.totalAmount);
 const showTracking = order.hasShipment && (order.trackingNumber || order.trackingUrl);
 const showActions = normalizedStatus === 'delivered';
 const showIncident = normalizedStatus === 'incident' && order.incidentDescription;
+const showCancelIncident = normalizedStatus === 'incident';
 ---
 
 <article class="bg-surface rounded-2xl border border-border-light overflow-hidden" data-order-id={order.orderId} data-order-status={normalizedStatus}>
@@ -298,8 +299,44 @@ const showIncident = normalizedStatus === 'incident' && order.incidentDescriptio
                     {strings.incidentReturnPolicyNoticeSuffix}
                 </p>
             </div>
+
+            {showCancelIncident && (
+                <button
+                    type="button"
+                    class="open-cancel-incident-modal-btn inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors self-start"
+                    data-order-id={order.orderId}
+                >
+                    <Icon name="x" size={12} />
+                    {strings.incidentCancelBtn}
+                </button>
+            )}
         </div>
     )}
+
+    {/* Cancel Incident Modal */}
+    <div class="cancel-incident-modal hidden fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4" data-order-id={order.orderId}>
+        <div class="w-full max-w-md rounded-t-2xl sm:rounded-2xl border border-border bg-surface p-5 shadow-xl">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-base font-semibold text-text-primary">{strings.incidentCancelModalTitle}</h3>
+                <button type="button" class="close-cancel-incident-modal-btn p-1.5 rounded-lg hover:bg-border-light transition-colors text-text-secondary">
+                    <Icon name="x" size={18} />
+                </button>
+            </div>
+            <div class="p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 mb-5">
+                <p class="text-sm text-amber-800 dark:text-amber-300 leading-relaxed">
+                    {strings.incidentCancelModalWarning}
+                </p>
+            </div>
+            <div class="flex gap-2 justify-end">
+                <button type="button" class="close-cancel-incident-modal-btn px-3 py-1.5 text-sm font-medium text-text-secondary hover:text-text-primary transition-colors">
+                    {strings.incidentCancelDismiss}
+                </button>
+                <button type="button" class="confirm-cancel-incident-btn px-3 py-1.5 text-sm font-semibold rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" data-order-id={order.orderId}>
+                    {strings.incidentCancelConfirm}
+                </button>
+            </div>
+        </div>
+    </div>
 
     {/* Incident Modal */}
     <div class="incident-modal hidden fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4" data-order-id={order.orderId}>
@@ -388,46 +425,174 @@ const showIncident = normalizedStatus === 'incident' && order.incidentDescriptio
     import { progress } from '../../lib/ui/progress-bar';
     import { strings } from '../../lib/core/i18n';
 
-    function initOrderCards() {
-        // Toggle expandable order details
-        document.querySelectorAll('.order-toggle-btn').forEach((btn) => {
-            btn.addEventListener('click', () => {
-                const article = btn.closest('article');
-                const details = article?.querySelector('.order-details') as HTMLElement | null;
-                const icon = btn.querySelector('.toggle-icon') as HTMLElement | null;
-                const expanded = btn.getAttribute('aria-expanded') === 'true';
+    // Track modals that already have photo-upload wired up (lazy init on first open)
+    const initializedModals = new WeakSet<Element>();
 
-                if (details) {
-                    details.classList.toggle('hidden', expanded);
-                }
-                if (icon) {
-                    icon.style.transform = expanded ? 'rotate(0deg)' : 'rotate(180deg)';
-                }
-                btn.setAttribute('aria-expanded', String(!expanded));
+    function setupModalPhotoUpload(modal: Element) {
+        if (initializedModals.has(modal)) return;
+        initializedModals.add(modal);
+
+        const fileInput = modal.querySelector('.incident-file-input') as HTMLInputElement | null;
+        const previewContainer = modal.querySelector('.incident-photo-preview') as HTMLElement | null;
+        const descInput = modal.querySelector('.incident-desc-input') as HTMLTextAreaElement | null;
+        const descError = modal.querySelector('.incident-desc-error') as HTMLElement | null;
+        const photosError = modal.querySelector('.incident-photos-error') as HTMLElement | null;
+        const submitBtn = modal.querySelector('.submit-incident-btn') as HTMLButtonElement | null;
+        const orderId = (modal as HTMLElement).dataset.orderId;
+
+        if (!fileInput || !previewContainer || !descInput || !submitBtn || !orderId) return;
+
+        const uploadedPhotos: string[] = [];
+
+        function renderPreviews() {
+            if (!previewContainer) return;
+            previewContainer.innerHTML = '';
+            uploadedPhotos.forEach((url, index) => {
+                const div = document.createElement('div');
+                div.className = 'relative aspect-square rounded-xl overflow-hidden border border-border-light bg-border-light';
+                div.innerHTML = `
+                    <img src="${url}" alt="" class="w-full h-full object-cover" />
+                    <button type="button" data-index="${index}" class="remove-photo-btn absolute top-1 right-1 p-1 rounded-md bg-black/60 text-white hover:bg-black/80 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                    </button>
+                `;
+                previewContainer.appendChild(div);
             });
+
+            previewContainer.querySelectorAll('.remove-photo-btn').forEach((btn) => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const idx = parseInt((btn as HTMLElement).dataset.index || '0', 10);
+                    uploadedPhotos.splice(idx, 1);
+                    renderPreviews();
+                });
+            });
+        }
+
+        fileInput.addEventListener('change', async () => {
+            const files = Array.from(fileInput.files || []);
+            if (files.length === 0) return;
+
+            const remainingSlots = 20 - uploadedPhotos.length;
+            const toUpload = files.slice(0, remainingSlots);
+
+            if (toUpload.length < files.length) toast.error(strings.incidentMaxPhotosError);
+
+            setBusy(submitBtn!, true, { label: strings.incidentUploading });
+
+            for (const file of toUpload) {
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('orderId', orderId!);
+                try {
+                    const res = await fetch('/api/orders/incident-upload', { method: 'POST', body: formData });
+                    const data = await res.json() as { url?: string; error?: string };
+                    if (data.url) uploadedPhotos.push(data.url);
+                    else console.error('Upload error', data.error);
+                } catch (err) {
+                    console.error('Upload failed', err);
+                }
+            }
+
+            setBusy(submitBtn!, false);
+            fileInput.value = '';
+            renderPreviews();
         });
 
-        document.querySelectorAll<HTMLButtonElement>('.order-confirm-btn').forEach((btn) => {
-            if (btn.dataset.bound === 'true') return;
-            btn.dataset.bound = 'true';
-            btn.addEventListener('click', async (e) => {
+        submitBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const description = descInput.value || '';
+            const nonSpaceLength = description.replace(/\s/g, '').length;
+            let hasError = false;
+
+            if (nonSpaceLength < 50) {
+                descError?.classList.remove('hidden');
+                descInput.focus();
+                hasError = true;
+            } else {
+                descError?.classList.add('hidden');
+            }
+
+            if (uploadedPhotos.length < 3) {
+                photosError?.classList.remove('hidden');
+                hasError = true;
+            } else {
+                photosError?.classList.add('hidden');
+            }
+
+            if (hasError) return;
+
+            setBusy(submitBtn!, true, { label: strings.incidentSubmitting });
+            progress.start();
+
+            try {
+                const res = await fetch('/api/orders/report-incident', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ orderId, description, photos: uploadedPhotos }),
+                });
+                const data = await res.json() as { success?: boolean; error?: string };
+                if (data.success) {
+                    progress.done();
+                    toast.success(strings.incidentReportedToast);
+                    window.setTimeout(() => window.location.reload(), 800);
+                } else {
+                    progress.fail();
+                    toast.error(data.error || strings.orderReportIncidentError);
+                    setBusy(submitBtn!, false);
+                }
+            } catch {
+                progress.fail();
+                toast.error(strings.toastErrorNetwork);
+                setBusy(submitBtn!, false);
+            }
+        });
+    }
+
+    // Single delegated listener on document — works regardless of when elements appear in the DOM.
+    // This is necessary because DeferredBuyerOrders uses server:defer, which injects HTML after
+    // astro:page-load and DOMContentLoaded have already fired.
+    let delegatedListenerAttached = false;
+
+    function attachDelegatedListeners() {
+        if (delegatedListenerAttached) return;
+        delegatedListenerAttached = true;
+
+        document.addEventListener('click', async (e) => {
+            const target = e.target as HTMLElement;
+            if (!(target instanceof Element)) return;
+
+            // Toggle order details
+            const toggleBtn = target.closest<HTMLButtonElement>('.order-toggle-btn');
+            if (toggleBtn) {
+                const article = toggleBtn.closest('article');
+                const details = article?.querySelector('.order-details') as HTMLElement | null;
+                const icon = toggleBtn.querySelector('.toggle-icon') as HTMLElement | null;
+                const expanded = toggleBtn.getAttribute('aria-expanded') === 'true';
+                details?.classList.toggle('hidden', expanded);
+                if (icon) icon.style.transform = expanded ? 'rotate(0deg)' : 'rotate(180deg)';
+                toggleBtn.setAttribute('aria-expanded', String(!expanded));
+                return;
+            }
+
+            // Confirm delivery
+            const confirmBtn = target.closest<HTMLButtonElement>('.order-confirm-btn');
+            if (confirmBtn && !confirmBtn.disabled) {
                 e.preventDefault();
                 e.stopPropagation();
-                const orderId = btn.dataset.orderId;
+                const orderId = confirmBtn.dataset.orderId;
                 if (!orderId) return;
-
                 if (!confirm('¿Confirmas que has recibido el pedido correctamente?')) return;
-
-                setBusy(btn, true, { label: strings.loadingGeneric });
+                setBusy(confirmBtn, true, { label: strings.loadingGeneric });
                 progress.start();
-
                 try {
                     const res = await fetch('/api/orders/confirm-delivery', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ orderId }),
                     });
-
                     const data = await res.json() as { success?: boolean; error?: string };
                     if (data.success) {
                         progress.done();
@@ -436,194 +601,113 @@ const showIncident = normalizedStatus === 'incident' && order.incidentDescriptio
                     } else {
                         progress.fail();
                         toast.error(data.error || strings.orderConfirmDeliveryError);
-                        setBusy(btn, false);
+                        setBusy(confirmBtn, false);
                     }
                 } catch {
                     progress.fail();
                     toast.error(strings.toastErrorNetwork);
-                    setBusy(btn, false);
+                    setBusy(confirmBtn, false);
                 }
-            });
-        });
+                return;
+            }
 
-        // Incident modal logic
-        document.querySelectorAll('.open-incident-modal-btn').forEach((btn) => {
-            btn.addEventListener('click', (e) => {
+            // Open incident modal
+            const openIncidentBtn = target.closest<HTMLElement>('.open-incident-modal-btn');
+            if (openIncidentBtn) {
                 e.preventDefault();
                 e.stopPropagation();
-                const orderId = (btn as HTMLElement).dataset.orderId;
+                const orderId = openIncidentBtn.dataset.orderId;
                 if (!orderId) return;
                 const modal = document.querySelector(`.incident-modal[data-order-id="${orderId}"]`);
                 if (modal) {
+                    setupModalPhotoUpload(modal);
                     modal.classList.remove('hidden');
                     document.body.style.overflow = 'hidden';
                 }
-            });
-        });
-
-        document.querySelectorAll('.close-incident-modal-btn').forEach((btn) => {
-            btn.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                const modal = btn.closest('.incident-modal');
-                if (modal) {
-                    modal.classList.add('hidden');
-                    document.body.style.overflow = '';
-                }
-            });
-        });
-
-        document.querySelectorAll('.incident-modal').forEach((modal) => {
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) {
-                    modal.classList.add('hidden');
-                    document.body.style.overflow = '';
-                }
-            });
-        });
-
-        // Photo upload & preview logic
-        document.querySelectorAll('.incident-modal').forEach((modal) => {
-            const fileInput = modal.querySelector('.incident-file-input') as HTMLInputElement | null;
-            const previewContainer = modal.querySelector('.incident-photo-preview') as HTMLElement | null;
-            const descInput = modal.querySelector('.incident-desc-input') as HTMLTextAreaElement | null;
-            const descError = modal.querySelector('.incident-desc-error') as HTMLElement | null;
-            const photosError = modal.querySelector('.incident-photos-error') as HTMLElement | null;
-            const submitBtn = modal.querySelector('.submit-incident-btn') as HTMLButtonElement | null;
-            const orderId = (modal as HTMLElement).dataset.orderId;
-
-            if (!fileInput || !previewContainer || !descInput || !submitBtn || !orderId) return;
-
-            const uploadedPhotos: string[] = [];
-
-            function renderPreviews() {
-                if (!previewContainer) return;
-                previewContainer.innerHTML = '';
-                uploadedPhotos.forEach((url, index) => {
-                    const div = document.createElement('div');
-                    div.className = 'relative aspect-square rounded-xl overflow-hidden border border-border-light bg-border-light';
-                    div.innerHTML = `
-                        <img src="${url}" alt="" class="w-full h-full object-cover" />
-                        <button type="button" data-index="${index}" class="remove-photo-btn absolute top-1 right-1 p-1 rounded-md bg-black/60 text-white hover:bg-black/80 transition-colors">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-                        </button>
-                    `;
-                    previewContainer.appendChild(div);
-                });
-
-                previewContainer.querySelectorAll('.remove-photo-btn').forEach((btn) => {
-                    btn.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        const idx = parseInt((btn as HTMLElement).dataset.index || '0', 10);
-                        uploadedPhotos.splice(idx, 1);
-                        renderPreviews();
-                    });
-                });
+                return;
             }
 
-            fileInput.addEventListener('change', async () => {
-                const files = Array.from(fileInput.files || []);
-                if (files.length === 0) return;
-
-                const remainingSlots = 20 - uploadedPhotos.length;
-                const toUpload = files.slice(0, remainingSlots);
-
-                if (toUpload.length < files.length) {
-                    toast.error(strings.incidentMaxPhotosError);
-                }
-
-                if (submitBtn) {
-                    setBusy(submitBtn, true, { label: strings.incidentUploading });
-                }
-
-                for (const file of toUpload) {
-                    const formData = new FormData();
-                    formData.append('file', file);
-                    formData.append('orderId', orderId);
-
-                    try {
-                        const res = await fetch('/api/orders/incident-upload', {
-                            method: 'POST',
-                            body: formData,
-                        });
-                        const data = await res.json() as { url?: string; error?: string };
-                        if (data.url) {
-                            uploadedPhotos.push(data.url);
-                        } else {
-                            console.error('Upload error', data.error);
-                        }
-                    } catch (err) {
-                        console.error('Upload failed', err);
-                    }
-                }
-
-                if (submitBtn) {
-                    setBusy(submitBtn, false);
-                }
-                fileInput.value = '';
-                renderPreviews();
-            });
-
-            submitBtn.addEventListener('click', async (e) => {
+            // Close incident modal (button or backdrop)
+            const closeIncidentBtn = target.closest<HTMLElement>('.close-incident-modal-btn');
+            if (closeIncidentBtn) {
                 e.preventDefault();
                 e.stopPropagation();
+                const modal = closeIncidentBtn.closest('.incident-modal');
+                if (modal) { modal.classList.add('hidden'); document.body.style.overflow = ''; }
+                return;
+            }
+            const incidentBackdrop = target.closest<HTMLElement>('.incident-modal');
+            if (incidentBackdrop && e.target === incidentBackdrop) {
+                incidentBackdrop.classList.add('hidden');
+                document.body.style.overflow = '';
+                return;
+            }
 
-                const description = descInput.value || '';
-                const nonSpaceLength = description.replace(/\s/g, '').length;
+            // Open cancel-incident modal
+            const openCancelBtn = target.closest<HTMLElement>('.open-cancel-incident-modal-btn');
+            if (openCancelBtn) {
+                e.preventDefault();
+                e.stopPropagation();
+                const orderId = openCancelBtn.dataset.orderId;
+                if (!orderId) return;
+                const modal = document.querySelector(`.cancel-incident-modal[data-order-id="${orderId}"]`);
+                if (modal) { modal.classList.remove('hidden'); document.body.style.overflow = 'hidden'; }
+                return;
+            }
 
-                let hasError = false;
+            // Close cancel-incident modal (button or backdrop)
+            const closeCancelBtn = target.closest<HTMLElement>('.close-cancel-incident-modal-btn');
+            if (closeCancelBtn) {
+                e.preventDefault();
+                e.stopPropagation();
+                const modal = closeCancelBtn.closest('.cancel-incident-modal');
+                if (modal) { modal.classList.add('hidden'); document.body.style.overflow = ''; }
+                return;
+            }
+            const cancelBackdrop = target.closest<HTMLElement>('.cancel-incident-modal');
+            if (cancelBackdrop && e.target === cancelBackdrop) {
+                cancelBackdrop.classList.add('hidden');
+                document.body.style.overflow = '';
+                return;
+            }
 
-                if (nonSpaceLength < 50) {
-                    descError?.classList.remove('hidden');
-                    descInput.focus();
-                    hasError = true;
-                } else {
-                    descError?.classList.add('hidden');
-                }
-
-                if (uploadedPhotos.length < 3) {
-                    photosError?.classList.remove('hidden');
-                    hasError = true;
-                } else {
-                    photosError?.classList.add('hidden');
-                }
-
-                if (hasError) return;
-
-                setBusy(submitBtn, true, { label: strings.incidentSubmitting });
+            // Confirm cancel incident
+            const confirmCancelBtn = target.closest<HTMLButtonElement>('.confirm-cancel-incident-btn');
+            if (confirmCancelBtn && !confirmCancelBtn.disabled) {
+                e.preventDefault();
+                e.stopPropagation();
+                const orderId = confirmCancelBtn.dataset.orderId;
+                if (!orderId) return;
+                setBusy(confirmCancelBtn, true, { label: strings.loadingGeneric });
                 progress.start();
-
                 try {
-                    const res = await fetch('/api/orders/report-incident', {
+                    const res = await fetch('/api/orders/cancel-incident', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            orderId,
-                            description,
-                            photos: uploadedPhotos,
-                        }),
+                        body: JSON.stringify({ orderId }),
                     });
-
                     const data = await res.json() as { success?: boolean; error?: string };
                     if (data.success) {
                         progress.done();
-                        toast.success(strings.incidentReportedToast);
+                        document.body.style.overflow = '';
+                        toast.success(strings.incidentCancelledToast);
                         window.setTimeout(() => window.location.reload(), 800);
                     } else {
                         progress.fail();
-                        toast.error(data.error || strings.orderReportIncidentError);
-                        setBusy(submitBtn, false);
+                        toast.error(data.error || strings.incidentCancelError);
+                        setBusy(confirmCancelBtn, false);
                     }
                 } catch {
                     progress.fail();
                     toast.error(strings.toastErrorNetwork);
-                    setBusy(submitBtn, false);
+                    setBusy(confirmCancelBtn, false);
                 }
-            });
+                return;
+            }
         });
     }
 
-    document.addEventListener('astro:page-load', initOrderCards);
-    if (document.readyState !== 'loading') initOrderCards();
-    else document.addEventListener('DOMContentLoaded', initOrderCards);
+    document.addEventListener('astro:page-load', attachDelegatedListeners);
+    if (document.readyState !== 'loading') attachDelegatedListeners();
+    else document.addEventListener('DOMContentLoaded', attachDelegatedListeners);
 </script>

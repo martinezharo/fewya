@@ -374,6 +374,13 @@ export const strings = {
     incidentReturnPolicyNoticeSuffix: '.',
     incidentBadgeLabel: 'Incidencia activa',
     incidentUnderReviewNotice: 'El vendedor está revisando la incidencia. Si no hay acuerdo, Fewya intervendrá. Puedes contactar con el vendedor a través de',
+    incidentCancelBtn: 'Cancelar incidencia',
+    incidentCancelModalTitle: '¿Cancelar la incidencia?',
+    incidentCancelModalWarning: 'Si cancelas la incidencia, el pedido se confirmará automáticamente y se liberará el pago al vendedor. No podrás volver a reportar una incidencia para este pedido.',
+    incidentCancelConfirm: 'Sí, cancelar incidencia',
+    incidentCancelDismiss: 'Volver',
+    incidentCancelledToast: 'Incidencia cancelada y pedido confirmado',
+    incidentCancelError: 'No se pudo cancelar la incidencia',
 
     // Auth / API / errors
     authGoogleLoginError: 'Error al iniciar sesion con Google',
