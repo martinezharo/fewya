@@ -242,9 +242,10 @@ bun run check        # Astro type check for .astro files and TypeScript
 ### Pre-Commit Hooks
 
 The repo uses `simple-git-hooks` with `lint-staged`:
-- **Pre-commit:** Runs lint-staged (eslint --fix + vitest on changed files) + full type check
-- **Pre-push:** Runs full test suite
+- **Pre-commit (~2-3s):** Runs lint-staged on staged files — `eslint --fix` + `vitest related --run` (only tests that import the changed files)
+- **Pre-push (~25s):** Runs full type check (`bun run check`: typegen + `astro check`) and full test suite (`bun run test`)
 - These are automatic on commit/push; skip with `git commit --no-verify` (not recommended)
+- After changing the hook config in `package.json`, run `bunx simple-git-hooks` to reinstall
 
 ## Code Standards (from AGENTS.md)
 
