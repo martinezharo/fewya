@@ -42,7 +42,7 @@ if (!isProductComplete(product)) return Astro.redirect('/');
 
 const { data: reviewsData } = await supabase
   .from('reviews')
-  .select('*, profile:public_profiles(full_name, avatar_url)')
+  .select('id, rating, comment, seller_reply, seller_reply_at, created_at, profile_id, product_id, profile:public_profiles(full_name, avatar_url)')
   .eq('product_id', product.id)
   .order('created_at', { ascending: false });
 
@@ -196,7 +196,7 @@ const isWished = mergedWishlist.has(product.id);
 
       <!-- Reviews -->
       <div class="md:max-w-[720px]">
-        <ProductReviews reviews={reviews} />
+        <ProductReviews reviews={reviews} shopName={shop.name} />
       </div>
 
       <!-- Report -->

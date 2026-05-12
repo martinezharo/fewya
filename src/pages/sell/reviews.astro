@@ -1,0 +1,385 @@
+---
+import SellerLayout from '../../layouts/SellerLayout.astro';
+import Icon from '../../components/icons/Icon.astro';
+import { strings } from '../../lib/core/i18n';
+import { createSupabaseAuthClient } from '../../lib/core/auth';
+
+const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
+const {
+    data: { user },
+} = await supabase.auth.getUser();
+
+if (!user) {
+    return Astro.redirect('/sell');
+}
+
+const { data: profile } = await supabase
+    .from('profiles')
+    .select('is_seller')
+    .eq('id', user.id)
+    .single();
+
+if (!profile?.is_seller) {
+    return Astro.redirect('/sell');
+}
+
+const { data: shop } = await supabase
+    .from('shops')
+    .select('id, name, slug')
+    .eq('owner_id', user.id)
+    .maybeSingle();
+
+if (!shop) {
+    return Astro.redirect('/sell/onboarding');
+}
+
+const { data: productsData } = await supabase
+    .from('products')
+    .select('id')
+    .eq('shop_id', shop.id);
+
+const productIds = (productsData ?? []).map((p: any) => p.id);
+
+interface ReviewData {
+    id: string;
+    rating: number;
+    comment: string | null;
+    sellerReply: string | null;
+    sellerReplyAt: string | null;
+    createdAt: Date;
+    buyerName: string | null;
+    productTitle: string;
+    productImage: string;
+    productSlug: string;
+}
+
+let reviews: ReviewData[] = [];
+let avgRating = 0;
+
+if (productIds.length > 0) {
+    const { data: reviewsData } = await supabase
+        .from('reviews')
+        .select(`
+            id, rating, comment, seller_reply, seller_reply_at, created_at,
+            profiles:profile_id (full_name),
+            products:product_id (title, gallery_images, slug)
+        `)
+        .in('product_id', productIds)
+        .order('created_at', { ascending: false });
+
+    reviews = (reviewsData ?? []).map((r: any) => {
+        const reviewProfile = Array.isArray(r.profiles) ? r.profiles[0] : r.profiles;
+        const product = Array.isArray(r.products) ? r.products[0] : r.products;
+        return {
+            id: r.id,
+            rating: r.rating,
+            comment: r.comment ?? null,
+            sellerReply: r.seller_reply ?? null,
+            sellerReplyAt: r.seller_reply_at ?? null,
+            createdAt: new Date(r.created_at),
+            buyerName: reviewProfile?.full_name ?? null,
+            productTitle: product?.title ?? strings.fallbackProductName,
+            productImage: product?.gallery_images?.[0] ?? '',
+            productSlug: product?.slug ?? '',
+        };
+    });
+
+    if (reviews.length > 0) {
+        avgRating = reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
+    }
+}
+
+const dateFormatter = new Intl.DateTimeFormat('es-ES', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+});
+
+function ratingLabel(count: number) {
+    return count === 1 ? strings.sellerReviewsTotalSingular : strings.sellerReviewsTotal.replace('{count}', String(count));
+}
+---
+
+<SellerLayout title={strings.sellerReviewsPanelTitle} shopSlug={shop.slug} shopId={shop.id}>
+    <div class="p-6 lg:p-10">
+        <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-text-tertiary">{shop.name}</p>
+            <h1 class="mt-2 text-2xl font-semibold tracking-tight text-text-primary">
+                {strings.sellerReviewsPanelTitle}
+            </h1>
+            <p class="mt-2 text-sm text-text-secondary">
+                {strings.sellerReviewsPanelSubtitle}
+            </p>
+        </div>
+
+        {reviews.length > 0 && (
+            <div class="mt-6 flex items-center gap-6">
+                <div class="flex flex-col">
+                    <span class="text-3xl font-bold text-text-primary tracking-tight">{avgRating.toFixed(1)}</span>
+                    <div class="flex gap-0.5 mt-1">
+                        {Array.from({ length: 5 }, (_, i) => (
+                            <span class={`text-lg leading-none ${i < Math.round(avgRating) ? 'text-yellow-400' : 'text-border'}`}>★</span>
+                        ))}
+                    </div>
+                    <span class="mt-1 text-xs text-text-tertiary">{ratingLabel(reviews.length)}</span>
+                </div>
+            </div>
+        )}
+
+        {reviews.length > 0 ? (
+            <div class="mt-8 flex flex-col gap-4">
+                {reviews.map((review) => (
+                    <article
+                        class="rounded-3xl border border-border bg-surface p-5 sm:p-6 shadow-sm flex flex-col gap-4"
+                        data-review-id={review.id}
+                    >
+                        <!-- Header: product + rating + buyer -->
+                        <div class="flex items-start gap-4">
+                            <div class="h-14 w-14 sm:h-16 sm:w-16 shrink-0 overflow-hidden rounded-2xl border border-border-light bg-border-light">
+                                {review.productImage ? (
+                                    <img
+                                        src={review.productImage}
+                                        alt={review.productTitle}
+                                        class="h-full w-full object-cover"
+                                        loading="lazy"
+                                    />
+                                ) : (
+                                    <div class="flex h-full w-full items-center justify-center text-text-tertiary">
+                                        <Icon name="package" size={20} />
+                                    </div>
+                                )}
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <a
+                                    href={`/${shop.slug}/${review.productSlug}`}
+                                    class="text-sm font-semibold text-text-primary hover:underline truncate block"
+                                >
+                                    {review.productTitle}
+                                </a>
+                                <div class="flex gap-0.5 mt-1">
+                                    {Array.from({ length: 5 }, (_, i) => (
+                                        <span class={`text-base leading-none ${i < review.rating ? 'text-yellow-400' : 'text-border'}`}>★</span>
+                                    ))}
+                                </div>
+                                <p class="text-xs text-text-secondary mt-0.5">
+                                    {review.buyerName ?? strings.profileAnonymous}
+                                    {' · '}
+                                    {dateFormatter.format(review.createdAt)}
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Review comment -->
+                        {review.comment && (
+                            <p class="text-sm text-text-secondary leading-relaxed whitespace-pre-line">
+                                {review.comment}
+                            </p>
+                        )}
+
+                        <!-- Seller reply section -->
+                        <div class="review-reply-section">
+                            {review.sellerReply ? (
+                                <div class="reply-display">
+                                    <div class="rounded-2xl bg-bg border border-border-light p-4">
+                                        <p class="text-[11px] font-semibold uppercase tracking-wider text-text-tertiary mb-2">
+                                            {strings.sellerReviewsReplyLabel}
+                                        </p>
+                                        <p class="text-sm text-text-primary leading-relaxed whitespace-pre-line reply-text">
+                                            {review.sellerReply}
+                                        </p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        class="edit-reply-btn mt-2 text-xs font-medium text-text-tertiary hover:text-text-secondary transition-colors"
+                                    >
+                                        {strings.sellerReviewsReplyEdit}
+                                    </button>
+                                </div>
+                            ) : null}
+
+                            <div class={`reply-form-wrapper ${review.sellerReply ? 'hidden' : ''}`}>
+                                {!review.sellerReply && (
+                                    <button
+                                        type="button"
+                                        class="reply-toggle-btn text-xs font-medium text-accent hover:text-accent/80 transition-colors flex items-center gap-1"
+                                    >
+                                        <Icon name="message-circle" size={13} />
+                                        {strings.sellerReviewsReplyBtn}
+                                    </button>
+                                )}
+                                <form
+                                    class={`reply-form ${review.sellerReply ? '' : 'hidden'} mt-3 flex flex-col gap-3`}
+                                    data-review-id={review.id}
+                                >
+                                    <textarea
+                                        class="reply-textarea w-full rounded-2xl border border-border bg-bg px-4 py-3 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent resize-none transition-colors"
+                                        rows={3}
+                                        placeholder={strings.sellerReviewsReplyPlaceholder}
+                                    >{review.sellerReply ?? ''}</textarea>
+                                    <div class="flex items-center gap-3">
+                                        <button
+                                            type="submit"
+                                            class="reply-submit-btn shrink-0 rounded-xl bg-accent px-4 py-2 text-xs font-semibold text-white hover:bg-accent/90 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            {strings.sellerReviewsReplySubmit}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            class="reply-cancel-btn text-xs font-medium text-text-tertiary hover:text-text-secondary transition-colors"
+                                        >
+                                            {strings.sellerReviewsReplyCancel}
+                                        </button>
+                                        <span class="reply-error hidden text-xs text-red-500">
+                                            {strings.sellerReviewsReplyError}
+                                        </span>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </article>
+                ))}
+            </div>
+        ) : (
+            <section class="mt-8 flex min-h-[360px] flex-col items-center justify-center rounded-[32px] border border-dashed border-border bg-surface px-6 py-12 text-center">
+                <div class="flex h-16 w-16 items-center justify-center rounded-full border border-border text-text-tertiary">
+                    <Icon name="star" size={26} />
+                </div>
+                <h2 class="mt-5 text-xl font-semibold tracking-tight text-text-primary">
+                    {strings.sellerReviewsEmpty}
+                </h2>
+                <p class="mt-2 max-w-md text-sm text-text-secondary">
+                    {strings.sellerReviewsEmptySub}
+                </p>
+            </section>
+        )}
+    </div>
+</SellerLayout>
+
+<script>
+    function initReplyForms() {
+        const articles = document.querySelectorAll<HTMLElement>('article[data-review-id]');
+
+        articles.forEach((article) => {
+            if (article.dataset.replyInitialized) return;
+            article.dataset.replyInitialized = 'true';
+
+            const reviewId = article.dataset.reviewId!;
+            const replySection = article.querySelector<HTMLElement>('.review-reply-section');
+            if (!replySection) return;
+
+            // --- Toggle button (no reply yet: "Responder") ---
+            const toggleBtn = replySection.querySelector<HTMLButtonElement>('.reply-toggle-btn');
+            const formWrapper = replySection.querySelector<HTMLElement>('.reply-form-wrapper');
+            const form = replySection.querySelector<HTMLFormElement>('.reply-form');
+
+            toggleBtn?.addEventListener('click', () => {
+                toggleBtn.classList.add('hidden');
+                form?.classList.remove('hidden');
+                form?.querySelector('textarea')?.focus();
+            });
+
+            // --- Edit button (reply already exists) ---
+            const replyDisplay = replySection.querySelector<HTMLElement>('.reply-display');
+            const editBtn = replySection.querySelector<HTMLButtonElement>('.edit-reply-btn');
+
+            editBtn?.addEventListener('click', () => {
+                replyDisplay?.classList.add('hidden');
+                formWrapper?.classList.remove('hidden');
+                form?.classList.remove('hidden');
+                form?.querySelector('textarea')?.focus();
+            });
+
+            // --- Cancel button ---
+            const cancelBtn = form?.querySelector<HTMLButtonElement>('.reply-cancel-btn');
+            cancelBtn?.addEventListener('click', () => {
+                if (replyDisplay) {
+                    // Had a reply: go back to displaying it
+                    replyDisplay.classList.remove('hidden');
+                    formWrapper?.classList.add('hidden');
+                } else {
+                    // Had no reply: hide form and show toggle button
+                    form?.classList.add('hidden');
+                    toggleBtn?.classList.remove('hidden');
+                }
+            });
+
+            // --- Form submit ---
+            form?.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const textarea = form.querySelector<HTMLTextAreaElement>('.reply-textarea');
+                const submitBtn = form.querySelector<HTMLButtonElement>('.reply-submit-btn');
+                const errorEl = form.querySelector<HTMLElement>('.reply-error');
+                if (!textarea || !submitBtn) return;
+
+                const reply = textarea.value;
+                submitBtn.disabled = true;
+                const originalText = submitBtn.textContent ?? '';
+                submitBtn.textContent = 'Guardando...';
+                errorEl?.classList.add('hidden');
+
+                try {
+                    const res = await fetch('/api/sell/reviews/reply', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ reviewId, reply }),
+                    });
+
+                    if (!res.ok) {
+                        throw new Error('request failed');
+                    }
+
+                    const trimmed = reply.trim();
+
+                    if (trimmed.length === 0) {
+                        // Reply deleted: remove reply display if it existed, show toggle
+                        if (replyDisplay) {
+                            replyDisplay.remove();
+                        }
+                        form.classList.add('hidden');
+                        formWrapper?.classList.remove('hidden');
+                        toggleBtn?.classList.remove('hidden');
+                        textarea.value = '';
+                    } else if (replyDisplay) {
+                        // Updated existing reply
+                        const replyText = replyDisplay.querySelector<HTMLElement>('.reply-text');
+                        if (replyText) replyText.textContent = trimmed;
+                        replyDisplay.classList.remove('hidden');
+                        formWrapper?.classList.add('hidden');
+                    } else {
+                        // New reply: build the display block dynamically
+                        const displayDiv = document.createElement('div');
+                        displayDiv.className = 'reply-display';
+                        displayDiv.innerHTML = `
+                            <div class="rounded-2xl bg-bg border border-border-light p-4">
+                                <p class="text-[11px] font-semibold uppercase tracking-wider text-text-tertiary mb-2">Respuesta de la tienda</p>
+                                <p class="text-sm text-text-primary leading-relaxed whitespace-pre-line reply-text">${trimmed.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>
+                            </div>
+                            <button type="button" class="edit-reply-btn mt-2 text-xs font-medium text-text-tertiary hover:text-text-secondary transition-colors">Editar</button>
+                        `;
+                        replySection.insertBefore(displayDiv, formWrapper);
+
+                        // Wire up the new edit button
+                        displayDiv.querySelector('.edit-reply-btn')?.addEventListener('click', () => {
+                            displayDiv.classList.add('hidden');
+                            formWrapper?.classList.remove('hidden');
+                            form.classList.remove('hidden');
+                            textarea.focus();
+                        });
+
+                        form.classList.add('hidden');
+                        formWrapper?.classList.add('hidden');
+                    }
+                } catch {
+                    errorEl?.classList.remove('hidden');
+                } finally {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = originalText;
+                }
+            });
+        });
+    }
+
+    document.addEventListener('astro:page-load', initReplyForms);
+    if (document.readyState !== 'loading') initReplyForms();
+    else document.addEventListener('DOMContentLoaded', initReplyForms);
+</script>
