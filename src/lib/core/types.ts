@@ -60,6 +60,8 @@ export interface Review {
     profile_id: string;
     rating: number;
     comment: string | null;
+    seller_reply: string | null;
+    seller_reply_at: string | null;
     created_at: string;
     profile?: {
         full_name: string | null;

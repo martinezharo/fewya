@@ -403,6 +403,23 @@ export const strings = {
     incidentCancelledToast: 'Incidencia cancelada y pedido confirmado',
     incidentCancelError: 'No se pudo cancelar la incidencia',
 
+    // Seller reviews panel
+    sellerReviewsPanelTitle: 'Reseñas',
+    sellerReviewsPanelSubtitle: 'Reseñas que han dejado tus compradores.',
+    sellerReviewsEmpty: 'Sin reseñas todavía',
+    sellerReviewsEmptySub: 'Cuando tus compradores dejen una reseña, aparecerá aquí.',
+    sellerReviewsTotal: '{count} reseñas',
+    sellerReviewsTotalSingular: '1 reseña',
+    sellerReviewsAvgLabel: 'Valoración media',
+    sellerReviewsReplyLabel: 'Respuesta de la tienda',
+    sellerReviewsReplyPlaceholder: 'Escribe tu respuesta a esta reseña...',
+    sellerReviewsReplyBtn: 'Responder',
+    sellerReviewsReplySubmit: 'Publicar respuesta',
+    sellerReviewsReplyEdit: 'Editar',
+    sellerReviewsReplySaving: 'Guardando...',
+    sellerReviewsReplyCancel: 'Cancelar',
+    sellerReviewsReplyError: 'No se pudo guardar la respuesta',
+
     // Auth / API / errors
     authGoogleLoginError: 'Error al iniciar sesion con Google',
     authMissingSupabaseEnv: 'Variables de entorno SUPABASE_URL o SUPABASE_KEY no configuradas',
