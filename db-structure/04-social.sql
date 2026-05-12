@@ -9,6 +9,8 @@ CREATE TABLE public.reviews (
   profile_id uuid NOT NULL,
   rating integer NOT NULL CHECK (rating >= 1 AND rating <= 5),
   comment text,
+  seller_reply text,
+  seller_reply_at timestamp with time zone,
   created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
   CONSTRAINT reviews_pkey PRIMARY KEY (id),
   CONSTRAINT reviews_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.products(id),
