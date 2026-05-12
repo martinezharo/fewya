@@ -5,9 +5,10 @@ import type { Review } from '../../lib/core/types';
 
 interface Props {
   reviews: Review[];
+  shopName?: string;
 }
 
-const { reviews } = Astro.props;
+const { reviews, shopName } = Astro.props;
 const avgRating = reviews.length > 0
   ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
   : 0;
@@ -55,6 +56,15 @@ const avgRating = reviews.length > 0
             </div>
             {review.comment && (
               <p class="text-sm text-text-secondary leading-relaxed">{review.comment}</p>
+            )}
+            {review.seller_reply && (
+              <div class="mt-3 rounded-xl bg-surface border border-border-light px-3.5 py-3">
+                <p class="text-[11px] font-semibold uppercase tracking-wider text-text-tertiary mb-1.5 flex items-center gap-1.5">
+                  <Icon name="store" size={11} />
+                  {shopName ? `Respuesta de ${shopName}` : strings.sellerReviewsReplyLabel}
+                </p>
+                <p class="text-sm text-text-secondary leading-relaxed whitespace-pre-line">{review.seller_reply}</p>
+              </div>
             )}
           </div>
         </div>
