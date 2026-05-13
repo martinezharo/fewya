@@ -403,6 +403,17 @@ export const strings = {
     incidentCancelledToast: 'Incidencia cancelada y pedido confirmado',
     incidentCancelError: 'No se pudo cancelar la incidencia',
 
+    // Auto reviews
+    autoReviewComment: 'Este pedido se completó con éxito y fue entregado sin incidencias.',
+    autoReviewBadge: 'Automática',
+
+    // Seller order confirm delivery
+    sellerOrderConfirmDelivery: 'Confirmar entrega y cobrar',
+    sellerOrderConfirmDeliveryHint: 'Han pasado 48 horas desde la entrega. Confírmala para liberar el pago a tu cuenta.',
+    sellerOrderConfirmDeliverySuccess: 'Entrega confirmada. El pago está en camino.',
+    sellerOrderConfirmDeliveryError: 'No se pudo confirmar la entrega',
+    sellerOrderDeliveredWaiting: 'El paquete ha sido entregado. Podrás confirmar la entrega y recibir el pago una vez hayan pasado 48 horas.',
+
     // Seller reviews panel
     sellerReviewsPanelTitle: 'Reseñas',
     sellerReviewsPanelSubtitle: 'Reseñas que han dejado tus compradores.',

@@ -57,12 +57,13 @@ export interface ProductVariant {
 export interface Review {
     id: string;
     product_id: string;
-    profile_id: string;
+    profile_id: string | null;
     rating: number;
     comment: string | null;
     seller_reply: string | null;
     seller_reply_at: string | null;
     created_at: string;
+    is_auto?: boolean;
     profile?: {
         full_name: string | null;
         avatar_url: string | null;
