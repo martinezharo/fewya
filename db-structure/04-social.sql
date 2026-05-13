@@ -6,16 +6,20 @@
 CREATE TABLE public.reviews (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   product_id uuid NOT NULL,
-  profile_id uuid NOT NULL,
+  profile_id uuid,
   rating integer NOT NULL CHECK (rating >= 1 AND rating <= 5),
   comment text,
   seller_reply text,
   seller_reply_at timestamp with time zone,
   created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
+  is_auto boolean NOT NULL DEFAULT false,
   CONSTRAINT reviews_pkey PRIMARY KEY (id),
   CONSTRAINT reviews_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.products(id),
   CONSTRAINT reviews_profile_id_fkey FOREIGN KEY (profile_id) REFERENCES public.profiles(id)
 );
+
+-- One auto-review per product at most
+CREATE UNIQUE INDEX reviews_product_auto_unique ON public.reviews(product_id) WHERE is_auto = true;
 
 CREATE TABLE public.wishlist (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
