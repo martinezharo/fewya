@@ -237,35 +237,89 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', {
                         </div>
 
                         <div
-                            class="refund-modal hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+                            class="refund-modal hidden fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm p-0 sm:p-4"
                             data-order-id={claim.orderId}
+                            data-total={claim.totalAmount}
+                            data-shipping={claim.shippingAmount}
+                            data-product={claim.refundAmount}
                         >
-                            <div class="w-full max-w-sm rounded-2xl border border-border bg-surface p-5 shadow-xl">
-                                <h3 class="text-base font-semibold text-text-primary">{strings.sellerIncidentRefundConfirmTitle}</h3>
-                                <p class="mt-1 text-sm text-text-secondary">{strings.sellerIncidentRefundConfirmBody}</p>
-                                <dl class="mt-4 space-y-2 rounded-xl border border-border-light bg-bg/60 p-3 text-sm">
-                                    <div class="flex justify-between">
-                                        <dt class="text-text-secondary">{strings.ordersTotal}</dt>
-                                        <dd class="font-semibold text-text-primary tabular-nums">{currencyFormatter.format(claim.totalAmount)}</dd>
+                            <div class="w-full max-w-md rounded-t-2xl sm:rounded-2xl border border-border bg-surface p-5 shadow-xl max-h-[90vh] overflow-y-auto">
+                                <div class="flex items-start justify-between gap-3">
+                                    <div>
+                                        <h3 class="text-base font-semibold text-text-primary">{strings.sellerIncidentRefundConfirmTitle}</h3>
+                                        <p class="mt-1 text-sm text-text-secondary">{strings.sellerIncidentRefundConfirmBody}</p>
                                     </div>
-                                    <div class="flex justify-between">
-                                        <dt class="text-text-secondary">{strings.cartShipping}</dt>
-                                        <dd class="font-semibold text-text-primary tabular-nums">
-                                            {claim.shippingAmount > 0 ? `− ${currencyFormatter.format(claim.shippingAmount)}` : strings.ordersFreeShipping}
-                                        </dd>
-                                    </div>
-                                    <div class="flex justify-between pt-2 border-t border-border-light">
-                                        <dt class="font-semibold text-text-primary">{strings.sellerIncidentRefundBtn}</dt>
-                                        <dd class="font-bold text-red-600 dark:text-red-400 tabular-nums">{currencyFormatter.format(claim.refundAmount)}</dd>
-                                    </div>
-                                </dl>
+                                    <button type="button" class="close-refund-modal-btn shrink-0 p-1.5 rounded-lg hover:bg-border-light transition-colors text-text-secondary">
+                                        <Icon name="x" size={18} />
+                                    </button>
+                                </div>
+
+                                <div class="mt-5 flex flex-col gap-2">
+                                    <label class="refund-option group relative flex items-start gap-3 rounded-2xl border border-border-light bg-bg/40 p-3 cursor-pointer transition-all hover:border-border has-[input:checked]:border-accent has-[input:checked]:bg-accent/5">
+                                        <input type="radio" name={`refund-type-${claim.orderId}`} value="full" class="refund-type-input mt-1 accent-accent" />
+                                        <div class="flex-1 min-w-0">
+                                            <div class="flex items-center justify-between gap-2">
+                                                <span class="text-sm font-semibold text-text-primary">{strings.refundTypeFullTitle}</span>
+                                                <span class="text-sm font-bold text-text-primary tabular-nums">{currencyFormatter.format(claim.totalAmount)}</span>
+                                            </div>
+                                            <p class="mt-0.5 text-xs text-text-secondary leading-snug">{strings.refundTypeFullDesc}</p>
+                                        </div>
+                                    </label>
+
+                                    <label class="refund-option group relative flex items-start gap-3 rounded-2xl border border-border-light bg-bg/40 p-3 cursor-pointer transition-all hover:border-border has-[input:checked]:border-accent has-[input:checked]:bg-accent/5">
+                                        <input type="radio" name={`refund-type-${claim.orderId}`} value="product" class="refund-type-input mt-1 accent-accent" checked />
+                                        <div class="flex-1 min-w-0">
+                                            <div class="flex items-center justify-between gap-2">
+                                                <span class="text-sm font-semibold text-text-primary">{strings.refundTypeProductTitle}</span>
+                                                <span class="text-sm font-bold text-text-primary tabular-nums">{currencyFormatter.format(claim.refundAmount)}</span>
+                                            </div>
+                                            <p class="mt-0.5 text-xs text-text-secondary leading-snug">{strings.refundTypeProductDesc}</p>
+                                        </div>
+                                    </label>
+
+                                    <label class="refund-option group relative flex items-start gap-3 rounded-2xl border border-border-light bg-bg/40 p-3 cursor-pointer transition-all hover:border-border has-[input:checked]:border-accent has-[input:checked]:bg-accent/5">
+                                        <input type="radio" name={`refund-type-${claim.orderId}`} value="partial" class="refund-type-input mt-1 accent-accent" />
+                                        <div class="flex-1 min-w-0">
+                                            <span class="text-sm font-semibold text-text-primary">{strings.refundTypePartialTitle}</span>
+                                            <p class="mt-0.5 text-xs text-text-secondary leading-snug">{strings.refundTypePartialDesc}</p>
+                                            <div class="partial-input-wrap hidden mt-3">
+                                                <label class="block text-[11px] font-semibold uppercase tracking-wider text-text-secondary mb-1.5">
+                                                    {strings.refundPartialInputLabel}
+                                                </label>
+                                                <div class="relative">
+                                                    <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-text-tertiary">€</span>
+                                                    <input
+                                                        type="number"
+                                                        step="0.01"
+                                                        min="0.01"
+                                                        max={claim.totalAmount}
+                                                        class="partial-amount-input w-full rounded-xl border border-border bg-surface pl-7 pr-3 py-2 text-sm text-text-primary tabular-nums shadow-sm outline-none ring-accent focus:ring-2 transition-shadow"
+                                                        placeholder="0.00"
+                                                    />
+                                                </div>
+                                                <p class="mt-1.5 text-[11px] text-text-tertiary tabular-nums">
+                                                    {strings.refundPartialMaxHint.replace('{amount}', currencyFormatter.format(claim.totalAmount))}
+                                                </p>
+                                                <p class="partial-error hidden mt-1.5 text-[11px] text-red-600">{strings.sellerIncidentRefundInvalidPartial}</p>
+                                            </div>
+                                        </div>
+                                    </label>
+                                </div>
+
+                                <div class="mt-5 flex items-center justify-between rounded-xl border border-border-light bg-bg/60 px-4 py-3">
+                                    <span class="text-sm font-semibold text-text-primary">{strings.refundSummaryLabel}</span>
+                                    <span class="refund-summary-amount text-base font-bold text-red-600 dark:text-red-400 tabular-nums">
+                                        {currencyFormatter.format(claim.refundAmount)}
+                                    </span>
+                                </div>
+
                                 <div class="mt-5 flex gap-2 justify-end">
                                     <button type="button" class="close-refund-modal-btn px-3 py-1.5 text-sm font-medium text-text-secondary hover:text-text-primary transition-colors">
                                         {strings.sellerIncidentRefundDismiss}
                                     </button>
                                     <button
                                         type="button"
-                                        class="confirm-refund-btn px-3 py-1.5 text-sm font-semibold rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors"
+                                        class="confirm-refund-btn px-3 py-1.5 text-sm font-semibold rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                         data-order-id={claim.orderId}
                                     >
                                         {strings.sellerIncidentRefundConfirmCta}
@@ -298,13 +352,71 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', {
     import { progress } from '../../lib/ui/progress-bar';
     import { strings } from '../../lib/core/i18n';
 
+    const currencyFormatter = new Intl.NumberFormat('es-ES', {
+        style: 'currency',
+        currency: 'EUR',
+    });
+
+    type RefundType = 'full' | 'product' | 'partial';
+
+    function getModalState(modal: HTMLElement) {
+        const total = Number(modal.dataset.total || 0);
+        const shipping = Number(modal.dataset.shipping || 0);
+        const product = Number(modal.dataset.product || 0);
+        const selected = (modal.querySelector<HTMLInputElement>('.refund-type-input:checked')?.value || 'product') as RefundType;
+        const partialInput = modal.querySelector<HTMLInputElement>('.partial-amount-input');
+        const partial = partialInput ? Number(partialInput.value || 0) : 0;
+        let amount = 0;
+        if (selected === 'full') amount = total;
+        else if (selected === 'product') amount = product;
+        else amount = partial;
+        return { total, shipping, product, selected, partial, amount };
+    }
+
+    function updateSummary(modal: HTMLElement) {
+        const { selected, amount, total } = getModalState(modal);
+        const summary = modal.querySelector<HTMLElement>('.refund-summary-amount');
+        const partialWrap = modal.querySelector<HTMLElement>('.partial-input-wrap');
+        const partialError = modal.querySelector<HTMLElement>('.partial-error');
+        const confirmBtn = modal.querySelector<HTMLButtonElement>('.confirm-refund-btn');
+
+        if (partialWrap) partialWrap.classList.toggle('hidden', selected !== 'partial');
+        if (partialError && selected !== 'partial') partialError.classList.add('hidden');
+
+        const isValid = selected === 'partial'
+            ? amount > 0 && amount <= total
+            : amount > 0;
+
+        if (summary) summary.textContent = isValid ? currencyFormatter.format(amount) : currencyFormatter.format(0);
+        if (confirmBtn) confirmBtn.disabled = !isValid;
+    }
+
+    document.querySelectorAll<HTMLElement>('.refund-modal').forEach((modal) => {
+        modal.querySelectorAll<HTMLInputElement>('.refund-type-input').forEach((input) => {
+            input.addEventListener('change', () => {
+                updateSummary(modal);
+                if (input.value === 'partial') {
+                    modal.querySelector<HTMLInputElement>('.partial-amount-input')?.focus();
+                }
+            });
+        });
+
+        const partialInput = modal.querySelector<HTMLInputElement>('.partial-amount-input');
+        partialInput?.addEventListener('input', () => updateSummary(modal));
+
+        updateSummary(modal);
+    });
+
     document.querySelectorAll<HTMLButtonElement>('.open-refund-modal-btn').forEach((btn) => {
         btn.addEventListener('click', (e) => {
             e.preventDefault();
             const orderId = btn.dataset.orderId;
             if (!orderId) return;
-            const modal = document.querySelector(`.refund-modal[data-order-id="${orderId}"]`);
-            if (modal) modal.classList.remove('hidden');
+            const modal = document.querySelector<HTMLElement>(`.refund-modal[data-order-id="${orderId}"]`);
+            if (modal) {
+                modal.classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+            }
         });
     });
 
@@ -312,13 +424,19 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', {
         btn.addEventListener('click', (e) => {
             e.preventDefault();
             const modal = btn.closest('.refund-modal');
-            if (modal) modal.classList.add('hidden');
+            if (modal) {
+                modal.classList.add('hidden');
+                document.body.style.overflow = '';
+            }
         });
     });
 
     document.querySelectorAll('.refund-modal').forEach((modal) => {
         modal.addEventListener('click', (e) => {
-            if (e.target === modal) modal.classList.add('hidden');
+            if (e.target === modal) {
+                modal.classList.add('hidden');
+                document.body.style.overflow = '';
+            }
         });
     });
 
@@ -327,6 +445,17 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', {
             e.preventDefault();
             const orderId = btn.dataset.orderId;
             if (!orderId) return;
+            const modal = btn.closest<HTMLElement>('.refund-modal');
+            if (!modal) return;
+
+            const state = getModalState(modal);
+            if (state.selected === 'partial') {
+                if (!(state.partial > 0) || state.partial > state.total) {
+                    modal.querySelector<HTMLElement>('.partial-error')?.classList.remove('hidden');
+                    modal.querySelector<HTMLInputElement>('.partial-amount-input')?.focus();
+                    return;
+                }
+            }
 
             setBusy(btn, true, { label: strings.loadingGeneric });
             progress.start();
@@ -335,7 +464,11 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', {
                 const res = await fetch('/api/orders/refund-incident', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ orderId }),
+                    body: JSON.stringify({
+                        orderId,
+                        refundType: state.selected,
+                        partialAmount: state.selected === 'partial' ? state.partial : undefined,
+                    }),
                 });
 
                 const data = await res.json() as { success?: boolean; error?: string };
