@@ -5,6 +5,8 @@ import { strings } from '../../../lib/core/i18n';
 import { getStripeClient } from '../../../lib/payments/stripe';
 import { CHECKOUT_CURRENCY, toMinorUnits } from '../../../lib/cart/checkout';
 
+type RefundType = 'full' | 'product' | 'partial';
+
 function jsonResponse(payload: Record<string, unknown>, status: number) {
     return new Response(JSON.stringify(payload), {
         status,
@@ -17,6 +19,10 @@ function one<T>(value: T | T[] | null | undefined): T | null {
     return value ?? null;
 }
 
+function roundMoney(value: number): number {
+    return Math.round(value * 100) / 100;
+}
+
 export const POST: APIRoute = async ({ request, cookies }) => {
     const authClient = createSupabaseAuthClient(cookies, request);
     const {
@@ -27,7 +33,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         return jsonResponse({ error: strings.apiUnauthorized }, 401);
     }
 
-    let body: { orderId?: string };
+    let body: { orderId?: string; refundType?: RefundType; partialAmount?: number };
     try {
         body = await request.json();
     } catch {
@@ -35,7 +41,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     }
 
     const orderId = body.orderId;
-    if (!orderId) {
+    const refundType: RefundType = body.refundType ?? 'product';
+    if (!orderId || !['full', 'product', 'partial'].includes(refundType)) {
         return jsonResponse({ error: strings.apiInvalidBody }, 400);
     }
 
@@ -98,31 +105,50 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     }
 
     const totalAmount = Number(order.total_amount);
-    const refundAmount = Math.max(0, totalAmount - shippingAmount);
+    let refundAmount = 0;
+    let transferShippingAmount = 0;
+    let reasonTag: string;
+
+    if (refundType === 'full') {
+        refundAmount = totalAmount;
+        reasonTag = 'incident_refund_full';
+    } else if (refundType === 'product') {
+        refundAmount = Math.max(0, roundMoney(totalAmount - shippingAmount));
+        transferShippingAmount = shippingAmount;
+        reasonTag = 'incident_refund_product';
+    } else {
+        const partial = roundMoney(Number(body.partialAmount ?? 0));
+        if (!Number.isFinite(partial) || partial <= 0 || partial > totalAmount) {
+            return jsonResponse({ error: strings.sellerIncidentRefundInvalidPartial }, 400);
+        }
+        refundAmount = partial;
+        reasonTag = 'incident_refund_partial';
+    }
 
     const stripe = getStripeClient();
+    const refundCents = toMinorUnits(refundAmount);
 
     try {
         if (order.stripe_payment_intent_id && refundAmount > 0) {
             await stripe.refunds.create({
                 payment_intent: order.stripe_payment_intent_id,
-                amount: toMinorUnits(refundAmount),
+                amount: refundCents,
                 reason: 'requested_by_customer',
                 metadata: {
                     orderId: order.id,
                     publicId: order.public_id,
                     refundedBy: user.id,
-                    type: 'incident_refund_excluding_shipping',
+                    type: reasonTag,
                 },
             }, {
-                idempotencyKey: `incident-refund:${order.id}`,
+                idempotencyKey: `incident-refund-${refundType}-${refundCents}:${order.id}`,
             });
         }
 
-        if (shippingAmount > 0 && sellerStripeAccountId && order.stripe_payment_intent_id) {
+        if (transferShippingAmount > 0 && sellerStripeAccountId && order.stripe_payment_intent_id) {
             const paymentIntent = await stripe.paymentIntents.retrieve(order.stripe_payment_intent_id);
             await stripe.transfers.create({
-                amount: toMinorUnits(shippingAmount),
+                amount: toMinorUnits(transferShippingAmount),
                 currency: CHECKOUT_CURRENCY,
                 destination: sellerStripeAccountId,
                 transfer_group: paymentIntent.transfer_group || `order_${order.public_id}`,
@@ -151,7 +177,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             order_id: orderId,
             amount: refundAmount,
             currency: CHECKOUT_CURRENCY,
-            reason: 'incident_refund_excluding_shipping',
+            reason: reasonTag,
             processed_by: user.id,
         });
 
@@ -159,8 +185,9 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             success: true,
             orderId: order.id,
             publicId: order.public_id,
+            refundType,
             refundedAmount: refundAmount,
-            shippingRetained: shippingAmount,
+            shippingRetained: transferShippingAmount,
         }, 200);
     } catch (error) {
         console.error('refund-incident failed', error);

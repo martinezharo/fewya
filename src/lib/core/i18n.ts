@@ -407,21 +407,33 @@ export const strings = {
     // Seller incident refund
     sellerIncidentRefundBtn: 'Reembolsar pedido',
     sellerIncidentRefundConfirmTitle: '¿Reembolsar este pedido?',
-    sellerIncidentRefundConfirmBody: 'Se reembolsará al comprador el importe del pedido sin el envío. El pedido se marcará como devuelto.',
-    sellerIncidentRefundConfirmCta: 'Sí, reembolsar',
+    sellerIncidentRefundConfirmBody: 'Elige el tipo de reembolso. El pedido se marcará como devuelto.',
+    sellerIncidentRefundConfirmCta: 'Confirmar reembolso',
     sellerIncidentRefundDismiss: 'Volver',
     sellerIncidentRefundSuccess: 'Pedido reembolsado',
     sellerIncidentRefundError: 'No se pudo reembolsar el pedido',
     sellerIncidentRefundInvalidStatus: 'Este pedido ya no está en incidencia',
+    sellerIncidentRefundInvalidPartial: 'Introduce un importe parcial válido',
+
+    // Refund types
+    refundTypeFullTitle: 'Reembolso completo',
+    refundTypeFullDesc: 'Devuelves el total al comprador, incluido el envío.',
+    refundTypeProductTitle: 'Reembolso del producto',
+    refundTypeProductDesc: 'Devuelves todo menos el envío, que conservas.',
+    refundTypePartialTitle: 'Reembolso parcial',
+    refundTypePartialDesc: 'Especifica un importe personalizado a devolver.',
+    refundPartialInputLabel: 'Importe a reembolsar',
+    refundPartialMaxHint: 'Máximo: {amount}',
+    refundSummaryLabel: 'Importe a reembolsar',
 
     // Refunded order panels
     orderRefundedBadge: 'Reembolsado al comprador',
     orderRefundedBuyerTitle: 'Pedido devuelto',
     orderRefundedBuyerNotice: 'El vendedor ha tramitado tu devolución. Recibirás el importe en tu método de pago original en unos días hábiles.',
     orderRefundedSellerTitle: 'Pedido reembolsado',
-    orderRefundedSellerNotice: 'Tramitaste el reembolso al comprador. El gasto de envío se ha transferido a tu cuenta.',
+    orderRefundedSellerNotice: 'Tramitaste el reembolso al comprador.',
     orderRefundedAmountLabel: 'Importe devuelto',
-    orderRefundedShippingRetainedLabel: 'Envío retenido',
+    orderRefundedRetainedLabel: 'Importe retenido',
 
     // Auto reviews
     autoReviewComment: 'Este pedido se completó con éxito y fue entregado sin incidencias.',
