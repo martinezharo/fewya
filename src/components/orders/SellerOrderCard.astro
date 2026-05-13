@@ -36,6 +36,8 @@ export interface SellerOrderCardData {
     labelUrl?: string;
     carrierName?: string;
     serviceName?: string;
+    refundedAmount?: number | null;
+    shippingRetained?: number | null;
 }
 
 interface Props {
@@ -53,6 +55,7 @@ const statusColorMap: Record<string, string> = {
     confirmed: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400',
     incident: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400',
     cancelled: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400',
+    refunded: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400',
 };
 
 const normalizedStatus = order.status?.toLowerCase() ?? 'pending';
@@ -73,6 +76,11 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', {
     currency: 'EUR',
 });
 const customerName = order.shippingFullName || order.buyerEmail || strings.profileAnonymous;
+const showRefunded = normalizedStatus === 'refunded' && (order.refundedAmount ?? 0) > 0;
+const refundedAmountFormatted = showRefunded ? currencyFormatter.format(order.refundedAmount ?? 0) : '';
+const shippingRetainedFormatted = showRefunded && (order.shippingRetained ?? 0) > 0
+    ? currencyFormatter.format(order.shippingRetained ?? 0)
+    : '';
 ---
 
 <article class="rounded-3xl border border-border bg-surface p-5 sm:p-6 shadow-sm flex flex-col gap-6" data-order-status={normalizedStatus}>
@@ -104,6 +112,12 @@ const customerName = order.shippingFullName || order.buyerEmail || strings.profi
                     <span class="shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800">
                         <Icon name="alert-circle" size={9} class="mr-1" />
                         {strings.orderIncidentReported}
+                    </span>
+                )}
+                {showRefunded && (
+                    <span class="shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 border border-orange-200 dark:border-orange-800">
+                        <Icon name="credit-card" size={9} class="mr-1" />
+                        {strings.orderRefundedBadge}
                     </span>
                 )}
                 {normalizedStatus === 'cancelled' && order.cancellationReason && (
@@ -358,6 +372,38 @@ const customerName = order.shippingFullName || order.buyerEmail || strings.profi
                 {strings.orderCancellationReason}
             </p>
             <p class="text-sm text-red-800 dark:text-red-300 leading-relaxed">{order.cancellationReason}</p>
+        </div>
+    )}
+
+    {showRefunded && (
+        <div class="p-4 rounded-2xl bg-orange-50 dark:bg-orange-900/20 border border-orange-100 dark:border-orange-800">
+            <div class="flex items-start justify-between gap-3 mb-2">
+                <p class="text-[11px] font-semibold uppercase tracking-wider text-orange-700 dark:text-orange-400">
+                    {strings.orderRefundedSellerTitle}
+                </p>
+                <span class="shrink-0 text-base font-bold text-orange-700 dark:text-orange-300 tabular-nums">
+                    {refundedAmountFormatted}
+                </span>
+            </div>
+            <p class="text-sm text-orange-800 dark:text-orange-300 leading-relaxed">
+                {strings.orderRefundedSellerNotice}
+            </p>
+            <dl class="mt-3 grid grid-cols-2 gap-2 text-[12px] tabular-nums">
+                <div class="flex flex-col rounded-lg bg-orange-100/60 dark:bg-orange-900/30 px-3 py-2">
+                    <dt class="text-[10px] font-semibold uppercase tracking-wider text-orange-700/80 dark:text-orange-400/80">
+                        {strings.orderRefundedAmountLabel}
+                    </dt>
+                    <dd class="mt-0.5 font-bold text-orange-800 dark:text-orange-200">{refundedAmountFormatted}</dd>
+                </div>
+                {shippingRetainedFormatted && (
+                    <div class="flex flex-col rounded-lg bg-emerald-100/60 dark:bg-emerald-900/30 px-3 py-2">
+                        <dt class="text-[10px] font-semibold uppercase tracking-wider text-emerald-700/80 dark:text-emerald-400/80">
+                            {strings.orderRefundedShippingRetainedLabel}
+                        </dt>
+                        <dd class="mt-0.5 font-bold text-emerald-800 dark:text-emerald-200">{shippingRetainedFormatted}</dd>
+                    </div>
+                )}
+            </dl>
         </div>
     )}
 

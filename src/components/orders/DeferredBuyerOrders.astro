@@ -52,6 +52,9 @@ if (user) {
             order_incidents (
                 description,
                 photos
+            ),
+            refunds (
+                amount
             )
         `)
         .eq("buyer_id", user.id)
@@ -118,6 +121,10 @@ if (user) {
         const rawIncidents = order.order_incidents;
         const incident = Array.isArray(rawIncidents) ? rawIncidents[0] : rawIncidents;
 
+        const refundsList: any[] = Array.isArray(order.refunds) ? order.refunds : (order.refunds ? [order.refunds] : []);
+        const refundedAmount = refundsList.reduce((sum, r) => sum + Number(r?.amount ?? 0), 0);
+        const shippingRetained = refundedAmount > 0 ? Math.max(0, (order.total_amount ?? 0) - refundedAmount) : 0;
+
         const firstValidItem = items[0];
         let sellerEmail: string | null = null;
         if (firstValidItem) {
@@ -160,6 +167,8 @@ if (user) {
             incidentDescription: incident?.description ?? null,
             incidentPhotos: incident?.photos ?? null,
             sellerEmail,
+            refundedAmount: refundedAmount > 0 ? refundedAmount : null,
+            shippingRetained: shippingRetained > 0 ? shippingRetained : null,
             reviews: orderReviews,
         };
     });

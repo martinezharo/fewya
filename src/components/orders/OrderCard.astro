@@ -37,6 +37,8 @@ export interface OrderCardData {
     incidentDescription?: string | null;
     incidentPhotos?: string[] | null;
     sellerEmail?: string | null;
+    refundedAmount?: number | null;
+    shippingRetained?: number | null;
     reviews?: Record<string, OrderReview>;
 }
 
@@ -55,6 +57,7 @@ const statusColorMap: Record<string, string> = {
     confirmed: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400",
     incident: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400",
     cancelled: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400",
+    refunded: "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400",
 };
 
 const normalizedStatus = order.status?.toLowerCase() ?? "pending";
@@ -82,6 +85,11 @@ const showActions = normalizedStatus === 'delivered';
 const showIncident = normalizedStatus === 'incident' && order.incidentDescription;
 const showCancelIncident = normalizedStatus === 'incident';
 const showReview = normalizedStatus === 'confirmed' && order.items.length > 0;
+const showRefunded = normalizedStatus === 'refunded' && (order.refundedAmount ?? 0) > 0;
+const refundedAmountFormatted = showRefunded ? currencyFormatter.format(order.refundedAmount ?? 0) : '';
+const shippingRetainedFormatted = showRefunded && (order.shippingRetained ?? 0) > 0
+    ? currencyFormatter.format(order.shippingRetained ?? 0)
+    : '';
 const hasAnyReview = order.items.some(item => item.productId && order.reviews?.[item.productId]);
 const reviewableItems = order.items.filter(item => item.productId);
 ---
@@ -223,6 +231,29 @@ const reviewableItems = order.items.filter(item => item.productId);
                     {strings.orderCancellationReason}
                 </p>
                 <p class="text-sm text-red-800 dark:text-red-300 leading-relaxed">{order.cancellationReason}</p>
+            </div>
+        </div>
+    )}
+
+    {showRefunded && (
+        <div class="px-4 pb-4 -mt-1 md:px-5 md:pb-5">
+            <div class="p-4 rounded-2xl bg-orange-50 dark:bg-orange-900/20 border border-orange-100 dark:border-orange-800">
+                <div class="flex items-start justify-between gap-3 mb-2">
+                    <p class="text-[11px] font-semibold uppercase tracking-wider text-orange-700 dark:text-orange-400">
+                        {strings.orderRefundedBuyerTitle}
+                    </p>
+                    <span class="shrink-0 text-base font-bold text-orange-700 dark:text-orange-300 tabular-nums">
+                        {refundedAmountFormatted}
+                    </span>
+                </div>
+                <p class="text-sm text-orange-800 dark:text-orange-300 leading-relaxed">
+                    {strings.orderRefundedBuyerNotice}
+                </p>
+                {shippingRetainedFormatted && (
+                    <p class="mt-2 text-[11px] text-orange-700/80 dark:text-orange-400/80 tabular-nums">
+                        {strings.orderRefundedShippingRetainedLabel}: {shippingRetainedFormatted}
+                    </p>
+                )}
             </div>
         </div>
     )}

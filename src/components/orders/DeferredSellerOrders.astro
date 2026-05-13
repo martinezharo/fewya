@@ -52,6 +52,9 @@ const { data: ordersData } = await supabase
             tracking_number,
             tracking_url,
             label_url
+        ),
+        refunds (
+            amount
         )
     `)
     .eq('shop_id', shopId)
@@ -97,6 +100,11 @@ const orders: SellerOrderCardData[] = (ordersData ?? []).map((order: any) => {
     const rawShipments = order.shipments;
     const shipment = Array.isArray(rawShipments) ? rawShipments[0] : rawShipments;
 
+    const refundsList: any[] = Array.isArray(order.refunds) ? order.refunds : (order.refunds ? [order.refunds] : []);
+    const refundedAmount = refundsList.reduce((sum, r) => sum + Number(r?.amount ?? 0), 0);
+    const orderTotal = Number(order.total_amount ?? 0);
+    const shippingRetained = refundedAmount > 0 ? Math.max(0, orderTotal - refundedAmount) : 0;
+
     return {
         orderId: order.id,
         publicId: order.public_id,
@@ -120,6 +128,8 @@ const orders: SellerOrderCardData[] = (ordersData ?? []).map((order: any) => {
         labelUrl: shipment?.sendcloud_shipment_id ? `/api/sendcloud/label?shipmentId=${encodeURIComponent(shipment.sendcloud_shipment_id)}` : undefined,
         carrierName: shipment?.carrier_name ?? null,
         serviceName: shipment?.service_name ?? null,
+        refundedAmount: refundedAmount > 0 ? refundedAmount : null,
+        shippingRetained: shippingRetained > 0 ? shippingRetained : null,
     };
 });
 
@@ -200,6 +210,7 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', {
                         <option value="confirmed">{strings.orderStatusConfirmed}</option>
                         <option value="incident">{strings.orderStatusIncident}</option>
                         <option value="cancelled">{strings.orderStatusCancelled}</option>
+                        <option value="refunded">{strings.orderStatusRefunded}</option>
                     </select>
                     <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
                         <Icon name="chevron-down" size={16} class="text-text-tertiary" />
