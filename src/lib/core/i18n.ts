@@ -256,6 +256,7 @@ export const strings = {
     orderStatusConfirmed: 'Confirmado',
     orderStatusIncident: 'Incidencia',
     orderStatusCancelled: 'Cancelado',
+    orderStatusRefunded: 'Devuelto',
 
     // Seller Orders filters
     sellerOrdersFilterStatusLabel: 'Estado',
@@ -406,12 +407,21 @@ export const strings = {
     // Seller incident refund
     sellerIncidentRefundBtn: 'Reembolsar pedido',
     sellerIncidentRefundConfirmTitle: '¿Reembolsar este pedido?',
-    sellerIncidentRefundConfirmBody: 'Se reembolsará al comprador el importe del pedido sin el envío. El pedido se marcará como confirmado automáticamente.',
+    sellerIncidentRefundConfirmBody: 'Se reembolsará al comprador el importe del pedido sin el envío. El pedido se marcará como devuelto.',
     sellerIncidentRefundConfirmCta: 'Sí, reembolsar',
     sellerIncidentRefundDismiss: 'Volver',
-    sellerIncidentRefundSuccess: 'Pedido reembolsado y confirmado',
+    sellerIncidentRefundSuccess: 'Pedido reembolsado',
     sellerIncidentRefundError: 'No se pudo reembolsar el pedido',
     sellerIncidentRefundInvalidStatus: 'Este pedido ya no está en incidencia',
+
+    // Refunded order panels
+    orderRefundedBadge: 'Reembolsado al comprador',
+    orderRefundedBuyerTitle: 'Pedido devuelto',
+    orderRefundedBuyerNotice: 'El vendedor ha tramitado tu devolución. Recibirás el importe en tu método de pago original en unos días hábiles.',
+    orderRefundedSellerTitle: 'Pedido reembolsado',
+    orderRefundedSellerNotice: 'Tramitaste el reembolso al comprador. El gasto de envío se ha transferido a tu cuenta.',
+    orderRefundedAmountLabel: 'Importe devuelto',
+    orderRefundedShippingRetainedLabel: 'Envío retenido',
 
     // Auto reviews
     autoReviewComment: 'Este pedido se completó con éxito y fue entregado sin incidencias.',
