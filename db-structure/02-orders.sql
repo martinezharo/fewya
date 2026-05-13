@@ -3,7 +3,7 @@
 -- Order management: orders, order_items, refunds
 -- ============================================================
 
-CREATE TYPE order_status AS ENUM ('pending', 'paid', 'processing', 'shipped', 'delivered', 'confirmed', 'incident', 'cancelled');
+CREATE TYPE order_status AS ENUM ('pending', 'paid', 'processing', 'shipped', 'delivered', 'confirmed', 'incident', 'cancelled', 'refunded');
 
 CREATE TABLE public.orders (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -440,9 +440,7 @@ BEGIN
   END IF;
 
   UPDATE public.orders
-  SET
-    status = 'confirmed',
-    funds_released_at = COALESCE(funds_released_at, timezone('utc'::text, now()))
+  SET status = 'refunded'
   WHERE id = p_order_id
     AND status = 'incident'
   RETURNING * INTO updated_order;
@@ -503,6 +501,12 @@ CREATE POLICY "Sellers can view refunds from their shop" ON public.refunds FOR S
     SELECT 1 FROM public.orders o
     JOIN public.shops s ON o.shop_id = s.id
     WHERE o.id = refunds.order_id AND s.owner_id = auth.uid()
+  )
+);
+CREATE POLICY "Buyers can view refunds for their orders" ON public.refunds FOR SELECT TO authenticated USING (
+  EXISTS (
+    SELECT 1 FROM public.orders o
+    WHERE o.id = refunds.order_id AND o.buyer_id = auth.uid()
   )
 );
 CREATE POLICY "Sellers can insert refunds for their shop" ON public.refunds FOR INSERT TO authenticated WITH CHECK (
