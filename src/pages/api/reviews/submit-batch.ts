@@ -95,6 +95,12 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     }
 
     if (toInsert.length > 0) {
+        // Remove auto-reviews for products being reviewed for the first time
+        await adminClient
+            .from('reviews')
+            .delete()
+            .in('product_id', toInsert.map((r) => r.product_id))
+            .eq('is_auto', true);
         const { error: insertError } = await adminClient.from('reviews').insert(toInsert);
         if (insertError) {
             console.error('review batch insert error', insertError);

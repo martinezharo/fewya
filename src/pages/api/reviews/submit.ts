@@ -82,6 +82,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             .select()
             .single();
     } else {
+        // Remove any auto-review for this product so the real one takes its place
+        await adminClient.from('reviews').delete().eq('product_id', productId).eq('is_auto', true);
         result = await adminClient
             .from('reviews')
             .insert({

@@ -9,41 +9,61 @@ interface Props {
 }
 
 const { reviews, shopName } = Astro.props;
-const avgRating = reviews.length > 0
-  ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
+
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+const visibleReviews = reviews.filter(
+  (r) => !r.is_auto || Date.now() - new Date(r.created_at).getTime() >= SEVEN_DAYS_MS
+);
+
+const avgRating = visibleReviews.length > 0
+  ? visibleReviews.reduce((sum, r) => sum + r.rating, 0) / visibleReviews.length
   : 0;
 ---
 
 <section>
   <div class="flex items-center gap-2 mb-4">
     <h3 class="text-base font-semibold text-text-primary">{strings.productReviews}</h3>
-    {reviews.length > 0 && (
+    {visibleReviews.length > 0 && (
       <div class="flex items-center gap-1">
         <Icon name="star-filled" size={16} class="text-amber-400" />
         <span class="text-sm font-medium text-text-secondary">
-          {avgRating.toFixed(1)} ({reviews.length})
+          {avgRating.toFixed(1)} ({visibleReviews.length})
         </span>
       </div>
     )}
   </div>
 
-  {reviews.length === 0 ? (
+  {visibleReviews.length === 0 ? (
     <p class="text-sm text-text-tertiary">{strings.productNoReviews}</p>
   ) : (
     <div class="space-y-4">
-      {reviews.map(review => (
+      {visibleReviews.map(review => (
         <div class="flex gap-3">
-          <img
-            src={review.profile?.avatar_url ?? '/placeholder-avatar.svg'}
-            alt=""
-            class="w-8 h-8 rounded-full object-cover flex-none"
-            loading="lazy"
-          />
+          {review.is_auto ? (
+            <img
+              src="/favicon.svg"
+              alt="Fewya"
+              class="w-8 h-8 rounded-full object-cover flex-none bg-surface p-1 border border-border-light"
+              loading="lazy"
+            />
+          ) : (
+            <img
+              src={review.profile?.avatar_url ?? '/placeholder-avatar.svg'}
+              alt=""
+              class="w-8 h-8 rounded-full object-cover flex-none"
+              loading="lazy"
+            />
+          )}
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2 mb-0.5">
               <span class="text-sm font-medium text-text-primary">
-                {review.profile?.full_name ?? strings.productAnonymous}
+                {review.is_auto ? 'Fewya' : (review.profile?.full_name ?? strings.productAnonymous)}
               </span>
+              {review.is_auto && (
+                <span class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-accent/10 text-accent">
+                  {strings.autoReviewBadge}
+                </span>
+              )}
               <div class="flex gap-0.5">
                 {[1, 2, 3, 4, 5].map(star => (
                   <Icon
