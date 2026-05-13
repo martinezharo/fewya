@@ -403,6 +403,16 @@ export const strings = {
     incidentCancelledToast: 'Incidencia cancelada y pedido confirmado',
     incidentCancelError: 'No se pudo cancelar la incidencia',
 
+    // Seller incident refund
+    sellerIncidentRefundBtn: 'Reembolsar pedido',
+    sellerIncidentRefundConfirmTitle: '¿Reembolsar este pedido?',
+    sellerIncidentRefundConfirmBody: 'Se reembolsará al comprador el importe del pedido sin el envío. El pedido se marcará como confirmado automáticamente.',
+    sellerIncidentRefundConfirmCta: 'Sí, reembolsar',
+    sellerIncidentRefundDismiss: 'Volver',
+    sellerIncidentRefundSuccess: 'Pedido reembolsado y confirmado',
+    sellerIncidentRefundError: 'No se pudo reembolsar el pedido',
+    sellerIncidentRefundInvalidStatus: 'Este pedido ya no está en incidencia',
+
     // Auto reviews
     autoReviewComment: 'Este pedido se completó con éxito y fue entregado sin incidencias.',
     autoReviewBadge: 'Automática',

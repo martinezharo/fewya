@@ -39,6 +39,7 @@ const { data: ordersData } = await supabase
         id,
         public_id,
         status,
+        total_amount,
         created_at,
         buyer_email,
         shipping_full_name,
@@ -47,6 +48,7 @@ const { data: ordersData } = await supabase
             product_variants (
                 variant_name,
                 variant_image,
+                shipping_cost,
                 products (
                     title,
                     gallery_images
@@ -75,6 +77,9 @@ interface ClaimOrder {
     firstProductTitle: string;
     firstProductImage: string;
     itemCount: number;
+    totalAmount: number;
+    shippingAmount: number;
+    refundAmount: number;
 }
 
 const claims: ClaimOrder[] = (ordersData ?? []).map((order: any) => {
@@ -82,6 +87,7 @@ const claims: ClaimOrder[] = (ordersData ?? []).map((order: any) => {
     let itemCount = 0;
     let firstProductTitle = strings.fallbackProductName;
     let firstProductImage = '';
+    let shippingAmount = 0;
 
     for (const oi of rawItems) {
         const rawVariant = oi.product_variants;
@@ -95,6 +101,9 @@ const claims: ClaimOrder[] = (ordersData ?? []).map((order: any) => {
         const qty = Number(oi.quantity ?? 0);
         if (qty <= 0) continue;
 
+        const variantShipping = Number(variant.shipping_cost ?? 0);
+        if (variantShipping > shippingAmount) shippingAmount = variantShipping;
+
         itemCount += qty;
         if (!firstProductImage) {
             firstProductTitle = product.title ?? strings.fallbackProductName;
@@ -104,6 +113,8 @@ const claims: ClaimOrder[] = (ordersData ?? []).map((order: any) => {
 
     const rawIncidents = order.order_incidents;
     const incident = Array.isArray(rawIncidents) ? rawIncidents[0] : rawIncidents;
+    const totalAmount = Number(order.total_amount ?? 0);
+    const refundAmount = Math.max(0, totalAmount - shippingAmount);
 
     return {
         orderId: order.id,
@@ -117,6 +128,9 @@ const claims: ClaimOrder[] = (ordersData ?? []).map((order: any) => {
         firstProductTitle,
         firstProductImage,
         itemCount,
+        totalAmount,
+        shippingAmount,
+        refundAmount,
     };
 });
 
@@ -124,6 +138,11 @@ const dateFormatter = new Intl.DateTimeFormat('es-ES', {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
+});
+
+const currencyFormatter = new Intl.NumberFormat('es-ES', {
+    style: 'currency',
+    currency: 'EUR',
 });
 ---
 
@@ -201,6 +220,59 @@ const dateFormatter = new Intl.DateTimeFormat('es-ES', {
                                 </div>
                             </div>
                         )}
+
+                        <div class="flex flex-wrap items-center justify-end gap-3 pt-2 border-t border-border-light">
+                            <div class="text-xs text-text-secondary tabular-nums mr-auto">
+                                <span class="font-semibold text-text-primary">{currencyFormatter.format(claim.refundAmount)}</span>
+                                <span class="text-text-tertiary"> · {strings.cartShipping}: {claim.shippingAmount > 0 ? currencyFormatter.format(claim.shippingAmount) : strings.ordersFreeShipping}</span>
+                            </div>
+                            <button
+                                type="button"
+                                class="open-refund-modal-btn inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-xl bg-red-600 text-white hover:bg-red-700 active:scale-95 transition-all"
+                                data-order-id={claim.orderId}
+                            >
+                                <Icon name="credit-card" size={13} />
+                                {strings.sellerIncidentRefundBtn}
+                            </button>
+                        </div>
+
+                        <div
+                            class="refund-modal hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+                            data-order-id={claim.orderId}
+                        >
+                            <div class="w-full max-w-sm rounded-2xl border border-border bg-surface p-5 shadow-xl">
+                                <h3 class="text-base font-semibold text-text-primary">{strings.sellerIncidentRefundConfirmTitle}</h3>
+                                <p class="mt-1 text-sm text-text-secondary">{strings.sellerIncidentRefundConfirmBody}</p>
+                                <dl class="mt-4 space-y-2 rounded-xl border border-border-light bg-bg/60 p-3 text-sm">
+                                    <div class="flex justify-between">
+                                        <dt class="text-text-secondary">{strings.ordersTotal}</dt>
+                                        <dd class="font-semibold text-text-primary tabular-nums">{currencyFormatter.format(claim.totalAmount)}</dd>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <dt class="text-text-secondary">{strings.cartShipping}</dt>
+                                        <dd class="font-semibold text-text-primary tabular-nums">
+                                            {claim.shippingAmount > 0 ? `− ${currencyFormatter.format(claim.shippingAmount)}` : strings.ordersFreeShipping}
+                                        </dd>
+                                    </div>
+                                    <div class="flex justify-between pt-2 border-t border-border-light">
+                                        <dt class="font-semibold text-text-primary">{strings.sellerIncidentRefundBtn}</dt>
+                                        <dd class="font-bold text-red-600 dark:text-red-400 tabular-nums">{currencyFormatter.format(claim.refundAmount)}</dd>
+                                    </div>
+                                </dl>
+                                <div class="mt-5 flex gap-2 justify-end">
+                                    <button type="button" class="close-refund-modal-btn px-3 py-1.5 text-sm font-medium text-text-secondary hover:text-text-primary transition-colors">
+                                        {strings.sellerIncidentRefundDismiss}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="confirm-refund-btn px-3 py-1.5 text-sm font-semibold rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors"
+                                        data-order-id={claim.orderId}
+                                    >
+                                        {strings.sellerIncidentRefundConfirmCta}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </article>
                 ))}
             </div>
@@ -219,3 +291,68 @@ const dateFormatter = new Intl.DateTimeFormat('es-ES', {
         )}
     </div>
 </SellerLayout>
+
+<script>
+    import { setBusy } from '../../lib/ui/busy';
+    import { toast } from '../../lib/ui/toast';
+    import { progress } from '../../lib/ui/progress-bar';
+    import { strings } from '../../lib/core/i18n';
+
+    document.querySelectorAll<HTMLButtonElement>('.open-refund-modal-btn').forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const orderId = btn.dataset.orderId;
+            if (!orderId) return;
+            const modal = document.querySelector(`.refund-modal[data-order-id="${orderId}"]`);
+            if (modal) modal.classList.remove('hidden');
+        });
+    });
+
+    document.querySelectorAll<HTMLButtonElement>('.close-refund-modal-btn').forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const modal = btn.closest('.refund-modal');
+            if (modal) modal.classList.add('hidden');
+        });
+    });
+
+    document.querySelectorAll('.refund-modal').forEach((modal) => {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) modal.classList.add('hidden');
+        });
+    });
+
+    document.querySelectorAll<HTMLButtonElement>('.confirm-refund-btn').forEach((btn) => {
+        btn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            const orderId = btn.dataset.orderId;
+            if (!orderId) return;
+
+            setBusy(btn, true, { label: strings.loadingGeneric });
+            progress.start();
+
+            try {
+                const res = await fetch('/api/orders/refund-incident', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ orderId }),
+                });
+
+                const data = await res.json() as { success?: boolean; error?: string };
+                if (data.success) {
+                    progress.done();
+                    toast.success(strings.sellerIncidentRefundSuccess);
+                    window.setTimeout(() => window.location.reload(), 800);
+                } else {
+                    progress.fail();
+                    toast.error(data.error || strings.sellerIncidentRefundError);
+                    setBusy(btn, false);
+                }
+            } catch {
+                progress.fail();
+                toast.error(strings.toastErrorNetwork);
+                setBusy(btn, false);
+            }
+        });
+    });
+</script>
