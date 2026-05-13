@@ -3,12 +3,12 @@ import { ORDER_STATUSES, orderStatusLabels } from '../../src/lib/orders/orderSta
 
 describe('ORDER_STATUSES', () => {
     it('contiene todos los estados esperados', () => {
-        const expected = ['pending', 'paid', 'processing', 'shipped', 'delivered', 'confirmed', 'incident', 'cancelled'];
+        const expected = ['pending', 'paid', 'processing', 'shipped', 'delivered', 'confirmed', 'incident', 'cancelled', 'refunded'];
         expect(ORDER_STATUSES).toEqual(expected);
     });
 
-    it('tiene exactamente 8 estados', () => {
-        expect(ORDER_STATUSES).toHaveLength(8);
+    it('tiene exactamente 9 estados', () => {
+        expect(ORDER_STATUSES).toHaveLength(9);
     });
 });
 
