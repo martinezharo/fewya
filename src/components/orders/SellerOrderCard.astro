@@ -28,6 +28,7 @@ export interface SellerOrderCardData {
     itemsSold: number;
     items: SellerOrderItem[];
     shopSlug: string;
+    deliveredAt?: Date | null;
     hasShipment?: boolean;
     shipmentId?: string;
     trackingNumber?: string;
@@ -55,6 +56,11 @@ const statusColorMap: Record<string, string> = {
 };
 
 const normalizedStatus = order.status?.toLowerCase() ?? 'pending';
+const FORTY_EIGHT_HOURS_MS = 48 * 60 * 60 * 1000;
+const canSellerConfirm = normalizedStatus === 'delivered' &&
+    order.deliveredAt != null &&
+    Date.now() - order.deliveredAt.getTime() >= FORTY_EIGHT_HOURS_MS;
+const isRecentlyDelivered = normalizedStatus === 'delivered' && !canSellerConfirm;
 const statusLabel = orderStatusLabels[normalizedStatus as keyof typeof orderStatusLabels] ?? order.status;
 const statusColor = statusColorMap[normalizedStatus] ?? statusColorMap.pending;
 const dateFormatted = order.createdAt.toLocaleDateString('es-ES', {
@@ -287,6 +293,24 @@ const customerName = order.shippingFullName || order.buyerEmail || strings.profi
                                 </a>
                             )}
                         </div>
+                        {canSellerConfirm && (
+                            <div class="mt-1 pt-4 border-t border-border-light flex flex-col gap-3">
+                                <p class="text-sm text-text-secondary">{strings.sellerOrderConfirmDeliveryHint}</p>
+                                <button
+                                    type="button"
+                                    class="seller-confirm-btn self-start inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-xl bg-emerald-500 text-white hover:bg-emerald-600 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                    data-order-id={order.orderId}
+                                >
+                                    <Icon name="check" size={13} />
+                                    {strings.sellerOrderConfirmDelivery}
+                                </button>
+                            </div>
+                        )}
+                        {isRecentlyDelivered && (
+                            <div class="mt-1 pt-4 border-t border-border-light">
+                                <p class="text-sm text-text-secondary">{strings.sellerOrderDeliveredWaiting}</p>
+                            </div>
+                        )}
                     </div>
                 ) : (normalizedStatus === 'paid' || normalizedStatus === 'processing') ? (
                     <div class="flex flex-col gap-3">
@@ -501,6 +525,42 @@ const customerName = order.shippingFullName || order.buyerEmail || strings.profi
     document.querySelectorAll('.cancel-modal').forEach((modal) => {
         modal.addEventListener('click', (e) => {
             if (e.target === modal) modal.classList.add('hidden');
+        });
+    });
+
+    // Seller confirm delivery
+    document.querySelectorAll<HTMLButtonElement>('.seller-confirm-btn').forEach((btn) => {
+        btn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const orderId = btn.dataset.orderId;
+            if (!orderId) return;
+
+            setBusy(btn, true, { label: strings.loadingGeneric });
+            progress.start();
+
+            try {
+                const res = await fetch('/api/orders/seller-confirm', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ orderId }),
+                });
+
+                const data = await res.json() as { success?: boolean; error?: string };
+                if (data.success) {
+                    progress.done();
+                    toast.success(strings.sellerOrderConfirmDeliverySuccess);
+                    window.setTimeout(() => window.location.reload(), 800);
+                } else {
+                    progress.fail();
+                    toast.error(data.error || strings.sellerOrderConfirmDeliveryError);
+                    setBusy(btn, false);
+                }
+            } catch {
+                progress.fail();
+                toast.error(strings.toastErrorNetwork);
+                setBusy(btn, false);
+            }
         });
     });
 

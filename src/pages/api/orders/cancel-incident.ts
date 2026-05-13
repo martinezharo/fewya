@@ -4,6 +4,7 @@ import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
 import { strings } from '../../../lib/core/i18n';
 import { getStripeClient } from '../../../lib/payments/stripe';
 import { releaseOrderFunds, type CheckoutPricedItem } from '../../../lib/cart/checkout';
+import { createAutoReviewsForOrder } from '../../../lib/orders/autoReview';
 
 function jsonResponse(payload: Record<string, unknown>, status: number) {
     return new Response(JSON.stringify(payload), {
@@ -123,6 +124,9 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             orderId: order.id,
         }, 500);
     }
+
+    // Create auto-reviews for products in this order (silent — non-critical)
+    await createAutoReviewsForOrder(order.id);
 
     return jsonResponse({ success: true, orderId: order.id, publicId: order.public_id }, 200);
 };

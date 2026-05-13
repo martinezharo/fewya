@@ -23,6 +23,7 @@ const { data: ordersData } = await supabase
         payment_status,
         total_amount,
         created_at,
+        delivered_at,
         cancellation_reason,
         buyer_email,
         shipping_full_name,
@@ -111,6 +112,7 @@ const orders: SellerOrderCardData[] = (ordersData ?? []).map((order: any) => {
         itemsSold,
         items,
         shopSlug,
+        deliveredAt: order.delivered_at ? new Date(order.delivered_at) : null,
         hasShipment: !!shipment,
         shipmentId: shipment?.id,
         trackingNumber: shipment?.tracking_number ?? null,
@@ -267,21 +269,4 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', {
         applyFilters();
     })();
 
-    (async function () {
-        const hasDelivered = document.querySelector('[data-order-status="delivered"]');
-        if (!hasDelivered) return;
-        try {
-            const res = await fetch('/api/orders/auto-confirm', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({}),
-            });
-            const data = await res.json();
-            if (data.autoConfirmed > 0) {
-                window.location.reload();
-            }
-        } catch {
-            // Silent fail
-        }
-    })();
 </script>
