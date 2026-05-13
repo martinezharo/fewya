@@ -51,6 +51,7 @@ interface ReviewData {
     productTitle: string;
     productImage: string;
     productSlug: string;
+    isAuto: boolean;
 }
 
 let reviews: ReviewData[] = [];
@@ -60,7 +61,7 @@ if (productIds.length > 0) {
     const { data: reviewsData } = await supabase
         .from('reviews')
         .select(`
-            id, rating, comment, seller_reply, seller_reply_at, created_at,
+            id, rating, comment, seller_reply, seller_reply_at, created_at, is_auto,
             profiles:profile_id (full_name),
             products:product_id (title, gallery_images, slug)
         `)
@@ -81,6 +82,7 @@ if (productIds.length > 0) {
             productTitle: product?.title ?? strings.fallbackProductName,
             productImage: product?.gallery_images?.[0] ?? '',
             productSlug: product?.slug ?? '',
+            isAuto: r.is_auto ?? false,
         };
     });
 
@@ -161,8 +163,16 @@ function ratingLabel(count: number) {
                                         <span class={`text-base leading-none ${i < review.rating ? 'text-yellow-400' : 'text-border'}`}>★</span>
                                     ))}
                                 </div>
-                                <p class="text-xs text-text-secondary mt-0.5">
-                                    {review.buyerName ?? strings.profileAnonymous}
+                                <p class="text-xs text-text-secondary mt-0.5 flex items-center gap-1.5">
+                                    {review.isAuto ? (
+                                        <>
+                                            <img src="/favicon.svg" alt="Fewya" class="w-3.5 h-3.5 rounded-full bg-surface p-0.5 border border-border-light" />
+                                            <span>Fewya</span>
+                                            <span class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-accent/10 text-accent">{strings.autoReviewBadge}</span>
+                                        </>
+                                    ) : (
+                                        review.buyerName ?? strings.profileAnonymous
+                                    )}
                                     {' · '}
                                     {dateFormatter.format(review.createdAt)}
                                 </p>
