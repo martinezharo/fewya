@@ -167,6 +167,8 @@ const isLoggedIn = !!user;
     currency: 'EUR',
   });
 
+  let isCheckingOut = false;
+
   // Delivery modal state
   let selectedDeliveryType: 'home' | 'pickup_point' | null = null;
   let selectedPickupPoint: {
@@ -531,10 +533,13 @@ const isLoggedIn = !!user;
   }
 
   async function proceedToCheckout() {
+    if (isCheckingOut) return;
     if (!selectedDeliveryType) return;
 
     const items = cart.get();
     if (items.length === 0) return;
+
+    isCheckingOut = true;
 
     const checkoutBtnMobile = document.getElementById('checkout-btn-mobile') as HTMLButtonElement | null;
     const checkoutBtnDesktop = document.getElementById('checkout-btn-desktop') as HTMLButtonElement | null;
@@ -608,6 +613,7 @@ const isLoggedIn = !!user;
       toast.error(strings.toastErrorNetwork);
     } finally {
       if (!success) {
+        isCheckingOut = false;
         progress.fail();
         checkoutLoading?.classList.add('hidden');
         checkoutLoading?.classList.remove('flex');
@@ -664,10 +670,13 @@ const isLoggedIn = !!user;
       updateDeliveryUI();
     });
 
-    btnContinue?.addEventListener('click', () => {
-      closeDeliveryModal();
-      proceedToCheckout();
-    });
+    if (btnContinue && !btnContinue.hasAttribute('data-continue-listener')) {
+      btnContinue.setAttribute('data-continue-listener', 'true');
+      btnContinue.addEventListener('click', () => {
+        closeDeliveryModal();
+        proceedToCheckout();
+      });
+    }
 
     btnSearch?.addEventListener('click', searchPickupPoints);
     inputAddress?.addEventListener('keydown', (e) => {
