@@ -4,6 +4,7 @@ import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
 import { strings } from '../../../lib/core/i18n';
 import { getStripeClient } from '../../../lib/payments/stripe';
 import { CHECKOUT_CURRENCY, toMinorUnits } from '../../../lib/cart/checkout';
+import { extractPayoutContext, type JoinedOrderItem } from '../../../lib/orders/orderJoins';
 
 type RefundType = 'full' | 'product' | 'partial';
 
@@ -12,11 +13,6 @@ function jsonResponse(payload: Record<string, unknown>, status: number) {
         status,
         headers: { 'Content-Type': 'application/json' },
     });
-}
-
-function one<T>(value: T | T[] | null | undefined): T | null {
-    if (Array.isArray(value)) return value[0] ?? null;
-    return value ?? null;
 }
 
 function roundMoney(value: number): number {
@@ -86,21 +82,22 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         .eq('order_id', orderId);
 
     if (itemsError || !orderItems) {
-        console.error('refund-incident: failed to fetch items', itemsError);
+        console.error(JSON.stringify({
+            event: 'refund_incident.fetch_items_failed',
+            orderId: order.id,
+            publicId: order.public_id,
+            error: itemsError?.message,
+        }));
         return jsonResponse({ error: strings.sellerIncidentRefundError }, 500);
     }
 
     let shippingAmount = 0;
     let sellerStripeAccountId: string | null = null;
-    for (const item of orderItems) {
-        const variant = one((item as any).product_variants);
-        const product = one(variant?.products as any);
-        const shop = one(product?.shops as any);
-        const paymentAccount = one(shop?.shop_payment_accounts as any);
-        const cost = Number(variant?.shipping_cost ?? 0);
-        if (cost > shippingAmount) shippingAmount = cost;
-        if (!sellerStripeAccountId && paymentAccount?.stripe_account_id) {
-            sellerStripeAccountId = paymentAccount.stripe_account_id;
+    for (const item of orderItems as JoinedOrderItem[]) {
+        const ctx = extractPayoutContext(item);
+        if (ctx.shippingCost > shippingAmount) shippingAmount = ctx.shippingCost;
+        if (!sellerStripeAccountId && ctx.paymentAccount?.stripe_account_id) {
+            sellerStripeAccountId = ctx.paymentAccount.stripe_account_id;
         }
     }
 
@@ -169,7 +166,12 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         );
 
         if (resolveError || !resolvedOrder) {
-            console.error('refund-incident: resolve_incident_with_refund failed', resolveError);
+            console.error(JSON.stringify({
+                event: 'refund_incident.resolve_failed',
+                orderId: order.id,
+                publicId: order.public_id,
+                error: resolveError?.message,
+            }));
             return jsonResponse({ error: strings.sellerIncidentRefundError }, 500);
         }
 
@@ -190,8 +192,12 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             shippingRetained: transferShippingAmount,
         }, 200);
     } catch (error) {
-        console.error('refund-incident failed', error);
-        const message = error instanceof Error ? error.message : strings.sellerIncidentRefundError;
-        return jsonResponse({ error: message }, 500);
+        console.error(JSON.stringify({
+            event: 'refund_incident.failed',
+            orderId: order.id,
+            publicId: order.public_id,
+            error: error instanceof Error ? error.message : String(error),
+        }));
+        return jsonResponse({ error: strings.sellerIncidentRefundError }, 500);
     }
 };

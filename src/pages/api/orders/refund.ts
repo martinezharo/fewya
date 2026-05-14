@@ -58,7 +58,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     // Only allow cancelling paid/processing orders
     if (!['paid', 'processing'].includes(order.status)) {
-        return jsonResponse({ error: 'Este pedido no puede cancelarse' }, 400);
+        return jsonResponse({ error: strings.apiOrderCannotBeCancelled }, 400);
     }
 
     const stripe = getStripeClient();
@@ -86,7 +86,12 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         );
 
         if (cancelError || !cancelledOrder) {
-            console.error('failed to cancel order after refund', cancelError);
+            console.error(JSON.stringify({
+                event: 'refund.cancel_failed',
+                orderId: order.id,
+                publicId: order.public_id,
+                error: cancelError?.message,
+            }));
             return jsonResponse({ error: strings.sellerOrderRefundError }, 500);
         }
 
@@ -105,8 +110,12 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             publicId: order.public_id,
         }, 200);
     } catch (error) {
-        console.error('refund failed', error);
-        const message = error instanceof Error ? error.message : strings.sellerOrderRefundError;
-        return jsonResponse({ error: message }, 500);
+        console.error(JSON.stringify({
+            event: 'refund.failed',
+            orderId: order.id,
+            publicId: order.public_id,
+            error: error instanceof Error ? error.message : String(error),
+        }));
+        return jsonResponse({ error: strings.sellerOrderRefundError }, 500);
     }
 };

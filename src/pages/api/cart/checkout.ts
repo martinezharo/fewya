@@ -11,6 +11,8 @@ import { strings } from '../../../lib/core/i18n';
 import { validateCheckoutReadiness } from '../../../lib/products/productValidation';
 import { buildAbsoluteUrl, getStripeClient } from '../../../lib/payments/stripe';
 import { isProfileComplete } from '../../../lib/core/validation';
+import { resolvePhonePrefix } from '../../../lib/core/phone';
+import { pickOne, type JoinedProduct, type JoinedShop, type JoinedVariant, type JoinedPaymentAccount } from '../../../lib/orders/orderJoins';
 
 interface CheckoutItemPayload {
     variantId: string;
@@ -32,14 +34,6 @@ function jsonResponse(payload: Record<string, unknown>, status: number) {
         status,
         headers: { 'Content-Type': 'application/json' },
     });
-}
-
-function one<T>(value: T | T[] | null | undefined): T | null {
-    if (Array.isArray(value)) {
-        return value[0] ?? null;
-    }
-
-    return value ?? null;
 }
 
 function normalizeItems(items: CheckoutItemPayload[]) {
@@ -147,7 +141,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     const firstName = profile?.first_name?.trim() || user.user_metadata?.full_name?.trim() || null;
     const lastName = profile?.last_name?.trim() || null;
     const shippingFullName = [firstName, lastName].filter(Boolean).join(' ') || null;
-    const phonePrefix = ((profile as any)?.phone_prefix || '+34').trim();
+    const phonePrefix = resolvePhonePrefix(profile);
     const phone = profile?.phone?.trim() || null;
     const shippingPhone = phone ? `${phonePrefix} ${phone}` : null;
 
@@ -203,18 +197,24 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         .in('id', variantIds);
 
     if (variantsError) {
-        console.error('checkout variant lookup failed', variantsError);
+        console.error(JSON.stringify({
+            event: 'checkout.variant_lookup_failed',
+            error: variantsError.message,
+        }));
         return jsonResponse({ error: strings.apiCheckoutProductUnavailable }, 500);
     }
 
-    const variantMap = new Map((variantRows ?? []).map((variant: any) => [variant.id as string, variant]));
+    type CheckoutVariantRow = JoinedVariant & { id: string };
+    const variantMap = new Map<string, CheckoutVariantRow>(
+        (variantRows ?? []).map((variant) => [variant.id as string, variant as unknown as CheckoutVariantRow])
+    );
     const resolvedItems: CheckoutResolvedItem[] = [];
 
     for (const item of normalizedItems) {
         const variant = variantMap.get(item.variantId);
-        const product = one(variant?.products as any);
-        const shop = one(product?.shops as any);
-        const paymentAccount = one(shop?.shop_payment_accounts as any);
+        const product = pickOne<JoinedProduct>(variant?.products ?? null);
+        const shop = pickOne<JoinedShop>(product?.shops ?? null);
+        const paymentAccount = pickOne<JoinedPaymentAccount>(shop?.shop_payment_accounts ?? null);
 
         if (!variant || !product || !shop) {
             return jsonResponse({ error: strings.apiCheckoutProductUnavailable }, 400);
@@ -285,7 +285,11 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             },
         });
     } catch (error) {
-        console.error('stripe checkout session creation failed', error);
+        console.error(JSON.stringify({
+            event: 'checkout.stripe_session_failed',
+            buyerId: user.id,
+            error: error instanceof Error ? error.message : String(error),
+        }));
 
         const message = error instanceof Error ? error.message : strings.apiCheckoutSessionError;
         const normalizedMessage = message === strings.authMissingStripeEnv ? message : strings.apiCheckoutSessionError;
@@ -365,9 +369,18 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         });
 
         if (orderError) {
-            console.error('checkout order creation failed for shop', group.shopId, orderError);
+            console.error(JSON.stringify({
+                event: 'checkout.order_creation_failed',
+                shopId: group.shopId,
+                checkoutGroupId,
+                error: orderError.message,
+            }));
             await stripe.checkout.sessions.expire(session.id).catch((expireError) => {
-                console.error('failed to expire stripe session after order error', expireError);
+                console.error(JSON.stringify({
+                    event: 'checkout.session_expire_failed',
+                    sessionId: session?.id,
+                    error: expireError instanceof Error ? expireError.message : String(expireError),
+                }));
             });
 
             return jsonResponse({ error: strings.apiOrderCreateError }, 500);

@@ -3,20 +3,14 @@ import { createSupabaseAuthClient } from '../../../lib/core/auth';
 import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
 import { strings } from '../../../lib/core/i18n';
 import { getStripeClient } from '../../../lib/payments/stripe';
-import { releaseOrderFunds, type CheckoutPricedItem } from '../../../lib/cart/checkout';
+import { releaseOrderFunds } from '../../../lib/cart/checkout';
+import { buildPayoutItemsFromJoins, type JoinedOrderItem } from '../../../lib/orders/orderJoins';
 
 function jsonResponse(payload: Record<string, unknown>, status: number) {
     return new Response(JSON.stringify(payload), {
         status,
         headers: { 'Content-Type': 'application/json' },
     });
-}
-
-function one<T>(value: T | T[] | null | undefined): T | null {
-    if (Array.isArray(value)) {
-        return value[0] ?? null;
-    }
-    return value ?? null;
 }
 
 export const POST: APIRoute = async ({ request, cookies, locals }) => {
@@ -37,7 +31,7 @@ export const POST: APIRoute = async ({ request, cookies, locals }) => {
     );
 
     if (autoConfirmError) {
-        console.error('auto_confirm_delivered_orders failed', autoConfirmError);
+        console.error(JSON.stringify({ event: 'auto_confirm_delivered_orders.failed', error: autoConfirmError.message }));
         return jsonResponse({ error: 'Auto-confirm failed' }, 500);
     }
 
@@ -78,10 +72,11 @@ export const POST: APIRoute = async ({ request, cookies, locals }) => {
             .in('order_id', confirmedIds),
     ]);
 
-    // Group items by order_id
-    const itemsByOrder = new Map<string, typeof itemsRes.data>();
-    for (const item of itemsRes.data ?? []) {
-        const orderId = (item as { order_id: string }).order_id;
+    const itemsByOrder = new Map<string, JoinedOrderItem[]>();
+    for (const rawItem of itemsRes.data ?? []) {
+        const item = rawItem as JoinedOrderItem;
+        const orderId = item.order_id;
+        if (!orderId) continue;
         if (!itemsByOrder.has(orderId)) itemsByOrder.set(orderId, []);
         itemsByOrder.get(orderId)!.push(item);
     }
@@ -96,26 +91,7 @@ export const POST: APIRoute = async ({ request, cookies, locals }) => {
             }
 
             const orderItems = itemsByOrder.get(order.id) ?? [];
-            const payoutItems: CheckoutPricedItem[] = [];
-
-            for (const item of orderItems) {
-                const variant = one((item as { product_variants: unknown }).product_variants);
-                const product = one((variant as { products: unknown } | null)?.products as unknown);
-                const shop = one((product as { shops: unknown } | null)?.shops as unknown);
-                const paymentAccount = one((shop as { shop_payment_accounts: unknown } | null)?.shop_payment_accounts as unknown);
-
-                if (!shop || !(paymentAccount as { stripe_account_id?: string } | null)?.stripe_account_id) continue;
-
-                payoutItems.push({
-                    shopId: (shop as { id: string }).id,
-                    shopName: (shop as { name: string }).name,
-                    shopSlug: (shop as { slug: string }).slug,
-                    stripeAccountId: (paymentAccount as { stripe_account_id: string }).stripe_account_id,
-                    quantity: Number((item as { quantity: unknown }).quantity ?? 0),
-                    unitPrice: Number((item as { price_at_purchase: unknown }).price_at_purchase ?? 0),
-                    shippingCost: Number((variant as { shipping_cost?: unknown } | null)?.shipping_cost ?? 0),
-                });
-            }
+            const payoutItems = buildPayoutItemsFromJoins(orderItems);
 
             const result = await releaseOrderFunds({
                 stripe,
@@ -137,11 +113,18 @@ export const POST: APIRoute = async ({ request, cookies, locals }) => {
             if (result.value.success) {
                 released.push(result.value.publicId);
             } else {
-                console.error(`auto-confirm fund release failed for ${result.value.publicId}`, result.value.error);
+                console.error(JSON.stringify({
+                    event: 'auto_confirm.fund_release_failed',
+                    publicId: result.value.publicId,
+                    error: result.value.error,
+                }));
                 failed.push(result.value.publicId);
             }
         } else {
-            console.error('auto-confirm unexpected rejection', result.reason);
+            console.error(JSON.stringify({
+                event: 'auto_confirm.unexpected_rejection',
+                reason: result.reason instanceof Error ? result.reason.message : String(result.reason),
+            }));
         }
     }
 
@@ -149,7 +132,10 @@ export const POST: APIRoute = async ({ request, cookies, locals }) => {
     const ctx = (locals as { runtime?: { ctx?: { waitUntil: (p: Promise<unknown>) => void } } }).runtime?.ctx;
     if (ctx && failed.length > 0) {
         ctx.waitUntil(
-            Promise.resolve(console.warn('auto-confirm: some fund releases failed, retry needed', { failed }))
+            Promise.resolve(console.warn(JSON.stringify({
+                event: 'auto_confirm.retry_needed',
+                failed,
+            })))
         );
     }
 
