@@ -117,18 +117,69 @@ const isLoggedIn = !!user;
           </button>
 
           <div class="flex gap-2">
-            <input
-              type="text"
-              id="pickup-address"
-              placeholder="Dirección de búsqueda"
-              class="flex-1 px-3 py-2.5 bg-surface border border-border-light rounded-lg text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent"
-            />
-            <button type="button" id="pickup-search-btn" class="px-4 py-2.5 bg-accent text-bg text-sm font-semibold rounded-lg hover:bg-accent-hover transition-colors shrink-0 disabled:opacity-50 disabled:cursor-not-allowed">
-              {strings.deliverySearch}
+            <div class="relative flex-1">
+              <input
+                type="text"
+                id="pickup-address"
+                placeholder="Dirección de búsqueda"
+                class="w-full pl-3 pr-9 py-2.5 bg-surface border border-border-light rounded-lg text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent disabled:bg-border-light/40 disabled:text-text-tertiary transition-colors"
+              />
+              <svg id="pickup-address-spinner" class="hidden absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-text-tertiary" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="14 42"/>
+              </svg>
+            </div>
+            <button type="button" id="pickup-search-btn" class="relative px-4 py-2.5 bg-accent text-bg text-sm font-semibold rounded-lg hover:bg-accent-hover transition-colors shrink-0 disabled:opacity-50 disabled:cursor-not-allowed min-w-[88px]">
+              <span data-search-label>{strings.deliverySearch}</span>
+              <svg data-search-spinner class="hidden absolute inset-0 m-auto w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="14 42"/>
+              </svg>
             </button>
           </div>
 
-          <div id="pickup-search-status" class="hidden text-sm text-text-secondary text-center py-4"></div>
+          <!-- Inline loading state: spinner header + skeleton cards -->
+          <div id="pickup-loading" class="hidden flex-col gap-2" aria-live="polite" aria-busy="true">
+            <div class="flex items-center gap-2 text-xs font-medium text-text-secondary px-1">
+              <svg class="w-3.5 h-3.5 animate-spin shrink-0" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="14 42"/>
+              </svg>
+              <span id="pickup-loading-label">{strings.deliverySearching}</span>
+            </div>
+            <div class="flex flex-col gap-2">
+              <div class="rounded-xl border-2 border-border-light bg-surface p-3 flex flex-col gap-2">
+                <span class="bg-skeleton rounded h-3.5 w-2/3"></span>
+                <span class="bg-skeleton rounded h-2.5 w-4/5"></span>
+                <div class="flex items-center gap-2 mt-0.5">
+                  <span class="bg-skeleton rounded h-3 w-14"></span>
+                  <span class="bg-skeleton rounded h-2.5 w-12"></span>
+                </div>
+                <span class="bg-skeleton rounded h-2.5 w-1/2"></span>
+              </div>
+              <div class="rounded-xl border-2 border-border-light bg-surface p-3 flex flex-col gap-2">
+                <span class="bg-skeleton rounded h-3.5 w-3/5"></span>
+                <span class="bg-skeleton rounded h-2.5 w-3/4"></span>
+                <div class="flex items-center gap-2 mt-0.5">
+                  <span class="bg-skeleton rounded h-3 w-16"></span>
+                  <span class="bg-skeleton rounded h-2.5 w-10"></span>
+                </div>
+                <span class="bg-skeleton rounded h-2.5 w-2/5"></span>
+              </div>
+              <div class="rounded-xl border-2 border-border-light bg-surface p-3 flex flex-col gap-2">
+                <span class="bg-skeleton rounded h-3.5 w-1/2"></span>
+                <span class="bg-skeleton rounded h-2.5 w-5/6"></span>
+                <div class="flex items-center gap-2 mt-0.5">
+                  <span class="bg-skeleton rounded h-3 w-12"></span>
+                  <span class="bg-skeleton rounded h-2.5 w-14"></span>
+                </div>
+                <span class="bg-skeleton rounded h-2.5 w-2/5"></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Empty / error status (icon + message) -->
+          <div id="pickup-search-status" class="hidden flex-col items-center justify-center text-center py-6 px-4 gap-2">
+            <div id="pickup-status-icon" class="w-10 h-10 rounded-full flex items-center justify-center"></div>
+            <p id="pickup-status-message" class="text-sm text-text-secondary"></p>
+          </div>
 
           <div id="pickup-points-list" class="flex flex-col gap-2"></div>
         </div>
@@ -343,7 +394,67 @@ const isLoggedIn = !!user;
   let inputAddress: HTMLInputElement | null = null;
   let btnSearch: HTMLButtonElement | null = null;
   let searchStatus: HTMLElement | null = null;
+  let statusIcon: HTMLElement | null = null;
+  let statusMessage: HTMLElement | null = null;
   let pointsList: HTMLElement | null = null;
+  let pickupLoading: HTMLElement | null = null;
+  let pickupLoadingLabel: HTMLElement | null = null;
+  let addressSpinner: HTMLElement | null = null;
+
+  const SEARCH_ICON_SVG = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>';
+  const ALERT_ICON_SVG = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>';
+
+  function showPickupStatus(message: string, variant: 'empty' | 'error' = 'empty') {
+    if (!searchStatus || !statusIcon || !statusMessage) return;
+    statusMessage.textContent = message;
+    statusIcon.innerHTML = variant === 'error' ? ALERT_ICON_SVG : SEARCH_ICON_SVG;
+    const errorClasses = ['text-red-500', 'dark:text-red-400', 'bg-red-50', 'dark:bg-red-900/30'];
+    const emptyClasses = ['text-text-tertiary', 'bg-border-light/60'];
+    statusIcon.classList.remove(...errorClasses, ...emptyClasses);
+    statusIcon.classList.add(...(variant === 'error' ? errorClasses : emptyClasses));
+    searchStatus.classList.remove('hidden');
+    searchStatus.classList.add('flex');
+  }
+
+  function hidePickupStatus() {
+    if (!searchStatus) return;
+    searchStatus.classList.add('hidden');
+    searchStatus.classList.remove('flex');
+  }
+
+  function showPickupLoading(label: string) {
+    if (!pickupLoading || !pickupLoadingLabel) return;
+    pickupLoadingLabel.textContent = label;
+    pickupLoading.classList.remove('hidden');
+    pickupLoading.classList.add('flex');
+  }
+
+  function hidePickupLoading() {
+    if (!pickupLoading) return;
+    pickupLoading.classList.add('hidden');
+    pickupLoading.classList.remove('flex');
+  }
+
+  function setSearchButtonLoading(loading: boolean) {
+    if (!btnSearch) return;
+    const label = btnSearch.querySelector('[data-search-label]') as HTMLElement | null;
+    const spinner = btnSearch.querySelector('[data-search-spinner]') as HTMLElement | null;
+    btnSearch.disabled = loading;
+    if (label) label.style.visibility = loading ? 'hidden' : '';
+    if (spinner) spinner.classList.toggle('hidden', !loading);
+  }
+
+  function setAddressLoading(loading: boolean) {
+    if (!inputAddress || !addressSpinner) return;
+    inputAddress.disabled = loading;
+    addressSpinner.classList.toggle('hidden', !loading);
+    if (loading) {
+      inputAddress.dataset.originalPlaceholder = inputAddress.placeholder;
+      inputAddress.placeholder = strings.deliveryLoadingAddress;
+    } else if (inputAddress.dataset.originalPlaceholder) {
+      inputAddress.placeholder = inputAddress.dataset.originalPlaceholder;
+    }
+  }
 
   function openDeliveryModal() {
     selectedDeliveryType = null;
@@ -408,12 +519,11 @@ const isLoggedIn = !!user;
   }
 
   async function preloadAddress() {
-    if (!inputAddress || !searchStatus || !btnSearch) return;
+    if (!inputAddress) return;
 
-    searchStatus.textContent = strings.deliveryLoadingAddress;
-    searchStatus.classList.remove('hidden');
-    inputAddress.disabled = true;
-    btnSearch.disabled = true;
+    hidePickupStatus();
+    setAddressLoading(true);
+    setSearchButtonLoading(true);
 
     try {
       const res = await fetch('/api/me/address');
@@ -426,52 +536,52 @@ const isLoggedIn = !!user;
     } catch {
       // ignore
     } finally {
-      inputAddress.disabled = false;
-      btnSearch.disabled = false;
+      setAddressLoading(false);
+      setSearchButtonLoading(false);
       if (inputAddress.value.trim().length >= 5) {
         await searchPickupPoints();
-      } else {
-        searchStatus.classList.add('hidden');
       }
     }
   }
 
   async function searchPickupPoints() {
-    if (!inputAddress || !searchStatus || !pointsList || !btnSearch) return;
+    if (!inputAddress || !pointsList) return;
     const address = inputAddress.value.trim();
     if (!address || address.length < 5) {
-      searchStatus.textContent = 'Introduce una dirección válida';
-      searchStatus.classList.remove('hidden');
+      hidePickupLoading();
+      showPickupStatus('Introduce una dirección válida', 'error');
       return;
     }
 
-    searchStatus.textContent = strings.deliverySearching;
-    searchStatus.classList.remove('hidden');
+    hidePickupStatus();
     pointsList.innerHTML = '';
-    btnSearch.disabled = true;
-    btnSearch.textContent = '...';
+    showPickupLoading(strings.deliverySearching);
+    setSearchButtonLoading(true);
 
     try {
       const res = await fetch(`/api/sendcloud/service-points?address=${encodeURIComponent(address)}&country=ES`);
       const data = await res.json() as any;
 
       if (!res.ok || !data.points) {
-        searchStatus.textContent = strings.deliverySearchError;
+        hidePickupLoading();
+        showPickupStatus(strings.deliverySearchError, 'error');
         return;
       }
 
       if ((data.points as any[]).length === 0) {
-        searchStatus.textContent = strings.deliveryNoResults;
+        hidePickupLoading();
+        showPickupStatus(strings.deliveryNoResults, 'empty');
         return;
       }
 
-      searchStatus.classList.add('hidden');
+      hidePickupLoading();
+      hidePickupStatus();
       renderPickupPoints(data.points as any[]);
     } catch {
-      searchStatus.textContent = strings.deliverySearchError;
+      hidePickupLoading();
+      showPickupStatus(strings.deliverySearchError, 'error');
     } finally {
-      btnSearch.disabled = false;
-      btnSearch.textContent = strings.deliverySearch;
+      setSearchButtonLoading(false);
     }
   }
 
@@ -679,7 +789,12 @@ const isLoggedIn = !!user;
     inputAddress = document.getElementById('pickup-address') as HTMLInputElement | null;
     btnSearch = document.getElementById('pickup-search-btn') as HTMLButtonElement | null;
     searchStatus = document.getElementById('pickup-search-status');
+    statusIcon = document.getElementById('pickup-status-icon');
+    statusMessage = document.getElementById('pickup-status-message');
     pointsList = document.getElementById('pickup-points-list');
+    pickupLoading = document.getElementById('pickup-loading');
+    pickupLoadingLabel = document.getElementById('pickup-loading-label');
+    addressSpinner = document.getElementById('pickup-address-spinner');
 
     renderCart();
     refreshStockFromServer();
