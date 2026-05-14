@@ -110,14 +110,24 @@ export async function releaseOrderFunds(options: {
             const errors = failures.map(({ result, payout }) =>
                 `${payout.shopId}: ${(result as PromiseRejectedResult).reason?.message ?? 'unknown'}`
             );
-            console.error('releaseOrderFunds partial failure', { orderId, errors });
+            console.error(JSON.stringify({
+                event: 'release_order_funds.partial_failure',
+                orderId,
+                publicId,
+                errors,
+            }));
             return { success: false, error: errors.join('; ') };
         }
 
         return { success: true };
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Transfer failed';
-        console.error('releaseOrderFunds failed', { orderId, publicId, error });
+        console.error(JSON.stringify({
+            event: 'release_order_funds.failed',
+            orderId,
+            publicId,
+            error: error instanceof Error ? error.message : String(error),
+        }));
         return { success: false, error: message };
     }
 }

@@ -1,3 +1,5 @@
+import { strings } from '../core/i18n';
+
 export interface ProductCompletenessResult {
     complete: boolean;
     missing: string[];
@@ -39,7 +41,7 @@ export function validateProductCompleteness(
 
 export function formatShippingDisplay(cost: number | null | undefined): string {
     if (cost == null) return '';
-    if (cost === 0) return 'Envío gratis';
+    if (cost === 0) return strings.freeShipping;
     return `+${cost.toFixed(2).replace('.', ',')}€ envío`;
 }
 
