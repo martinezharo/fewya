@@ -22,6 +22,8 @@ CREATE TABLE public.orders (
   delivered_at timestamp with time zone,
   funds_released_at timestamp with time zone,
   cancellation_reason text,
+  funds_release_status text NOT NULL DEFAULT 'pending' CHECK (funds_release_status IN ('pending', 'released', 'failed')),
+  funds_release_last_error text,
   buyer_email text,
   shipping_full_name text,
   shipping_phone text,

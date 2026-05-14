@@ -214,6 +214,13 @@ CREATE POLICY "Users can view tracking for shipments they have access to" ON pub
   ));
 
 -- ============================================================
+-- sendcloud_config: restrict to service_role only (C1)
+-- ============================================================
+
+ALTER TABLE public.sendcloud_config ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.sendcloud_config FROM anon, authenticated;
+
+-- ============================================================
 -- Grants
 -- ============================================================
 
