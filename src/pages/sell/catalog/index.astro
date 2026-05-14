@@ -347,6 +347,4 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', { style: 'currency', cu
     }
 
     document.addEventListener('astro:page-load', initCatalogPage);
-    if (document.readyState !== 'loading') initCatalogPage();
-    else document.addEventListener('DOMContentLoaded', initCatalogPage);
 </script>
