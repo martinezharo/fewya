@@ -134,9 +134,20 @@ CREATE OR REPLACE FUNCTION public.update_shipment_tracking(
 RETURNS public.shipments AS $$
 DECLARE
   updated_shipment public.shipments;
+  status_lower text;
+  is_delivery_failure boolean;
 BEGIN
   INSERT INTO public.shipment_tracking (shipment_id, status, description, location, event_timestamp, raw_data)
   VALUES (p_shipment_id, p_status, p_description, p_location, p_event_timestamp, p_raw_data);
+
+  status_lower := lower(COALESCE(p_status, ''));
+  is_delivery_failure :=
+    status_lower IN ('failed', 'returned_to_sender', 'delivery_failed', 'shipment_lost', 'cancelled_upstream')
+    OR status_lower LIKE '%returned to sender%'
+    OR status_lower LIKE '%parcel en route to sender%'
+    OR status_lower LIKE '%unable to deliver%'
+    OR status_lower LIKE '%delivery attempt failed%'
+    OR status_lower LIKE '%lost%';
 
   UPDATE public.shipments
   SET
@@ -144,7 +155,7 @@ BEGIN
       WHEN p_status = 'delivered' THEN 'delivered'::shipment_status
       WHEN p_status = 'shipped' OR p_status = 'shipment.tracking.update' THEN 'shipped'::shipment_status
       WHEN p_status = 'label_ready' THEN 'label_ready'::shipment_status
-      WHEN p_status = 'failed' THEN 'failed'::shipment_status
+      WHEN is_delivery_failure THEN 'failed'::shipment_status
       ELSE status
     END,
     tracking_number = COALESCE(p_tracking_number, tracking_number),
@@ -161,6 +172,15 @@ BEGIN
       delivered_at = COALESCE(delivered_at, timezone('utc'::text, now()))
     WHERE id = updated_shipment.order_id
       AND status NOT IN ('confirmed', 'incident', 'cancelled');
+  END IF;
+
+  -- When carrier reports loss or return-to-sender on a shipped order,
+  -- transition it to delivery_failed so the seller can issue a refund.
+  IF is_delivery_failure AND updated_shipment.order_id IS NOT NULL THEN
+    UPDATE public.orders
+    SET status = 'delivery_failed'
+    WHERE id = updated_shipment.order_id
+      AND status = 'shipped';
   END IF;
 
   RETURN updated_shipment;

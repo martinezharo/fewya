@@ -3,7 +3,7 @@
 -- Order management: orders, order_items, refunds
 -- ============================================================
 
-CREATE TYPE order_status AS ENUM ('pending', 'paid', 'processing', 'shipped', 'delivered', 'confirmed', 'incident', 'cancelled', 'refunded');
+CREATE TYPE order_status AS ENUM ('pending', 'paid', 'processing', 'shipped', 'delivered', 'confirmed', 'incident', 'delivery_failed', 'cancelled', 'refunded');
 
 CREATE TABLE public.orders (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -467,6 +467,40 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
+CREATE OR REPLACE FUNCTION public.resolve_delivery_failure_with_refund(
+  p_actor_id uuid,
+  p_order_id uuid
+)
+RETURNS public.orders AS $$
+DECLARE
+  updated_order public.orders;
+BEGIN
+  IF p_actor_id IS NULL THEN
+    RAISE EXCEPTION 'Not authenticated';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM public.orders o
+    JOIN public.shops s ON o.shop_id = s.id
+    WHERE o.id = p_order_id AND s.owner_id = p_actor_id
+  ) THEN
+    RAISE EXCEPTION 'Not authorized';
+  END IF;
+
+  UPDATE public.orders
+  SET status = 'refunded'
+  WHERE id = p_order_id
+    AND status = 'delivery_failed'
+  RETURNING * INTO updated_order;
+
+  IF updated_order.id IS NULL THEN
+    RAISE EXCEPTION 'Order not in delivery_failed status';
+  END IF;
+
+  RETURN updated_order;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
 CREATE OR REPLACE FUNCTION public.auto_confirm_delivered_orders(p_actor_id uuid)
 RETURNS TABLE(order_id uuid, public_id text) AS $$
 BEGIN
@@ -567,6 +601,7 @@ REVOKE EXECUTE ON FUNCTION public.mark_order_processing(uuid, uuid) FROM PUBLIC,
 REVOKE EXECUTE ON FUNCTION public.confirm_order_delivery(uuid, uuid) FROM PUBLIC, anon, authenticated;
 REVOKE EXECUTE ON FUNCTION public.report_order_incident(uuid, uuid, text, text[]) FROM PUBLIC, anon, authenticated;
 REVOKE EXECUTE ON FUNCTION public.resolve_incident_with_refund(uuid, uuid) FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.resolve_delivery_failure_with_refund(uuid, uuid) FROM PUBLIC, anon, authenticated;
 REVOKE EXECUTE ON FUNCTION public.auto_confirm_delivered_orders(uuid) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.reserve_stock(uuid, integer) TO service_role;
 GRANT EXECUTE ON FUNCTION public.restore_stock(uuid, integer) TO service_role;
@@ -577,4 +612,5 @@ GRANT EXECUTE ON FUNCTION public.mark_order_processing(uuid, uuid) TO service_ro
 GRANT EXECUTE ON FUNCTION public.confirm_order_delivery(uuid, uuid) TO service_role;
 GRANT EXECUTE ON FUNCTION public.report_order_incident(uuid, uuid, text, text[]) TO service_role;
 GRANT EXECUTE ON FUNCTION public.resolve_incident_with_refund(uuid, uuid) TO service_role;
+GRANT EXECUTE ON FUNCTION public.resolve_delivery_failure_with_refund(uuid, uuid) TO service_role;
 GRANT EXECUTE ON FUNCTION public.auto_confirm_delivered_orders(uuid) TO service_role;
