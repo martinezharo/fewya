@@ -4,6 +4,13 @@ import { toast } from './toast';
 import { progress } from './progress-bar';
 import { setStatus } from './live-status';
 
+export class SubmitError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = 'SubmitError';
+    }
+}
+
 export interface RunSubmitOptions<T> {
     button?: HTMLButtonElement | null;
     action: () => Promise<Response | T>;
@@ -67,10 +74,11 @@ export async function runSubmit<T = unknown>(
         if (!silentSuccess && successMsg) toast.success(successMsg);
         progress.done();
         return { ok: true, value: result, error: null };
-    } catch {
-        toast.error(strings.toastErrorNetwork);
+    } catch (err) {
+        const msg = err instanceof SubmitError ? err.message : strings.toastErrorNetwork;
+        toast.error(msg);
         progress.fail();
-        return { ok: false, value: null, error: strings.toastErrorNetwork };
+        return { ok: false, value: null, error: msg };
     } finally {
         if (button) setBusy(button, false);
     }
