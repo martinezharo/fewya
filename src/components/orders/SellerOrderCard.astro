@@ -1,5 +1,6 @@
 ---
 import Icon from '../icons/Icon.astro';
+import RefundOrderModal from './RefundOrderModal.astro';
 import { strings } from '../../lib/core/i18n';
 import {
     normalizeOrderStatus,
@@ -316,6 +317,19 @@ const { showRefunded, refundedAmountFormatted, shippingRetainedFormatted } = get
                                 <p class="text-sm text-text-secondary">{strings.sellerOrderDeliveredWaiting}</p>
                             </div>
                         )}
+                        {normalizedStatus === 'delivery_failed' && (
+                            <div class="mt-1 pt-4 border-t border-border-light flex flex-col gap-3">
+                                <p class="text-sm text-text-secondary">{strings.deliveryFailedSellerNotice}</p>
+                                <button
+                                    type="button"
+                                    class="open-refund-modal-btn self-end inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-xl bg-red-600 text-white hover:bg-red-700 active:scale-95 transition-all"
+                                    data-order-id={order.orderId}
+                                >
+                                    <Icon name="credit-card" size={13} />
+                                    {strings.sellerIncidentRefundBtn}
+                                </button>
+                            </div>
+                        )}
                     </div>
                 ) : (normalizedStatus === 'paid' || normalizedStatus === 'processing') ? (
                     <div class="flex flex-col gap-3">
@@ -349,30 +363,6 @@ const { showRefunded, refundedAmountFormatted, shippingRetainedFormatted } = get
                             <Icon name="alert-circle" size={12} />
                             {strings.incidentViewDetails}
                         </a>
-                    </div>
-                ) : normalizedStatus === 'delivery_failed' ? (
-                    <div class="flex flex-col gap-3">
-                        <p class="text-sm text-text-secondary">{strings.deliveryFailedSellerNotice}</p>
-                        <div class="flex flex-wrap gap-2">
-                            <button
-                                type="button"
-                                class="open-delivery-failed-modal-btn inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-rose-600 text-white hover:bg-rose-700 transition-colors"
-                                data-order-id={order.orderId}
-                                data-refund-type="minus_shipping"
-                            >
-                                <Icon name="credit-card" size={12} />
-                                {strings.deliveryFailedRefundMinusShippingBtn}
-                            </button>
-                            <button
-                                type="button"
-                                class="open-delivery-failed-modal-btn inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-400 hover:bg-rose-200 dark:hover:bg-rose-900/60 transition-colors"
-                                data-order-id={order.orderId}
-                                data-refund-type="full"
-                            >
-                                <Icon name="credit-card" size={12} />
-                                {strings.deliveryFailedRefundFullBtn}
-                            </button>
-                        </div>
                     </div>
                 ) : (
                     <p class="text-sm text-text-secondary">{strings.sellerOrderNoActions}</p>
@@ -422,48 +412,16 @@ const { showRefunded, refundedAmountFormatted, shippingRetainedFormatted } = get
         </div>
     )}
 
-    {/* Delivery Failed Refund Modal */}
     {normalizedStatus === 'delivery_failed' && (
-        <div class="delivery-failed-modal hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" data-order-id={order.orderId}>
-            <div class="w-full max-w-md rounded-2xl border border-border bg-surface p-5 shadow-xl">
-                <h3 class="text-base font-semibold text-text-primary">{strings.deliveryFailedRefundModalTitle}</h3>
-                <p class="delivery-failed-modal-desc mt-2 text-sm text-text-secondary"></p>
-                <dl class="mt-4 grid grid-cols-2 gap-2 text-[12px] tabular-nums">
-                    <div class="flex flex-col rounded-lg bg-bg/60 px-3 py-2">
-                        <dt class="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">
-                            {strings.cartTotal}
-                        </dt>
-                        <dd class="mt-0.5 font-bold text-text-primary">{formatEur(order.subtotal + order.shipping)}</dd>
-                    </div>
-                    <div class="flex flex-col rounded-lg bg-bg/60 px-3 py-2">
-                        <dt class="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">
-                            {strings.cartShipping}
-                        </dt>
-                        <dd class="mt-0.5 font-bold text-text-primary">{formatShippingCell(order.shipping)}</dd>
-                    </div>
-                    <div class="col-span-2 flex flex-col rounded-lg bg-rose-50 dark:bg-rose-900/20 px-3 py-2 border border-rose-100 dark:border-rose-800">
-                        <dt class="text-[10px] font-semibold uppercase tracking-wider text-rose-700 dark:text-rose-400">
-                            {strings.refundSummaryLabel}
-                        </dt>
-                        <dd class="delivery-failed-amount mt-0.5 text-base font-bold text-rose-700 dark:text-rose-300"></dd>
-                    </div>
-                </dl>
-                <div class="mt-5 flex gap-2 justify-end">
-                    <button type="button" class="close-delivery-failed-modal-btn px-3 py-1.5 text-sm font-medium text-text-secondary hover:text-text-primary transition-colors">
-                        {strings.deliveryFailedRefundDismiss}
-                    </button>
-                    <button
-                        type="button"
-                        class="confirm-delivery-failed-btn px-3 py-1.5 text-sm font-semibold rounded-lg bg-rose-600 text-white hover:bg-rose-700 transition-colors"
-                        data-order-id={order.orderId}
-                        data-total={order.subtotal + order.shipping}
-                        data-shipping={order.shipping}
-                    >
-                        {strings.deliveryFailedRefundConfirmCta}
-                    </button>
-                </div>
-            </div>
-        </div>
+        <RefundOrderModal
+            orderId={order.orderId}
+            totalAmount={order.subtotal + order.shipping}
+            shippingAmount={order.shipping}
+            endpoint="/api/orders/resolve-delivery-failure"
+            allowPartial={false}
+            successMsg={strings.deliveryFailedRefundSuccess}
+            errorMsg={strings.deliveryFailedRefundError}
+        />
     )}
 
     {/* Cancel Modal */}
@@ -645,77 +603,6 @@ const { showRefunded, refundedAmountFormatted, shippingRetainedFormatted } = get
                     return data;
                 },
                 successMsg: strings.sellerOrderConfirmDeliverySuccess,
-            });
-            if (result.ok) {
-                window.setTimeout(() => window.location.reload(), 800);
-            }
-        });
-    });
-
-    // Delivery-failed: open modal
-    const eurFormatter = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' });
-    document.querySelectorAll<HTMLButtonElement>('.open-delivery-failed-modal-btn').forEach((btn) => {
-        btn.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const orderId = btn.dataset.orderId;
-            const refundType = btn.dataset.refundType || 'minus_shipping';
-            if (!orderId) return;
-            const modal = document.querySelector(`.delivery-failed-modal[data-order-id="${orderId}"]`) as HTMLElement | null;
-            if (!modal) return;
-            const confirmBtn = modal.querySelector<HTMLButtonElement>('.confirm-delivery-failed-btn');
-            const desc = modal.querySelector<HTMLElement>('.delivery-failed-modal-desc');
-            const amountEl = modal.querySelector<HTMLElement>('.delivery-failed-amount');
-            const total = Number(confirmBtn?.dataset.total ?? 0);
-            const shipping = Number(confirmBtn?.dataset.shipping ?? 0);
-            const refundAmount = refundType === 'full' ? total : Math.max(0, Math.round((total - shipping) * 100) / 100);
-            if (confirmBtn) confirmBtn.dataset.refundType = refundType;
-            if (desc) {
-                desc.textContent = refundType === 'full'
-                    ? strings.deliveryFailedRefundFullDesc
-                    : strings.deliveryFailedRefundMinusShippingDesc;
-            }
-            if (amountEl) amountEl.textContent = eurFormatter.format(refundAmount);
-            modal.classList.remove('hidden');
-        });
-    });
-
-    document.querySelectorAll('.close-delivery-failed-modal-btn').forEach((btn) => {
-        btn.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const modal = btn.closest('.delivery-failed-modal');
-            if (modal) modal.classList.add('hidden');
-        });
-    });
-
-    document.querySelectorAll('.delivery-failed-modal').forEach((modal) => {
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) modal.classList.add('hidden');
-        });
-    });
-
-    document.querySelectorAll<HTMLButtonElement>('.confirm-delivery-failed-btn').forEach((btn) => {
-        btn.addEventListener('click', async (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const orderId = btn.dataset.orderId;
-            const refundType = btn.dataset.refundType || 'minus_shipping';
-            if (!orderId) return;
-
-            const result = await runSubmit({
-                button: btn,
-                action: async () => {
-                    const res = await fetch('/api/orders/resolve-delivery-failure', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ orderId, refundType }),
-                    });
-                    const data = await res.json() as { success?: boolean; error?: string };
-                    if (!data.success) throw new SubmitError(data.error || strings.deliveryFailedRefundError);
-                    return data;
-                },
-                successMsg: strings.deliveryFailedRefundSuccess,
             });
             if (result.ok) {
                 window.setTimeout(() => window.location.reload(), 800);

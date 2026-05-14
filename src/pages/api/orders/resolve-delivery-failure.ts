@@ -6,7 +6,7 @@ import { getStripeClient } from '../../../lib/payments/stripe';
 import { CHECKOUT_CURRENCY, toMinorUnits } from '../../../lib/cart/checkout';
 import { extractPayoutContext, type JoinedOrderItem } from '../../../lib/orders/orderJoins';
 
-type RefundType = 'minus_shipping' | 'full';
+type RefundType = 'full' | 'product';
 
 function jsonResponse(payload: Record<string, unknown>, status: number) {
     return new Response(JSON.stringify(payload), {
@@ -37,8 +37,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     }
 
     const orderId = body.orderId;
-    const refundType: RefundType = body.refundType ?? 'minus_shipping';
-    if (!orderId || !['minus_shipping', 'full'].includes(refundType)) {
+    const refundType: RefundType = body.refundType ?? 'product';
+    if (!orderId || !['full', 'product'].includes(refundType)) {
         return jsonResponse({ error: strings.apiInvalidBody }, 400);
     }
 
@@ -112,7 +112,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     } else {
         refundAmount = Math.max(0, roundMoney(totalAmount - shippingAmount));
         transferShippingAmount = shippingAmount;
-        reasonTag = 'delivery_failure_minus_shipping';
+        reasonTag = 'delivery_failure_product';
     }
 
     const stripe = getStripeClient();
