@@ -7,14 +7,25 @@ import { SUPABASE_URL } from 'astro:env/server';
 interface Props {
   title?: string;
   description?: string;
+  image?: string;
+  ogType?: 'website' | 'article' | 'product';
+  noindex?: boolean;
+  canonical?: string;
 }
 
 const {
   title = strings.siteTitle,
   description = strings.siteDescription,
+  image,
+  ogType = 'website',
+  noindex = false,
+  canonical,
 } = Astro.props;
 
 const supabaseHost = typeof SUPABASE_URL === 'string' ? new URL(SUPABASE_URL).host : '';
+const siteUrl = Astro.site?.toString() ?? `${Astro.url.protocol}//${Astro.url.host}`;
+const canonicalUrl = canonical ?? new URL(Astro.url.pathname, siteUrl).toString();
+const ogImage = image ?? new URL('/og-image.svg', siteUrl).toString();
 ---
 
 <!doctype html>
@@ -34,6 +45,9 @@ const supabaseHost = typeof SUPABASE_URL === 'string' ? new URL(SUPABASE_URL).ho
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="theme-color" content="#F5F7FF" />
     <meta name="generator" content={Astro.generator} />
@@ -66,6 +80,25 @@ const supabaseHost = typeof SUPABASE_URL === 'string' ? new URL(SUPABASE_URL).ho
     <!-- SEO -->
     <title>{title}</title>
     <meta name="description" content={description} />
+    <link rel="canonical" href={canonicalUrl} />
+    {noindex && <meta name="robots" content="noindex, nofollow" />}
+
+    <!-- Open Graph -->
+    <meta property="og:site_name" content={strings.logoText} />
+    <meta property="og:type" content={ogType} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonicalUrl} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:locale" content="es_ES" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
+
+    <slot name="structured-data" />
 
     <!-- Fonts: preload + non-blocking stylesheet to avoid render-blocking -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
