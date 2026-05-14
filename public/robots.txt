@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /me/
+Disallow: /sell/
+Disallow: /cart/
+
+Sitemap: /sitemap.xml
