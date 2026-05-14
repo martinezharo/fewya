@@ -659,6 +659,7 @@ export const strings = {
     sellerProductSaveSuccess: 'Producto guardado correctamente',
     sellerProductDeleteSuccess: 'Producto eliminado',
     sellerProductDeleteError: 'Error al eliminar el producto',
+    sellerProductDeleteHasOrders: 'No puedes eliminar este producto porque tiene ventas asociadas. Desactívalo desde la edición para ocultarlo del catálogo.',
     sellerProductTitleRequired: 'El nombre es obligatorio',
     sellerProductCategoryRequired: 'La categoría es obligatoria',
     sellerProductVariantPriceRequired: 'El precio es obligatorio',

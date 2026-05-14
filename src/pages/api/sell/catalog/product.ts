@@ -395,6 +395,9 @@ export const DELETE: APIRoute = async ({ cookies, request, url }) => {
         .eq('shop_id', shop.id);
 
     if (error) {
+        if (error.code === '23503') {
+            return new Response(JSON.stringify({ error: strings.sellerProductDeleteHasOrders }), { status: 409 });
+        }
         return new Response(JSON.stringify({ error: error.message }), { status: 500 });
     }
 
