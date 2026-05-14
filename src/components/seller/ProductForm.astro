@@ -411,9 +411,8 @@ const defaultsJson = JSON.stringify(shippingDefaults ?? {});
 
 <script>
     import { strings } from '../../lib/core/i18n';
-    import { setBusy } from '../../lib/ui/busy';
     import { toast } from '../../lib/ui/toast';
-    import { progress } from '../../lib/ui/progress-bar';
+    import { runSubmit, SubmitError } from '../../lib/ui/submit';
 
     function initProductForm() {
         const root = document.getElementById('product-form-root');
@@ -720,52 +719,37 @@ const defaultsJson = JSON.stringify(shippingDefaults ?? {});
                 variants,
             };
 
-            setBusy(saveBtn, true, { label: strings.sellerProductSaving });
-            progress.start();
+            let url = '/api/sell/catalog/product';
+            let method = 'POST';
+            const productId = (document.getElementById('product-id') as HTMLInputElement).value;
+            if (mode === 'edit' && productId) {
+                url += `?id=${productId}`;
+                method = 'PATCH';
+            }
 
-            try {
-                let url = '/api/sell/catalog/product';
-                let method = 'POST';
-                const productId = (document.getElementById('product-id') as HTMLInputElement).value;
+            const result = await runSubmit({
+                button: saveBtn,
+                busyLabel: strings.sellerProductSaving,
+                action: async () => {
+                    const res = await fetch(url, {
+                        method,
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload),
+                    });
+                    const data: { product?: { id: string }; error?: string } = await res.json();
+                    if (!res.ok) throw new SubmitError(data.error || strings.sellerProductSaveError);
+                    return data;
+                },
+                successMsg: strings.productSavedToast,
+            });
 
-                if (mode === 'edit' && productId) {
-                    url += `?id=${productId}`;
-                    method = 'PATCH';
-                }
-
-                const res = await fetch(url, {
-                    method,
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload),
-                });
-
-                const data: { product?: { id: string }; error?: string } = await res.json();
-
-                if (!res.ok) {
-                    progress.fail();
-                    toast.error(data.error || strings.sellerProductSaveError);
-                    setBusy(saveBtn, false);
-                    return;
-                }
-
-                progress.done();
-                toast.success(strings.productSavedToast);
-
-                if (mode === 'create' && data.product?.id) {
+            if (result.ok) {
+                const data = result.value as { product?: { id: string } };
+                if (mode === 'create' && data?.product?.id) {
                     window.location.href = `/sell/catalog/${data.product.id}`;
-                    return;
-                }
-
-                if (mode === 'edit') {
+                } else if (mode === 'edit') {
                     window.location.href = '/sell/catalog';
-                    return;
                 }
-
-                setBusy(saveBtn, false);
-            } catch {
-                progress.fail();
-                toast.error(strings.toastErrorNetwork);
-                setBusy(saveBtn, false);
             }
         });
     }

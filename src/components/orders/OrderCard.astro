@@ -572,10 +572,10 @@ const reviewableItems = order.items.filter(item => item.productId);
 </article>
 
 <script>
-    import { setBusy } from '../../lib/ui/busy';
-    import { toast } from '../../lib/ui/toast';
-    import { progress } from '../../lib/ui/progress-bar';
     import { strings } from '../../lib/core/i18n';
+    import { toast } from '../../lib/ui/toast';
+    import { setBusy } from '../../lib/ui/busy';
+    import { runSubmit, SubmitError } from '../../lib/ui/submit';
 
     // Track modals that already have photo-upload wired up (lazy init on first open)
     const initializedModals = new WeakSet<Element>();
@@ -676,29 +676,23 @@ const reviewableItems = order.items.filter(item => item.productId);
 
             if (hasError) return;
 
-            setBusy(submitBtn!, true, { label: strings.incidentSubmitting });
-            progress.start();
-
-            try {
-                const res = await fetch('/api/orders/report-incident', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ orderId, description, photos: uploadedPhotos }),
-                });
-                const data = await res.json() as { success?: boolean; error?: string };
-                if (data.success) {
-                    progress.done();
-                    toast.success(strings.incidentReportedToast);
-                    window.setTimeout(() => window.location.reload(), 800);
-                } else {
-                    progress.fail();
-                    toast.error(data.error || strings.orderReportIncidentError);
-                    setBusy(submitBtn!, false);
-                }
-            } catch {
-                progress.fail();
-                toast.error(strings.toastErrorNetwork);
-                setBusy(submitBtn!, false);
+            const incidentResult = await runSubmit({
+                button: submitBtn,
+                busyLabel: strings.incidentSubmitting,
+                action: async () => {
+                    const res = await fetch('/api/orders/report-incident', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ orderId, description, photos: uploadedPhotos }),
+                    });
+                    const data = await res.json() as { success?: boolean; error?: string };
+                    if (!data.success) throw new SubmitError(data.error || strings.orderReportIncidentError);
+                    return data;
+                },
+                successMsg: strings.incidentReportedToast,
+            });
+            if (incidentResult.ok) {
+                window.setTimeout(() => window.location.reload(), 800);
             }
         });
     }
@@ -737,28 +731,22 @@ const reviewableItems = order.items.filter(item => item.productId);
                 const orderId = confirmBtn.dataset.orderId;
                 if (!orderId) return;
                 if (!confirm('¿Confirmas que has recibido el pedido correctamente?')) return;
-                setBusy(confirmBtn, true, { label: strings.loadingGeneric });
-                progress.start();
-                try {
-                    const res = await fetch('/api/orders/confirm-delivery', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ orderId }),
-                    });
-                    const data = await res.json() as { success?: boolean; error?: string };
-                    if (data.success) {
-                        progress.done();
-                        toast.success(strings.orderConfirmedToast);
-                        window.setTimeout(() => window.location.reload(), 800);
-                    } else {
-                        progress.fail();
-                        toast.error(data.error || strings.orderConfirmDeliveryError);
-                        setBusy(confirmBtn, false);
-                    }
-                } catch {
-                    progress.fail();
-                    toast.error(strings.toastErrorNetwork);
-                    setBusy(confirmBtn, false);
+                const confirmResult = await runSubmit({
+                    button: confirmBtn,
+                    action: async () => {
+                        const res = await fetch('/api/orders/confirm-delivery', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ orderId }),
+                        });
+                        const data = await res.json() as { success?: boolean; error?: string };
+                        if (!data.success) throw new SubmitError(data.error || strings.orderConfirmDeliveryError);
+                        return data;
+                    },
+                    successMsg: strings.orderConfirmedToast,
+                });
+                if (confirmResult.ok) {
+                    window.setTimeout(() => window.location.reload(), 800);
                 }
                 return;
             }
@@ -830,29 +818,23 @@ const reviewableItems = order.items.filter(item => item.productId);
                 e.stopPropagation();
                 const orderId = confirmCancelBtn.dataset.orderId;
                 if (!orderId) return;
-                setBusy(confirmCancelBtn, true, { label: strings.loadingGeneric });
-                progress.start();
-                try {
-                    const res = await fetch('/api/orders/cancel-incident', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ orderId }),
-                    });
-                    const data = await res.json() as { success?: boolean; error?: string };
-                    if (data.success) {
-                        progress.done();
-                        document.body.style.overflow = '';
-                        toast.success(strings.incidentCancelledToast);
-                        window.setTimeout(() => window.location.reload(), 800);
-                    } else {
-                        progress.fail();
-                        toast.error(data.error || strings.incidentCancelError);
-                        setBusy(confirmCancelBtn, false);
-                    }
-                } catch {
-                    progress.fail();
-                    toast.error(strings.toastErrorNetwork);
-                    setBusy(confirmCancelBtn, false);
+                const cancelResult = await runSubmit({
+                    button: confirmCancelBtn,
+                    action: async () => {
+                        const res = await fetch('/api/orders/cancel-incident', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ orderId }),
+                        });
+                        const data = await res.json() as { success?: boolean; error?: string };
+                        if (!data.success) throw new SubmitError(data.error || strings.incidentCancelError);
+                        return data;
+                    },
+                    successMsg: strings.incidentCancelledToast,
+                });
+                if (cancelResult.ok) {
+                    document.body.style.overflow = '';
+                    window.setTimeout(() => window.location.reload(), 800);
                 }
                 return;
             }
@@ -986,31 +968,25 @@ const reviewableItems = order.items.filter(item => item.productId);
                 if (hasError) return;
                 if (reviews.length === 0) return;
 
-                setBusy(submitReviewBtn, true, { label: strings.reviewSubmitting });
-                progress.start();
-
-                try {
-                    const res = await fetch('/api/reviews/submit-batch', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ reviews }),
-                    });
-                    const data = await res.json() as { success?: boolean; error?: string };
-                    if (data.success) {
-                        progress.done();
-                        modal.classList.add('hidden');
-                        document.body.style.overflow = '';
-                        toast.success(strings.reviewSubmitSuccess);
-                        window.setTimeout(() => window.location.reload(), 800);
-                    } else {
-                        progress.fail();
-                        toast.error(data.error || strings.reviewSubmitError);
-                        setBusy(submitReviewBtn, false);
-                    }
-                } catch {
-                    progress.fail();
-                    toast.error(strings.toastErrorNetwork);
-                    setBusy(submitReviewBtn, false);
+                const reviewResult = await runSubmit({
+                    button: submitReviewBtn,
+                    busyLabel: strings.reviewSubmitting,
+                    action: async () => {
+                        const res = await fetch('/api/reviews/submit-batch', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ reviews }),
+                        });
+                        const data = await res.json() as { success?: boolean; error?: string };
+                        if (!data.success) throw new SubmitError(data.error || strings.reviewSubmitError);
+                        return data;
+                    },
+                    successMsg: strings.reviewSubmitSuccess,
+                });
+                if (reviewResult.ok) {
+                    modal.classList.add('hidden');
+                    document.body.style.overflow = '';
+                    window.setTimeout(() => window.location.reload(), 800);
                 }
                 return;
             }

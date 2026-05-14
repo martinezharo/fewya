@@ -438,10 +438,8 @@ const shippingRetainedFormatted = showRefunded && (order.shippingRetained ?? 0) 
 </article>
 
 <script>
-    import { setBusy } from '../../lib/ui/busy';
-    import { toast } from '../../lib/ui/toast';
-    import { progress } from '../../lib/ui/progress-bar';
     import { strings } from '../../lib/core/i18n';
+    import { runSubmit, SubmitError } from '../../lib/ui/submit';
 
     class OrderIdPopover extends HTMLElement {
         constructor() {
@@ -519,30 +517,23 @@ const shippingRetainedFormatted = showRefunded && (order.shippingRetained ?? 0) 
             const orderId = btn.dataset.orderId;
             if (!orderId) return;
 
-            setBusy(btn, true, { label: strings.shippingCreatingShipment });
-            progress.start();
-
-            try {
-                const res = await fetch('/api/sendcloud/mock-shipment', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ orderId }),
-                });
-
-                const data = await res.json() as { success?: boolean; error?: string };
-                if (data.success) {
-                    progress.done();
-                    toast.success(strings.labelGeneratedToast);
-                    window.setTimeout(() => window.location.reload(), 800);
-                } else {
-                    progress.fail();
-                    toast.error(data.error || strings.sellerOrderLabelError);
-                    setBusy(btn, false);
-                }
-            } catch {
-                progress.fail();
-                toast.error(strings.toastErrorNetwork);
-                setBusy(btn, false);
+            const result = await runSubmit({
+                button: btn,
+                busyLabel: strings.shippingCreatingShipment,
+                action: async () => {
+                    const res = await fetch('/api/sendcloud/mock-shipment', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ orderId }),
+                    });
+                    const data = await res.json() as { success?: boolean; error?: string };
+                    if (!data.success) throw new SubmitError(data.error || strings.sellerOrderLabelError);
+                    return data;
+                },
+                successMsg: strings.labelGeneratedToast,
+            });
+            if (result.ok) {
+                window.setTimeout(() => window.location.reload(), 800);
             }
         });
     });
@@ -582,30 +573,22 @@ const shippingRetainedFormatted = showRefunded && (order.shippingRetained ?? 0) 
             const orderId = btn.dataset.orderId;
             if (!orderId) return;
 
-            setBusy(btn, true, { label: strings.loadingGeneric });
-            progress.start();
-
-            try {
-                const res = await fetch('/api/orders/seller-confirm', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ orderId }),
-                });
-
-                const data = await res.json() as { success?: boolean; error?: string };
-                if (data.success) {
-                    progress.done();
-                    toast.success(strings.sellerOrderConfirmDeliverySuccess);
-                    window.setTimeout(() => window.location.reload(), 800);
-                } else {
-                    progress.fail();
-                    toast.error(data.error || strings.sellerOrderConfirmDeliveryError);
-                    setBusy(btn, false);
-                }
-            } catch {
-                progress.fail();
-                toast.error(strings.toastErrorNetwork);
-                setBusy(btn, false);
+            const result = await runSubmit({
+                button: btn,
+                action: async () => {
+                    const res = await fetch('/api/orders/seller-confirm', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ orderId }),
+                    });
+                    const data = await res.json() as { success?: boolean; error?: string };
+                    if (!data.success) throw new SubmitError(data.error || strings.sellerOrderConfirmDeliveryError);
+                    return data;
+                },
+                successMsg: strings.sellerOrderConfirmDeliverySuccess,
+            });
+            if (result.ok) {
+                window.setTimeout(() => window.location.reload(), 800);
             }
         });
     });
@@ -630,30 +613,22 @@ const shippingRetainedFormatted = showRefunded && (order.shippingRetained ?? 0) 
             }
             errorText?.classList.add('hidden');
 
-            setBusy(btn, true, { label: strings.loadingGeneric });
-            progress.start();
-
-            try {
-                const res = await fetch('/api/orders/refund', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ orderId, cancellationReason: reason }),
-                });
-
-                const data = await res.json() as { success?: boolean; error?: string };
-                if (data.success) {
-                    progress.done();
-                    toast.success(strings.sellerOrderRefundSuccess);
-                    window.setTimeout(() => window.location.reload(), 800);
-                } else {
-                    progress.fail();
-                    toast.error(data.error || strings.sellerOrderRefundError);
-                    setBusy(btn, false);
-                }
-            } catch {
-                progress.fail();
-                toast.error(strings.toastErrorNetwork);
-                setBusy(btn, false);
+            const result = await runSubmit({
+                button: btn,
+                action: async () => {
+                    const res = await fetch('/api/orders/refund', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ orderId, cancellationReason: reason }),
+                    });
+                    const data = await res.json() as { success?: boolean; error?: string };
+                    if (!data.success) throw new SubmitError(data.error || strings.sellerOrderRefundError);
+                    return data;
+                },
+                successMsg: strings.sellerOrderRefundSuccess,
+            });
+            if (result.ok) {
+                window.setTimeout(() => window.location.reload(), 800);
             }
         });
     });

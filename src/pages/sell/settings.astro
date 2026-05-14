@@ -189,9 +189,7 @@ const defaults = {
 
 <script>
     import { strings } from '../../lib/core/i18n';
-    import { setBusy } from '../../lib/ui/busy';
-    import { toast } from '../../lib/ui/toast';
-    import { progress } from '../../lib/ui/progress-bar';
+    import { runSubmit } from '../../lib/ui/submit';
 
     function initSettingsPage() {
         const saveBtn = document.getElementById('save-settings-btn') as HTMLButtonElement;
@@ -214,32 +212,17 @@ const defaults = {
                 default_shipping_cost: shippingInput.value === '' ? null : parseFloat(shippingInput.value),
             };
 
-            setBusy(saveBtn, true, { label: strings.sellerSettingsSaving });
-            progress.start();
-
-            try {
-                const res = await fetch('/api/sell/settings/shipping', {
+            await runSubmit({
+                button: saveBtn,
+                busyLabel: strings.sellerSettingsSaving,
+                action: () => fetch('/api/sell/settings/shipping', {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload),
-                });
-
-                const data = await res.json() as { error?: string };
-
-                if (!res.ok) {
-                    progress.fail();
-                    toast.error(data.error || strings.sellerSettingsSaveError);
-                    return;
-                }
-
-                progress.done();
-                toast.success(strings.settingsSavedToast);
-            } catch {
-                progress.fail();
-                toast.error(strings.toastErrorNetwork);
-            } finally {
-                setBusy(saveBtn, false);
-            }
+                }),
+                successMsg: strings.settingsSavedToast,
+                errorFallback: strings.sellerSettingsSaveError,
+            });
         });
 
         const deleteBtn = document.getElementById('delete-shop-btn') as HTMLButtonElement;
@@ -260,29 +243,14 @@ const defaults = {
         });
 
         confirmBtn?.addEventListener('click', async () => {
-            setBusy(confirmBtn, true, { label: strings.loadingGeneric });
-            progress.start();
-
-            try {
-                const res = await fetch('/api/sell/shop/delete', { method: 'DELETE' });
-                const data = await res.json() as { error?: string };
-
-                if (!res.ok) {
-                    progress.fail();
-                    toast.error(data.error || strings.sellerSettingsDeleteShopError);
-                    setBusy(confirmBtn, false);
-                    return;
-                }
-
-                progress.done();
-                toast.success(strings.sellerSettingsDeleteShopSuccess);
-                setTimeout(() => {
-                    window.location.href = '/';
-                }, 1200);
-            } catch {
-                progress.fail();
-                toast.error(strings.toastErrorNetwork);
-                setBusy(confirmBtn, false);
+            const result = await runSubmit({
+                button: confirmBtn,
+                action: () => fetch('/api/sell/shop/delete', { method: 'DELETE' }),
+                successMsg: strings.sellerSettingsDeleteShopSuccess,
+                errorFallback: strings.sellerSettingsDeleteShopError,
+            });
+            if (result.ok) {
+                setTimeout(() => { window.location.href = '/'; }, 1200);
             }
         });
     }

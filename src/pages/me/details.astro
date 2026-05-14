@@ -360,9 +360,8 @@ const isSpain = currentCountry === 'ES';
     import { strings } from '../../lib/core/i18n';
     import { spainProvinces } from '../../lib/shipping/spain-provinces';
     import { validateProfileForm, type ProfileFormData } from '../../lib/core/validation';
-    import { setBusy } from '../../lib/ui/busy';
     import { toast } from '../../lib/ui/toast';
-    import { progress } from '../../lib/ui/progress-bar';
+    import { runSubmit } from '../../lib/ui/submit';
 
     const form = document.getElementById('profile-form') as HTMLFormElement;
     const btn = document.getElementById('save-btn') as HTMLButtonElement;
@@ -642,32 +641,21 @@ const isSpain = currentCountry === 'ES';
             return;
         }
 
-        setBusy(btn, true, { label: strings.meDataSaving });
-        progress.start();
-
-        try {
-            const res = await fetch('/api/profile/update', {
+        const result = await runSubmit({
+            button: btn,
+            busyLabel: strings.meDataSaving,
+            action: () => fetch('/api/profile/update', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data),
-            });
-
-            if (res.ok) {
-                progress.done();
-                toast.success(fromCheckout ? strings.meDataSaveAndReturnSuccess : strings.profileSavedToast);
-
-                window.setTimeout(() => {
-                    window.location.href = fromCheckout && returnTo ? returnTo : '/me';
-                }, 900);
-            } else {
-                progress.fail();
-                toast.error(strings.meDataSaveError);
-                setBusy(btn, false);
-            }
-        } catch {
-            progress.fail();
-            toast.error(strings.toastErrorNetwork);
-            setBusy(btn, false);
+            }),
+            successMsg: fromCheckout ? strings.meDataSaveAndReturnSuccess : strings.profileSavedToast,
+            errorFallback: strings.meDataSaveError,
+        });
+        if (result.ok) {
+            window.setTimeout(() => {
+                window.location.href = fromCheckout && returnTo ? returnTo : '/me';
+            }, 900);
         }
     });
 

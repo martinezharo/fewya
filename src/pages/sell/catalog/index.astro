@@ -235,7 +235,7 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', { style: 'currency', cu
     import { strings } from '../../../lib/core/i18n';
     import { setBusy } from '../../../lib/ui/busy';
     import { toast } from '../../../lib/ui/toast';
-    import { progress } from '../../../lib/ui/progress-bar';
+    import { runSubmit } from '../../../lib/ui/submit';
 
     function initCatalogPage() {
         const toggleBtns = document.querySelectorAll<HTMLButtonElement>('.toggle-active-btn');
@@ -325,36 +325,23 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', { style: 'currency', cu
 
         confirmBtn.addEventListener('click', async () => {
             if (!pendingDeleteId) return;
-            setBusy(confirmBtn, true, { label: strings.loadingGeneric });
-            progress.start();
+            const deleteId = pendingDeleteId;
 
-            try {
-                const res = await fetch(`/api/sell/catalog/product?id=${pendingDeleteId}`, {
-                    method: 'DELETE',
-                });
+            const result = await runSubmit({
+                button: confirmBtn,
+                action: () => fetch(`/api/sell/catalog/product?id=${deleteId}`, { method: 'DELETE' }),
+                successMsg: strings.sellerProductDeleteSuccess,
+                errorFallback: strings.sellerProductDeleteError,
+            });
 
-                if (res.ok) {
-                    progress.done();
-                    toast.success(strings.sellerProductDeleteSuccess);
-                    const article = document.querySelector(`[data-product-id="${pendingDeleteId}"]`) as HTMLElement;
-                    article?.remove();
-                    pendingDeleteId = null;
-                    dialog.classList.add('hidden');
-                    dialog.classList.remove('flex');
-
-                    const list = document.getElementById('product-list');
-                    if (list && list.children.length === 0) {
-                        window.location.reload();
-                    }
-                } else {
-                    progress.fail();
-                    toast.error(strings.sellerProductDeleteError);
-                }
-            } catch {
-                progress.fail();
-                toast.error(strings.toastErrorNetwork);
-            } finally {
-                setBusy(confirmBtn, false);
+            if (result.ok) {
+                const article = document.querySelector(`[data-product-id="${deleteId}"]`) as HTMLElement;
+                article?.remove();
+                pendingDeleteId = null;
+                dialog.classList.add('hidden');
+                dialog.classList.remove('flex');
+                const list = document.getElementById('product-list');
+                if (list && list.children.length === 0) window.location.reload();
             }
         });
     }

@@ -347,10 +347,8 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', {
 </SellerLayout>
 
 <script>
-    import { setBusy } from '../../lib/ui/busy';
-    import { toast } from '../../lib/ui/toast';
-    import { progress } from '../../lib/ui/progress-bar';
     import { strings } from '../../lib/core/i18n';
+    import { runSubmit, SubmitError } from '../../lib/ui/submit';
 
     const currencyFormatter = new Intl.NumberFormat('es-ES', {
         style: 'currency',
@@ -457,34 +455,26 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', {
                 }
             }
 
-            setBusy(btn, true, { label: strings.loadingGeneric });
-            progress.start();
-
-            try {
-                const res = await fetch('/api/orders/refund-incident', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        orderId,
-                        refundType: state.selected,
-                        partialAmount: state.selected === 'partial' ? state.partial : undefined,
-                    }),
-                });
-
-                const data = await res.json() as { success?: boolean; error?: string };
-                if (data.success) {
-                    progress.done();
-                    toast.success(strings.sellerIncidentRefundSuccess);
-                    window.setTimeout(() => window.location.reload(), 800);
-                } else {
-                    progress.fail();
-                    toast.error(data.error || strings.sellerIncidentRefundError);
-                    setBusy(btn, false);
-                }
-            } catch {
-                progress.fail();
-                toast.error(strings.toastErrorNetwork);
-                setBusy(btn, false);
+            const result = await runSubmit({
+                button: btn,
+                action: async () => {
+                    const res = await fetch('/api/orders/refund-incident', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            orderId,
+                            refundType: state.selected,
+                            partialAmount: state.selected === 'partial' ? state.partial : undefined,
+                        }),
+                    });
+                    const data = await res.json() as { success?: boolean; error?: string };
+                    if (!data.success) throw new SubmitError(data.error || strings.sellerIncidentRefundError);
+                    return data;
+                },
+                successMsg: strings.sellerIncidentRefundSuccess,
+            });
+            if (result.ok) {
+                window.setTimeout(() => window.location.reload(), 800);
             }
         });
     });
