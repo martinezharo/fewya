@@ -69,6 +69,71 @@ function clearCart(): void {
     window.dispatchEvent(new CustomEvent('cart-updated', { detail: { count: 0 } }));
 }
 
+export interface CartFreshnessUpdate {
+    variantId: string;
+    stock: number;
+    price: number;
+    shippingCost: number;
+    isAvailable: boolean;
+}
+
+/**
+ * Apply freshness data from `/api/cart/freshness` to local cart items.
+ * - Unavailable variants are removed.
+ * - Stock/price/shippingCost are updated to current values.
+ * - Quantities are capped to current stock.
+ * Returns the list of items that were removed or had their quantity reduced.
+ */
+function applyFreshness(updates: CartFreshnessUpdate[]): {
+    removedVariantIds: string[];
+    cappedVariantIds: string[];
+    repricedVariantIds: string[];
+} {
+    const map = new Map(updates.map((u) => [u.variantId, u]));
+    const cartItems = getCart();
+    const removed: string[] = [];
+    const capped: string[] = [];
+    const repriced: string[] = [];
+
+    const next: CartItem[] = [];
+    for (const item of cartItems) {
+        const update = map.get(item.variantId);
+        if (!update) {
+            next.push(item);
+            continue;
+        }
+        if (!update.isAvailable) {
+            removed.push(item.variantId);
+            continue;
+        }
+        const priceChanged = update.price !== item.price || update.shippingCost !== item.shippingCost;
+        const newQuantity = Math.min(item.quantity, update.stock);
+        if (newQuantity < item.quantity) capped.push(item.variantId);
+        if (priceChanged) repriced.push(item.variantId);
+        if (newQuantity <= 0) {
+            removed.push(item.variantId);
+            continue;
+        }
+        next.push({
+            ...item,
+            stock: update.stock,
+            price: update.price,
+            shippingCost: update.shippingCost,
+            quantity: newQuantity,
+        });
+    }
+
+    if (removed.length > 0 || capped.length > 0 || repriced.length > 0) {
+        saveCart(next);
+    }
+
+    return {
+        removedVariantIds: removed,
+        cappedVariantIds: capped,
+        repricedVariantIds: repriced,
+    };
+}
+
 function getCartGroupedByShop(): Map<string, { shopName: string; shopSlug: string; items: CartItem[] }> {
     const cart = getCart();
     const grouped = new Map<string, { shopName: string; shopSlug: string; items: CartItem[] }>();
@@ -90,4 +155,5 @@ export const cart = {
     remove: removeFromCart,
     clear: clearCart,
     groupedByShop: getCartGroupedByShop,
+    applyFreshness,
 };

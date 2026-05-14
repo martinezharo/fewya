@@ -64,7 +64,7 @@ function mountVariantChangeHandler() {
             const shippingEl = document.querySelector('[data-product-shipping]');
             if (shippingEl) {
                 shippingEl.textContent = variantShipping === 0
-                    ? 'Envío gratis'
+                    ? strings.freeShipping
                     : `+${variantShipping.toFixed(2).replace('.', ',')}€ envío`;
             }
 
