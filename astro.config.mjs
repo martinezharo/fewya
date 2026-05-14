@@ -17,6 +17,7 @@ export default defineConfig({
       SUPABASE_SECRET_KEY: envField.string({ context: 'server', access: 'secret', optional: true }),
       STRIPE_SECRET_KEY: envField.string({ context: 'server', access: 'secret', optional: true }),
       STRIPE_WEBHOOK_SECRET: envField.string({ context: 'server', access: 'secret', optional: true }),
+      CRON_SECRET: envField.string({ context: 'server', access: 'secret', optional: true }),
       SENDCLOUD_API_KEY: envField.string({ context: 'server', access: 'secret', optional: true }),
       SENDCLOUD_API_SECRET: envField.string({ context: 'server', access: 'secret', optional: true }),
       SENDCLOUD_WEBHOOK_SECRET: envField.string({ context: 'server', access: 'secret', optional: true }),
