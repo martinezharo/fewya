@@ -60,9 +60,25 @@ export default defineConfig({
             options: {
               cacheName: 'pages',
               networkTimeoutSeconds: 3,
-              cacheableResponse: {
-                statuses: [0, 200],
-              },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
+            urlPattern: /\.(?:js|css|woff2|woff|ttf)$/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'assets',
+              expiration: { maxAgeSeconds: 2592000 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
+            urlPattern: /\.(?:png|jpg|jpeg|webp|avif|svg|ico)$/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'images',
+              expiration: { maxEntries: 200, maxAgeSeconds: 2592000 },
+              cacheableResponse: { statuses: [0, 200] },
             },
           },
         ],
