@@ -14,7 +14,7 @@ CREATE TABLE public.reviews (
   created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
   is_auto boolean NOT NULL DEFAULT false,
   CONSTRAINT reviews_pkey PRIMARY KEY (id),
-  CONSTRAINT reviews_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.products(id),
+  CONSTRAINT reviews_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.products(id) ON DELETE CASCADE,
   CONSTRAINT reviews_profile_id_fkey FOREIGN KEY (profile_id) REFERENCES public.profiles(id)
 );
 
@@ -28,7 +28,7 @@ CREATE TABLE public.wishlist (
   created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
   CONSTRAINT wishlist_pkey PRIMARY KEY (id),
   CONSTRAINT wishlist_profile_id_fkey FOREIGN KEY (profile_id) REFERENCES public.profiles(id),
-  CONSTRAINT wishlist_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.products(id)
+  CONSTRAINT wishlist_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.products(id) ON DELETE CASCADE
 );
 
 -- ============================================================

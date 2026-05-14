@@ -34,7 +34,7 @@ CREATE TABLE public.product_variants (
   height_cm decimal(8,3),
   shipping_cost numeric(8,2),
   CONSTRAINT product_variants_pkey PRIMARY KEY (id),
-  CONSTRAINT product_variants_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.products(id)
+  CONSTRAINT product_variants_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.products(id) ON DELETE CASCADE
 );
 
 -- ============================================================
