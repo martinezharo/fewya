@@ -153,18 +153,17 @@
 
 #fewya-toast-root {
     position: fixed;
-    bottom: env(safe-area-inset-bottom, 0);
-    left: 50%;
-    transform: translateX(-50%);
+    top: 1rem;
+    right: 1rem;
     z-index: 100;
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
-    padding: 0 1rem 1rem 1rem;
+    padding: 0;
     list-style: none;
     margin: 0;
     pointer-events: none;
-    max-width: min(420px, calc(100vw - 2rem));
+    max-width: min(380px, calc(100vw - 2rem));
     width: 100%;
 }
 
@@ -212,13 +211,13 @@
 }
 
 @keyframes fewya-toast-in {
-    from { transform: translateY(8px); opacity: 0; }
+    from { transform: translateY(-8px); opacity: 0; }
     to { transform: translateY(0); opacity: 1; }
 }
 
 @keyframes fewya-toast-out {
     from { transform: translateY(0); opacity: 1; }
-    to { transform: translateY(8px); opacity: 0; }
+    to { transform: translateY(-8px); opacity: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -230,7 +229,8 @@
 
 @media (min-width: 768px) {
     #fewya-toast-root {
-        bottom: 1.5rem;
+        top: 1.5rem;
+        right: 1.5rem;
     }
 }
 
