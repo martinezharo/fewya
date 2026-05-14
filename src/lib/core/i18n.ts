@@ -260,6 +260,7 @@ export const strings = {
     orderStatusDelivered: 'Entregado',
     orderStatusConfirmed: 'Confirmado',
     orderStatusIncident: 'Incidencia',
+    orderStatusDeliveryFailed: 'Entrega fallida',
     orderStatusCancelled: 'Cancelado',
     orderStatusRefunded: 'Devuelto',
 
@@ -427,6 +428,23 @@ export const strings = {
     sellerIncidentRefundError: 'No se pudo reembolsar el pedido',
     sellerIncidentRefundInvalidStatus: 'Este pedido ya no está en incidencia',
     sellerIncidentRefundInvalidPartial: 'Introduce un importe parcial válido',
+
+    // Delivery failed (lost or returned package)
+    deliveryFailedSellerTitle: 'Entrega fallida',
+    deliveryFailedSellerNotice: 'El transportista no ha podido entregar el paquete o lo ha devuelto al remitente. Reembolsa al comprador para resolver el pedido.',
+    deliveryFailedBuyerTitle: 'Entrega fallida',
+    deliveryFailedBuyerNotice: 'El paquete no pudo entregarse o ha sido devuelto al vendedor. Procesará tu reembolso en breve.',
+    deliveryFailedRefundMinusShippingBtn: 'Reembolsar menos envío',
+    deliveryFailedRefundFullBtn: 'Reembolsar todo',
+    deliveryFailedRefundModalTitle: 'Reembolsar pedido no entregado',
+    deliveryFailedRefundMinusShippingDesc: 'Devuelves el importe del producto al comprador y conservas el envío.',
+    deliveryFailedRefundFullDesc: 'Devuelves el total al comprador, incluido el envío.',
+    deliveryFailedRefundConfirmCta: 'Confirmar reembolso',
+    deliveryFailedRefundDismiss: 'Volver',
+    deliveryFailedRefundSuccess: 'Pedido reembolsado',
+    deliveryFailedRefundError: 'No se pudo reembolsar el pedido',
+    deliveryFailedRefundInvalidStatus: 'Este pedido no está marcado como entrega fallida',
+    deliveryFailedLastEventLabel: 'Último evento del transportista',
 
     // Refund types
     refundTypeFullTitle: 'Reembolso completo',
