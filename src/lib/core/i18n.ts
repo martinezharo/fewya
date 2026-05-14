@@ -33,6 +33,12 @@ export const strings = {
 
     // General
     currency: '€',
+    freeShipping: 'Envío gratis',
+    freeLabel: 'Gratis',
+    apiOrderCannotBeCancelled: 'Este pedido no puede cancelarse',
+    sellerOrderRefundUnexpectedError: 'Entrega confirmada pero el pago falló. Nuestro equipo lo resolverá.',
+    sellerIncidentNoticeForSeller: 'Este pedido tiene una incidencia reportada por el comprador.',
+    sellerOrderNoActions: 'No hay acciones disponibles para este pedido.',
 
     // Product Page
     productShipping: 'Envío',
