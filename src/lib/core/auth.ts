@@ -4,8 +4,16 @@ import { SUPABASE_URL, SUPABASE_KEY } from 'astro:env/server';
 import type { User } from '@supabase/supabase-js';
 import { strings } from './i18n';
 
-const AUTH_REDIRECT_COOKIE = 'fewya-auth-redirect';
-const AUTH_ROLE_COOKIE = 'fewya-auth-role';
+const AUTH_REDIRECT_BASE = 'fewya-auth-redirect';
+const AUTH_ROLE_BASE = 'fewya-auth-role';
+
+/**
+ * Returns the cookie name with __Host- prefix when on HTTPS.
+ * __Host- prevents subdomain override and requires Path=/ and Secure.
+ */
+function authCookieName(base: string, url: URL): string {
+    return url.protocol === 'https:' ? `__Host-${base}` : base;
+}
 
 /**
  * Creates a Supabase client with cookie-based session management for SSR.
@@ -48,8 +56,10 @@ function clearAuthStateCookie(cookies: AstroCookies, name: string, url: URL) {
     });
 }
 
-function hasPendingAuthState(cookies: AstroCookies) {
-    return Boolean(cookies.get(AUTH_REDIRECT_COOKIE)?.value || cookies.get(AUTH_ROLE_COOKIE)?.value);
+function hasPendingAuthState(cookies: AstroCookies, url: URL) {
+    const redirectName = authCookieName(AUTH_REDIRECT_BASE, url);
+    const roleName = authCookieName(AUTH_ROLE_BASE, url);
+    return Boolean(cookies.get(redirectName)?.value || cookies.get(roleName)?.value);
 }
 
 function appendAuthError(path: string, url: URL) {
@@ -73,19 +83,22 @@ export function storePendingAuthFlowState(
     role: string | null,
 ) {
     const options = getAuthStateCookieOptions(url);
-    cookies.set(AUTH_REDIRECT_COOKIE, normalizeAuthRedirectPath(redirectTo), options);
+    const redirectName = authCookieName(AUTH_REDIRECT_BASE, url);
+    const roleName = authCookieName(AUTH_ROLE_BASE, url);
+
+    cookies.set(redirectName, normalizeAuthRedirectPath(redirectTo), options);
 
     if (role) {
-        cookies.set(AUTH_ROLE_COOKIE, role, options);
+        cookies.set(roleName, role, options);
         return;
     }
 
-    clearAuthStateCookie(cookies, AUTH_ROLE_COOKIE, url);
+    clearAuthStateCookie(cookies, roleName, url);
 }
 
 export function clearPendingAuthFlowState(cookies: AstroCookies, url: URL) {
-    clearAuthStateCookie(cookies, AUTH_REDIRECT_COOKIE, url);
-    clearAuthStateCookie(cookies, AUTH_ROLE_COOKIE, url);
+    clearAuthStateCookie(cookies, authCookieName(AUTH_REDIRECT_BASE, url), url);
+    clearAuthStateCookie(cookies, authCookieName(AUTH_ROLE_BASE, url), url);
 }
 
 function isNewlyRegisteredUser(user: User): boolean {
@@ -94,8 +107,6 @@ function isNewlyRegisteredUser(user: User): boolean {
     }
     const createdAt = new Date(user.created_at).getTime();
     const lastSignInAt = new Date(user.last_sign_in_at).getTime();
-    // If the account was created within 60 seconds of the last sign-in,
-    // we treat it as a first-time registration.
     return Math.abs(lastSignInAt - createdAt) < 60_000;
 }
 
@@ -106,14 +117,17 @@ export async function exchangeAuthCodeForSession(cookies: AstroCookies, request:
         return null;
     }
 
-    if (url.pathname !== '/api/auth/callback' && !hasPendingAuthState(cookies)) {
+    if (url.pathname !== '/api/auth/callback' && !hasPendingAuthState(cookies, url)) {
         return null;
     }
 
+    const redirectCookieName = authCookieName(AUTH_REDIRECT_BASE, url);
+    const roleCookieName = authCookieName(AUTH_ROLE_BASE, url);
+
     const redirectTo = normalizeAuthRedirectPath(
-        url.searchParams.get('redirect_to') ?? cookies.get(AUTH_REDIRECT_COOKIE)?.value,
+        url.searchParams.get('redirect_to') ?? cookies.get(redirectCookieName)?.value,
     );
-    const role = url.searchParams.get('role') ?? cookies.get(AUTH_ROLE_COOKIE)?.value ?? null;
+    const role = url.searchParams.get('role') ?? cookies.get(roleCookieName)?.value ?? null;
     const supabase = createSupabaseAuthClient(cookies, request);
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
@@ -130,10 +144,21 @@ export async function exchangeAuthCodeForSession(cookies: AstroCookies, request:
             .eq('id', data.session.user.id);
     }
 
-    // First-time buyers: redirect to profile completion page
     if (!role && data.session?.user && isNewlyRegisteredUser(data.session.user)) {
         return '/me/details';
     }
 
     return redirectTo;
+}
+
+/**
+ * Returns false when the request Origin header is present and does not match
+ * the request URL's origin (cross-origin POST). Returns true for same-origin
+ * requests and for requests without an Origin header (non-browser callers).
+ */
+export function assertSameOrigin(request: Request): boolean {
+    const origin = request.headers.get('Origin');
+    if (!origin) return true;
+    const requestOrigin = new URL(request.url).origin;
+    return origin === requestOrigin;
 }
