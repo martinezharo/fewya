@@ -9,6 +9,7 @@
 - No hardcodees texto, crea archivos con variables para facilitar futuros cambios o traducciónes.
 - Las rutas de las páginas deben estar siempre en inglés.
 - Cuando hagas un cambio en la estructura de la base de datos actualiza db-structure y genera un nuevo archivo SQL en una carpeta de migraciones con los cambios listos para ser importados en Supabase.
+- NUNCA hagas commits, push o cualquier otra cosa que altere el historial de Git a menos que te lo pida explicitamente.
 
 ## Fewya
 
