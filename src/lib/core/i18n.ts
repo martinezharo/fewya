@@ -51,7 +51,6 @@ export const strings = {
     productDescription: 'Descripción',
     productReviews: 'Reseñas',
     productNoReviews: 'Aún no hay reseñas',
-    productReport: 'Reportar producto',
     productShare: 'Compartir',
     productBack: 'Volver',
     productContactEmail: 'Email',
