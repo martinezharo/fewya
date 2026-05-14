@@ -13,19 +13,28 @@ import { supabase } from '../../lib/core/supabase';
 import { createSupabaseAuthClient } from '../../lib/core/auth';
 import { isProductComplete } from '../../lib/products/productValidation';
 import { strings } from '../../lib/core/i18n';
+import { getMergedWishlistIds } from '../../lib/wishlist/wishlist';
 import type { Product, Review, Shop } from '../../lib/core/types';
 
 const { shopSlug, productSlug } = Astro.params;
 
-const { data: shop } = await supabase
-  .from('shops')
-  .select('*')
-  .eq('slug', shopSlug!)
-  .eq('is_active', true)
-  .single();
+const authClient = createSupabaseAuthClient(Astro.cookies, Astro.request);
 
+// Ola 1: shop and user in parallel (independent)
+const [shopResult, userResult] = await Promise.all([
+  supabase
+    .from('shops')
+    .select('*')
+    .eq('slug', shopSlug!)
+    .eq('is_active', true)
+    .single(),
+  authClient.auth.getUser(),
+]);
+
+const shop = shopResult.data;
 if (!shop) return Astro.redirect('/');
 
+// Ola 2: product (needs shop.id)
 const { data: productData } = await supabase
   .from('products')
   .select('*, variants:product_variants(*)')
@@ -40,13 +49,19 @@ const product = { ...productData, shop: shop as Shop } as Product;
 
 if (!isProductComplete(product)) return Astro.redirect('/');
 
-const { data: reviewsData } = await supabase
-  .from('reviews')
-  .select('id, rating, comment, seller_reply, seller_reply_at, created_at, profile_id, product_id, is_auto, profile:public_profiles(full_name, avatar_url)')
-  .eq('product_id', product.id)
-  .order('created_at', { ascending: false });
+// Ola 3: reviews and wishlist in parallel (both depend on product.id / user)
+const userId = userResult.data.user?.id ?? null;
+const [reviewsResult, mergedWishlist] = await Promise.all([
+  supabase
+    .from('reviews')
+    .select('id, rating, comment, seller_reply, seller_reply_at, created_at, profile_id, product_id, is_auto, profile:public_profiles(full_name, avatar_url)')
+    .eq('product_id', product.id)
+    .order('created_at', { ascending: false }),
+  getMergedWishlistIds(authClient, Astro.cookies, userId),
+]);
 
-const reviews = (reviewsData ?? []) as Review[];
+const reviews = (reviewsResult.data ?? []) as Review[];
+const isWished = mergedWishlist.has(product.id);
 const images = product.gallery_images?.length > 0 ? product.gallery_images : ['/placeholder.svg'];
 
 // Sort variants: default first
@@ -59,14 +74,6 @@ const shippingCost = activeVariant?.shipping_cost ?? 0;
 const shippingDisplay = shippingCost === 0 ? 'Envío gratis' : `+${shippingCost.toFixed(2).replace('.', ',')}€ envío`;
 const hasVariants = sortedVariants.length > 1;
 const activeVariantStock = activeVariant?.stock ?? 0;
-
-import { getMergedWishlistIds } from '../../lib/wishlist/wishlist';
-
-// Check wishlist status
-const authClient = createSupabaseAuthClient(Astro.cookies, Astro.request);
-const { data: { user } } = await authClient.auth.getUser();
-const mergedWishlist = await getMergedWishlistIds(authClient, Astro.cookies, user?.id ?? null);
-const isWished = mergedWishlist.has(product.id);
 ---
 
 <BuyerDetailLayout title={`${product.title} — ${shop.name}`}>
@@ -192,8 +199,6 @@ const isWished = mergedWishlist.has(product.id);
         </div>
       )}
 
-
-
       <!-- Reviews -->
       <div class="md:max-w-[720px]">
         <ProductReviews reviews={reviews} shopName={shop.name} />
@@ -210,101 +215,6 @@ const isWished = mergedWishlist.has(product.id);
 </BuyerDetailLayout>
 
 <script>
-  import { strings } from '../../lib/core/i18n';
-
-  document.querySelectorAll('[data-qty-selector]').forEach(selector => {
-    const minus = selector.querySelector('[data-qty-minus]');
-    const plus = selector.querySelector('[data-qty-plus]');
-    const value = selector.querySelector('[data-qty-value]');
-    const addBtn = document.querySelector<HTMLButtonElement>('[data-add-to-cart]');
-    const stock = parseInt(addBtn?.dataset.cartStock ?? '0', 10);
-    let qty = Math.min(1, stock);
-
-    const updateUI = () => {
-      if (value) value.textContent = String(qty);
-      if (addBtn) addBtn.dataset.cartQty = String(qty);
-      if (plus) (plus as HTMLButtonElement).disabled = qty >= stock || stock <= 0;
-      if (minus) (minus as HTMLButtonElement).disabled = qty <= 1 || stock <= 0;
-      if (addBtn) {
-        addBtn.disabled = stock <= 0 || qty < 1;
-      }
-    };
-
-    plus?.addEventListener('click', () => {
-      if (qty < stock) {
-        qty++;
-        updateUI();
-      }
-    });
-
-    minus?.addEventListener('click', () => {
-      if (qty > 1) {
-        qty--;
-        updateUI();
-      }
-    });
-
-    updateUI();
-  });
-
-  // Update add-to-cart data when variant changes
-  document.addEventListener('variant:change', () => {});
-  document.querySelectorAll<HTMLElement>('[data-variant-btn]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const addBtn = document.querySelector<HTMLButtonElement>('[data-add-to-cart]');
-      if (!addBtn) return;
-      const price = btn.dataset.variantPrice ?? '0';
-      const stock = parseInt(btn.dataset.variantStock ?? '0', 10);
-      const variantImage = btn.dataset.variantImage ?? '';
-      const variantShipping = parseFloat(btn.dataset.variantShipping ?? '0') || 0;
-
-      if (btn.dataset.variantId) {
-        addBtn.dataset.cartVariantId = btn.dataset.variantId;
-      }
-      addBtn.dataset.cartPrice = price;
-      addBtn.dataset.cartStock = String(stock);
-      addBtn.dataset.cartShipping = String(variantShipping);
-      if (variantImage) addBtn.dataset.cartImage = variantImage;
-      if (btn.querySelector('[data-variant-name]')) {
-        addBtn.dataset.cartVariantName = btn.querySelector('[data-variant-name]')?.textContent?.trim() ?? '';
-      }
-
-      // Update shipping display
-      const shippingEl = document.querySelector('[data-product-shipping]');
-      if (shippingEl) {
-        const display = variantShipping === 0 ? 'Envío gratis' : `+${variantShipping.toFixed(2).replace('.', ',')}€ envío`;
-        shippingEl.textContent = display;
-      }
-
-      // Update stock warning badge
-      const stockWarningWrapper = document.querySelector<HTMLElement>('[data-stock-warning-wrapper]');
-      let stockWarning = document.querySelector<HTMLElement>('[data-stock-warning]');
-      if (stock > 0 && stock <= 5) {
-        if (!stockWarning && stockWarningWrapper) {
-          stockWarningWrapper.innerHTML = `<p class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-200 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-800 font-semibold text-xs self-start" data-stock-warning><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg><span data-stock-warning-text></span></p>`;
-          stockWarning = stockWarningWrapper.querySelector<HTMLElement>('[data-stock-warning]');
-        }
-        const stockWarningText = stockWarning?.querySelector<HTMLElement>('[data-stock-warning-text]');
-        if (stockWarningText) {
-          stockWarningText.textContent = strings.productStockWarning.replace(/\{stock\}/, String(stock));
-        }
-      } else if (stockWarningWrapper) {
-        stockWarningWrapper.innerHTML = '';
-      }
-
-      // Cap qty selector to new stock
-      const qtySelector = document.querySelector('[data-qty-selector]');
-      const minus = qtySelector?.querySelector('[data-qty-minus]');
-      const plus = qtySelector?.querySelector('[data-qty-plus]');
-      const value = qtySelector?.querySelector('[data-qty-value]');
-      let qty = Math.min(parseInt(value?.textContent ?? '1', 10), stock);
-      qty = Math.max(1, qty);
-
-      if (value) value.textContent = String(qty);
-      if (addBtn) addBtn.dataset.cartQty = String(qty);
-      if (plus) (plus as HTMLButtonElement).disabled = qty >= stock || stock <= 0;
-      if (minus) (minus as HTMLButtonElement).disabled = qty <= 1 || stock <= 0;
-      if (addBtn) addBtn.disabled = stock <= 0 || qty < 1;
-    });
-  });
+  import { mountProductPage } from '../../lib/ui/product-page';
+  mountProductPage();
 </script>

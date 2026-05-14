@@ -11,17 +11,26 @@ import type { Product } from "../../lib/core/types";
 const url = new URL(Astro.request.url);
 const params = parseSearchParams(url);
 
+// Explicit columns — excludes internal/admin fields while keeping all that
+// ProductCard and isProductComplete need (description + variant dimensions required for the filter)
 let query = supabase
     .from("products")
-    .select("*, shop:shops(*), variants:product_variants(*)")
+    .select("id, slug, title, description, gallery_images, is_active, created_at, category, brand, shop:shops(id, slug, name, accent_color), variants:product_variants(id, price, stock, shipping_cost, is_default, variant_name, weight_kg, length_cm, width_cm, height_cm)")
     .eq("is_active", true);
 
 if (params.q) {
     query = query.or(`title.ilike.%${params.q}%,description.ilike.%${params.q}%`);
 }
 
-const { data } = await query;
-let products: Product[] = data ?? [];
+const authClient = createSupabaseAuthClient(Astro.cookies, Astro.request);
+
+// Products and auth in parallel
+const [dataResult, authResult] = await Promise.all([
+    query,
+    authClient.auth.getUser(),
+]);
+
+let products: Product[] = (dataResult.data ?? []) as Product[];
 
 products = products.filter(product => {
     const defaultVariant = product.variants?.find(v => v.is_default) || product.variants?.[0];
@@ -56,11 +65,11 @@ products.sort((a, b) => {
     }
 });
 
-await enrichProductsWithRatings(products, supabase);
-
-const authClient = createSupabaseAuthClient(Astro.cookies, Astro.request);
-const { data: { user } } = await authClient.auth.getUser();
-const wishedProductIds = await getMergedWishlistIds(authClient, Astro.cookies, user?.id ?? null);
+// Ratings enrichment and wishlist lookup in parallel
+const [, wishedProductIds] = await Promise.all([
+    enrichProductsWithRatings(products, supabase),
+    getMergedWishlistIds(authClient, Astro.cookies, authResult.data.user?.id ?? null),
+]);
 ---
 
 {products.length > 0 ? (

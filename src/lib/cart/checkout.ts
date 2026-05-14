@@ -75,7 +75,7 @@ export function calculateOrderTotal(items: CheckoutPricedItem[]): number {
  * This should be called after an order is confirmed (buyer confirmation or 48h auto-confirm).
  */
 export async function releaseOrderFunds(options: {
-    stripe: any;
+    stripe: import('stripe').default;
     orderId: string;
     publicId: string;
     paymentIntentId: string;
@@ -85,29 +85,39 @@ export async function releaseOrderFunds(options: {
 
     try {
         const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
-
+        const transferGroup = paymentIntent.transfer_group || `order_${publicId}`;
         const payoutBreakdown = buildShopPayouts(items);
 
-        for (const payout of payoutBreakdown) {
-            await stripe.transfers.create({
-                amount: toMinorUnits(payout.total),
-                currency: CHECKOUT_CURRENCY,
-                destination: payout.stripeAccountId,
-                transfer_group: paymentIntent.transfer_group || `order_${publicId}`,
-                metadata: {
-                    orderId,
-                    publicId,
-                    shopId: payout.shopId,
-                },
-            }, {
-                idempotencyKey: `order-transfer:${orderId}:${payout.shopId}`,
-            });
+        const results = await Promise.allSettled(
+            payoutBreakdown.map(payout =>
+                stripe.transfers.create({
+                    amount: toMinorUnits(payout.total),
+                    currency: CHECKOUT_CURRENCY,
+                    destination: payout.stripeAccountId,
+                    transfer_group: transferGroup,
+                    metadata: { orderId, publicId, shopId: payout.shopId },
+                }, {
+                    idempotencyKey: `order-transfer:${orderId}:${payout.shopId}`,
+                })
+            )
+        );
+
+        const failures = results
+            .map((r, i) => ({ result: r, payout: payoutBreakdown[i] }))
+            .filter(({ result }) => result.status === 'rejected');
+
+        if (failures.length > 0) {
+            const errors = failures.map(({ result, payout }) =>
+                `${payout.shopId}: ${(result as PromiseRejectedResult).reason?.message ?? 'unknown'}`
+            );
+            console.error('releaseOrderFunds partial failure', { orderId, errors });
+            return { success: false, error: errors.join('; ') };
         }
 
         return { success: true };
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Transfer failed';
-        console.error('releaseOrderFunds failed', error);
+        console.error('releaseOrderFunds failed', { orderId, publicId, error });
         return { success: false, error: message };
     }
 }

@@ -19,7 +19,7 @@ function one<T>(value: T | T[] | null | undefined): T | null {
     return value ?? null;
 }
 
-export const POST: APIRoute = async ({ request, cookies }) => {
+export const POST: APIRoute = async ({ request, cookies, locals }) => {
     const authClient = createSupabaseAuthClient(cookies, request);
     const {
         data: { user },
@@ -42,32 +42,23 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     }
 
     const autoConfirmed = Array.isArray(confirmedRows) ? confirmedRows : [];
-    const released: string[] = [];
-    const failed: string[] = [];
 
-    const stripe = getStripeClient();
+    if (autoConfirmed.length === 0) {
+        return jsonResponse({ success: true, autoConfirmed: 0, released: [], failed: [] }, 200);
+    }
 
-    // 2. Release funds for each auto-confirmed order
-    for (const row of autoConfirmed) {
-        const orderId = (row as any).order_id;
-        const publicId = (row as any).public_id;
+    const confirmedIds = autoConfirmed.map(r => (r as { order_id: string }).order_id);
 
-        // Get order details
-        const { data: order } = await authClient
+    // 2. Batch-fetch all order details + items in parallel (replaces N+1 loop)
+    const [ordersRes, itemsRes] = await Promise.all([
+        adminClient
             .from('orders')
             .select('id, public_id, stripe_payment_intent_id')
-            .eq('id', orderId)
-            .single();
-
-        if (!order?.stripe_payment_intent_id) {
-            failed.push(publicId);
-            continue;
-        }
-
-        // Get order items
-        const { data: orderItems } = await authClient
+            .in('id', confirmedIds),
+        adminClient
             .from('order_items')
             .select(`
+                order_id,
                 quantity,
                 price_at_purchase,
                 product_variants (
@@ -84,48 +75,82 @@ export const POST: APIRoute = async ({ request, cookies }) => {
                     )
                 )
             `)
-            .eq('order_id', orderId);
+            .in('order_id', confirmedIds),
+    ]);
 
-        if (!orderItems) {
-            failed.push(publicId);
-            continue;
-        }
+    // Group items by order_id
+    const itemsByOrder = new Map<string, typeof itemsRes.data>();
+    for (const item of itemsRes.data ?? []) {
+        const orderId = (item as { order_id: string }).order_id;
+        if (!itemsByOrder.has(orderId)) itemsByOrder.set(orderId, []);
+        itemsByOrder.get(orderId)!.push(item);
+    }
 
-        const payoutItems: CheckoutPricedItem[] = [];
+    const stripe = getStripeClient();
 
-        for (const item of orderItems) {
-            const variant = one((item as any).product_variants);
-            const product = one(variant?.products as any);
-            const shop = one(product?.shops as any);
-            const paymentAccount = one(shop?.shop_payment_accounts as any);
+    // 3. Release funds for all confirmed orders in parallel
+    const releaseResults = await Promise.allSettled(
+        (ordersRes.data ?? []).map(async order => {
+            if (!order.stripe_payment_intent_id) {
+                return { publicId: order.public_id, success: false };
+            }
 
-            if (!shop || !paymentAccount?.stripe_account_id) continue;
+            const orderItems = itemsByOrder.get(order.id) ?? [];
+            const payoutItems: CheckoutPricedItem[] = [];
 
-            payoutItems.push({
-                shopId: shop.id,
-                shopName: shop.name,
-                shopSlug: shop.slug,
-                stripeAccountId: paymentAccount.stripe_account_id,
-                quantity: Number((item as any).quantity ?? 0),
-                unitPrice: Number((item as any).price_at_purchase ?? 0),
-                shippingCost: Number(variant?.shipping_cost ?? 0),
+            for (const item of orderItems) {
+                const variant = one((item as { product_variants: unknown }).product_variants);
+                const product = one((variant as { products: unknown } | null)?.products as unknown);
+                const shop = one((product as { shops: unknown } | null)?.shops as unknown);
+                const paymentAccount = one((shop as { shop_payment_accounts: unknown } | null)?.shop_payment_accounts as unknown);
+
+                if (!shop || !(paymentAccount as { stripe_account_id?: string } | null)?.stripe_account_id) continue;
+
+                payoutItems.push({
+                    shopId: (shop as { id: string }).id,
+                    shopName: (shop as { name: string }).name,
+                    shopSlug: (shop as { slug: string }).slug,
+                    stripeAccountId: (paymentAccount as { stripe_account_id: string }).stripe_account_id,
+                    quantity: Number((item as { quantity: unknown }).quantity ?? 0),
+                    unitPrice: Number((item as { price_at_purchase: unknown }).price_at_purchase ?? 0),
+                    shippingCost: Number((variant as { shipping_cost?: unknown } | null)?.shipping_cost ?? 0),
+                });
+            }
+
+            const result = await releaseOrderFunds({
+                stripe,
+                orderId: order.id,
+                publicId: order.public_id,
+                paymentIntentId: order.stripe_payment_intent_id,
+                items: payoutItems,
             });
-        }
 
-        const releaseResult = await releaseOrderFunds({
-            stripe,
-            orderId: order.id,
-            publicId: order.public_id,
-            paymentIntentId: order.stripe_payment_intent_id,
-            items: payoutItems,
-        });
+            return { publicId: order.public_id, success: result.success, error: result.error };
+        })
+    );
 
-        if (releaseResult.success) {
-            released.push(publicId);
+    const released: string[] = [];
+    const failed: string[] = [];
+
+    for (const result of releaseResults) {
+        if (result.status === 'fulfilled') {
+            if (result.value.success) {
+                released.push(result.value.publicId);
+            } else {
+                console.error(`auto-confirm fund release failed for ${result.value.publicId}`, result.value.error);
+                failed.push(result.value.publicId);
+            }
         } else {
-            console.error(`auto-confirm fund release failed for ${publicId}`, releaseResult.error);
-            failed.push(publicId);
+            console.error('auto-confirm unexpected rejection', result.reason);
         }
+    }
+
+    // Use waitUntil to respond fast — transfers already done above but log any cleanup
+    const ctx = (locals as { runtime?: { ctx?: { waitUntil: (p: Promise<unknown>) => void } } }).runtime?.ctx;
+    if (ctx && failed.length > 0) {
+        ctx.waitUntil(
+            Promise.resolve(console.warn('auto-confirm: some fund releases failed, retry needed', { failed }))
+        );
     }
 
     return jsonResponse({

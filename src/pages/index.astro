@@ -13,7 +13,7 @@ const isLoggedIn = !!user;
 <BuyerAppLayout>
 	<main>
 		<HeroBanner isLoggedIn={isLoggedIn} />
-		<DeferredHomeGrid server:defer>
+		<DeferredHomeGrid userId={user?.id ?? null} server:defer>
 			<SkeletonProductGrid count={10} slot="fallback" />
 		</DeferredHomeGrid>
 	</main>
