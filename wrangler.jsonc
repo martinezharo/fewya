@@ -25,5 +25,17 @@
 		"SENDCLOUD_SENDER_EMAIL": "envios@fewya.com",
 		"SENDCLOUD_SENDER_NAME": "Fewya",
 		"SENDCLOUD_SENDER_COMPANY": "Fewya Marketplace"
-	}
+	},
+	// A7: Rate limiting for auth endpoints (requires Cloudflare Rate Limiting product)
+	// Create binding in Cloudflare dashboard → Workers → Rate Limiting, then reference here.
+	// "[[rate_limiting]]" : [
+	//   { "binding": "RATE_LIMITER_AUTH", "namespace_id": "<id>", "simple": { "limit": 100, "period": 60 } }
+	// ]
+	//
+	// M6: Cron trigger for auto-confirming delivered orders past 48h.
+	// The cron fires a scheduled Worker event — the handler must call POST /api/orders/auto-confirm
+	// with the X-Cron-Secret header. See: https://developers.cloudflare.com/workers/configuration/cron-triggers/
+	// "triggers": {
+	//   "crons": ["0 2 * * *"]
+	// }
 }
