@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-label="Fewya — Marketplace de pequeños negocios">
+    <defs>
+        <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#F5F7FF"/>
+            <stop offset="100%" stop-color="#E5ECFF"/>
+        </linearGradient>
+    </defs>
+    <rect width="1200" height="630" fill="url(#bg)"/>
+    <g transform="translate(110, 200)">
+        <rect width="120" height="120" rx="28" fill="#5B7FFF"/>
+        <text x="60" y="80" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-weight="700" font-size="60" fill="#F5F7FF">F</text>
+    </g>
+    <text x="270" y="270" font-family="Inter, system-ui, sans-serif" font-weight="700" font-size="78" fill="#0B1020">Fewya</text>
+    <text x="270" y="345" font-family="Inter, system-ui, sans-serif" font-weight="500" font-size="36" fill="#5B6080">Marketplace de pequeños negocios</text>
+    <text x="270" y="400" font-family="Inter, system-ui, sans-serif" font-weight="400" font-size="28" fill="#5B6080">Compra directo, sin intermediarios.</text>
+</svg>
