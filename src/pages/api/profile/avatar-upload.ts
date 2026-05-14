@@ -1,6 +1,8 @@
 import type { APIRoute } from 'astro';
 import { createSupabaseAuthClient } from '../../../lib/core/auth';
 import { strings } from '../../../lib/core/i18n';
+import { detectImageMimeType, ALLOWED_IMAGE_TYPES } from '../../../lib/core/file-validation';
+import { securityLog } from '../../../lib/core/security-log';
 
 export const POST: APIRoute = async ({ cookies, request }) => {
     const supabase = createSupabaseAuthClient(cookies, request);
@@ -17,16 +19,24 @@ export const POST: APIRoute = async ({ cookies, request }) => {
         return new Response(JSON.stringify({ error: 'Invalid request' }), { status: 400 });
     }
 
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-    if (!allowedTypes.includes(file.type)) {
-        return new Response(JSON.stringify({ error: 'Invalid file type. Allowed: JPEG, PNG, WebP, GIF' }), { status: 400 });
+    // A6: validate by magic bytes
+    const detectedType = await detectImageMimeType(file);
+    if (!detectedType || !ALLOWED_IMAGE_TYPES.includes(detectedType)) {
+        securityLog('security.upload.invalid_magic_bytes', { userId: user.id, context: 'avatar' });
+        return new Response(JSON.stringify({ error: strings.apiFileInvalid }), { status: 400 });
     }
 
     if (file.size > 2 * 1024 * 1024) {
         return new Response(JSON.stringify({ error: 'File too large. Max 2MB.' }), { status: 400 });
     }
 
-    const ext = file.name.split('.').pop() || 'jpg';
+    const extMap: Record<string, string> = {
+        'image/jpeg': 'jpg',
+        'image/png': 'png',
+        'image/webp': 'webp',
+        'image/gif': 'gif',
+    };
+    const ext = extMap[detectedType] ?? 'jpg';
     const filename = `${user.id}/${crypto.randomUUID()}.${ext}`;
     const path = `avatars/${filename}`;
 
@@ -35,12 +45,13 @@ export const POST: APIRoute = async ({ cookies, request }) => {
     const { error: uploadError } = await supabase.storage
         .from('imgs')
         .upload(path, buffer, {
-            contentType: file.type,
+            contentType: detectedType, // use validated type
             upsert: false,
         });
 
     if (uploadError) {
-        return new Response(JSON.stringify({ error: uploadError.message }), { status: 500 });
+        console.error(JSON.stringify({ event: 'avatar_upload.failed', error: uploadError.message }));
+        return new Response(JSON.stringify({ error: strings.apiInternalError }), { status: 500 });
     }
 
     const { data: urlData } = supabase.storage
@@ -65,11 +76,11 @@ export const DELETE: APIRoute = async ({ cookies, request, url }) => {
 
     const segments = path.split('/');
     if (segments.length < 3 || segments[0] !== 'avatars') {
-        return new Response(JSON.stringify({ error: strings.apiForbidden }), { status: 403 });
+        return new Response(JSON.stringify({ error: strings.apiPathForbidden }), { status: 403 });
     }
 
     if (segments[1] !== user.id) {
-        return new Response(JSON.stringify({ error: strings.apiForbidden }), { status: 403 });
+        return new Response(JSON.stringify({ error: strings.apiPathForbidden }), { status: 403 });
     }
 
     const { error } = await supabase.storage
@@ -77,7 +88,8 @@ export const DELETE: APIRoute = async ({ cookies, request, url }) => {
         .remove([path]);
 
     if (error) {
-        return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+        console.error(JSON.stringify({ event: 'avatar_delete.failed', error: error.message }));
+        return new Response(JSON.stringify({ error: strings.apiInternalError }), { status: 500 });
     }
 
     return new Response(JSON.stringify({ ok: true }), { status: 200 });
