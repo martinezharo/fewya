@@ -1,7 +1,14 @@
 ---
 import Icon from "../icons/Icon.astro";
 import { strings } from "../../lib/core/i18n";
-import { orderStatusLabels } from "../../lib/orders/orderStatus";
+import {
+    normalizeOrderStatus,
+    getStatusBadgeClass,
+    getStatusLabel,
+    formatOrderDate,
+    formatEur,
+    getRefundedAmounts,
+} from "../../lib/orders/orderCardModel";
 
 export interface OrderItem {
     productTitle: string;
@@ -48,48 +55,26 @@ interface Props {
 
 const { order } = Astro.props;
 
-const statusColorMap: Record<string, string> = {
-    pending: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
-    paid: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400",
-    processing: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400",
-    shipped: "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-400",
-    delivered: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400",
-    confirmed: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400",
-    incident: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400",
-    cancelled: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400",
-    refunded: "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400",
-};
-
-const normalizedStatus = order.status?.toLowerCase() ?? "pending";
-const statusLabel = orderStatusLabels[normalizedStatus as keyof typeof orderStatusLabels] ?? order.status;
-const statusColor = statusColorMap[normalizedStatus] ?? statusColorMap.pending;
+const normalizedStatus = normalizeOrderStatus(order.status);
+const statusLabel = getStatusLabel(normalizedStatus);
+const statusColor = getStatusBadgeClass(normalizedStatus);
 
 const firstItem = order.items[0];
 const itemCount = order.items.reduce((sum, item) => sum + (item.quantity ?? 1), 0);
 
-const dateFormatted = order.createdAt.toLocaleDateString("es-ES", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-});
-
-const currencyFormatter = new Intl.NumberFormat("es-ES", {
-    style: "currency",
-    currency: "EUR",
-});
-
-const totalFormatted = currencyFormatter.format(order.totalAmount);
+const dateFormatted = formatOrderDate(order.createdAt);
+const totalFormatted = formatEur(order.totalAmount);
 
 const showTracking = order.hasShipment && (order.trackingNumber || order.trackingUrl);
 const showActions = normalizedStatus === 'delivered';
 const showIncident = normalizedStatus === 'incident' && order.incidentDescription;
 const showCancelIncident = normalizedStatus === 'incident';
 const showReview = normalizedStatus === 'confirmed' && order.items.length > 0;
-const showRefunded = normalizedStatus === 'refunded' && (order.refundedAmount ?? 0) > 0;
-const refundedAmountFormatted = showRefunded ? currencyFormatter.format(order.refundedAmount ?? 0) : '';
-const shippingRetainedFormatted = showRefunded && (order.shippingRetained ?? 0) > 0
-    ? currencyFormatter.format(order.shippingRetained ?? 0)
-    : '';
+const { showRefunded, refundedAmountFormatted, shippingRetainedFormatted } = getRefundedAmounts(
+    normalizedStatus,
+    order.refundedAmount,
+    order.shippingRetained,
+);
 const hasAnyReview = order.items.some(item => item.productId && order.reviews?.[item.productId]);
 const reviewableItems = order.items.filter(item => item.productId);
 ---
@@ -191,12 +176,12 @@ const reviewableItems = order.items.filter(item => item.productId);
                                 </p>
                             )}
                             <p class="text-[12px] font-medium text-text-tertiary mt-0.5">
-                                {item.quantity ?? 1} {strings.ordersItemsUnit} · {currencyFormatter.format(item.unitPrice ?? 0)}
+                                {item.quantity ?? 1} {strings.ordersItemsUnit} · {formatEur(item.unitPrice ?? 0)}
                             </p>
                         </div>
                         <div class="flex-shrink-0">
                             <span class="text-sm font-bold text-text-primary tabular-nums">
-                                {currencyFormatter.format((item.unitPrice ?? 0) * (item.quantity ?? 1))}
+                                {formatEur((item.unitPrice ?? 0) * (item.quantity ?? 1))}
                             </span>
                         </div>
                         <Icon name="chevron-right" size={16} class="flex-shrink-0 text-text-tertiary" />
@@ -208,17 +193,17 @@ const reviewableItems = order.items.filter(item => item.productId);
             <div class="rounded-xl border border-border-light bg-bg/50 p-4 flex flex-col gap-2">
                 <div class="flex items-center justify-between text-sm">
                     <span class="text-text-secondary">{strings.ordersSubtotal}</span>
-                    <span class="font-semibold text-text-primary tabular-nums">{currencyFormatter.format(order.subtotal)}</span>
+                    <span class="font-semibold text-text-primary tabular-nums">{formatEur(order.subtotal)}</span>
                 </div>
                 <div class="flex items-center justify-between text-sm">
                     <span class="text-text-secondary">{strings.cartShipping}</span>
                     <span class="font-semibold text-text-primary tabular-nums">
-                        {order.shipping > 0 ? currencyFormatter.format(order.shipping) : strings.ordersFreeShipping}
+                        {order.shipping > 0 ? formatEur(order.shipping) : strings.ordersFreeShipping}
                     </span>
                 </div>
                 <div class="mt-1 pt-2 border-t border-border-light flex items-center justify-between text-sm">
                     <span class="font-semibold text-text-primary">{strings.cartTotal}</span>
-                    <span class="font-bold text-text-primary tabular-nums">{currencyFormatter.format(order.totalAmount)}</span>
+                    <span class="font-bold text-text-primary tabular-nums">{formatEur(order.totalAmount)}</span>
                 </div>
             </div>
         </div>

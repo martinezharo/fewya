@@ -220,7 +220,7 @@ const isLoggedIn = !!user;
       // Shop header
       const header = document.createElement('div');
       header.className = 'flex items-center justify-between px-4 py-3 border-b border-border-light';
-      const shippingText = shopShipping === 0 ? 'Envío gratis' : currencyFormatter.format(shopShipping);
+      const shippingText = shopShipping === 0 ? strings.freeShipping : currencyFormatter.format(shopShipping);
       header.innerHTML = `
         <a href="/${escapeHtml(shopSlug)}" class="text-sm font-semibold text-text-primary no-underline hover:underline">${escapeHtml(shopName)}</a>
         <div class="flex items-center gap-1.5 text-xs text-text-secondary">
@@ -637,8 +637,35 @@ const isLoggedIn = !!user;
     openDeliveryModal();
   }
 
+  async function refreshStockFromServer() {
+    const items = cart.get();
+    if (items.length === 0) return;
+    try {
+      const res = await fetch('/api/cart/freshness', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ variantIds: items.map((i) => i.variantId) }),
+      });
+      if (!res.ok) return;
+      const data = await res.json() as { items?: Array<{ variantId: string; stock: number; price: number; shippingCost: number; isAvailable: boolean }> };
+      if (!data.items?.length) return;
+      const result = cart.applyFreshness(data.items);
+      if (result.removedVariantIds.length || result.cappedVariantIds.length || result.repricedVariantIds.length) {
+        renderCart();
+        if (result.removedVariantIds.length) {
+          toast.error(strings.apiCheckoutProductUnavailable);
+        } else if (result.cappedVariantIds.length) {
+          toast.error(strings.cartStockExceededToast);
+        }
+      }
+    } catch {
+      // Silent — keep stale data rather than blocking the UI.
+    }
+  }
+
   function init() {
     renderCart();
+    refreshStockFromServer();
 
     const checkoutBtnMobile = document.getElementById('checkout-btn-mobile');
     if (checkoutBtnMobile && !checkoutBtnMobile.hasAttribute('data-checkout-listener')) {

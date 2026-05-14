@@ -1,7 +1,16 @@
 ---
 import Icon from '../icons/Icon.astro';
 import { strings } from '../../lib/core/i18n';
-import { orderStatusLabels } from '../../lib/orders/orderStatus';
+import {
+    normalizeOrderStatus,
+    getStatusBadgeClass,
+    getStatusLabel,
+    formatOrderDate,
+    formatEur,
+    getSellerDeliveryFlags,
+    getRefundedAmounts,
+    formatShippingCell,
+} from '../../lib/orders/orderCardModel';
 
 export interface SellerOrderItem {
     productTitle: string;
@@ -46,41 +55,17 @@ interface Props {
 
 const { order } = Astro.props;
 
-const statusColorMap: Record<string, string> = {
-    pending: 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400',
-    paid: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400',
-    processing: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400',
-    shipped: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-400',
-    delivered: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400',
-    confirmed: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400',
-    incident: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400',
-    cancelled: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400',
-    refunded: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400',
-};
-
-const normalizedStatus = order.status?.toLowerCase() ?? 'pending';
-const FORTY_EIGHT_HOURS_MS = 48 * 60 * 60 * 1000;
-const canSellerConfirm = normalizedStatus === 'delivered' &&
-    order.deliveredAt != null &&
-    Date.now() - order.deliveredAt.getTime() >= FORTY_EIGHT_HOURS_MS;
-const isRecentlyDelivered = normalizedStatus === 'delivered' && !canSellerConfirm;
-const statusLabel = orderStatusLabels[normalizedStatus as keyof typeof orderStatusLabels] ?? order.status;
-const statusColor = statusColorMap[normalizedStatus] ?? statusColorMap.pending;
-const dateFormatted = order.createdAt.toLocaleDateString('es-ES', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-});
-const currencyFormatter = new Intl.NumberFormat('es-ES', {
-    style: 'currency',
-    currency: 'EUR',
-});
+const normalizedStatus = normalizeOrderStatus(order.status);
+const { canSellerConfirm, isRecentlyDelivered } = getSellerDeliveryFlags(normalizedStatus, order.deliveredAt);
+const statusLabel = getStatusLabel(normalizedStatus);
+const statusColor = getStatusBadgeClass(normalizedStatus);
+const dateFormatted = formatOrderDate(order.createdAt);
 const customerName = order.shippingFullName || order.buyerEmail || strings.profileAnonymous;
-const showRefunded = normalizedStatus === 'refunded' && (order.refundedAmount ?? 0) > 0;
-const refundedAmountFormatted = showRefunded ? currencyFormatter.format(order.refundedAmount ?? 0) : '';
-const shippingRetainedFormatted = showRefunded && (order.shippingRetained ?? 0) > 0
-    ? currencyFormatter.format(order.shippingRetained ?? 0)
-    : '';
+const { showRefunded, refundedAmountFormatted, shippingRetainedFormatted } = getRefundedAmounts(
+    normalizedStatus,
+    order.refundedAmount,
+    order.shippingRetained,
+);
 ---
 
 <article class="rounded-3xl border border-border bg-surface p-5 sm:p-6 shadow-sm flex flex-col gap-6" data-order-status={normalizedStatus}>
@@ -149,7 +134,7 @@ const shippingRetainedFormatted = showRefunded && (order.shippingRetained ?? 0) 
 
         <div class="shrink-0 text-right">
             <p class="text-xl md:text-2xl font-bold tracking-tight text-text-primary tabular-nums">
-                {currencyFormatter.format(order.subtotal + order.shipping)}
+                {formatEur(order.subtotal + order.shipping)}
             </p>
             <p class="mt-1.5 text-xs font-medium text-text-tertiary tabular-nums">
                 {order.itemsSold} {order.itemsSold === 1 ? strings.ordersItemsSingular : strings.ordersItemsPlural}
@@ -198,7 +183,7 @@ const shippingRetainedFormatted = showRefunded && (order.shippingRetained ?? 0) 
                                 )}
 
                                 <span class="shrink-0 text-sm font-bold text-text-primary tabular-nums pt-0.5">
-                                    {currencyFormatter.format(item.quantity * item.unitPrice)}
+                                    {formatEur(item.quantity * item.unitPrice)}
                                 </span>
                             </div>
 
@@ -207,7 +192,7 @@ const shippingRetainedFormatted = showRefunded && (order.shippingRetained ?? 0) 
                             )}
 
                             <p class="mt-1.5 text-[12px] font-semibold text-text-tertiary bg-bg inline-flex px-2 py-0.5 rounded-md">
-                                {item.quantity} x {currencyFormatter.format(item.unitPrice)}
+                                {item.quantity} x {formatEur(item.unitPrice)}
                             </p>
                         </div>
                     </div>
@@ -218,13 +203,13 @@ const shippingRetainedFormatted = showRefunded && (order.shippingRetained ?? 0) 
                 <div class="flex items-center justify-between text-sm">
                     <span class="text-text-secondary">{strings.cartShipping}</span>
                     <span class="font-semibold text-text-primary tabular-nums">
-                        {order.shipping > 0 ? currencyFormatter.format(order.shipping) : 'Gratis'}
+                        {formatShippingCell(order.shipping)}
                     </span>
                 </div>
                 <div class="flex items-center justify-between text-sm mt-2">
                     <span class="font-semibold text-text-primary">{strings.cartTotal}</span>
                     <span class="font-bold text-text-primary tabular-nums">
-                        {currencyFormatter.format(order.subtotal + order.shipping)}
+                        {formatEur(order.subtotal + order.shipping)}
                     </span>
                 </div>
             </div>
@@ -350,7 +335,7 @@ const shippingRetainedFormatted = showRefunded && (order.shippingRetained ?? 0) 
                     </div>
                 ) : normalizedStatus === 'incident' ? (
                     <div class="flex flex-col gap-3">
-                        <p class="text-sm text-text-secondary">Este pedido tiene una incidencia reportada por el comprador.</p>
+                        <p class="text-sm text-text-secondary">{strings.sellerIncidentNoticeForSeller}</p>
                         <a
                             href="/sell/claims"
                             class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/60 transition-colors self-start"
@@ -360,7 +345,7 @@ const shippingRetainedFormatted = showRefunded && (order.shippingRetained ?? 0) 
                         </a>
                     </div>
                 ) : (
-                    <p class="text-sm text-text-secondary">No hay acciones disponibles para este pedido.</p>
+                    <p class="text-sm text-text-secondary">{strings.sellerOrderNoActions}</p>
                 )}
             </div>
         </section>
