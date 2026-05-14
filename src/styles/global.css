@@ -85,18 +85,27 @@
 }
 
 @keyframes fewya-shimmer {
-    from { background-position: 200% 0; }
-    to { background-position: -200% 0; }
+    from { transform: translateX(-100%); }
+    to   { transform: translateX(100%); }
 }
 
 .bg-skeleton {
+    position: relative;
+    overflow: hidden;
+    background: var(--color-border-val);
+}
+
+.bg-skeleton::after {
+    content: '';
+    position: absolute;
+    inset: 0;
     background: linear-gradient(
         90deg,
-        var(--color-border-val) 0%,
+        transparent 0%,
         var(--color-border-light-val) 50%,
-        var(--color-border-val) 100%
+        transparent 100%
     );
-    background-size: 200% 100%;
+    transform: translateX(-100%);
     animation: fewya-shimmer 1.4s ease-in-out infinite;
 }
 

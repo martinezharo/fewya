@@ -22,9 +22,12 @@ export function optimizeImageUrl(url: string, width = 400): string {
             return url.replace(/_AC_UF\d+,\d+_QL\d+_/, `_AC_UF${width},${width}_QL80_`);
         }
 
-        // Supabase Storage: append width param if image-transform is enabled
+        // Supabase Storage: resize via query params (requires Supabase Image Transformations enabled)
+        // If transformations are unavailable, the original image still loads.
         if (parsed.hostname.includes('.supabase.co') && parsed.pathname.includes('/storage/v1/object/public/')) {
             parsed.searchParams.set('width', String(width));
+            parsed.searchParams.set('height', String(width));
+            parsed.searchParams.set('resize', 'cover');
             return parsed.toString();
         }
 

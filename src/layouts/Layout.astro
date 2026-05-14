@@ -39,11 +39,7 @@ const supabaseHost = typeof SUPABASE_URL === 'string' ? new URL(SUPABASE_URL).ho
     <meta name="generator" content={Astro.generator} />
     <slot name="head" />
 
-    <!-- Stripe checkout preconnect to reduce redirect latency -->
-    <link rel="dns-prefetch" href="https://checkout.stripe.com" />
-    <link rel="preconnect" href="https://checkout.stripe.com" />
-
-    <!-- Image origins preconnect -->
+    <!-- Preconnect to critical 3rd-party origins (limit to 4 for performance) -->
     {supabaseHost && (
       <>
         <link rel="dns-prefetch" href={`https://${supabaseHost}`} />
@@ -52,10 +48,6 @@ const supabaseHost = typeof SUPABASE_URL === 'string' ? new URL(SUPABASE_URL).ho
     )}
     <link rel="dns-prefetch" href="https://images.unsplash.com" />
     <link rel="preconnect" href="https://images.unsplash.com" crossorigin />
-    <link rel="dns-prefetch" href="https://m.media-amazon.com" />
-    <link rel="preconnect" href="https://m.media-amazon.com" crossorigin />
-    <link rel="dns-prefetch" href="https://storage.googleapis.com" />
-    <link rel="preconnect" href="https://storage.googleapis.com" crossorigin />
     <script>
       import { registerSW } from 'virtual:pwa-register'
       const w = window as unknown as { __fewyaSW?: boolean };
