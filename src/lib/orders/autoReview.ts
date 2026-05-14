@@ -1,5 +1,6 @@
 import { createSupabaseAdminClient } from '../core/supabase-admin';
 import { strings } from '../core/i18n';
+import { pickOne, type JoinedVariant } from './orderJoins';
 
 export async function createAutoReviewsForOrder(orderId: string): Promise<void> {
     try {
@@ -11,10 +12,9 @@ export async function createAutoReviewsForOrder(orderId: string): Promise<void> 
             .eq('order_id', orderId);
 
         const productIdSet = new Set<string>();
-        for (const item of items ?? []) {
-            const variant = Array.isArray((item as any).product_variants)
-                ? (item as any).product_variants[0]
-                : (item as any).product_variants;
+        for (const rawItem of items ?? []) {
+            const item = rawItem as { product_variants?: JoinedVariant | JoinedVariant[] | null };
+            const variant = pickOne(item.product_variants);
             if (variant?.product_id) productIdSet.add(variant.product_id);
         }
 
@@ -40,6 +40,10 @@ export async function createAutoReviewsForOrder(orderId: string): Promise<void> 
             }))
         );
     } catch (err) {
-        console.error('createAutoReviewsForOrder failed silently', err);
+        console.error(JSON.stringify({
+            event: 'auto_review.failed_silent',
+            orderId,
+            error: err instanceof Error ? err.message : String(err),
+        }));
     }
 }
