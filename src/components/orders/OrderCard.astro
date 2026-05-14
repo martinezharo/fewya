@@ -77,6 +77,7 @@ const { showRefunded, refundedAmountFormatted, shippingRetainedFormatted } = get
 );
 const hasAnyReview = order.items.some(item => item.productId && order.reviews?.[item.productId]);
 const reviewableItems = order.items.filter(item => item.productId);
+const showHide = normalizedStatus === 'pending';
 ---
 
 <article class="bg-surface rounded-2xl border border-border-light overflow-hidden" data-order-id={order.orderId} data-order-status={normalizedStatus}>
@@ -299,6 +300,19 @@ const reviewableItems = order.items.filter(item => item.productId);
         </div>
     )}
 
+    {showHide && (
+        <div class="px-4 pb-4 md:px-5 md:pb-5">
+            <button
+                type="button"
+                class="open-hide-order-modal-btn inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
+                data-order-id={order.orderId}
+            >
+                <Icon name="trash-2" size={12} />
+                {strings.orderHideBtn}
+            </button>
+        </div>
+    )}
+
     {showIncident && (
         <div class="px-4 pb-4 md:px-5 md:pb-5 flex flex-col gap-4">
             <div class="p-4 rounded-2xl bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800">
@@ -351,6 +365,27 @@ const reviewableItems = order.items.filter(item => item.productId);
             )}
         </div>
     )}
+
+    {/* Hide Order Modal */}
+    <div class="hide-order-modal hidden fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4" data-order-id={order.orderId}>
+        <div class="w-full max-w-md rounded-t-2xl sm:rounded-2xl border border-border bg-surface p-5 shadow-xl">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-base font-semibold text-text-primary">{strings.orderHideModalTitle}</h3>
+                <button type="button" class="close-hide-order-modal-btn p-1.5 rounded-lg hover:bg-border-light transition-colors text-text-secondary">
+                    <Icon name="x" size={18} />
+                </button>
+            </div>
+            <p class="text-sm text-text-secondary mb-5 leading-relaxed">{strings.orderHideModalBody}</p>
+            <div class="flex gap-2 justify-end">
+                <button type="button" class="close-hide-order-modal-btn px-3 py-1.5 text-sm font-medium text-text-secondary hover:text-text-primary transition-colors">
+                    {strings.orderHideDismiss}
+                </button>
+                <button type="button" class="confirm-hide-order-btn px-3 py-1.5 text-sm font-semibold rounded-lg bg-zinc-800 text-white dark:bg-zinc-200 dark:text-zinc-900 hover:bg-zinc-700 dark:hover:bg-zinc-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" data-order-id={order.orderId}>
+                    {strings.orderHideConfirm}
+                </button>
+            </div>
+        </div>
+    </div>
 
     {/* Cancel Incident Modal */}
     <div class="cancel-incident-modal hidden fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4" data-order-id={order.orderId}>
@@ -916,6 +951,63 @@ const reviewableItems = order.items.filter(item => item.productId);
                         const polygon = icon.querySelector('polygon');
                         if (polygon) polygon.setAttribute('fill', filled ? 'currentColor' : 'none');
                     });
+                }
+                return;
+            }
+
+            // Open hide-order modal
+            const openHideBtn = target.closest<HTMLElement>('.open-hide-order-modal-btn');
+            if (openHideBtn) {
+                e.preventDefault();
+                e.stopPropagation();
+                const orderId = openHideBtn.dataset.orderId;
+                if (!orderId) return;
+                const modal = document.querySelector(`.hide-order-modal[data-order-id="${orderId}"]`);
+                if (modal) { modal.classList.remove('hidden'); document.body.style.overflow = 'hidden'; }
+                return;
+            }
+
+            // Close hide-order modal (button or backdrop)
+            const closeHideBtn = target.closest<HTMLElement>('.close-hide-order-modal-btn');
+            if (closeHideBtn) {
+                e.preventDefault();
+                e.stopPropagation();
+                const modal = closeHideBtn.closest('.hide-order-modal');
+                if (modal) { modal.classList.add('hidden'); document.body.style.overflow = ''; }
+                return;
+            }
+            const hideBackdrop = target.closest<HTMLElement>('.hide-order-modal');
+            if (hideBackdrop && e.target === hideBackdrop) {
+                hideBackdrop.classList.add('hidden');
+                document.body.style.overflow = '';
+                return;
+            }
+
+            // Confirm hide order
+            const confirmHideBtn = target.closest<HTMLButtonElement>('.confirm-hide-order-btn');
+            if (confirmHideBtn && !confirmHideBtn.disabled) {
+                e.preventDefault();
+                e.stopPropagation();
+                const orderId = confirmHideBtn.dataset.orderId;
+                if (!orderId) return;
+                const hideResult = await runSubmit({
+                    button: confirmHideBtn,
+                    action: async () => {
+                        const res = await fetch('/api/orders/hide', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ orderId }),
+                        });
+                        const data = await res.json() as { success?: boolean; error?: string };
+                        if (!data.success) throw new SubmitError(data.error || strings.orderHideError);
+                        return data;
+                    },
+                    successMsg: strings.orderHideSuccess,
+                });
+                if (hideResult.ok) {
+                    document.body.style.overflow = '';
+                    const article = document.querySelector(`article[data-order-id="${orderId}"]`);
+                    article?.remove();
                 }
                 return;
             }

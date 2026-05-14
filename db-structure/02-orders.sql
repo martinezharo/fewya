@@ -22,6 +22,7 @@ CREATE TABLE public.orders (
   delivered_at timestamp with time zone,
   funds_released_at timestamp with time zone,
   cancellation_reason text,
+  buyer_hidden_at timestamp with time zone,
   funds_release_status text NOT NULL DEFAULT 'pending' CHECK (funds_release_status IN ('pending', 'released', 'failed')),
   funds_release_last_error text,
   buyer_email text,
@@ -49,6 +50,8 @@ CREATE INDEX idx_orders_buyer_id ON public.orders(buyer_id);
 CREATE INDEX idx_orders_buyer_status ON public.orders(buyer_id, status);
 CREATE INDEX idx_orders_delivered_pending_release ON public.orders(delivered_at)
     WHERE status = 'delivered' AND funds_released_at IS NULL;
+CREATE INDEX idx_orders_buyer_not_hidden ON public.orders(buyer_id, created_at DESC)
+    WHERE buyer_hidden_at IS NULL;
 
 CREATE TABLE public.order_items (
   id uuid NOT NULL DEFAULT gen_random_uuid(),

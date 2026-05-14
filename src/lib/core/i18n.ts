@@ -282,6 +282,14 @@ export const strings = {
     orderAutoConfirmHint: 'Se confirmará automáticamente en 48h si no hay incidencias',
     orderIncidentReported: 'Incidencia reportada por el comprador',
     orderCancellationReason: 'Motivo de cancelación',
+    orderHideBtn: 'Eliminar',
+    orderHideModalTitle: 'Eliminar pedido',
+    orderHideModalBody: '¿Deseas eliminar el pedido? No te preocupes, no se te ha cobrado nada todavía.',
+    orderHideConfirm: 'Eliminar',
+    orderHideDismiss: 'Cancelar',
+    orderHideSuccess: 'Pedido eliminado',
+    orderHideError: 'No se pudo eliminar el pedido',
+    orderHideNotAllowed: 'Solo se pueden eliminar pedidos pendientes',
 
     // Seller order management
     sellerOrderManage: 'Gestionar venta',

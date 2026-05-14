@@ -58,6 +58,7 @@ if (user) {
             )
         `)
         .eq("buyer_id", user.id)
+        .is("buyer_hidden_at", null)
         .order("created_at", { ascending: false });
 
     // Collect all product IDs to fetch user reviews in one query
