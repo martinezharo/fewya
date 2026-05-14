@@ -81,10 +81,32 @@ const showHide = normalizedStatus === 'pending';
 ---
 
 <article class="bg-surface rounded-2xl border border-border-light overflow-hidden" data-order-id={order.orderId} data-order-status={normalizedStatus}>
+    {/* Public order ID with copy popover */}
+    <div class="flex items-center justify-end px-4 pt-3 md:px-5 md:pt-3.5">
+        <order-id-popover class="relative inline-flex" data-id={order.publicId}>
+            <button
+                type="button"
+                class="trigger-btn group inline-flex items-center gap-1.5 rounded-md bg-neutral-100 dark:bg-neutral-800 px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.12em] text-text-secondary hover:bg-neutral-200 dark:hover:bg-neutral-700 hover:text-text-primary transition-all focus:outline-none ring-accent focus:ring-2"
+            >
+                #{order.publicId}
+                <Icon name="copy" size={11} class="shrink-0 opacity-50 group-hover:opacity-100 transition-opacity" />
+            </button>
+            <div class="popover hidden absolute top-full right-0 mt-2 z-[60] flex items-center bg-neutral-950 dark:bg-neutral-100 rounded-xl shadow-[0_12px_40px_rgb(0,0,0,0.25)] dark:shadow-[0_12px_40px_rgb(0,0,0,0.6)] p-1.5 gap-2 min-w-max">
+                <span class="text-[12px] font-bold text-neutral-100 dark:text-neutral-900 tracking-[0.12em] uppercase select-all pl-2">
+                    #{order.publicId}
+                </span>
+                <button type="button" class="copy-btn shrink-0 p-1.5 rounded-lg bg-neutral-800 dark:bg-neutral-200 hover:bg-neutral-700 dark:hover:bg-neutral-300 text-neutral-300 dark:text-neutral-700 hover:text-white dark:hover:text-neutral-900 transition-colors focus:outline-none">
+                    <Icon name="copy" size={13} class="icon-copy block" />
+                    <Icon name="check" size={13} class="icon-check hidden text-green-400 dark:text-green-600" />
+                </button>
+            </div>
+        </order-id-popover>
+    </div>
+
     {/* Collapsible header */}
     <button
         type="button"
-        class="order-toggle-btn group w-full flex items-center gap-4 py-4 px-4 md:py-5 md:px-5 text-left hover:bg-bg transition-colors duration-200 select-none"
+        class="order-toggle-btn group w-full flex items-center gap-4 pt-3 pb-4 px-4 md:pt-3 md:pb-5 md:px-5 text-left hover:bg-bg transition-colors duration-200 select-none"
         aria-expanded="false"
         aria-controls={`order-details-${order.orderId}`}
     >
@@ -596,6 +618,56 @@ const showHide = normalizedStatus === 'pending';
     import { toast } from '../../lib/ui/toast';
     import { setBusy } from '../../lib/ui/busy';
     import { runSubmit, SubmitError } from '../../lib/ui/submit';
+
+    class OrderIdPopover extends HTMLElement {
+        constructor() {
+            super();
+
+            const btn = this.querySelector('.trigger-btn');
+            const popover = this.querySelector('.popover');
+            const copyBtn = this.querySelector('.copy-btn');
+            const iconCopy = this.querySelector('.icon-copy');
+            const iconCheck = this.querySelector('.icon-check');
+            const id = this.dataset.id || '';
+
+            if (!btn || !popover || !copyBtn || !iconCopy || !iconCheck) return;
+
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                document.querySelectorAll('order-id-popover .popover:not(.hidden)').forEach(el => {
+                    if (el !== popover) el.classList.add('hidden');
+                });
+                popover.classList.toggle('hidden');
+            });
+
+            document.addEventListener('click', (e) => {
+                if (!this.contains(e.target as Node) && !popover.classList.contains('hidden')) {
+                    popover.classList.add('hidden');
+                }
+            });
+
+            copyBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                try {
+                    await navigator.clipboard.writeText(id);
+                    iconCopy.classList.replace('block', 'hidden');
+                    iconCheck.classList.replace('hidden', 'block');
+                    setTimeout(() => {
+                        iconCheck.classList.replace('block', 'hidden');
+                        iconCopy.classList.replace('hidden', 'block');
+                    }, 2000);
+                } catch (err) {
+                    console.error('Failed to copy text: ', err);
+                }
+            });
+        }
+    }
+
+    if (!customElements.get('order-id-popover')) {
+        customElements.define('order-id-popover', OrderIdPopover);
+    }
 
     // Track modals that already have photo-upload wired up (lazy init on first open)
     const initializedModals = new WeakSet<Element>();
