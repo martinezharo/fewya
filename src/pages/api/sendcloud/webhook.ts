@@ -1,6 +1,10 @@
 import type { APIRoute } from 'astro';
 import { SENDCLOUD_WEBHOOK_SECRET } from 'astro:env/server';
 import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
+import { timingSafeEqual } from '../../../lib/core/timing-safe';
+import { securityLog } from '../../../lib/core/security-log';
+
+const MAX_TIMESTAMP_DRIFT_MS = 5 * 60 * 1000; // 5 minutes
 
 function jsonResponse(payload: Record<string, unknown>, status: number) {
     return new Response(JSON.stringify(payload), {
@@ -10,10 +14,12 @@ function jsonResponse(payload: Record<string, unknown>, status: number) {
 }
 
 export const POST: APIRoute = async ({ request }) => {
-    // Verify webhook secret
-    const webhookSecret = SENDCLOUD_WEBHOOK_SECRET || '';
-    const requestSecret = request.headers.get('X-Webhook-Secret') || '';
-    if (!webhookSecret || requestSecret !== webhookSecret) {
+    const webhookSecret = SENDCLOUD_WEBHOOK_SECRET ?? '';
+    const requestSecret = request.headers.get('X-Webhook-Secret') ?? '';
+
+    // A2: timing-safe comparison to prevent secret enumeration via timing
+    if (!webhookSecret || !timingSafeEqual(requestSecret, webhookSecret)) {
+        securityLog('security.webhook.invalid_signature', { source: 'sendcloud' });
         return jsonResponse({ error: 'Unauthorized' }, 401);
     }
 
@@ -40,13 +46,32 @@ export const POST: APIRoute = async ({ request }) => {
 
     const { action, parcel, timestamp } = body;
 
+    // A2: reject stale events to mitigate replay attacks with a leaked secret
+    if (timestamp !== undefined) {
+        const drift = Math.abs(Date.now() - timestamp * 1000);
+        if (drift > MAX_TIMESTAMP_DRIFT_MS) {
+            securityLog('security.webhook.stale_timestamp', { source: 'sendcloud', timestamp, drift });
+            return jsonResponse({ error: 'Stale event' }, 400);
+        }
+    }
+
     if (!parcel?.id) {
         return jsonResponse({ error: 'parcel.id is required' }, 400);
     }
 
     const supabase = createSupabaseAdminClient();
 
-    // Find shipment by sendcloud_shipment_id (parcel id)
+    // M2: idempotency — skip already-processed events
+    const eventId = `sendcloud:${parcel.id}:${action ?? ''}:${timestamp ?? ''}`;
+    const { error: insertConflict } = await supabase
+        .from('processed_webhook_events')
+        .insert({ event_id: eventId, source: 'sendcloud' });
+
+    if (insertConflict) {
+        return jsonResponse({ received: true }, 200);
+    }
+
+    // Find shipment by sendcloud_shipment_id
     const { data: shipmentRow } = await supabase
         .from('shipments')
         .select('id, order_id')
@@ -57,10 +82,9 @@ export const POST: APIRoute = async ({ request }) => {
         return jsonResponse({ error: 'Shipment not found' }, 404);
     }
 
-    const shipment = shipmentRow as any;
+    const shipment = shipmentRow as { id: string; order_id: string };
     const normalizedStatus = action || parcel.status?.message || 'unknown';
     const description = `Sendcloud status: ${normalizedStatus}`;
-    const location = '';
     const eventTimestamp = timestamp ? new Date(timestamp * 1000) : new Date();
 
     try {
@@ -68,7 +92,7 @@ export const POST: APIRoute = async ({ request }) => {
             p_shipment_id: shipment.id,
             p_status: normalizedStatus,
             p_description: description,
-            p_location: location,
+            p_location: '',
             p_event_timestamp: eventTimestamp.toISOString(),
             p_tracking_number: parcel.tracking_number,
             p_tracking_url: parcel.tracking_url,
@@ -76,13 +100,14 @@ export const POST: APIRoute = async ({ request }) => {
         });
 
         if (error) {
-            console.error('Failed to update shipment tracking:', error);
+            // M3: do not expose internal error to webhook caller
+            console.error(JSON.stringify({ event: 'sendcloud_webhook.tracking_update_failed', error: error.message }));
             return jsonResponse({ error: 'Failed to update tracking' }, 500);
         }
 
         return jsonResponse({ success: true }, 200);
     } catch (err) {
-        console.error('Webhook error:', err);
+        console.error(JSON.stringify({ event: 'sendcloud_webhook.unexpected_error', error: err instanceof Error ? err.message : String(err) }));
         return jsonResponse({ error: 'Internal error' }, 500);
     }
 };
