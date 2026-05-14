@@ -116,6 +116,15 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         items: payoutItems,
     });
 
+    // C3: record payout outcome for monitoring and retry
+    await adminClient
+        .from('orders')
+        .update({
+            funds_release_status: releaseResult.success ? 'released' : 'failed',
+            funds_release_last_error: releaseResult.success ? null : (releaseResult.error ?? null),
+        })
+        .eq('id', order.id);
+
     if (!releaseResult.success) {
         console.error('releaseOrderFunds failed after buyer confirmation', releaseResult.error);
         return jsonResponse({
