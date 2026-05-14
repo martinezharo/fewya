@@ -9,6 +9,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 export default defineConfig({
   output: 'server',
   adapter: cloudflare(),
+  devToolbar: { enabled: false },
   env: {
     schema: {
       SUPABASE_URL: envField.string({ context: 'server', access: 'public' }),

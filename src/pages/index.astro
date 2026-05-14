@@ -4,13 +4,31 @@ import HeroBanner from "../components/HeroBanner.astro";
 import DeferredHomeGrid from "../components/home/DeferredHomeGrid.astro";
 import SkeletonProductGrid from "../components/ui/SkeletonProductGrid.astro";
 import { createSupabaseAuthClient } from "../lib/core/auth";
+import { supabase } from "../lib/core/supabase";
+import { optimizeImageUrl } from "../lib/ui/imageOptimize";
 
 const authClient = createSupabaseAuthClient(Astro.cookies, Astro.request);
 const { data: { user } } = await authClient.auth.getUser();
 const isLoggedIn = !!user;
+
+// Eagerly fetch the first 2 product images so we can preload them in <head>.
+// This cuts the LCP resource-load delay even though the grid itself is deferred.
+const { data: topProducts } = await supabase
+    .from("products")
+    .select("gallery_images")
+    .eq("is_active", true)
+    .order("created_at", { ascending: false })
+    .limit(2);
+
+const preloadImageUrls: string[] = (topProducts ?? [])
+    .map((p: { gallery_images?: string[] }) => optimizeImageUrl(p.gallery_images?.[0] ?? '', 400))
+    .filter((url: unknown): url is string => typeof url === 'string' && url.length > 0);
 ---
 
 <BuyerAppLayout>
+	{preloadImageUrls.map(url => (
+		<link rel="preload" as="image" href={url} fetchpriority="high" slot="head" />
+	))}
 	<main>
 		<HeroBanner isLoggedIn={isLoggedIn} />
 		<DeferredHomeGrid userId={user?.id ?? null} server:defer>

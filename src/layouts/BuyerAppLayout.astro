@@ -15,6 +15,7 @@ const currentPath = Astro.url.pathname;
 ---
 
 <Layout title={title} description={description}>
+    <slot name="head" slot="head" />
     <Header currentPath={currentPath} wishlistCount={wishlistCount} profileIncomplete={profileIncomplete} />
     <slot name="afterHeader" />
     <slot />

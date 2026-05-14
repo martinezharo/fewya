@@ -2,6 +2,7 @@
 import '../styles/global.css';
 import { strings } from '../lib/core/i18n';
 import { ClientRouter } from 'astro:transitions';
+import { SUPABASE_URL } from 'astro:env/server';
 
 interface Props {
   title?: string;
@@ -12,6 +13,8 @@ const {
   title = strings.siteTitle,
   description = strings.siteDescription,
 } = Astro.props;
+
+const supabaseHost = typeof SUPABASE_URL === 'string' ? new URL(SUPABASE_URL).host : '';
 ---
 
 <!doctype html>
@@ -34,16 +37,36 @@ const {
     <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="theme-color" content="#F5F7FF" />
     <meta name="generator" content={Astro.generator} />
+    <slot name="head" />
 
     <!-- Stripe checkout preconnect to reduce redirect latency -->
     <link rel="dns-prefetch" href="https://checkout.stripe.com" />
     <link rel="preconnect" href="https://checkout.stripe.com" />
+
+    <!-- Image origins preconnect -->
+    {supabaseHost && (
+      <>
+        <link rel="dns-prefetch" href={`https://${supabaseHost}`} />
+        <link rel="preconnect" href={`https://${supabaseHost}`} crossorigin />
+      </>
+    )}
+    <link rel="dns-prefetch" href="https://images.unsplash.com" />
+    <link rel="preconnect" href="https://images.unsplash.com" crossorigin />
+    <link rel="dns-prefetch" href="https://m.media-amazon.com" />
+    <link rel="preconnect" href="https://m.media-amazon.com" crossorigin />
+    <link rel="dns-prefetch" href="https://storage.googleapis.com" />
+    <link rel="preconnect" href="https://storage.googleapis.com" crossorigin />
     <script>
       import { registerSW } from 'virtual:pwa-register'
       const w = window as unknown as { __fewyaSW?: boolean };
       if (!w.__fewyaSW) {
         w.__fewyaSW = true;
-        registerSW({ immediate: true });
+        const run = () => registerSW({ immediate: true });
+        if ('requestIdleCallback' in window) {
+          requestIdleCallback(run, { timeout: 2000 });
+        } else {
+          setTimeout(run, 1000);
+        }
       }
     </script>
     <ClientRouter />
@@ -52,18 +75,22 @@ const {
     <title>{title}</title>
     <meta name="description" content={description} />
 
-    <!-- Fonts -->
+    <!-- Fonts: preload + non-blocking stylesheet to avoid render-blocking -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Jost:wght@500;600;700&display=swap" rel="stylesheet" />
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Jost:wght@500;600;700&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Jost:wght@500;600;700&display=swap" media="print" onload="this.media='all'" />
+    <noscript>
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Jost:wght@500;600;700&display=swap" />
+    </noscript>
   </head>
   <body class="font-sans bg-bg text-text-primary min-h-dvh">
     <slot />
     <script>
-      import '../lib/wishlist/wishlist-client';
+      setTimeout(() => { import('../lib/wishlist/wishlist-client'); }, 0);
     </script>
     <script>
-      import '../lib/cart/cart-client';
+      setTimeout(() => { import('../lib/cart/cart-client'); }, 0);
     </script>
     <script>
       import { mountProgressBar } from '../lib/ui/progress-bar';
@@ -78,7 +105,15 @@ const {
         mountLiveStatus();
       }
 
-      init();
+      function runInit() {
+        if ('requestIdleCallback' in window) {
+          requestIdleCallback(init, { timeout: 2000 });
+        } else {
+          setTimeout(init, 50);
+        }
+      }
+
+      runInit();
 
       document.addEventListener('astro:before-swap', (event) => {
         const newDoc = (event as unknown as { newDocument: Document }).newDocument;
@@ -154,8 +189,15 @@ const {
         });
       }
       document.addEventListener('astro:page-load', initWishlistBadge);
-      if (document.readyState !== 'loading') initWishlistBadge();
-      else document.addEventListener('DOMContentLoaded', initWishlistBadge);
+      const run = () => {
+        if ('requestIdleCallback' in window) {
+          requestIdleCallback(initWishlistBadge, { timeout: 3000 });
+        } else {
+          setTimeout(initWishlistBadge, 100);
+        }
+      };
+      if (document.readyState !== 'loading') run();
+      else document.addEventListener('DOMContentLoaded', run);
     </script>
   </body>
 </html>

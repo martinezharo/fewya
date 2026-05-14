@@ -2,16 +2,19 @@
 import Icon from "./icons/Icon.astro";
 import WishlistButton from "./WishlistButton.astro";
 import { strings } from "../lib/core/i18n";
+import { optimizeImageUrl } from "../lib/ui/imageOptimize";
 import type { Product } from "../lib/core/types";
 
 interface Props {
     product: Product;
     isWished?: boolean;
+    priority?: boolean;
 }
 
-const { product, isWished = false } = Astro.props;
+const { product, isWished = false, priority = false } = Astro.props;
 
-const imageUrl = product.gallery_images?.[0] ?? "/placeholder.svg";
+const rawImageUrl = product.gallery_images?.[0] ?? "/placeholder.svg";
+const imageUrl = optimizeImageUrl(rawImageUrl, 400);
 const defaultVariant = product.variants?.find(v => v.is_default) ?? product.variants?.[0];
 const price = defaultVariant?.price ?? 0;
 const shippingCost = defaultVariant?.shipping_cost ?? 0;
@@ -36,7 +39,10 @@ const reviewAvg = product.review_avg ?? 0;
                         src={imageUrl}
                         alt={product.title}
                         class="w-full h-full object-cover opacity-0 transition-opacity duration-300 group-hover:scale-[1.03]"
-                        loading="lazy"
+                        width="400"
+                        height="400"
+                        loading={priority ? undefined : "lazy"}
+                        fetchpriority={priority ? "high" : undefined}
                         decoding="async"
                         onload="this.classList.remove('opacity-0'); this.closest('[data-img-wrap]')?.classList.remove('bg-skeleton')"
                         onerror="this.setAttribute('src','/placeholder.svg'); this.classList.remove('opacity-0'); this.closest('[data-img-wrap]')?.classList.remove('bg-skeleton')"
@@ -115,7 +121,10 @@ const reviewAvg = product.review_avg ?? 0;
                 src={imageUrl}
                 alt={product.title}
                 class="w-full h-full object-cover opacity-0 transition-opacity duration-300 ease-out group-hover:scale-[1.06]"
-                loading="lazy"
+                width="400"
+                height="400"
+                loading={priority ? undefined : "lazy"}
+                fetchpriority={priority ? "high" : undefined}
                 decoding="async"
                 onload="this.classList.remove('opacity-0'); this.closest('[data-img-wrap]')?.classList.remove('bg-skeleton')"
                 onerror="this.setAttribute('src','/placeholder.svg'); this.classList.remove('opacity-0'); this.closest('[data-img-wrap]')?.classList.remove('bg-skeleton')"
