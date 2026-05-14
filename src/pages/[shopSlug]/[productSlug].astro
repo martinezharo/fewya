@@ -71,12 +71,53 @@ const sortedVariants = [...(product.variants ?? [])].sort((a, b) =>
 const activeVariant = sortedVariants[0];
 const price = activeVariant?.price ?? 0;
 const shippingCost = activeVariant?.shipping_cost ?? 0;
-const shippingDisplay = shippingCost === 0 ? 'Envío gratis' : `+${shippingCost.toFixed(2).replace('.', ',')}€ envío`;
+const shippingDisplay = shippingCost === 0 ? strings.freeShipping : `+${shippingCost.toFixed(2).replace('.', ',')}€ envío`;
 const hasVariants = sortedVariants.length > 1;
 const activeVariantStock = activeVariant?.stock ?? 0;
+
+const productUrl = new URL(Astro.url.pathname, Astro.site ?? `${Astro.url.protocol}//${Astro.url.host}`).toString();
+const productImage = images[0] && !images[0].startsWith('/') ? images[0] : new URL(images[0] ?? '/placeholder.svg', productUrl).toString();
+const reviewCount = reviews.length;
+const ratingSum = reviews.reduce((acc, r) => acc + (r.rating ?? 0), 0);
+const avgRating = reviewCount > 0 ? +(ratingSum / reviewCount).toFixed(2) : null;
+
+const productJsonLd = {
+  '@context': 'https://schema.org/',
+  '@type': 'Product',
+  name: product.title,
+  description: product.description ?? undefined,
+  image: productImage,
+  sku: activeVariant?.id,
+  brand: product.brand ? { '@type': 'Brand', name: product.brand } : undefined,
+  url: productUrl,
+  offers: {
+    '@type': 'Offer',
+    url: productUrl,
+    priceCurrency: 'EUR',
+    price: price.toFixed(2),
+    availability: activeVariantStock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+    seller: { '@type': 'Organization', name: shop.name },
+  },
+  aggregateRating: avgRating != null && reviewCount > 0 ? {
+    '@type': 'AggregateRating',
+    ratingValue: avgRating,
+    reviewCount,
+  } : undefined,
+};
 ---
 
-<BuyerDetailLayout title={`${product.title} — ${shop.name}`}>
+<BuyerDetailLayout
+  title={`${product.title} — ${shop.name}`}
+  description={product.description ?? undefined}
+  image={productImage}
+  ogType="product"
+>
+  <script
+    is:inline
+    slot="structured-data"
+    type="application/ld+json"
+    set:html={JSON.stringify(productJsonLd)}
+  />
   <main>
     <!-- Two-column grid on desktop, stacked on mobile -->
     <div class="md:max-w-[1200px] md:mx-auto md:px-10 md:py-8 md:grid md:grid-cols-[1fr_420px] md:gap-12">
