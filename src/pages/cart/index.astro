@@ -330,18 +330,20 @@ const isLoggedIn = !!user;
   }
 
   // ===== Delivery Modal =====
-  const deliveryModal = document.getElementById('delivery-modal');
-  const stepType = document.getElementById('delivery-step-type');
-  const stepPickup = document.getElementById('delivery-step-pickup');
-  const optionHome = document.getElementById('delivery-option-home');
-  const optionPickup = document.getElementById('delivery-option-pickup');
-  const btnClose = document.getElementById('delivery-modal-close');
-  const btnContinue = document.getElementById('delivery-continue-btn') as HTMLButtonElement | null;
-  const btnBack = document.getElementById('delivery-back-to-type');
-    const inputAddress = document.getElementById('pickup-address') as HTMLInputElement | null;
-    const btnSearch = document.getElementById('pickup-search-btn') as HTMLButtonElement | null;
-  const searchStatus = document.getElementById('pickup-search-status');
-  const pointsList = document.getElementById('pickup-points-list');
+  // These references are (re)assigned inside init() so they stay fresh across
+  // Astro SPA navigations (ClientRouter doesn't re-execute module scripts).
+  let deliveryModal: HTMLElement | null = null;
+  let stepType: HTMLElement | null = null;
+  let stepPickup: HTMLElement | null = null;
+  let optionHome: HTMLElement | null = null;
+  let optionPickup: HTMLElement | null = null;
+  let btnClose: HTMLElement | null = null;
+  let btnContinue: HTMLButtonElement | null = null;
+  let btnBack: HTMLElement | null = null;
+  let inputAddress: HTMLInputElement | null = null;
+  let btnSearch: HTMLButtonElement | null = null;
+  let searchStatus: HTMLElement | null = null;
+  let pointsList: HTMLElement | null = null;
 
   function openDeliveryModal() {
     selectedDeliveryType = null;
@@ -485,7 +487,8 @@ const isLoggedIn = !!user;
     formattedOpeningTimes: Record<string, string[]>;
   }>) {
     if (!pointsList) return;
-    pointsList.innerHTML = '';
+    const list = pointsList;
+    list.innerHTML = '';
 
     points.forEach((point) => {
       const fullAddress = `${point.street} ${point.houseNumber}, ${point.postalCode} ${point.city}`;
@@ -528,7 +531,7 @@ const isLoggedIn = !!user;
         updateDeliveryUI();
       });
 
-      pointsList.appendChild(card);
+      list.appendChild(card);
     });
   }
 
@@ -664,6 +667,20 @@ const isLoggedIn = !!user;
   }
 
   function init() {
+    // Re-query modal references on every page load so they survive SPA nav.
+    deliveryModal = document.getElementById('delivery-modal');
+    stepType = document.getElementById('delivery-step-type');
+    stepPickup = document.getElementById('delivery-step-pickup');
+    optionHome = document.getElementById('delivery-option-home');
+    optionPickup = document.getElementById('delivery-option-pickup');
+    btnClose = document.getElementById('delivery-modal-close');
+    btnContinue = document.getElementById('delivery-continue-btn') as HTMLButtonElement | null;
+    btnBack = document.getElementById('delivery-back-to-type');
+    inputAddress = document.getElementById('pickup-address') as HTMLInputElement | null;
+    btnSearch = document.getElementById('pickup-search-btn') as HTMLButtonElement | null;
+    searchStatus = document.getElementById('pickup-search-status');
+    pointsList = document.getElementById('pickup-points-list');
+
     renderCart();
     refreshStockFromServer();
 
