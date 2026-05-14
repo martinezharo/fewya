@@ -43,6 +43,10 @@ CREATE INDEX idx_orders_shop_id ON public.orders(shop_id);
 CREATE INDEX idx_orders_checkout_group_id ON public.orders(checkout_group_id);
 CREATE INDEX idx_orders_stripe_session ON public.orders(stripe_checkout_session_id);
 CREATE INDEX idx_orders_stripe_payment ON public.orders(stripe_payment_intent_id);
+CREATE INDEX idx_orders_buyer_id ON public.orders(buyer_id);
+CREATE INDEX idx_orders_buyer_status ON public.orders(buyer_id, status);
+CREATE INDEX idx_orders_delivered_pending_release ON public.orders(delivered_at)
+    WHERE status = 'delivered' AND funds_released_at IS NULL;
 
 CREATE TABLE public.order_items (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -54,6 +58,9 @@ CREATE TABLE public.order_items (
   CONSTRAINT order_items_order_id_fkey FOREIGN KEY (order_id) REFERENCES public.orders(id),
   CONSTRAINT order_items_variant_id_fkey FOREIGN KEY (variant_id) REFERENCES public.product_variants(id)
 );
+
+CREATE INDEX idx_order_items_order_id ON public.order_items(order_id);
+CREATE INDEX idx_order_items_variant_id ON public.order_items(variant_id);
 
 CREATE TABLE public.refunds (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -67,6 +74,8 @@ CREATE TABLE public.refunds (
   CONSTRAINT refunds_pkey PRIMARY KEY (id),
   CONSTRAINT refunds_order_id_fkey FOREIGN KEY (order_id) REFERENCES public.orders(id)
 );
+
+CREATE INDEX idx_refunds_order_id ON public.refunds(order_id);
 
 CREATE TABLE public.order_incidents (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
