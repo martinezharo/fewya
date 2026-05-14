@@ -1,0 +1,285 @@
+---
+import Icon from '../icons/Icon.astro';
+import { strings } from '../../lib/core/i18n';
+
+interface Props {
+    orderId: string;
+    totalAmount: number;
+    shippingAmount: number;
+    endpoint: string;
+    allowPartial?: boolean;
+    title?: string;
+    body?: string;
+    successMsg?: string;
+    errorMsg?: string;
+}
+
+const {
+    orderId,
+    totalAmount,
+    shippingAmount,
+    endpoint,
+    allowPartial = true,
+    title = strings.sellerIncidentRefundConfirmTitle,
+    body = strings.sellerIncidentRefundConfirmBody,
+    successMsg = strings.sellerIncidentRefundSuccess,
+    errorMsg = strings.sellerIncidentRefundError,
+} = Astro.props;
+
+const refundAmount = Math.max(0, Math.round((totalAmount - shippingAmount) * 100) / 100);
+
+const currencyFormatter = new Intl.NumberFormat('es-ES', {
+    style: 'currency',
+    currency: 'EUR',
+});
+---
+
+<div
+    class="refund-modal hidden fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm p-0 sm:p-4"
+    data-order-id={orderId}
+    data-total={totalAmount}
+    data-shipping={shippingAmount}
+    data-product={refundAmount}
+    data-endpoint={endpoint}
+    data-success-msg={successMsg}
+    data-error-msg={errorMsg}
+>
+    <div class="w-full max-w-md rounded-t-2xl sm:rounded-2xl border border-border bg-surface p-5 shadow-xl max-h-[90vh] overflow-y-auto">
+        <div class="flex items-start justify-between gap-3">
+            <div>
+                <h3 class="text-base font-semibold text-text-primary">{title}</h3>
+                <p class="mt-1 text-sm text-text-secondary">{body}</p>
+            </div>
+            <button type="button" class="close-refund-modal-btn shrink-0 p-1.5 rounded-lg hover:bg-border-light transition-colors text-text-secondary">
+                <Icon name="x" size={18} />
+            </button>
+        </div>
+
+        <div class="mt-5 flex flex-col gap-2">
+            <label class="refund-option group relative flex items-start gap-3 rounded-2xl border border-border-light bg-bg/40 p-3 cursor-pointer transition-all hover:border-border has-[input:checked]:border-accent has-[input:checked]:bg-accent/5">
+                <input type="radio" name={`refund-type-${orderId}`} value="full" class="refund-type-input mt-1 accent-accent" />
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="text-sm font-semibold text-text-primary">{strings.refundTypeFullTitle}</span>
+                        <span class="text-sm font-bold text-text-primary tabular-nums">{currencyFormatter.format(totalAmount)}</span>
+                    </div>
+                    <p class="mt-0.5 text-xs text-text-secondary leading-snug">{strings.refundTypeFullDesc}</p>
+                </div>
+            </label>
+
+            <label class="refund-option group relative flex items-start gap-3 rounded-2xl border border-border-light bg-bg/40 p-3 cursor-pointer transition-all hover:border-border has-[input:checked]:border-accent has-[input:checked]:bg-accent/5">
+                <input type="radio" name={`refund-type-${orderId}`} value="product" class="refund-type-input mt-1 accent-accent" checked />
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="text-sm font-semibold text-text-primary">{strings.refundTypeProductTitle}</span>
+                        <span class="text-sm font-bold text-text-primary tabular-nums">{currencyFormatter.format(refundAmount)}</span>
+                    </div>
+                    <p class="mt-0.5 text-xs text-text-secondary leading-snug">{strings.refundTypeProductDesc}</p>
+                </div>
+            </label>
+
+            {allowPartial && (
+                <label class="refund-option group relative flex items-start gap-3 rounded-2xl border border-border-light bg-bg/40 p-3 cursor-pointer transition-all hover:border-border has-[input:checked]:border-accent has-[input:checked]:bg-accent/5">
+                    <input type="radio" name={`refund-type-${orderId}`} value="partial" class="refund-type-input mt-1 accent-accent" />
+                    <div class="flex-1 min-w-0">
+                        <span class="text-sm font-semibold text-text-primary">{strings.refundTypePartialTitle}</span>
+                        <p class="mt-0.5 text-xs text-text-secondary leading-snug">{strings.refundTypePartialDesc}</p>
+                        <div class="partial-input-wrap hidden mt-3">
+                            <label class="block text-[11px] font-semibold uppercase tracking-wider text-text-secondary mb-1.5">
+                                {strings.refundPartialInputLabel}
+                            </label>
+                            <div class="relative">
+                                <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-text-tertiary">€</span>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    min="0.01"
+                                    max={totalAmount}
+                                    class="partial-amount-input w-full rounded-xl border border-border bg-surface pl-7 pr-3 py-2 text-sm text-text-primary tabular-nums shadow-sm outline-none ring-accent focus:ring-2 transition-shadow"
+                                    placeholder="0.00"
+                                />
+                            </div>
+                            <p class="mt-1.5 text-[11px] text-text-tertiary tabular-nums">
+                                {strings.refundPartialMaxHint.replace('{amount}', currencyFormatter.format(totalAmount))}
+                            </p>
+                            <p class="partial-error hidden mt-1.5 text-[11px] text-red-600">{strings.sellerIncidentRefundInvalidPartial}</p>
+                        </div>
+                    </div>
+                </label>
+            )}
+        </div>
+
+        <div class="mt-5 flex items-center justify-between rounded-xl border border-border-light bg-bg/60 px-4 py-3">
+            <span class="text-sm font-semibold text-text-primary">{strings.refundSummaryLabel}</span>
+            <span class="refund-summary-amount text-base font-bold text-red-600 dark:text-red-400 tabular-nums">
+                {currencyFormatter.format(refundAmount)}
+            </span>
+        </div>
+
+        <div class="mt-5 flex gap-2 justify-end">
+            <button type="button" class="close-refund-modal-btn px-3 py-1.5 text-sm font-medium text-text-secondary hover:text-text-primary transition-colors">
+                {strings.sellerIncidentRefundDismiss}
+            </button>
+            <button
+                type="button"
+                class="confirm-refund-btn px-3 py-1.5 text-sm font-semibold rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                data-order-id={orderId}
+            >
+                {strings.sellerIncidentRefundConfirmCta}
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    import { strings } from '../../lib/core/i18n';
+    import { runSubmit, SubmitError } from '../../lib/ui/submit';
+
+    const currencyFormatter = new Intl.NumberFormat('es-ES', {
+        style: 'currency',
+        currency: 'EUR',
+    });
+
+    type RefundType = 'full' | 'product' | 'partial';
+
+    interface ModalState {
+        total: number;
+        shipping: number;
+        product: number;
+        selected: RefundType;
+        partial: number;
+        amount: number;
+    }
+
+    function getModalState(modal: HTMLElement): ModalState {
+        const total = Number(modal.dataset.total || 0);
+        const shipping = Number(modal.dataset.shipping || 0);
+        const product = Number(modal.dataset.product || 0);
+        const selected = (modal.querySelector<HTMLInputElement>('.refund-type-input:checked')?.value || 'product') as RefundType;
+        const partialInput = modal.querySelector<HTMLInputElement>('.partial-amount-input');
+        const partial = partialInput ? Number(partialInput.value || 0) : 0;
+        let amount = 0;
+        if (selected === 'full') amount = total;
+        else if (selected === 'product') amount = product;
+        else amount = partial;
+        return { total, shipping, product, selected, partial, amount };
+    }
+
+    function updateSummary(modal: HTMLElement) {
+        const { selected, amount, total } = getModalState(modal);
+        const summary = modal.querySelector<HTMLElement>('.refund-summary-amount');
+        const partialWrap = modal.querySelector<HTMLElement>('.partial-input-wrap');
+        const partialError = modal.querySelector<HTMLElement>('.partial-error');
+        const confirmBtn = modal.querySelector<HTMLButtonElement>('.confirm-refund-btn');
+
+        if (partialWrap) partialWrap.classList.toggle('hidden', selected !== 'partial');
+        if (partialError && selected !== 'partial') partialError.classList.add('hidden');
+
+        const isValid = selected === 'partial'
+            ? amount > 0 && amount <= total
+            : amount > 0;
+
+        if (summary) summary.textContent = isValid ? currencyFormatter.format(amount) : currencyFormatter.format(0);
+        if (confirmBtn) confirmBtn.disabled = !isValid;
+    }
+
+    function wireModal(modal: HTMLElement) {
+        if (modal.dataset.refundWired === '1') return;
+        modal.dataset.refundWired = '1';
+
+        modal.querySelectorAll<HTMLInputElement>('.refund-type-input').forEach((input) => {
+            input.addEventListener('change', () => {
+                updateSummary(modal);
+                if (input.value === 'partial') {
+                    modal.querySelector<HTMLInputElement>('.partial-amount-input')?.focus();
+                }
+            });
+        });
+
+        modal.querySelector<HTMLInputElement>('.partial-amount-input')?.addEventListener('input', () => updateSummary(modal));
+
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.classList.add('hidden');
+                document.body.style.overflow = '';
+            }
+        });
+
+        modal.querySelectorAll<HTMLButtonElement>('.close-refund-modal-btn').forEach((btn) => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                modal.classList.add('hidden');
+                document.body.style.overflow = '';
+            });
+        });
+
+        const confirmBtn = modal.querySelector<HTMLButtonElement>('.confirm-refund-btn');
+        confirmBtn?.addEventListener('click', async (e) => {
+            e.preventDefault();
+            const orderId = confirmBtn.dataset.orderId;
+            if (!orderId) return;
+            const endpoint = modal.dataset.endpoint || '/api/orders/refund-incident';
+            const successMsg = modal.dataset.successMsg || strings.sellerIncidentRefundSuccess;
+            const errorMsg = modal.dataset.errorMsg || strings.sellerIncidentRefundError;
+
+            const state = getModalState(modal);
+            if (state.selected === 'partial') {
+                if (!(state.partial > 0) || state.partial > state.total) {
+                    modal.querySelector<HTMLElement>('.partial-error')?.classList.remove('hidden');
+                    modal.querySelector<HTMLInputElement>('.partial-amount-input')?.focus();
+                    return;
+                }
+            }
+
+            const result = await runSubmit({
+                button: confirmBtn,
+                action: async () => {
+                    const res = await fetch(endpoint, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            orderId,
+                            refundType: state.selected,
+                            partialAmount: state.selected === 'partial' ? state.partial : undefined,
+                        }),
+                    });
+                    const data = await res.json() as { success?: boolean; error?: string };
+                    if (!data.success) throw new SubmitError(data.error || errorMsg);
+                    return data;
+                },
+                successMsg,
+            });
+            if (result.ok) {
+                window.setTimeout(() => window.location.reload(), 800);
+            }
+        });
+
+        updateSummary(modal);
+    }
+
+    function wireAll() {
+        document.querySelectorAll<HTMLElement>('.refund-modal').forEach(wireModal);
+    }
+
+    if (!(window as unknown as { __refundModalOpenBound?: boolean }).__refundModalOpenBound) {
+        (window as unknown as { __refundModalOpenBound?: boolean }).__refundModalOpenBound = true;
+        document.addEventListener('click', (e) => {
+            const target = e.target as HTMLElement;
+            if (!target || !(target instanceof Element)) return;
+            const openBtn = target.closest<HTMLElement>('.open-refund-modal-btn');
+            if (!openBtn) return;
+            e.preventDefault();
+            const orderId = openBtn.dataset.orderId;
+            if (!orderId) return;
+            const modal = document.querySelector<HTMLElement>(`.refund-modal[data-order-id="${orderId}"]`);
+            if (!modal) return;
+            wireModal(modal);
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        });
+    }
+
+    document.addEventListener('astro:page-load', wireAll);
+    if (document.readyState !== 'loading') wireAll();
+    else document.addEventListener('DOMContentLoaded', wireAll);
+</script>
