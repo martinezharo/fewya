@@ -36,6 +36,10 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         if (!r.productId || typeof r.rating !== 'number' || r.rating < 1 || r.rating > 5) {
             return jsonResponse({ error: strings.apiInvalidBody }, 400);
         }
+        // A4: limit comment length
+        if (r.comment !== undefined && (typeof r.comment !== 'string' || r.comment.length > 2000)) {
+            return jsonResponse({ error: strings.apiInvalidBody }, 400);
+        }
     }
 
     const adminClient = createSupabaseAdminClient();

@@ -32,6 +32,11 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         return jsonResponse({ error: strings.apiInvalidBody }, 400);
     }
 
+    // A4: limit comment length to prevent storage abuse
+    if (comment !== undefined && (typeof comment !== 'string' || comment.length > 2000)) {
+        return jsonResponse({ error: strings.apiInvalidBody }, 400);
+    }
+
     const adminClient = createSupabaseAdminClient();
 
     // Verify the user has purchased this product in a confirmed order
