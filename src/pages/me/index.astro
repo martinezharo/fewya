@@ -140,20 +140,24 @@ const recentPurchases = purchaseGroups.slice(0, 5);
                         {recentPurchases.map(purchase => {
                             const statusColor = statusColorMap[purchase.status?.toLowerCase() ?? "pending"] ?? statusColorMap.pending;
                             return (
-                            <article class="flex-shrink-0 w-32 md:w-40 flex flex-col snap-start">
+                            <a
+                                href={`/me/orders#order-${purchase.orderId}`}
+                                draggable="false"
+                                class="flex-shrink-0 w-32 md:w-40 flex flex-col snap-start group"
+                            >
                                 <div class="relative aspect-square w-full rounded-2xl overflow-hidden bg-surface border border-border-light shadow-sm mb-3">
                                     {purchase.items.length === 1 ? (
-                                        <img 
-                                            src={purchase.items[0].imageUrl} 
-                                            alt={purchase.items[0].productName} 
-                                            class="w-full h-full object-cover transition-transform duration-300 hover:scale-105 pointer-events-none"
+                                        <img
+                                            src={purchase.items[0].imageUrl}
+                                            alt={purchase.items[0].productName}
+                                            class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 pointer-events-none"
                                             draggable="false"
                                         />
                                     ) : (
                                         <>
-                                            <img 
-                                                src={purchase.items[0].imageUrl} 
-                                                alt={purchase.items[0].productName} 
+                                            <img
+                                                src={purchase.items[0].imageUrl}
+                                                alt={purchase.items[0].productName}
                                                 class="w-full h-full object-cover brightness-[0.4] pointer-events-none"
                                                 draggable="false"
                                             />
@@ -173,7 +177,7 @@ const recentPurchases = purchaseGroups.slice(0, 5);
                                         {orderStatusLabels[purchase.status?.toLowerCase() as keyof typeof orderStatusLabels] || purchase.status || strings.orderStatusPending}
                                     </span>
                                 </div>
-                            </article>
+                            </a>
                             );
                         })}
 

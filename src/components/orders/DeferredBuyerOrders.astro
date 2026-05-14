@@ -220,4 +220,24 @@ if (user) {
             // Silent fail
         }
     })();
+
+    (function () {
+        const hash = window.location.hash;
+        if (!hash || !hash.startsWith('#order-')) return;
+        const orderId = decodeURIComponent(hash.slice('#order-'.length));
+        if (!orderId) return;
+        const article = document.querySelector('article[data-order-id="' + (window.CSS && CSS.escape ? CSS.escape(orderId) : orderId.replace(/"/g, '\\"')) + '"]');
+        if (!article) return;
+        const toggleBtn = article.querySelector('.order-toggle-btn');
+        if (toggleBtn && toggleBtn.getAttribute('aria-expanded') !== 'true') {
+            const details = article.querySelector('.order-details');
+            const icon = toggleBtn.querySelector('.toggle-icon');
+            if (details) details.classList.remove('hidden');
+            if (icon) icon.style.transform = 'rotate(180deg)';
+            toggleBtn.setAttribute('aria-expanded', 'true');
+        }
+        requestAnimationFrame(() => {
+            article.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    })();
 </script>
