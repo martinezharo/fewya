@@ -1,6 +1,8 @@
 import type { APIRoute } from 'astro';
 import { createSupabaseAuthClient } from '../../../lib/core/auth';
+import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
 import { getWishlistIdsFromCookie } from '../../../lib/wishlist/wishlist';
+import { strings } from '../../../lib/core/i18n';
 
 type WishlistToggleBody = {
     productId?: unknown;
@@ -21,6 +23,15 @@ export const POST: APIRoute = async ({ cookies, request }) => {
         return new Response(JSON.stringify({ error: 'missing productId' }), { status: 400 });
     }
 
+    // A5: verify product exists and is active before inserting into wishlist
+    const adminClient = createSupabaseAdminClient();
+    const { data: product } = await adminClient
+        .from('products')
+        .select('id')
+        .eq('id', productId)
+        .eq('is_active', true)
+        .maybeSingle();
+
     const localIds = getWishlistIdsFromCookie(cookies);
     const isInLocal = localIds.includes(productId);
 
@@ -33,13 +44,11 @@ export const POST: APIRoute = async ({ cookies, request }) => {
         .maybeSingle();
 
     if (existing) {
-        // Remove from DB wishlist
         await authClient
             .from('wishlist')
             .delete()
             .eq('id', existing.id);
 
-        // If it also exists locally, tell client to remove it there too
         if (isInLocal) {
             return new Response(
                 JSON.stringify({ wishlisted: false, removedFromLocal: true }),
@@ -50,14 +59,17 @@ export const POST: APIRoute = async ({ cookies, request }) => {
     }
 
     if (isInLocal) {
-        // Product is only in local wishlist — remove it from local
         return new Response(
             JSON.stringify({ wishlisted: false, removedFromLocal: true }),
             { status: 200 }
         );
     }
 
-    // Add to DB wishlist
+    // Only insert if product is active
+    if (!product) {
+        return new Response(JSON.stringify({ error: strings.apiProductNotFound }), { status: 404 });
+    }
+
     await authClient
         .from('wishlist')
         .insert({ profile_id: user.id, product_id: productId });
