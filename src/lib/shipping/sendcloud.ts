@@ -22,6 +22,9 @@ export interface SendcloudShippingQuote {
     currency: string;
     estimatedDays?: number;
     leadTimeHours?: number;
+    servicePointInput?: string;
+    minWeightKg?: number;
+    maxWeightKg?: number;
 }
 
 export interface SendcloudParcel {
@@ -79,13 +82,14 @@ export interface SendcloudLabelResult {
 }
 
 const SENDCLOUD_API_BASE = 'https://panel.sendcloud.sc/api/v2';
+const SENDCLOUD_API_V3_BASE = 'https://panel.sendcloud.sc/api/v3';
 
 function env(key: string): string | undefined {
     // Astro/Vite exposes .env vars via import.meta.env; fallback to process.env for Node/CF compat
     return (import.meta.env as Record<string, string | undefined>)?.[key] ?? process.env?.[key];
 }
 
-function getConfig(): SendcloudConfig {
+export function getConfig(): SendcloudConfig {
     const apiKey = env('SENDCLOUD_API_KEY');
     const apiSecret = env('SENDCLOUD_API_SECRET');
     if (!apiKey || !apiSecret) {
@@ -137,60 +141,111 @@ async function sendcloudRequest<T>(
     return response.json() as Promise<T>;
 }
 
+async function sendcloudRequestV3<T>(
+    endpoint: string,
+    options: RequestInit = {}
+): Promise<T> {
+    const url = `${SENDCLOUD_API_V3_BASE}${endpoint}`;
+
+    const response = await fetch(url, {
+        ...options,
+        headers: {
+            ...getAuthHeaders(),
+            ...options.headers,
+        },
+    });
+
+    if (!response.ok) {
+        const errorBody = await response.text();
+        throw new Error(`Sendcloud API v3 error: ${response.status} ${response.statusText} - ${errorBody}`);
+    }
+
+    return response.json() as Promise<T>;
+}
+
 export async function getShippingQuotes(
-    _fromPostalCode: string,
+    fromPostalCode: string,
     fromCountry: string,
-    _toPostalCode: string,
+    toPostalCode: string,
     toCountry: string,
     parcels: SendcloudParcel[]
 ): Promise<SendcloudShippingQuote[]> {
-    const totalWeight = parcels.reduce((sum, p) => sum + p.weight, 0);
-
-    const payload = {
-        from_country: fromCountry,
-        to_country: toCountry,
-        weight: totalWeight,
-        weight_unit: 'kilogram',
+    const body: Record<string, unknown> = {
+        from_country_code: fromCountry || 'ES',
+        to_country_code: toCountry,
+        parcels: parcels.map((p) => ({
+            weight: {
+                value: String(p.weight),
+                unit: 'kg',
+            },
+            ...(p.length && p.width && p.height
+                ? {
+                    dimensions: {
+                        length: String(p.length),
+                        width: String(p.width),
+                        height: String(p.height),
+                        unit: 'cm',
+                    },
+                }
+                : {}),
+        })),
         calculate_quotes: true,
     };
 
-    const result = await sendcloudRequest<{
-        shipping_options: Array<{
+    if (fromPostalCode) {
+        body.from_postal_code = fromPostalCode;
+    }
+    if (toPostalCode) {
+        body.to_postal_code = toPostalCode;
+    }
+
+    const result = await sendcloudRequestV3<{
+        data?: Array<{
             code: string;
             name: string;
-            carrier: {
-                code: string;
-                name: string;
+            carrier: { code: string; name: string };
+            functionalities?: { last_mile?: string };
+            weight?: {
+                min?: { value: string; unit: string };
+                max?: { value: string; unit: string };
             };
             quotes?: Array<{
-                price: {
-                    total: number;
-                    currency: string;
-                };
-                lead_time?: {
-                    hours?: number;
+                lead_time?: number;
+                price?: {
+                    total?: { value: string; currency: string };
                 };
             }>;
         }>;
     }>('/shipping-options', {
         method: 'POST',
-        body: JSON.stringify(payload),
+        body: JSON.stringify(body),
     });
 
+    const options = result.data ?? [];
     const quotes: SendcloudShippingQuote[] = [];
 
-    for (const opt of result.shipping_options || []) {
+    for (const opt of options) {
         const quote = opt.quotes?.[0];
-        if (!quote) continue;
+        if (!quote?.price?.total) continue;
+
+        const total = quote.price.total;
+        const price = parseFloat(total.value);
+        if (!Number.isFinite(price)) continue;
+
+        const minW = opt.weight?.min ? parseFloat(opt.weight.min.value) : undefined;
+        const maxW = opt.weight?.max ? parseFloat(opt.weight.max.value) : undefined;
 
         quotes.push({
-            carrierId: opt.carrier.code,
-            carrierName: opt.carrier.name,
+            carrierId: opt.carrier?.code ?? '',
+            carrierName: opt.carrier?.name ?? '',
             serviceName: opt.name,
             shippingOptionCode: opt.code,
-            price: quote.price.total,
-            currency: quote.price.currency,
-            leadTimeHours: quote.lead_time?.hours,
+            price,
+            currency: total.currency,
+            leadTimeHours: quote.lead_time,
+            servicePointInput: opt.functionalities?.last_mile === 'service_point' ? 'required' : 'none',
+            minWeightKg: Number.isFinite(minW) ? minW : undefined,
+            maxWeightKg: Number.isFinite(maxW) ? maxW : undefined,
         });
     }
 

@@ -100,9 +100,14 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             parcels
         );
 
-        return jsonResponse({ quotes }, 200);
+        const quotesWithVat = quotes.map((q) => ({
+            ...q,
+            price: Math.round(q.price * 1.21 * 100) / 100,
+        }));
+
+        return jsonResponse({ quotes: quotesWithVat }, 200);
     } catch (err) {
         console.error('Sendcloud quote error:', err);
-        return jsonResponse({ error: 'Failed to get shipping quotes', fallbackRate: DEFAULT_SHOP_SHIPPING_EUR }, 500);
+        return jsonResponse({ error: 'Failed to get shipping quotes', fallbackRate: Math.round(DEFAULT_SHOP_SHIPPING_EUR * 1.21 * 100) / 100 }, 500);
     }
 };
