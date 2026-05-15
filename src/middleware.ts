@@ -43,7 +43,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
     const isAuthPath = AUTH_RATE_PATHS.some(p => pathname.startsWith(p));
     if (isAuthPath) {
         const runtime = (context.locals as { runtime?: { env?: Record<string, unknown> } }).runtime;
-        const rateLimiter = runtime?.env?.['RATE_LIMITER_AUTH'] as RateLimitBinding | undefined;
+        const rateLimiter = (runtime?.env as unknown as Record<string, unknown>)?.['RATE_LIMITER_AUTH'] as RateLimitBinding | undefined;
         const ip = context.request.headers.get('CF-Connecting-IP') ?? 'unknown';
         const allowed = await checkRateLimit(rateLimiter, ip);
         if (!allowed) {
