@@ -36,14 +36,7 @@ const shippingDefaults = {
 ---
 
 <SellerLayout title={`${strings.sellerProductNewTitle} — Fewya Seller`} shopSlug={shop.slug} shopId={shop.id}>
-    <div class="max-w-4xl mx-auto px-4 py-8 lg:py-12">
-        <div class="mb-8">
-            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-text-tertiary">{shop.name}</p>
-            <h1 class="mt-2 text-2xl font-semibold tracking-tight text-text-primary">{strings.sellerProductNewTitle}</h1>
-        </div>
-
-        <div class="bg-surface p-6 md:p-8 rounded-3xl border border-border shadow-sm">
-            <ProductForm mode="create" shopId={shop.slug} shippingDefaults={shippingDefaults} />
-        </div>
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-10 py-4 lg:py-8">
+        <ProductForm mode="create" shopId={shop.slug} shippingDefaults={shippingDefaults} />
     </div>
 </SellerLayout>

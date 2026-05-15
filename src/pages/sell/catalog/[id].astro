@@ -1,7 +1,6 @@
 ---
 import SellerLayout from '../../../layouts/SellerLayout.astro';
 import ProductForm from '../../../components/seller/ProductForm.astro';
-import Icon from '../../../components/icons/Icon.astro';
 import { createSupabaseAuthClient } from '../../../lib/core/auth';
 import { strings } from '../../../lib/core/i18n';
 import type { ProductVariant } from '../../../lib/core/types';
@@ -53,37 +52,23 @@ const shippingDefaults = {
 ---
 
 <SellerLayout title={`${strings.sellerProductEditTitle} — Fewya Seller`} shopSlug={shop.slug} shopId={shop.id}>
-    <div class="max-w-4xl mx-auto px-4 py-8 lg:py-12">
-        <div class="mb-8">
-            <div class="flex items-center gap-3 mb-2">
-                <a href="/sell/catalog" class="inline-flex items-center justify-center w-9 h-9 rounded-lg text-text-secondary hover:text-text-primary hover:bg-border-light transition-colors" aria-label={strings.sellerProductBackToCatalog}>
-                    <Icon name="arrow-left" size={20} />
-                </a>
-                <div>
-                    <p class="text-xs font-semibold uppercase tracking-[0.18em] text-text-tertiary">{shop.name}</p>
-                    <h1 class="mt-1 text-2xl font-semibold tracking-tight text-text-primary">{strings.sellerProductEditTitle}</h1>
-                </div>
-            </div>
-        </div>
-
-        <div class="bg-surface p-6 md:p-8 rounded-3xl border border-border shadow-sm">
-            <ProductForm
-                mode="edit"
-                shopId={shop.slug}
-                product={{
-                    id: typedProduct.id,
-                    title: typedProduct.title,
-                    slug: typedProduct.slug,
-                    description: typedProduct.description,
-                    category: typedProduct.category,
-                    brand: typedProduct.brand,
-                    gallery_images: typedProduct.gallery_images,
-                    is_active: typedProduct.is_active,
-                    specifications: typedProduct.specifications,
-                }}
-                variants={variants}
-                shippingDefaults={shippingDefaults}
-            />
-        </div>
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-10 py-4 lg:py-8">
+        <ProductForm
+            mode="edit"
+            shopId={shop.slug}
+            product={{
+                id: typedProduct.id,
+                title: typedProduct.title,
+                slug: typedProduct.slug,
+                description: typedProduct.description,
+                category: typedProduct.category,
+                brand: typedProduct.brand,
+                gallery_images: typedProduct.gallery_images,
+                is_active: typedProduct.is_active,
+                specifications: typedProduct.specifications,
+            }}
+            variants={variants}
+            shippingDefaults={shippingDefaults}
+        />
     </div>
 </SellerLayout>
