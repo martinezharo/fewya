@@ -1,4 +1,5 @@
 import { defineMiddleware } from 'astro:middleware';
+import { env } from 'cloudflare:workers';
 import { parseCookieHeader } from '@supabase/ssr';
 import { exchangeAuthCodeForSession } from './lib/core/auth';
 import { securityLog } from './lib/core/security-log';
@@ -42,8 +43,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
     // Rate limiting for auth endpoints
     const isAuthPath = AUTH_RATE_PATHS.some(p => pathname.startsWith(p));
     if (isAuthPath) {
-        const runtime = (context.locals as { runtime?: { env?: Record<string, unknown> } }).runtime;
-        const rateLimiter = (runtime?.env as unknown as Record<string, unknown>)?.['RATE_LIMITER_AUTH'] as RateLimitBinding | undefined;
+        const rateLimiter = (env as unknown as Record<string, unknown>)?.['RATE_LIMITER_AUTH'] as RateLimitBinding | undefined;
         const ip = context.request.headers.get('CF-Connecting-IP') ?? 'unknown';
         const allowed = await checkRateLimit(rateLimiter, ip);
         if (!allowed) {
