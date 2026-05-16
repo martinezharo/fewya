@@ -217,15 +217,37 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         const paymentAccount = pickOne<JoinedPaymentAccount>(shop?.shop_payment_accounts ?? null);
 
         if (!variant || !product || !shop) {
+            console.error(JSON.stringify({
+                event: 'checkout.product_unavailable',
+                variantId: item.variantId,
+                reason: !variant ? 'variant_not_found' : !product ? 'product_not_found' : 'shop_not_found',
+            }));
             return jsonResponse({ error: strings.apiCheckoutProductUnavailable }, 400);
         }
 
         if (!product.is_active || !shop.is_active) {
+            console.error(JSON.stringify({
+                event: 'checkout.product_unavailable',
+                variantId: item.variantId,
+                productId: product.id,
+                shopId: shop.id,
+                reason: !product.is_active ? 'product_inactive' : 'shop_inactive',
+            }));
             return jsonResponse({ error: strings.apiCheckoutProductUnavailable }, 400);
         }
 
         const checkoutCheck = validateCheckoutReadiness(product, variant, item.quantity);
         if (!checkoutCheck.ready) {
+            console.error(JSON.stringify({
+                event: 'checkout.product_unavailable',
+                variantId: item.variantId,
+                productId: product.id,
+                reason: checkoutCheck.reason,
+                price: variant.price,
+                stock: variant.stock,
+                shipping_cost: variant.shipping_cost,
+                quantity: item.quantity,
+            }));
             if (checkoutCheck.reason === 'out_of_stock') {
                 return jsonResponse({ error: strings.apiCheckoutOutOfStock }, 400);
             }
