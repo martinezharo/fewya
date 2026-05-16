@@ -1230,12 +1230,7 @@ const hasDefaults = !!shippingDefaults && (
             });
 
             if (result.ok) {
-                const data = result.value as { product?: { id: string } };
-                if (mode === 'create' && data?.product?.id) {
-                    window.location.href = `/sell/catalog/${data.product.id}`;
-                } else if (mode === 'edit') {
-                    window.location.href = '/sell/catalog';
-                }
+                window.location.href = '/sell/catalog';
             }
         });
 
