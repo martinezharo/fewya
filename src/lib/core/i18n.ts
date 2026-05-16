@@ -700,7 +700,7 @@ export const strings = {
     sellerProductMissingSlug: 'URL',
     sellerProductMissingPhotos: 'fotos',
     sellerProductMissingVariants: 'variantes',
-    sellerProductMissingVariantData: 'variante con precio, stock y datos de envío completos',
+    sellerProductMissingVariantData: 'todas las variantes con precio, stock y datos de envío completos',
     sellerCatalogIncompleteWarning: 'Incompleto',
     sellerCatalogIncompleteTooltip: 'Faltan datos obligatorios. Los compradores no pueden ver este producto hasta que lo completes.',
 

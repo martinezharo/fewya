@@ -105,6 +105,9 @@ export const POST: APIRoute = async ({ cookies, request }) => {
         .single();
 
     if (productError) {
+        if ((productError as { code?: string }).code === '23505') {
+            return new Response(JSON.stringify({ error: strings.sellerProductSlugInUse }), { status: 409 });
+        }
         return new Response(JSON.stringify({ error: productError.message }), { status: 500 });
     }
 

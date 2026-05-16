@@ -16,7 +16,8 @@ CREATE TABLE public.products (
   specifications jsonb DEFAULT '{}'::jsonb,
   slug text NOT NULL,
   CONSTRAINT products_pkey PRIMARY KEY (id),
-  CONSTRAINT products_shop_id_fkey FOREIGN KEY (shop_id) REFERENCES public.shops(id)
+  CONSTRAINT products_shop_id_fkey FOREIGN KEY (shop_id) REFERENCES public.shops(id),
+  CONSTRAINT products_shop_id_slug_key UNIQUE (shop_id, slug)
 );
 
 CREATE TABLE public.product_variants (

@@ -718,7 +718,7 @@ const hasDefaults = !!shippingDefaults && (
             const category = categorySelect.value;
 
             const variantRows = Array.from(variantsContainer.querySelectorAll('.variant-row')) as HTMLElement[];
-            const hasCompleteVariant = variantRows.some((row) => {
+            const allVariantsComplete = variantRows.length > 0 && variantRows.every((row) => {
                 const price = parseFloat((row.querySelector('.variant-price-input') as HTMLInputElement).value) || 0;
                 const stock = parseInt((row.querySelector('.variant-stock-input') as HTMLInputElement).value) || 0;
                 const w = parseFloat((row.querySelector('.variant-weight-input') as HTMLInputElement).value);
@@ -735,7 +735,7 @@ const hasDefaults = !!shippingDefaults && (
                 category: !!category,
                 slug: !!slug,
                 photos: galleryUrls.length > 0,
-                variant: hasCompleteVariant,
+                variant: allVariantsComplete,
             } as Record<string, boolean>;
 
             const total = Object.keys(checks).length;
@@ -1171,7 +1171,7 @@ const hasDefaults = !!shippingDefaults && (
             if (!slug) missingFields.push(strings.sellerProductMissingSlug);
             if (galleryUrls.length === 0) missingFields.push(strings.sellerProductMissingPhotos);
 
-            const hasCompleteVariant = variants.some((v: any) =>
+            const allVariantsComplete = variants.every((v: any) =>
                 v.price > 0 && v.stock >= 0 &&
                 v.weight_kg != null && v.weight_kg > 0 &&
                 v.length_cm != null && v.length_cm > 0 &&
@@ -1179,7 +1179,7 @@ const hasDefaults = !!shippingDefaults && (
                 v.height_cm != null && v.height_cm > 0 &&
                 v.shipping_cost != null && v.shipping_cost >= 0
             );
-            if (!hasCompleteVariant) missingFields.push(strings.sellerProductMissingVariantData);
+            if (!allVariantsComplete) missingFields.push(strings.sellerProductMissingVariantData);
 
             if (missingFields.length > 0) {
                 toast.error(strings.sellerProductIncompleteError.replace('{fields}', missingFields.join(', ')));
@@ -1250,6 +1250,4 @@ const hasDefaults = !!shippingDefaults && (
     }
 
     document.addEventListener('astro:page-load', initProductForm);
-    if (document.readyState !== 'loading') initProductForm();
-    else document.addEventListener('DOMContentLoaded', initProductForm);
 </script>

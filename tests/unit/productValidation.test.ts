@@ -62,7 +62,7 @@ describe('validateProductCompleteness', () => {
             { title: 'X', description: 'Desc', category: 'ropa', slug: 'x', gallery_images: ['img'] },
             [{ price: 0, stock: 5, weight_kg: 1, length_cm: 1, width_cm: 1, height_cm: 1, shipping_cost: 0 }]
         );
-        expect(result.missing).toContain('variante con precio, stock y datos de envío completos');
+        expect(result.missing).toContain('todas las variantes con precio, stock y datos de envío completos');
     });
 
     it('detecta variante con stock negativo', () => {
@@ -70,7 +70,7 @@ describe('validateProductCompleteness', () => {
             { title: 'X', description: 'Desc', category: 'ropa', slug: 'x', gallery_images: ['img'] },
             [{ price: 10, stock: -1, weight_kg: 1, length_cm: 1, width_cm: 1, height_cm: 1, shipping_cost: 0 }]
         );
-        expect(result.missing).toContain('variante con precio, stock y datos de envío completos');
+        expect(result.missing).toContain('todas las variantes con precio, stock y datos de envío completos');
     });
 
     it('detecta variante con dimensiones faltantes', () => {
@@ -78,7 +78,31 @@ describe('validateProductCompleteness', () => {
             { title: 'X', description: 'Desc', category: 'ropa', slug: 'x', gallery_images: ['img'] },
             [{ price: 10, stock: 5, weight_kg: 0, length_cm: 1, width_cm: 1, height_cm: 1, shipping_cost: 0 }]
         );
-        expect(result.missing).toContain('variante con precio, stock y datos de envío completos');
+        expect(result.missing).toContain('todas las variantes con precio, stock y datos de envío completos');
+    });
+
+    it('rechaza si alguna variante tiene shipping_cost nulo aunque otra esté completa', () => {
+        const result = validateProductCompleteness(
+            { title: 'X', description: 'Desc', category: 'ropa', slug: 'x', gallery_images: ['img'] },
+            [
+                { price: 10, stock: 5, weight_kg: 1, length_cm: 1, width_cm: 1, height_cm: 1, shipping_cost: 3 },
+                { price: 12, stock: 2, weight_kg: 1, length_cm: 1, width_cm: 1, height_cm: 1, shipping_cost: null },
+            ]
+        );
+        expect(result.complete).toBe(false);
+        expect(result.missing).toContain('todas las variantes con precio, stock y datos de envío completos');
+    });
+
+    it('acepta cuando todas las variantes están completas', () => {
+        const result = validateProductCompleteness(
+            { title: 'X', description: 'Desc', category: 'ropa', slug: 'x', gallery_images: ['img'] },
+            [
+                { price: 10, stock: 5, weight_kg: 1, length_cm: 1, width_cm: 1, height_cm: 1, shipping_cost: 3 },
+                { price: 12, stock: 2, weight_kg: 0.5, length_cm: 1, width_cm: 1, height_cm: 1, shipping_cost: 0 },
+            ]
+        );
+        expect(result.complete).toBe(true);
+        expect(result.missing).toHaveLength(0);
     });
 });
 

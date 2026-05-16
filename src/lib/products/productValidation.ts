@@ -20,7 +20,7 @@ export function validateProductCompleteness(
     if (!variants || variants.length === 0) {
         missing.push('variantes');
     } else {
-        const hasValidVariant = variants.some(
+        const allVariantsValid = variants.every(
             (v) =>
                 (v.price ?? 0) > 0 &&
                 (v.stock ?? -1) >= 0 &&
@@ -31,8 +31,8 @@ export function validateProductCompleteness(
                 v.shipping_cost != null && v.shipping_cost >= 0
         );
 
-        if (!hasValidVariant) {
-            missing.push('variante con precio, stock y datos de envío completos');
+        if (!allVariantsValid) {
+            missing.push('todas las variantes con precio, stock y datos de envío completos');
         }
     }
 
