@@ -1,6 +1,14 @@
 export const CHECKOUT_CURRENCY = 'eur';
 export const SHIPPING_SUBSIDY = 2;
 
+const CARRIER_SUBSIDIES: Record<string, number> = {
+    inpost: 1.5,
+};
+
+export function getCarrierSubsidy(carrierKey: string): number {
+    return CARRIER_SUBSIDIES[carrierKey] ?? SHIPPING_SUBSIDY;
+}
+
 export interface CheckoutPricedItem {
     shopId: string;
     shopName: string;

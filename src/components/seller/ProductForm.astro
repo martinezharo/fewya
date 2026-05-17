@@ -598,7 +598,7 @@ function variantHasShippingOverride(v: VariantData): boolean {
     import { strings } from '../../lib/core/i18n';
     import { toast } from '../../lib/ui/toast';
     import { runSubmit, SubmitError } from '../../lib/ui/submit';
-    import { SHIPPING_SUBSIDY } from '../../lib/cart/checkout';
+    import { getCarrierSubsidy } from '../../lib/cart/checkout';
 
     interface RemoteEstimate {
         key: string;
@@ -701,10 +701,10 @@ function variantHasShippingOverride(v: VariantData): boolean {
         }
 
         if (availablePrices.length > 0) {
-            const min = Math.min(...availablePrices);
-            const subsidizedMin = Math.max(0, min - SHIPPING_SUBSIDY);
+            const cheapest = estimates.filter(e => e.price != null).reduce((a, b) => a.price! < b.price! ? a : b);
+            const subsidizedMin = Math.max(0, cheapest.price! - getCarrierSubsidy(cheapest.key));
             const weightPart = billable > 0 ? ` · ${fmtWeight(billable)}` : '';
-            const summaryHtml = `${strings.sellerProductShippingDesde} <s class="text-text-tertiary">${fmtCurrency(min)}</s> <span class="font-semibold text-text-primary">${fmtCurrency(subsidizedMin)}</span> · <span class="text-text-tertiary">${strings.sellerProductShippingVatIncluded}</span>${weightPart}`;
+            const summaryHtml = `${strings.sellerProductShippingDesde} <s class="text-text-tertiary">${fmtCurrency(cheapest.price!)}</s> <span class="font-semibold text-text-primary">${fmtCurrency(subsidizedMin)}</span> · <span class="text-text-tertiary">${strings.sellerProductShippingVatIncluded}</span>${weightPart}`;
             setShippingSummary(scope, '', summaryHtml);
             cta.classList.remove('hidden');
             cta.classList.add('inline-flex');
@@ -719,7 +719,7 @@ function variantHasShippingOverride(v: VariantData): boolean {
                 ? `<div class="text-right">
                        <div class="flex items-baseline gap-1.5">
                            <s class="text-xs text-text-tertiary tabular-nums">${fmtCurrency(e.price!, e.currency)}</s>
-                           <span class="text-sm font-semibold text-text-primary tabular-nums">${fmtCurrency(Math.max(0, e.price! - SHIPPING_SUBSIDY), e.currency)}</span>
+                           <span class="text-sm font-semibold text-text-primary tabular-nums">${fmtCurrency(Math.max(0, e.price! - getCarrierSubsidy(e.key)), e.currency)}</span>
                        </div>
                        <p class="text-[10px] text-text-tertiary">${strings.sellerProductShippingVatIncluded}</p>
                    </div>`
