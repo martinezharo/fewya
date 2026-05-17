@@ -1,4 +1,5 @@
 export const CHECKOUT_CURRENCY = 'eur';
+export const SHIPPING_SUBSIDY = 2;
 
 export interface CheckoutPricedItem {
     shopId: string;

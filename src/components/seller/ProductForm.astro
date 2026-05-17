@@ -598,6 +598,7 @@ function variantHasShippingOverride(v: VariantData): boolean {
     import { strings } from '../../lib/core/i18n';
     import { toast } from '../../lib/ui/toast';
     import { runSubmit, SubmitError } from '../../lib/ui/submit';
+    import { SHIPPING_SUBSIDY } from '../../lib/cart/checkout';
 
     interface RemoteEstimate {
         key: string;
@@ -644,9 +645,14 @@ function variantHasShippingOverride(v: VariantData): boolean {
     const shippingRequestIds = new WeakMap<HTMLElement, number>();
     const SHIPPING_DEBOUNCE_MS = 600;
 
-    function setShippingSummary(scope: HTMLElement, text: string) {
+    function setShippingSummary(scope: HTMLElement, text: string, html?: string) {
         const el = scope.querySelector('.shipping-summary') as HTMLElement | null;
-        if (el) el.textContent = text;
+        if (!el) return;
+        if (html !== undefined) {
+            el.innerHTML = html;
+        } else {
+            el.textContent = text;
+        }
     }
 
     function setShippingState(scope: HTMLElement, state: 'empty' | 'loading' | 'error' | 'ready', payload?: { estimates?: RemoteEstimate[]; billable?: number; errorMsg?: string }) {
@@ -696,15 +702,10 @@ function variantHasShippingOverride(v: VariantData): boolean {
 
         if (availablePrices.length > 0) {
             const min = Math.min(...availablePrices);
-            const formatted = fmtCurrency(min);
-            if (billable > 0) {
-                setShippingSummary(scope, strings.sellerProductShippingEstimateLine
-                    .replace('{price}', formatted)
-                    .replace('{weight}', fmtWeight(billable)));
-            } else {
-                setShippingSummary(scope, strings.sellerProductShippingEstimateLineSimple
-                    .replace('{price}', formatted));
-            }
+            const subsidizedMin = Math.max(0, min - SHIPPING_SUBSIDY);
+            const weightPart = billable > 0 ? ` · ${fmtWeight(billable)}` : '';
+            const summaryHtml = `${strings.sellerProductShippingDesde} <s class="text-text-tertiary">${fmtCurrency(min)}</s> <span class="font-semibold text-text-primary">${fmtCurrency(subsidizedMin)}</span>${weightPart}`;
+            setShippingSummary(scope, '', summaryHtml);
             cta.classList.remove('hidden');
             cta.classList.add('inline-flex');
         } else {
@@ -715,7 +716,8 @@ function variantHasShippingOverride(v: VariantData): boolean {
             const available = e.price != null;
             const dotClass = available ? 'bg-green-500' : 'bg-amber-500';
             const valueHtml = available
-                ? `<span class="text-sm font-semibold text-text-primary tabular-nums">${fmtCurrency(e.price!, e.currency)}</span>`
+                ? `<s class="text-xs text-text-tertiary tabular-nums">${fmtCurrency(e.price!, e.currency)}</s>
+                   <span class="text-sm font-semibold text-text-primary tabular-nums">${fmtCurrency(Math.max(0, e.price! - SHIPPING_SUBSIDY), e.currency)}</span>`
                 : `<span class="text-[11px] font-medium text-amber-700 dark:text-amber-400">${strings.sellerProductShippingLiveUnavailable}</span>`;
             return `
                 <div class="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-surface border border-border">
@@ -724,7 +726,7 @@ function variantHasShippingOverride(v: VariantData): boolean {
                         <p class="text-xs font-medium text-text-primary truncate">${e.label}</p>
                         <p class="text-[10px] text-text-tertiary truncate">${e.serviceName || e.sublabel}</p>
                     </div>
-                    ${valueHtml}
+                    <div class="flex items-center gap-1.5 shrink-0">${valueHtml}</div>
                 </div>`;
         }).join('');
     }

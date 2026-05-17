@@ -758,6 +758,7 @@ export const strings = {
     sellerProductShippingEstimateLine: 'Sendcloud estima {price} · peso facturable {weight}',
     sellerProductShippingEstimateLineSimple: 'Sendcloud estima {price}',
     sellerProductShippingEstimateNone: 'Sin estimación disponible',
+    sellerProductShippingDesde: 'Sendcloud estima desde',
     sellerProductShippingShowQuotes: 'Ver tarifas',
     sellerProductShippingHideQuotes: 'Ocultar tarifas',
     sellerProductActiveInline: 'Producto visible en la tienda',
