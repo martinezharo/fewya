@@ -103,6 +103,17 @@ if (shopId) {
                 </a>
             </header>
 
+            <!-- Payments-inactive warning banner -->
+            {stripeStatus !== 'ready' && (
+                <div class="flex items-center gap-3 px-4 py-2.5 bg-amber-50 border-b border-amber-200 dark:bg-amber-950/40 dark:border-amber-800 shrink-0">
+                    <svg class="shrink-0 text-amber-600 dark:text-amber-400" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+                    <p class="flex-1 text-[13px] text-amber-800 dark:text-amber-200">{strings.sellerStripeWarningBanner}</p>
+                    <a href="/sell/onboarding" class="shrink-0 text-[13px] font-medium text-amber-700 dark:text-amber-300 underline underline-offset-2 hover:text-amber-900 dark:hover:text-amber-100 transition-colors">
+                        {strings.sellerStripeWarningCta}
+                    </a>
+                </div>
+            )}
+
             <!-- Scrollable page content -->
             <main class="flex-1 overflow-y-auto">
                 <slot />
