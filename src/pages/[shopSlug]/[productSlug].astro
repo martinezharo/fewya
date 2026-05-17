@@ -31,7 +31,7 @@ const [shopResult, userResult] = await Promise.all([
 ]);
 
 const shop = shopResult.data;
-if (!shop) return Astro.redirect('/');
+if (!shop || !shop.payments_active) return Astro.redirect('/');
 
 // Ola 2: product (needs shop.id)
 const { data: productData } = await supabase

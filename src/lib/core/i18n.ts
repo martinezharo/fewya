@@ -587,6 +587,8 @@ export const strings = {
     sellerStripeError: 'No se pudo abrir Stripe',
     sellerStripeReturnReady: 'Stripe Connect está listo. Ya puedes aceptar compras.',
     sellerStripeReturnPending: 'Stripe Connect sigue pendiente. Completa los pasos restantes para poder cobrar.',
+    sellerStripeWarningBanner: 'Los cobros están desactivados. Tus productos no son visibles para los compradores hasta que actives Stripe.',
+    sellerStripeWarningCta: 'Activar cobros',
     sellerDashboardStripeReady: 'Todo correcto. Tu tienda ya puede aceptar pagos con Stripe.',
     sellerDashboardStripePendingTitle: 'Te falta conectar Stripe',
     sellerDashboardStripePendingSubtitle: 'Sin Stripe Connect no podremos cobrar ni repartir pagos a tu tienda.',

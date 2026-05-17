@@ -21,9 +21,8 @@ const { data: shopData } = await supabase
   .eq('is_active', true)
   .single();
 
-if (!shopData) return Astro.redirect('/');
-// Temporary cast until we add location to Shop type if necessary
-const shop = shopData as Shop & { location?: string | null };
+if (!shopData || !shopData.payments_active) return Astro.redirect('/');
+const shop = shopData as Shop;
 
 // Fetch shop products
 const { data: productsData } = await supabase

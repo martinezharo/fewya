@@ -45,6 +45,7 @@ CREATE TABLE public.shops (
   default_width_cm decimal(8,3),
   default_height_cm decimal(8,3),
   default_shipping_cost numeric(8,2),
+  payments_active boolean NOT NULL DEFAULT false,
   CONSTRAINT shops_pkey PRIMARY KEY (id),
   CONSTRAINT shops_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES public.profiles(id)
 );
@@ -114,6 +115,7 @@ CREATE OR REPLACE FUNCTION public.upsert_shop_payment_account(
 RETURNS public.shop_payment_accounts AS $$
 DECLARE
   account_row public.shop_payment_accounts;
+  v_payments_active boolean;
 BEGIN
   IF p_actor_id IS NULL THEN
     RAISE EXCEPTION 'Not authenticated';
@@ -125,6 +127,10 @@ BEGIN
   ) THEN
     RAISE EXCEPTION 'Shop not found';
   END IF;
+
+  v_payments_active := COALESCE(p_charges_enabled, false)
+                    AND COALESCE(p_payouts_enabled, false)
+                    AND COALESCE(p_details_submitted, false);
 
   INSERT INTO public.shop_payment_accounts (
     shop_id,
@@ -142,8 +148,7 @@ BEGIN
     COALESCE(p_payouts_enabled, false),
     COALESCE(p_details_submitted, false),
     CASE
-      WHEN COALESCE(p_charges_enabled, false) AND COALESCE(p_payouts_enabled, false) AND COALESCE(p_details_submitted, false)
-        THEN timezone('utc'::text, now())
+      WHEN v_payments_active THEN timezone('utc'::text, now())
       ELSE NULL
     END,
     timezone('utc'::text, now())
@@ -161,6 +166,11 @@ BEGIN
     END,
     updated_at = timezone('utc'::text, now())
   RETURNING * INTO account_row;
+
+  -- Keep shops.payments_active in sync
+  UPDATE public.shops
+  SET payments_active = v_payments_active
+  WHERE id = p_shop_id;
 
   RETURN account_row;
 END;
