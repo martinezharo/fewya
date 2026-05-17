@@ -1,5 +1,6 @@
 ---
 import Icon from '../icons/Icon.astro';
+import ShippingEditorPanel from './ShippingEditorPanel.astro';
 import { strings, categories } from '../../lib/core/i18n';
 
 interface VariantData {
@@ -59,14 +60,6 @@ const initialVariants = (variants && variants.length > 0) ? variants : [
 ];
 
 const defaultsJson = JSON.stringify(shippingDefaults ?? {});
-const hasDefaults = !!shippingDefaults && (
-    shippingDefaults.weight_kg != null ||
-    shippingDefaults.length_cm != null ||
-    shippingDefaults.width_cm != null ||
-    shippingDefaults.height_cm != null ||
-    shippingDefaults.shipping_cost != null
-);
-
 // Central shipping = values from the default variant (or first), with shop defaults as fallback.
 const baseVariant: VariantData | undefined = initialVariants.find((v) => v.is_default) ?? initialVariants[0];
 const centralShipping = {
@@ -95,7 +88,6 @@ function variantHasShippingOverride(v: VariantData): boolean {
     data-mode={mode}
     data-gallery={JSON.stringify(galleryImages)}
     data-shipping-defaults={defaultsJson}
-    data-has-defaults={String(hasDefaults)}
 >
     <input type="hidden" id="product-id" value={isEdit ? product!.id : ''} />
 
@@ -224,86 +216,25 @@ function variantHasShippingOverride(v: VariantData): boolean {
 
             <!-- Envío y dimensiones (común a todas las variantes) -->
             <section class="space-y-5" id="central-shipping-section">
-                <div>
-                    <h2 class="text-lg font-medium text-text-primary border-b border-border pb-2">{strings.sellerProductCentralShippingTitle}</h2>
-                    <p class="mt-1.5 text-xs text-text-tertiary">{strings.sellerProductCentralShippingSubtitle}</p>
-                </div>
-
-                <div class="space-y-5">
-                    <!-- Dimensiones -->
+                <div class="flex items-start justify-between gap-3 flex-wrap border-b border-border pb-3">
                     <div>
-                        <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
-                            <div>
-                                <label class="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-tertiary">{strings.sellerProductVariantSizeWeight}</label>
-                                <p class="text-[11px] text-text-tertiary mt-0.5 font-normal normal-case tracking-normal">{strings.sellerProductVariantSizeWeightHint}</p>
-                            </div>
-                            {hasDefaults && (
-                                <button type="button" id="central-use-defaults-btn" class="px-2.5 py-1 rounded-lg text-[11px] font-medium text-text-secondary border border-border hover:bg-border-light transition-colors">
-                                    {strings.sellerProductCentralUseDefaults}
-                                </button>
-                            )}
-                        </div>
-                        <div class="grid gap-2.5 grid-cols-2 sm:grid-cols-4">
-                            <div>
-                                <label for="central-weight-input" class="block text-[10px] font-medium uppercase tracking-wider text-text-tertiary mb-1">{strings.sellerProductVariantWeightLabel}</label>
-                                <input type="number" id="central-weight-input" step="0.001" min="0" class="w-full px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition tabular-nums" placeholder={strings.sellerProductVariantWeightPlaceholder} value={centralShipping.weight_kg ?? ''} />
-                            </div>
-                            <div>
-                                <label for="central-length-input" class="block text-[10px] font-medium uppercase tracking-wider text-text-tertiary mb-1">{strings.sellerProductVariantLengthLabel}</label>
-                                <input type="number" id="central-length-input" step="0.1" min="0" class="w-full px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition tabular-nums" placeholder={strings.sellerProductVariantLengthPlaceholder} value={centralShipping.length_cm ?? ''} />
-                            </div>
-                            <div>
-                                <label for="central-width-input" class="block text-[10px] font-medium uppercase tracking-wider text-text-tertiary mb-1">{strings.sellerProductVariantWidthLabel}</label>
-                                <input type="number" id="central-width-input" step="0.1" min="0" class="w-full px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition tabular-nums" placeholder={strings.sellerProductVariantWidthPlaceholder} value={centralShipping.width_cm ?? ''} />
-                            </div>
-                            <div>
-                                <label for="central-height-input" class="block text-[10px] font-medium uppercase tracking-wider text-text-tertiary mb-1">{strings.sellerProductVariantHeightLabel}</label>
-                                <input type="number" id="central-height-input" step="0.1" min="0" class="w-full px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition tabular-nums" placeholder={strings.sellerProductVariantHeightPlaceholder} value={centralShipping.height_cm ?? ''} />
-                            </div>
-                        </div>
+                        <h2 class="text-lg font-medium text-text-primary">{strings.sellerProductCentralShippingTitle}</h2>
+                        <p class="mt-1 text-xs text-text-tertiary">{strings.sellerProductCentralShippingSubtitle}</p>
                     </div>
-
-                    <!-- Coste de envío -->
-                    <div id="central-shipping-cost" class="pt-4 border-t border-border" data-free={centralShipping.shipping_cost === 0 ? 'true' : 'false'}>
-                        <div class="flex items-center justify-between gap-3 mb-3 flex-wrap">
-                            <label class="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-tertiary">{strings.sellerProductVariantBaseShipping}</label>
-                            <label class="flex items-center gap-2 cursor-pointer select-none">
-                                <span class="text-[11px] font-medium text-text-secondary">{strings.sellerProductVariantFreeShipping}</span>
-                                <span class="relative inline-flex shrink-0">
-                                    <input type="checkbox" id="central-free-shipping" class="sr-only peer" checked={centralShipping.shipping_cost === 0} />
-                                    <span class="block w-9 h-5 bg-border-light rounded-full peer-focus-visible:ring-2 peer-focus-visible:ring-accent peer-checked:bg-accent transition-colors"></span>
-                                    <span class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform peer-checked:translate-x-4"></span>
-                                </span>
-                            </label>
-                        </div>
-                        <div id="central-shipping-input-wrap" class={`flex items-center gap-2 ${centralShipping.shipping_cost === 0 ? 'hidden' : ''}`}>
-                            <input type="number" id="central-shipping-input" step="0.01" min="0" class="flex-1 px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition tabular-nums" placeholder={strings.sellerProductVariantShippingPlaceholder} value={centralShipping.shipping_cost ?? ''} />
-                            <span class="text-xs text-text-tertiary shrink-0 px-1">€</span>
-                        </div>
-                        <p id="central-free-shipping-display" class={`text-xs text-text-secondary ${centralShipping.shipping_cost === 0 ? '' : 'hidden'}`}>
-                            {strings.sellerProductVariantFreeShippingActive}
-                        </p>
-                    </div>
-
-                    <!-- Live shipping preview -->
-                    <div id="central-shipping-live" class="shipping-live pt-3 border-t border-border">
-                        <button type="button" class="shipping-toggle flex items-center w-full gap-2 text-left text-xs text-text-secondary hover:text-text-primary transition-colors">
-                            <Icon name="truck" size={13} class="text-text-tertiary shrink-0" />
-                            <span class="shipping-summary truncate flex-1 min-w-0">{strings.sellerProductShippingLiveAwaiting}</span>
-                            <span class="shipping-billable hidden text-[10px] font-medium text-text-tertiary tabular-nums shrink-0"></span>
-                            <span class="shipping-quotes-cta hidden items-center gap-1 text-[11px] font-medium text-accent shrink-0">
-                                <span class="shipping-quotes-cta-show">{strings.sellerProductShippingShowQuotes}</span>
-                                <span class="shipping-quotes-cta-hide hidden">{strings.sellerProductShippingHideQuotes}</span>
-                            </span>
-                        </button>
-                        <div class="shipping-quotes hidden grid gap-2 mt-3"></div>
-                        <div class="shipping-loading hidden items-center gap-2 py-1.5 text-[11px] text-text-tertiary mt-1">
-                            <svg class="animate-spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
-                            <span>{strings.sellerProductShippingLiveLoading}</span>
-                        </div>
-                        <p class="shipping-error hidden text-[11px] text-amber-700 dark:text-amber-400 mt-2"></p>
-                    </div>
+                    <button type="button" id="central-use-defaults-btn" class="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-text-secondary border border-border hover:bg-border-light hover:text-text-primary transition-colors">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+                        {strings.sellerProductCentralUseDefaults}
+                    </button>
                 </div>
+
+                <ShippingEditorPanel
+                    idPrefix="central"
+                    weight={centralShipping.weight_kg}
+                    length={centralShipping.length_cm}
+                    width={centralShipping.width_cm}
+                    height={centralShipping.height_cm}
+                    shippingCost={centralShipping.shipping_cost}
+                />
             </section>
 
             <!-- Variantes -->
@@ -504,6 +435,18 @@ function variantHasShippingOverride(v: VariantData): boolean {
     </div>
 </div>
 
+<!-- Modal: sin valores por defecto configurados -->
+<div id="no-defaults-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+    <div class="bg-surface rounded-2xl border border-border p-6 max-w-sm w-full shadow-xl">
+        <p class="text-sm font-medium text-text-primary">{strings.sellerProductShippingNoDefaultsTitle}</p>
+        <p class="mt-2 text-sm text-text-secondary">{strings.sellerProductShippingNoDefaultsBody}</p>
+        <div class="mt-5 flex justify-end gap-3">
+            <button type="button" id="no-defaults-cancel-btn" class="px-4 py-2 rounded-xl text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-border-light transition-colors">{strings.sellerOnboardingPrev}</button>
+            <a href="/sell/settings" id="no-defaults-go-btn" class="px-4 py-2 rounded-xl text-sm font-medium bg-accent text-bg hover:bg-accent-hover transition-colors">{strings.sellerProductShippingGoToSettings}</a>
+        </div>
+    </div>
+</div>
+
 <!-- Modal: personalizar envío para una variante -->
 <div id="variant-shipping-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4">
     <div class="bg-surface rounded-2xl border border-border w-full max-w-md shadow-xl max-h-[90vh] overflow-y-auto">
@@ -598,16 +541,13 @@ function variantHasShippingOverride(v: VariantData): boolean {
     import { strings } from '../../lib/core/i18n';
     import { toast } from '../../lib/ui/toast';
     import { runSubmit, SubmitError } from '../../lib/ui/submit';
-    import { getCarrierSubsidy } from '../../lib/cart/checkout';
-
-    interface RemoteEstimate {
-        key: string;
-        label: string;
-        sublabel: string;
-        price: number | null;
-        currency: string;
-        serviceName: string | null;
-    }
+    import {
+        readNum,
+        renderPreviewForScope,
+        toggleQuotesVisibility,
+        applyShippingDefaults,
+        initShippingEditor,
+    } from '../../lib/ui/shipping-editor';
 
     interface ShippingValues {
         weight: number;
@@ -617,195 +557,12 @@ function variantHasShippingOverride(v: VariantData): boolean {
         shipping: number;
     }
 
-    function fmtCurrency(value: number, currency: string = 'EUR'): string {
-        return value.toLocaleString('es-ES', { style: 'currency', currency });
-    }
-
-    function fmtWeight(value: number): string {
-        if (value >= 1) return `${value.toFixed(2)} kg`;
-        return `${Math.round(value * 1000)} g`;
-    }
-
-    function readNum(el: HTMLInputElement | null): number {
-        if (!el) return NaN;
-        const v = el.value;
-        if (v === '') return NaN;
-        return parseFloat(v);
-    }
-
     function valuesEqual(a: number, b: number): boolean {
         const aN = Number.isFinite(a);
         const bN = Number.isFinite(b);
         if (!aN && !bN) return true;
         if (!aN || !bN) return false;
         return Math.abs(a - b) < 0.0001;
-    }
-
-    const shippingTimers = new WeakMap<HTMLElement, ReturnType<typeof setTimeout>>();
-    const shippingRequestIds = new WeakMap<HTMLElement, number>();
-    const SHIPPING_DEBOUNCE_MS = 600;
-
-    function setShippingSummary(scope: HTMLElement, text: string, html?: string) {
-        const el = scope.querySelector('.shipping-summary') as HTMLElement | null;
-        if (!el) return;
-        if (html !== undefined) {
-            el.innerHTML = html;
-        } else {
-            el.textContent = text;
-        }
-    }
-
-    function setShippingState(scope: HTMLElement, state: 'empty' | 'loading' | 'error' | 'ready', payload?: { estimates?: RemoteEstimate[]; billable?: number; errorMsg?: string }) {
-        const quotesEl = scope.querySelector('.shipping-quotes') as HTMLElement;
-        const loadingEl = scope.querySelector('.shipping-loading') as HTMLElement;
-        const errorEl = scope.querySelector('.shipping-error') as HTMLElement;
-        const billableEl = scope.querySelector('.shipping-billable') as HTMLElement;
-        const cta = scope.querySelector('.shipping-quotes-cta') as HTMLElement;
-        const ctaShow = scope.querySelector('.shipping-quotes-cta-show') as HTMLElement;
-        const ctaHide = scope.querySelector('.shipping-quotes-cta-hide') as HTMLElement;
-
-        loadingEl.classList.add('hidden');
-        loadingEl.classList.remove('flex');
-        errorEl.classList.add('hidden');
-        billableEl.classList.add('hidden');
-        cta.classList.add('hidden');
-        cta.classList.remove('inline-flex');
-
-        if (state === 'empty') {
-            setShippingSummary(scope, strings.sellerProductShippingLiveAwaiting);
-            quotesEl.classList.add('hidden');
-            quotesEl.innerHTML = '';
-            if (ctaShow) ctaShow.classList.remove('hidden');
-            if (ctaHide) ctaHide.classList.add('hidden');
-            return;
-        }
-        if (state === 'loading') {
-            setShippingSummary(scope, strings.sellerProductShippingLiveLoading);
-            loadingEl.classList.remove('hidden');
-            loadingEl.classList.add('flex');
-            return;
-        }
-        if (state === 'error') {
-            setShippingSummary(scope, strings.sellerProductShippingLiveError);
-            errorEl.textContent = payload?.errorMsg || strings.sellerProductShippingLiveError;
-            errorEl.classList.remove('hidden');
-            return;
-        }
-        const estimates = payload?.estimates ?? [];
-        const billable = payload?.billable ?? 0;
-        const availablePrices = estimates.filter(e => e.price != null).map(e => e.price!);
-
-        if (billable > 0) {
-            billableEl.textContent = fmtWeight(billable);
-            billableEl.classList.remove('hidden');
-        }
-
-        if (availablePrices.length > 0) {
-            const cheapest = estimates.filter(e => e.price != null).reduce((a, b) => a.price! < b.price! ? a : b);
-            const subsidizedMin = Math.max(0, cheapest.price! - getCarrierSubsidy(cheapest.key));
-            const weightPart = billable > 0 ? ` · ${fmtWeight(billable)}` : '';
-            const summaryHtml = `${strings.sellerProductShippingDesde} <s class="text-text-tertiary">${fmtCurrency(cheapest.price!)}</s> <span class="font-semibold text-text-primary">${fmtCurrency(subsidizedMin)}</span> · <span class="text-text-tertiary">${strings.sellerProductShippingVatIncluded}</span>${weightPart}`;
-            setShippingSummary(scope, '', summaryHtml);
-            cta.classList.remove('hidden');
-            cta.classList.add('inline-flex');
-        } else {
-            setShippingSummary(scope, strings.sellerProductShippingEstimateNone);
-        }
-
-        quotesEl.innerHTML = estimates.map((e) => {
-            const available = e.price != null;
-            const dotClass = available ? 'bg-green-500' : 'bg-amber-500';
-            const valueHtml = available
-                ? `<div class="text-right">
-                       <div class="flex items-baseline gap-1.5">
-                           <s class="text-xs text-text-tertiary tabular-nums">${fmtCurrency(e.price!, e.currency)}</s>
-                           <span class="text-sm font-semibold text-text-primary tabular-nums">${fmtCurrency(Math.max(0, e.price! - getCarrierSubsidy(e.key)), e.currency)}</span>
-                       </div>
-                       <p class="text-[10px] text-text-tertiary">${strings.sellerProductShippingVatIncluded}</p>
-                   </div>`
-                : `<span class="text-[11px] font-medium text-amber-700 dark:text-amber-400">${strings.sellerProductShippingLiveUnavailable}</span>`;
-            return `
-                <div class="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-surface border border-border">
-                    <span class="inline-block w-1.5 h-1.5 rounded-full ${dotClass} shrink-0"></span>
-                    <div class="min-w-0 flex-1">
-                        <p class="text-xs font-medium text-text-primary truncate">${e.label}</p>
-                        <p class="text-[10px] text-text-tertiary truncate">${e.serviceName || e.sublabel}</p>
-                    </div>
-                    <div class="flex items-center gap-1.5 shrink-0">${valueHtml}</div>
-                </div>`;
-        }).join('');
-    }
-
-    async function fetchShippingPreview(scope: HTMLElement, weight: number, length: number | null, width: number | null, height: number | null) {
-        const reqId = (shippingRequestIds.get(scope) ?? 0) + 1;
-        shippingRequestIds.set(scope, reqId);
-
-        try {
-            const res = await fetch('/api/sendcloud/preview-quote', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    weight_kg: weight,
-                    length_cm: length,
-                    width_cm: width,
-                    height_cm: height,
-                }),
-            });
-            if (shippingRequestIds.get(scope) !== reqId) return;
-
-            const data = await res.json() as { estimates?: RemoteEstimate[]; billableWeightKg?: number; error?: string };
-            if (!res.ok) {
-                setShippingState(scope, 'error', { errorMsg: strings.sellerProductShippingLiveError });
-                return;
-            }
-            setShippingState(scope, 'ready', {
-                estimates: data.estimates ?? [],
-                billable: data.billableWeightKg ?? weight,
-            });
-        } catch {
-            if (shippingRequestIds.get(scope) !== reqId) return;
-            setShippingState(scope, 'error');
-        }
-    }
-
-    function renderPreviewForScope(scope: HTMLElement, weight: number, length: number, width: number, height: number) {
-        const existing = shippingTimers.get(scope);
-        if (existing) clearTimeout(existing);
-
-        if (!Number.isFinite(weight) || weight <= 0) {
-            shippingRequestIds.set(scope, (shippingRequestIds.get(scope) ?? 0) + 1);
-            setShippingState(scope, 'empty');
-            return;
-        }
-
-        setShippingState(scope, 'loading');
-        const timer = setTimeout(() => {
-            void fetchShippingPreview(
-                scope,
-                weight,
-                Number.isFinite(length) ? length : null,
-                Number.isFinite(width) ? width : null,
-                Number.isFinite(height) ? height : null,
-            );
-        }, SHIPPING_DEBOUNCE_MS);
-        shippingTimers.set(scope, timer);
-    }
-
-    function toggleQuotesVisibility(scope: HTMLElement) {
-        const quotes = scope.querySelector('.shipping-quotes') as HTMLElement;
-        const ctaShow = scope.querySelector('.shipping-quotes-cta-show') as HTMLElement | null;
-        const ctaHide = scope.querySelector('.shipping-quotes-cta-hide') as HTMLElement | null;
-        if (!quotes.innerHTML.trim()) return;
-        const isHidden = quotes.classList.contains('hidden');
-        if (isHidden) {
-            quotes.classList.remove('hidden');
-            if (ctaShow) ctaShow.classList.add('hidden');
-            if (ctaHide) ctaHide.classList.remove('hidden');
-        } else {
-            quotes.classList.add('hidden');
-            if (ctaShow) ctaShow.classList.remove('hidden');
-            if (ctaHide) ctaHide.classList.add('hidden');
-        }
     }
 
     function initProductForm() {
@@ -838,12 +595,9 @@ function variantHasShippingOverride(v: VariantData): boolean {
         const centralWidth = document.getElementById('central-width-input') as HTMLInputElement;
         const centralHeight = document.getElementById('central-height-input') as HTMLInputElement;
         const centralShippingInput = document.getElementById('central-shipping-input') as HTMLInputElement;
-        const centralFreeShipping = document.getElementById('central-free-shipping') as HTMLInputElement;
-        const centralShippingCost = document.getElementById('central-shipping-cost') as HTMLElement;
-        const centralShippingInputWrap = document.getElementById('central-shipping-input-wrap') as HTMLElement;
-        const centralFreeShippingDisplay = document.getElementById('central-free-shipping-display') as HTMLElement;
         const centralShippingLive = document.getElementById('central-shipping-live') as HTMLElement;
         const centralUseDefaultsBtn = document.getElementById('central-use-defaults-btn') as HTMLButtonElement | null;
+        const centralPanel = document.querySelector<HTMLElement>('.shipping-editor-panel[data-id-prefix="central"]');
 
         // Modal
         const modal = document.getElementById('variant-shipping-modal') as HTMLElement;
@@ -1116,54 +870,35 @@ function variantHasShippingOverride(v: VariantData): boolean {
 
         // ---- Central shipping handlers ----
 
-        [centralWeight, centralLength, centralWidth, centralHeight].forEach((el) => {
-            el.addEventListener('input', () => {
-                renderCentralPreview();
-                refreshChecks();
-            });
-        });
-        centralShippingInput.addEventListener('input', refreshChecks);
-        centralFreeShipping.addEventListener('change', () => {
-            if (centralFreeShipping.checked) {
-                if (centralShippingInput.value !== '0') centralShippingInput.dataset.prevValue = centralShippingInput.value;
-                centralShippingInput.value = '0';
-                centralShippingInputWrap.classList.add('hidden');
-                centralFreeShippingDisplay.classList.remove('hidden');
-                centralShippingCost.dataset.free = 'true';
-            } else {
-                centralShippingInput.value = centralShippingInput.dataset.prevValue ?? '';
-                centralShippingInputWrap.classList.remove('hidden');
-                centralFreeShippingDisplay.classList.add('hidden');
-                centralShippingCost.dataset.free = 'false';
-                centralShippingInput.focus();
-            }
-            refreshChecks();
-        });
+        if (centralPanel) {
+            initShippingEditor(centralPanel, { onChange: refreshChecks });
+        }
+
+        const noDefaultsModal = document.getElementById('no-defaults-modal') as HTMLElement | null;
+        const noDefaultsCancelBtn = document.getElementById('no-defaults-cancel-btn') as HTMLButtonElement | null;
+
+        const hasDefaults = Object.values(shippingDefaults).some(v => v != null);
+
         centralUseDefaultsBtn?.addEventListener('click', () => {
-            if (shippingDefaults.weight_kg != null) centralWeight.value = String(shippingDefaults.weight_kg);
-            if (shippingDefaults.length_cm != null) centralLength.value = String(shippingDefaults.length_cm);
-            if (shippingDefaults.width_cm != null) centralWidth.value = String(shippingDefaults.width_cm);
-            if (shippingDefaults.height_cm != null) centralHeight.value = String(shippingDefaults.height_cm);
-            if (shippingDefaults.shipping_cost != null) {
-                centralShippingInput.value = String(shippingDefaults.shipping_cost);
-                const isFree = shippingDefaults.shipping_cost === 0;
-                centralFreeShipping.checked = isFree;
-                if (isFree) {
-                    centralShippingInputWrap.classList.add('hidden');
-                    centralFreeShippingDisplay.classList.remove('hidden');
-                    centralShippingCost.dataset.free = 'true';
-                } else {
-                    centralShippingInputWrap.classList.remove('hidden');
-                    centralFreeShippingDisplay.classList.add('hidden');
-                    centralShippingCost.dataset.free = 'false';
-                }
+            if (!hasDefaults) {
+                noDefaultsModal?.classList.remove('hidden');
+                noDefaultsModal?.classList.add('flex');
+                return;
             }
+            if (centralPanel) applyShippingDefaults(centralPanel, shippingDefaults);
             renderCentralPreview();
             refreshChecks();
         });
-        centralShippingLive.addEventListener('click', (e: MouseEvent) => {
-            if ((e.target as HTMLElement).closest('.shipping-toggle')) {
-                toggleQuotesVisibility(centralShippingLive);
+
+        noDefaultsCancelBtn?.addEventListener('click', () => {
+            noDefaultsModal?.classList.add('hidden');
+            noDefaultsModal?.classList.remove('flex');
+        });
+
+        noDefaultsModal?.addEventListener('click', (e) => {
+            if (e.target === noDefaultsModal) {
+                noDefaultsModal.classList.add('hidden');
+                noDefaultsModal.classList.remove('flex');
             }
         });
 

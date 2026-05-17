@@ -2,6 +2,8 @@
 import SellerLayout from '../../layouts/SellerLayout.astro';
 import ThemeSelector from '../../components/settings/ThemeSelector.astro';
 import SignOutButton from '../../components/settings/SignOutButton.astro';
+import ShippingEditorPanel from '../../components/seller/ShippingEditorPanel.astro';
+import Icon from '../../components/icons/Icon.astro';
 import { strings } from '../../lib/core/i18n';
 import { createSupabaseAuthClient } from '../../lib/core/auth';
 
@@ -28,11 +30,11 @@ const { data: shop } = await supabase
 if (!shop) return Astro.redirect('/sell/onboarding');
 
 const defaults = {
-    weight_kg: shop.default_weight_kg ?? '',
-    length_cm: shop.default_length_cm ?? '',
-    width_cm: shop.default_width_cm ?? '',
-    height_cm: shop.default_height_cm ?? '',
-    shipping_cost: shop.default_shipping_cost ?? '',
+    weight_kg: shop.default_weight_kg ?? null,
+    length_cm: shop.default_length_cm ?? null,
+    width_cm: shop.default_width_cm ?? null,
+    height_cm: shop.default_height_cm ?? null,
+    shipping_cost: shop.default_shipping_cost ?? null,
 };
 ---
 
@@ -43,129 +45,67 @@ const defaults = {
             <h1 class="mt-2 text-2xl font-semibold tracking-tight text-text-primary">{strings.sellerSettingsTitle}</h1>
         </div>
 
-        <div class="bg-surface p-6 md:p-8 rounded-3xl border border-border shadow-sm space-y-8">
-            <!-- Shipping Defaults -->
-            <section class="space-y-5">
+        <div class="rounded-3xl border border-border bg-surface shadow-sm divide-y divide-border">
+
+            <!-- Envío por defecto -->
+            <section class="p-6 md:p-8 space-y-6">
                 <div>
-                    <h2 class="text-lg font-medium text-text-primary border-b border-border pb-2">{strings.sellerSettingsShippingSection}</h2>
-                    <p class="mt-1.5 text-xs text-text-tertiary">{strings.sellerSettingsShippingSubtitle}</p>
+                    <div class="flex items-center gap-2 text-[13px] font-bold uppercase tracking-wider text-text-primary mb-1">
+                        <Icon name="truck" size={15} class="text-text-tertiary" />
+                        <span>{strings.sellerSettingsShippingSection}</span>
+                    </div>
+                    <p class="text-sm text-text-secondary pl-[23px]">{strings.sellerSettingsShippingSubtitle}</p>
                 </div>
 
-                <div class="grid gap-6 sm:grid-cols-2 max-w-2xl">
-                    <div>
-                        <label for="default-weight" class="block text-sm font-medium text-text-secondary mb-2">
-                            {strings.sellerSettingsDefaultWeightLabel}
-                        </label>
-                        <input
-                            type="number"
-                            id="default-weight"
-                            step="0.001"
-                            min="0"
-                            value={defaults.weight_kg}
-                            class="w-full px-4 py-3 rounded-xl border border-border bg-transparent text-text-primary focus:ring-2 focus:ring-accent outline-none transition tabular-nums"
-                            placeholder="0,000"
-                        />
-                    </div>
+                <ShippingEditorPanel
+                    idPrefix="settings"
+                    weight={defaults.weight_kg}
+                    length={defaults.length_cm}
+                    width={defaults.width_cm}
+                    height={defaults.height_cm}
+                    shippingCost={defaults.shipping_cost}
+                />
 
-                    <div class="sm:col-span-2">
-                        <label class="block text-sm font-medium text-text-secondary mb-2">
-                            {strings.sellerSettingsDefaultDimensionsLabel}
-                        </label>
-                        <div class="grid gap-4 sm:grid-cols-3">
-                            <div>
-                                <label for="default-length" class="block text-xs font-medium text-text-tertiary mb-1">{strings.sellerSettingsDefaultLengthLabel}</label>
-                                <input
-                                    type="number"
-                                    id="default-length"
-                                    step="0.1"
-                                    min="0"
-                                    value={defaults.length_cm}
-                                    class="w-full px-4 py-3 rounded-xl border border-border bg-transparent text-text-primary focus:ring-2 focus:ring-accent outline-none transition tabular-nums"
-                                    placeholder="0"
-                                />
-                            </div>
-                            <div>
-                                <label for="default-width" class="block text-xs font-medium text-text-tertiary mb-1">{strings.sellerSettingsDefaultWidthLabel}</label>
-                                <input
-                                    type="number"
-                                    id="default-width"
-                                    step="0.1"
-                                    min="0"
-                                    value={defaults.width_cm}
-                                    class="w-full px-4 py-3 rounded-xl border border-border bg-transparent text-text-primary focus:ring-2 focus:ring-accent outline-none transition tabular-nums"
-                                    placeholder="0"
-                                />
-                            </div>
-                            <div>
-                                <label for="default-height" class="block text-xs font-medium text-text-tertiary mb-1">{strings.sellerSettingsDefaultHeightLabel}</label>
-                                <input
-                                    type="number"
-                                    id="default-height"
-                                    step="0.1"
-                                    min="0"
-                                    value={defaults.height_cm}
-                                    class="w-full px-4 py-3 rounded-xl border border-border bg-transparent text-text-primary focus:ring-2 focus:ring-accent outline-none transition tabular-nums"
-                                    placeholder="0"
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label for="default-shipping" class="block text-sm font-medium text-text-secondary mb-2">
-                            {strings.sellerSettingsDefaultShippingLabel}
-                        </label>
-                        <input
-                            type="number"
-                            id="default-shipping"
-                            step="0.01"
-                            min="0"
-                            value={defaults.shipping_cost}
-                            class="w-full px-4 py-3 rounded-xl border border-border bg-transparent text-text-primary focus:ring-2 focus:ring-accent outline-none transition tabular-nums"
-                            placeholder="0,00"
-                        />
-                    </div>
+                <div class="flex items-center justify-end pt-2">
+                    <button
+                        type="button"
+                        id="save-shipping-btn"
+                        class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-accent text-bg font-medium text-sm hover:bg-accent-hover active:scale-[0.98] transition-all"
+                    >
+                        <span data-busy-label>{strings.sellerSettingsSave}</span>
+                    </button>
                 </div>
             </section>
 
-            <!-- Submit -->
-            <div class="flex items-center gap-3 pt-4 border-t border-border">
-                <button
-                    type="button"
-                    id="save-settings-btn"
-                    class="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-accent text-bg font-medium text-sm hover:scale-[1.02] transition-transform"
-                >
-                    <span data-busy-label>{strings.sellerSettingsSave}</span>
-                </button>
-            </div>
-
-            <!-- Appearance -->
-            <section class="space-y-5">
-                <div>
-                    <h2 class="text-lg font-medium text-text-primary border-b border-border pb-2">{strings.settingsAppearanceSection}</h2>
-                    <p class="mt-1.5 text-xs text-text-tertiary">{strings.settingsThemeLabel}</p>
+            <!-- Apariencia -->
+            <section class="p-6 md:p-8 space-y-6">
+                <div class="flex items-center gap-2 text-[13px] font-bold uppercase tracking-wider text-text-primary">
+                    <Icon name="sun" size={15} class="text-text-tertiary" />
+                    <span>{strings.settingsAppearanceSection}</span>
                 </div>
                 <ThemeSelector />
             </section>
 
-            <!-- Account -->
-            <section class="space-y-5">
-                <div>
-                    <h2 class="text-lg font-medium text-text-primary border-b border-border pb-2">{strings.settingsAccountSection}</h2>
+            <!-- Cuenta -->
+            <section class="p-6 md:p-8 space-y-6">
+                <div class="flex items-center gap-2 text-[13px] font-bold uppercase tracking-wider text-text-primary">
+                    <Icon name="user" size={15} class="text-text-tertiary" />
+                    <span>{strings.settingsAccountSection}</span>
                 </div>
                 <SignOutButton />
             </section>
 
-            <!-- Danger Zone -->
-            <section class="space-y-5">
-                <div>
-                    <h2 class="text-lg font-medium text-red-500 border-b border-red-200 dark:border-red-800 pb-2">{strings.sellerSettingsDeleteShop}</h2>
+            <!-- Zona peligrosa -->
+            <section class="p-6 md:p-8 space-y-4">
+                <div class="flex items-center gap-2 text-[13px] font-bold uppercase tracking-wider text-red-500">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+                    <span>{strings.sellerSettingsDeleteShop}</span>
                 </div>
                 <p class="text-sm text-text-secondary">{strings.sellerSettingsDeleteShopConfirm}</p>
                 <button
                     type="button"
                     id="delete-shop-btn"
-                    class="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-red-500 text-white font-medium text-sm hover:bg-red-600 transition-colors"
+                    class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-red-500 text-white font-medium text-sm hover:bg-red-600 active:scale-[0.98] transition-all"
                 >
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -173,11 +113,12 @@ const defaults = {
                     {strings.sellerSettingsDeleteShop}
                 </button>
             </section>
+
         </div>
     </div>
 </SellerLayout>
 
-<div id="delete-dialog" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50">
+<div id="delete-dialog" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 backdrop-blur-sm">
     <div class="bg-surface rounded-2xl border border-border p-6 mx-4 max-w-sm w-full shadow-xl">
         <p class="text-sm text-text-primary font-medium" id="delete-dialog-text"></p>
         <div class="mt-5 flex justify-end gap-3">
@@ -190,26 +131,30 @@ const defaults = {
 <script>
     import { strings } from '../../lib/core/i18n';
     import { runSubmit } from '../../lib/ui/submit';
+    import { initShippingEditor } from '../../lib/ui/shipping-editor';
 
     function initSettingsPage() {
-        const saveBtn = document.getElementById('save-settings-btn') as HTMLButtonElement;
+        const panel = document.querySelector<HTMLElement>('.shipping-editor-panel');
+        const saveBtn = document.getElementById('save-shipping-btn') as HTMLButtonElement | null;
 
-        const weightInput = document.getElementById('default-weight') as HTMLInputElement;
-        const lengthInput = document.getElementById('default-length') as HTMLInputElement;
-        const widthInput = document.getElementById('default-width') as HTMLInputElement;
-        const heightInput = document.getElementById('default-height') as HTMLInputElement;
-        const shippingInput = document.getElementById('default-shipping') as HTMLInputElement;
+        if (!panel || !saveBtn || saveBtn.dataset.bound === 'true') return;
 
-        if (!saveBtn || saveBtn.dataset.bound === 'true') return;
+        initShippingEditor(panel);
+
         saveBtn.dataset.bound = 'true';
-
         saveBtn.addEventListener('click', async () => {
+            const weightInput = panel.querySelector<HTMLInputElement>('[data-field="weight"]');
+            const lengthInput = panel.querySelector<HTMLInputElement>('[data-field="length"]');
+            const widthInput = panel.querySelector<HTMLInputElement>('[data-field="width"]');
+            const heightInput = panel.querySelector<HTMLInputElement>('[data-field="height"]');
+            const shippingInput = panel.querySelector<HTMLInputElement>('[data-field="shipping-cost"]');
+
             const payload = {
-                default_weight_kg: weightInput.value === '' ? null : parseFloat(weightInput.value),
-                default_length_cm: lengthInput.value === '' ? null : parseFloat(lengthInput.value),
-                default_width_cm: widthInput.value === '' ? null : parseFloat(widthInput.value),
-                default_height_cm: heightInput.value === '' ? null : parseFloat(heightInput.value),
-                default_shipping_cost: shippingInput.value === '' ? null : parseFloat(shippingInput.value),
+                default_weight_kg: weightInput?.value === '' ? null : parseFloat(weightInput?.value ?? ''),
+                default_length_cm: lengthInput?.value === '' ? null : parseFloat(lengthInput?.value ?? ''),
+                default_width_cm: widthInput?.value === '' ? null : parseFloat(widthInput?.value ?? ''),
+                default_height_cm: heightInput?.value === '' ? null : parseFloat(heightInput?.value ?? ''),
+                default_shipping_cost: shippingInput?.value === '' ? null : parseFloat(shippingInput?.value ?? ''),
             };
 
             await runSubmit({
@@ -225,24 +170,25 @@ const defaults = {
             });
         });
 
-        const deleteBtn = document.getElementById('delete-shop-btn') as HTMLButtonElement;
-        const dialog = document.getElementById('delete-dialog') as HTMLDivElement;
-        const dialogText = document.getElementById('delete-dialog-text') as HTMLParagraphElement;
-        const cancelBtn = document.getElementById('delete-cancel-btn') as HTMLButtonElement;
-        const confirmBtn = document.getElementById('delete-confirm-btn') as HTMLButtonElement;
+        const deleteBtn = document.getElementById('delete-shop-btn') as HTMLButtonElement | null;
+        const dialog = document.getElementById('delete-dialog') as HTMLDivElement | null;
+        const dialogText = document.getElementById('delete-dialog-text') as HTMLParagraphElement | null;
+        const cancelBtn = document.getElementById('delete-cancel-btn') as HTMLButtonElement | null;
+        const confirmBtn = document.getElementById('delete-confirm-btn') as HTMLButtonElement | null;
 
         deleteBtn?.addEventListener('click', () => {
-            dialogText.textContent = strings.sellerSettingsDeleteShopConfirm;
-            dialog.classList.remove('hidden');
-            dialog.classList.add('flex');
+            if (dialogText) dialogText.textContent = strings.sellerSettingsDeleteShopConfirm;
+            dialog?.classList.remove('hidden');
+            dialog?.classList.add('flex');
         });
 
         cancelBtn?.addEventListener('click', () => {
-            dialog.classList.add('hidden');
-            dialog.classList.remove('flex');
+            dialog?.classList.add('hidden');
+            dialog?.classList.remove('flex');
         });
 
         confirmBtn?.addEventListener('click', async () => {
+            if (!confirmBtn) return;
             const result = await runSubmit({
                 button: confirmBtn,
                 action: () => fetch('/api/sell/shop/delete', { method: 'DELETE' }),
