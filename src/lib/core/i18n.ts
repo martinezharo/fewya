@@ -759,6 +759,7 @@ export const strings = {
     sellerProductShippingEstimateLineSimple: 'Sendcloud estima {price}',
     sellerProductShippingEstimateNone: 'Sin estimación disponible',
     sellerProductShippingDesde: 'Sendcloud estima desde',
+    sellerProductShippingVatIncluded: 'IVA incl.',
     sellerProductShippingShowQuotes: 'Ver tarifas',
     sellerProductShippingHideQuotes: 'Ocultar tarifas',
     sellerProductActiveInline: 'Producto visible en la tienda',
