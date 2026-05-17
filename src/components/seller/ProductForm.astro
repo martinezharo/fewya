@@ -66,6 +66,27 @@ const hasDefaults = !!shippingDefaults && (
     shippingDefaults.height_cm != null ||
     shippingDefaults.shipping_cost != null
 );
+
+// Central shipping = values from the default variant (or first), with shop defaults as fallback.
+const baseVariant: VariantData | undefined = initialVariants.find((v) => v.is_default) ?? initialVariants[0];
+const centralShipping = {
+    weight_kg: baseVariant?.weight_kg ?? shippingDefaults?.weight_kg ?? null,
+    length_cm: baseVariant?.length_cm ?? shippingDefaults?.length_cm ?? null,
+    width_cm: baseVariant?.width_cm ?? shippingDefaults?.width_cm ?? null,
+    height_cm: baseVariant?.height_cm ?? shippingDefaults?.height_cm ?? null,
+    shipping_cost: baseVariant?.shipping_cost ?? shippingDefaults?.shipping_cost ?? null,
+};
+
+function variantHasShippingOverride(v: VariantData): boolean {
+    if (initialVariants.length <= 1) return false;
+    return (
+        (v.weight_kg ?? null) !== centralShipping.weight_kg ||
+        (v.length_cm ?? null) !== centralShipping.length_cm ||
+        (v.width_cm ?? null) !== centralShipping.width_cm ||
+        (v.height_cm ?? null) !== centralShipping.height_cm ||
+        (v.shipping_cost ?? null) !== centralShipping.shipping_cost
+    );
+}
 ---
 
 <div
@@ -74,73 +95,48 @@ const hasDefaults = !!shippingDefaults && (
     data-mode={mode}
     data-gallery={JSON.stringify(galleryImages)}
     data-shipping-defaults={defaultsJson}
+    data-has-defaults={String(hasDefaults)}
 >
     <input type="hidden" id="product-id" value={isEdit ? product!.id : ''} />
 
-    <!-- Sticky action bar -->
-    <div class="sticky top-0 z-30 -mx-4 sm:-mx-6 lg:-mx-10 px-4 sm:px-6 lg:px-10 mb-8 border-b border-border bg-bg/85 backdrop-blur supports-[backdrop-filter]:bg-bg/70">
-        <div class="flex items-center gap-3 py-3">
+    <!-- Sticky header -->
+    <div class="sticky top-0 z-30 -mx-4 sm:-mx-6 lg:-mx-10 px-4 sm:px-6 lg:px-10 mb-6 border-b border-border bg-bg/85 backdrop-blur supports-[backdrop-filter]:bg-bg/70">
+        <div class="flex items-center gap-3 py-3 max-w-3xl mx-auto">
             <a
                 href="/sell/catalog"
-                class="inline-flex items-center justify-center w-9 h-9 rounded-full text-text-secondary hover:text-text-primary hover:bg-border-light transition-colors no-underline"
+                class="inline-flex items-center justify-center w-9 h-9 rounded-full text-text-secondary hover:text-text-primary hover:bg-border-light transition-colors no-underline shrink-0"
                 aria-label={strings.sellerProductBackToCatalog}
             >
                 <Icon name="arrow-left" size={18} />
             </a>
             <div class="min-w-0 flex-1">
-                <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-text-tertiary truncate">
-                    {isEdit ? strings.sellerProductEditTitle : strings.sellerProductNewTitle}
-                </p>
                 <p id="header-product-title" class="text-sm font-medium text-text-primary truncate">
-                    {title || strings.sellerProductTitlePlaceholder}
+                    {title || (isEdit ? strings.sellerProductEditTitle : strings.sellerProductNewTitle)}
+                </p>
+                <p id="header-summary" class="text-[11px] mt-0.5 font-medium text-amber-600 dark:text-amber-400">
+                    {strings.sellerProductHeaderSummaryPendingSingle}
                 </p>
             </div>
-            <div class="hidden md:flex items-center gap-2">
-                <span
-                    id="status-badge"
-                    class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border"
-                >
-                    <span id="status-badge-dot" class="inline-block w-1.5 h-1.5 rounded-full bg-text-tertiary"></span>
-                    <span id="status-badge-text">{strings.sellerProductFormIncompleteBadge}</span>
-                </span>
-            </div>
-            <a
-                href="/sell/catalog"
-                class="hidden sm:inline-flex items-center px-4 py-2 rounded-full text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-border-light transition-colors no-underline"
-            >
-                {strings.sellerProductFormSaveAndExit}
-            </a>
             <button
                 type="button"
                 id="save-product-btn"
-                class="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-accent text-bg font-medium text-sm hover:scale-[1.02] active:scale-[0.99] transition-transform shadow-sm"
+                class="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-accent text-bg font-medium text-sm hover:scale-[1.02] active:scale-[0.99] transition-transform shadow-sm shrink-0"
             >
                 <span data-busy-label>{strings.sellerProductSave}</span>
                 <Icon name="arrow-up-right" size={14} />
             </button>
         </div>
-        <div class="h-0.5 w-full bg-border-light rounded-full overflow-hidden -mb-px">
-            <div id="completion-bar" class="h-full bg-accent transition-all duration-300" style="width: 0%"></div>
-        </div>
     </div>
 
     <div class="max-w-3xl mx-auto">
-        <div class="space-y-6 min-w-0">
-            <!-- Basic info -->
-            <section class="rounded-3xl border border-border bg-surface p-5 sm:p-6 lg:p-7">
-                <header class="flex items-start gap-3 mb-6">
-                    <span class="flex items-center justify-center w-9 h-9 rounded-xl bg-bg border border-border text-text-secondary shrink-0">
-                        <Icon name="file-text" size={16} />
-                    </span>
-                    <div>
-                        <h2 class="text-base font-semibold text-text-primary">{strings.sellerProductSectionBasicTitle}</h2>
-                        <p class="text-xs text-text-tertiary mt-0.5">{strings.sellerProductSectionBasicSubtitle}</p>
-                    </div>
-                </header>
+        <div class="bg-surface p-5 sm:p-6 md:p-8 rounded-3xl border border-border shadow-sm space-y-10">
 
-                <div class="grid gap-5 sm:grid-cols-2">
-                    <div class="sm:col-span-2">
-                        <label for="product-title" class="block text-xs font-medium text-text-secondary mb-1.5">
+            <!-- Producto -->
+            <section class="space-y-5">
+                <h2 class="text-lg font-medium text-text-primary border-b border-border pb-2">{strings.sellerProductSectionBasicTitle}</h2>
+                <div class="space-y-5">
+                    <div>
+                        <label for="product-title" class="block text-sm font-medium text-text-secondary mb-2">
                             {strings.sellerProductTitleLabel} <span class="text-red-500">*</span>
                         </label>
                         <input
@@ -148,87 +144,66 @@ const hasDefaults = !!shippingDefaults && (
                             id="product-title"
                             required
                             value={title}
-                            class="w-full px-4 py-3 rounded-xl border border-border bg-bg text-text-primary focus:ring-2 focus:ring-accent focus:border-transparent outline-none transition"
+                            class="w-full px-4 py-3 rounded-xl border border-border bg-transparent text-text-primary focus:ring-2 focus:ring-accent outline-none transition"
                             placeholder={strings.sellerProductTitlePlaceholder}
                         />
                     </div>
-
-                    <div class="sm:col-span-2">
-                        <label for="product-description" class="block text-xs font-medium text-text-secondary mb-1.5">{strings.sellerProductDescriptionLabel}</label>
+                    <div>
+                        <label for="product-description" class="block text-sm font-medium text-text-secondary mb-2">{strings.sellerProductDescriptionLabel}</label>
                         <textarea
                             id="product-description"
                             rows="4"
-                            class="w-full px-4 py-3 rounded-xl border border-border bg-bg text-text-primary focus:ring-2 focus:ring-accent focus:border-transparent outline-none transition resize-none"
+                            class="w-full px-4 py-3 rounded-xl border border-border bg-transparent text-text-primary focus:ring-2 focus:ring-accent outline-none transition resize-none"
                             placeholder={strings.sellerProductDescriptionPlaceholder}
                         >{description}</textarea>
                     </div>
-
-                    <div>
-                        <label for="product-category" class="block text-xs font-medium text-text-secondary mb-1.5">
-                            {strings.sellerProductCategoryLabel} <span class="text-red-500">*</span>
-                        </label>
-                        <select
-                            id="product-category"
-                            required
-                            class="w-full px-4 py-3 rounded-xl border border-border bg-bg text-text-primary focus:ring-2 focus:ring-accent focus:border-transparent outline-none transition appearance-none"
-                        >
-                            <option value="" disabled selected={category === ''} class="text-text-tertiary">{strings.sellerProductCategoryPlaceholder}</option>
-                            {categories.map(cat => (
-                                <option value={cat.value} selected={category === cat.value}>{cat.label}</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div>
-                        <label for="product-brand" class="block text-xs font-medium text-text-secondary mb-1.5">{strings.sellerProductBrandLabel}</label>
-                        <input
-                            type="text"
-                            id="product-brand"
-                            value={brand}
-                            class="w-full px-4 py-3 rounded-xl border border-border bg-bg text-text-primary focus:ring-2 focus:ring-accent focus:border-transparent outline-none transition"
-                            placeholder={strings.sellerProductBrandPlaceholder}
-                        />
-                    </div>
-
-                    <div class="sm:col-span-2">
-                        <label for="product-slug" class="block text-xs font-medium text-text-secondary mb-1.5">{strings.sellerProductSlugLabel}</label>
-                        <div class="flex items-stretch rounded-xl border border-border bg-bg focus-within:ring-2 focus-within:ring-accent focus-within:border-transparent transition overflow-hidden">
-                            <span class="flex items-center pl-4 pr-1 text-text-tertiary whitespace-nowrap select-none text-sm">{shopId}/</span>
+                    <div class="grid gap-5 sm:grid-cols-2">
+                        <div>
+                            <label for="product-category" class="block text-sm font-medium text-text-secondary mb-2">
+                                {strings.sellerProductCategoryLabel} <span class="text-red-500">*</span>
+                            </label>
+                            <select
+                                id="product-category"
+                                required
+                                class="w-full px-4 py-3 rounded-xl border border-border bg-transparent text-text-primary focus:ring-2 focus:ring-accent outline-none transition appearance-none"
+                            >
+                                <option value="" disabled selected={category === ''} class="text-text-tertiary">{strings.sellerProductCategoryPlaceholder}</option>
+                                {categories.map(cat => (
+                                    <option value={cat.value} selected={category === cat.value}>{cat.label}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <label for="product-brand" class="block text-sm font-medium text-text-secondary mb-2">{strings.sellerProductBrandLabel}</label>
                             <input
                                 type="text"
-                                id="product-slug"
-                                value={slug}
-                                class="w-full px-2 py-3 bg-transparent text-text-primary outline-none text-sm"
-                                placeholder={strings.sellerProductSlugPlaceholder}
+                                id="product-brand"
+                                value={brand}
+                                class="w-full px-4 py-3 rounded-xl border border-border bg-transparent text-text-primary focus:ring-2 focus:ring-accent outline-none transition"
+                                placeholder={strings.sellerProductBrandPlaceholder}
                             />
                         </div>
-                        <p class="text-[11px] text-text-tertiary mt-1.5">{strings.sellerProductSlugNote}</p>
                     </div>
                 </div>
             </section>
 
-            <!-- Images -->
-            <section class="rounded-3xl border border-border bg-surface p-5 sm:p-6 lg:p-7">
-                <header class="flex items-start gap-3 mb-6">
-                    <span class="flex items-center justify-center w-9 h-9 rounded-xl bg-bg border border-border text-text-secondary shrink-0">
-                        <Icon name="image" size={16} />
-                    </span>
-                    <div>
-                        <h2 class="text-base font-semibold text-text-primary">{strings.sellerProductSectionImagesTitle}</h2>
-                        <p class="text-xs text-text-tertiary mt-0.5">{strings.sellerProductSectionImagesSubtitle}</p>
-                    </div>
-                </header>
+            <!-- Fotos -->
+            <section class="space-y-5">
+                <div>
+                    <h2 class="text-lg font-medium text-text-primary border-b border-border pb-2">{strings.sellerProductSectionImagesTitle}</h2>
+                    <p class="mt-1.5 text-xs text-text-tertiary">{strings.sellerProductSectionImagesSubtitle}</p>
+                </div>
 
                 <div
                     id="image-drop-zone"
-                    class="relative flex flex-col items-center justify-center gap-2 px-6 py-10 border-2 border-dashed border-border rounded-2xl bg-bg cursor-pointer hover:border-accent hover:bg-border-light/50 transition-colors"
+                    class="relative flex flex-col items-center justify-center gap-1.5 px-6 py-7 border-2 border-dashed border-border rounded-2xl bg-bg cursor-pointer hover:border-accent hover:bg-border-light/50 transition-colors"
                 >
-                    <Icon name="upload-cloud" size={28} class="text-text-tertiary" />
+                    <Icon name="upload-cloud" size={24} class="text-text-tertiary" />
                     <p class="text-sm text-text-secondary">{strings.sellerProductImagesDragDrop}</p>
                     <input type="file" id="image-upload-input" multiple accept="image/jpeg,image/png,image/webp,image/gif" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
                 </div>
 
-                <div id="image-gallery" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 mt-4">
+                <div id="image-gallery" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
                     {galleryImages.map((url, i) => (
                         <div class="image-item relative group rounded-xl overflow-hidden border border-border aspect-square bg-bg" data-url={url}>
                             <img src={url} alt="" class="w-full h-full object-cover" loading="lazy" />
@@ -247,205 +222,204 @@ const hasDefaults = !!shippingDefaults && (
                 </div>
             </section>
 
-            <!-- Variants -->
-            <section class="rounded-3xl border border-border bg-surface p-5 sm:p-6 lg:p-7">
-                <header class="flex items-start gap-3 mb-2">
-                    <span class="flex items-center justify-center w-9 h-9 rounded-xl bg-bg border border-border text-text-secondary shrink-0">
-                        <Icon name="package" size={16} />
-                    </span>
-                    <div class="flex-1 min-w-0">
-                        <div class="flex items-center justify-between gap-2">
-                            <h2 class="text-base font-semibold text-text-primary">{strings.sellerProductSectionVariantsTitle}</h2>
-                            <span id="variants-count" class="text-[11px] text-text-tertiary tabular-nums shrink-0"></span>
+            <!-- Envío y dimensiones (común a todas las variantes) -->
+            <section class="space-y-5" id="central-shipping-section">
+                <div>
+                    <h2 class="text-lg font-medium text-text-primary border-b border-border pb-2">{strings.sellerProductCentralShippingTitle}</h2>
+                    <p class="mt-1.5 text-xs text-text-tertiary">{strings.sellerProductCentralShippingSubtitle}</p>
+                </div>
+
+                <div class="space-y-5">
+                    <!-- Dimensiones -->
+                    <div>
+                        <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+                            <div>
+                                <label class="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-tertiary">{strings.sellerProductVariantSizeWeight}</label>
+                                <p class="text-[11px] text-text-tertiary mt-0.5 font-normal normal-case tracking-normal">{strings.sellerProductVariantSizeWeightHint}</p>
+                            </div>
+                            {hasDefaults && (
+                                <button type="button" id="central-use-defaults-btn" class="px-2.5 py-1 rounded-lg text-[11px] font-medium text-text-secondary border border-border hover:bg-border-light transition-colors">
+                                    {strings.sellerProductCentralUseDefaults}
+                                </button>
+                            )}
                         </div>
-                        <p class="text-xs text-text-tertiary mt-0.5">{strings.sellerProductSectionVariantsSubtitle}</p>
+                        <div class="grid gap-2.5 grid-cols-2 sm:grid-cols-4">
+                            <div>
+                                <label for="central-weight-input" class="block text-[10px] font-medium uppercase tracking-wider text-text-tertiary mb-1">{strings.sellerProductVariantWeightLabel}</label>
+                                <input type="number" id="central-weight-input" step="0.001" min="0" class="w-full px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition tabular-nums" placeholder={strings.sellerProductVariantWeightPlaceholder} value={centralShipping.weight_kg ?? ''} />
+                            </div>
+                            <div>
+                                <label for="central-length-input" class="block text-[10px] font-medium uppercase tracking-wider text-text-tertiary mb-1">{strings.sellerProductVariantLengthLabel}</label>
+                                <input type="number" id="central-length-input" step="0.1" min="0" class="w-full px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition tabular-nums" placeholder={strings.sellerProductVariantLengthPlaceholder} value={centralShipping.length_cm ?? ''} />
+                            </div>
+                            <div>
+                                <label for="central-width-input" class="block text-[10px] font-medium uppercase tracking-wider text-text-tertiary mb-1">{strings.sellerProductVariantWidthLabel}</label>
+                                <input type="number" id="central-width-input" step="0.1" min="0" class="w-full px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition tabular-nums" placeholder={strings.sellerProductVariantWidthPlaceholder} value={centralShipping.width_cm ?? ''} />
+                            </div>
+                            <div>
+                                <label for="central-height-input" class="block text-[10px] font-medium uppercase tracking-wider text-text-tertiary mb-1">{strings.sellerProductVariantHeightLabel}</label>
+                                <input type="number" id="central-height-input" step="0.1" min="0" class="w-full px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition tabular-nums" placeholder={strings.sellerProductVariantHeightPlaceholder} value={centralShipping.height_cm ?? ''} />
+                            </div>
+                        </div>
                     </div>
-                </header>
 
-                {hasDefaults && (
-                    <div class="mt-4 flex items-start gap-2 px-3 py-2 rounded-xl bg-bg border border-border text-[11px] text-text-tertiary">
-                        <Icon name="info" size={13} class="mt-0.5 shrink-0" />
-                        <span>{strings.sellerProductShippingDefaultsHint}</span>
+                    <!-- Coste de envío -->
+                    <div id="central-shipping-cost" class="pt-4 border-t border-border" data-free={centralShipping.shipping_cost === 0 ? 'true' : 'false'}>
+                        <div class="flex items-center justify-between gap-3 mb-3 flex-wrap">
+                            <label class="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-tertiary">{strings.sellerProductVariantBaseShipping}</label>
+                            <label class="flex items-center gap-2 cursor-pointer select-none">
+                                <span class="text-[11px] font-medium text-text-secondary">{strings.sellerProductVariantFreeShipping}</span>
+                                <span class="relative inline-flex shrink-0">
+                                    <input type="checkbox" id="central-free-shipping" class="sr-only peer" checked={centralShipping.shipping_cost === 0} />
+                                    <span class="block w-9 h-5 bg-border-light rounded-full peer-focus-visible:ring-2 peer-focus-visible:ring-accent peer-checked:bg-accent transition-colors"></span>
+                                    <span class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform peer-checked:translate-x-4"></span>
+                                </span>
+                            </label>
+                        </div>
+                        <div id="central-shipping-input-wrap" class={`flex items-center gap-2 ${centralShipping.shipping_cost === 0 ? 'hidden' : ''}`}>
+                            <input type="number" id="central-shipping-input" step="0.01" min="0" class="flex-1 px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition tabular-nums" placeholder={strings.sellerProductVariantShippingPlaceholder} value={centralShipping.shipping_cost ?? ''} />
+                            <span class="text-xs text-text-tertiary shrink-0 px-1">€</span>
+                        </div>
+                        <p id="central-free-shipping-display" class={`text-xs text-text-secondary ${centralShipping.shipping_cost === 0 ? '' : 'hidden'}`}>
+                            {strings.sellerProductVariantFreeShippingActive}
+                        </p>
                     </div>
-                )}
 
-                <div id="variants-container" class="space-y-3 mt-5">
+                    <!-- Live shipping preview -->
+                    <div id="central-shipping-live" class="shipping-live pt-3 border-t border-border">
+                        <button type="button" class="shipping-toggle flex items-center w-full gap-2 text-left text-xs text-text-secondary hover:text-text-primary transition-colors">
+                            <Icon name="truck" size={13} class="text-text-tertiary shrink-0" />
+                            <span class="shipping-summary truncate flex-1 min-w-0">{strings.sellerProductShippingLiveAwaiting}</span>
+                            <span class="shipping-billable hidden text-[10px] font-medium text-text-tertiary tabular-nums shrink-0"></span>
+                            <span class="shipping-quotes-cta hidden items-center gap-1 text-[11px] font-medium text-accent shrink-0">
+                                <span class="shipping-quotes-cta-show">{strings.sellerProductShippingShowQuotes}</span>
+                                <span class="shipping-quotes-cta-hide hidden">{strings.sellerProductShippingHideQuotes}</span>
+                            </span>
+                        </button>
+                        <div class="shipping-quotes hidden grid gap-2 mt-3"></div>
+                        <div class="shipping-loading hidden items-center gap-2 py-1.5 text-[11px] text-text-tertiary mt-1">
+                            <svg class="animate-spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
+                            <span>{strings.sellerProductShippingLiveLoading}</span>
+                        </div>
+                        <p class="shipping-error hidden text-[11px] text-amber-700 dark:text-amber-400 mt-2"></p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Variantes -->
+            <section class="space-y-5">
+                <div>
+                    <h2 class="text-lg font-medium text-text-primary border-b border-border pb-2">{strings.sellerProductSectionVariantsTitle}</h2>
+                    <p class="mt-1.5 text-xs text-text-tertiary">{strings.sellerProductSectionVariantsSubtitle}</p>
+                </div>
+
+                <div id="variants-container" class="space-y-2">
                     {initialVariants.map((v) => (
                         <article
-                            class="variant-row rounded-2xl border border-border bg-bg overflow-hidden"
+                            class="variant-row rounded-xl border border-border bg-bg overflow-hidden"
                             data-variant-id={v.id ?? ''}
                             data-is-new={v.id ? 'false' : 'true'}
                             data-variant-image={v.variant_image ?? ''}
                         >
-                            <!-- Variant header (always visible) -->
-                            <div class="flex items-center gap-3 px-4 py-3 border-b border-border">
-                                <div class="variant-thumb w-10 h-10 rounded-lg border border-border bg-surface overflow-hidden flex items-center justify-center shrink-0">
-                                    {v.variant_image ? (
-                                        <img src={v.variant_image} alt="" class="w-full h-full object-cover" />
-                                    ) : (
-                                        <Icon name="image" size={16} class="text-text-tertiary" />
-                                    )}
-                                </div>
-                                <div class="min-w-0 flex-1">
-                                    <div class="flex items-center gap-2 flex-wrap">
-                                        <span class="text-sm font-medium text-text-primary truncate">
-                                            <span class="variant-name-display">{v.variant_name || strings.sellerProductVariantPlaceholderName}</span>
-                                        </span>
-                                        {v.is_default && (
-                                            <span class="variant-default-pill inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-medium bg-accent text-bg">{strings.sellerProductVariantDefault}</span>
-                                        )}
-                                    </div>
-                                    <p class="text-[11px] text-text-tertiary mt-0.5 tabular-nums">
-                                        <span class="variant-price-display">{v.price ? `${v.price.toFixed(2)} €` : '—'}</span>
-                                        <span class="mx-1.5 opacity-50">·</span>
-                                        <span class="variant-stock-display">{v.stock ?? 0} uds</span>
-                                    </p>
-                                </div>
-                                <button
-                                    type="button"
-                                    class="variant-toggle-btn flex items-center justify-center w-8 h-8 rounded-lg text-text-secondary hover:text-text-primary hover:bg-border-light transition-colors"
-                                    aria-label={strings.sellerProductVariantCollapse}
-                                    aria-expanded="true"
-                                >
-                                    <Icon name="chevron-down" size={16} />
-                                </button>
-                                {initialVariants.length > 1 && (
-                                    <button
-                                        type="button"
-                                        class="variant-remove-btn flex items-center justify-center w-8 h-8 rounded-lg text-text-tertiary hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                                        aria-label={strings.sellerProductVariantRemove}
-                                    >
-                                        <Icon name="trash-2" size={14} />
-                                    </button>
+                            <header class="variant-header flex items-center gap-2.5 px-4 py-3 cursor-pointer hover:bg-border-light/40 transition-colors select-none">
+                                <svg class="variant-chevron text-text-tertiary transition-transform duration-200 shrink-0" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>
+                                <span class="variant-name-display text-sm font-medium text-text-primary min-w-0 truncate">{v.variant_name || strings.sellerProductVariantPlaceholderName}</span>
+                                {v.is_default && (
+                                    <span class="variant-default-pill inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-medium bg-accent text-bg shrink-0">{strings.sellerProductVariantDefault}</span>
                                 )}
-                            </div>
+                                <span class="variant-summary-meta hidden sm:flex items-center gap-1.5 text-xs text-text-secondary tabular-nums shrink-0">
+                                    <span class="text-text-tertiary">·</span>
+                                    <span class="variant-price-display">{v.price ? `${v.price.toFixed(2)} €` : '—'}</span>
+                                    <span class="text-text-tertiary">·</span>
+                                    <span class="variant-stock-display">{`${v.stock ?? 0} uds`}</span>
+                                </span>
+                                <span class="variant-summary-shipping hidden sm:inline ml-auto text-xs text-text-secondary tabular-nums truncate"></span>
+                                <span class="variant-summary-warning hidden ml-auto items-center gap-1 text-amber-600 dark:text-amber-400 text-xs font-medium shrink-0">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                                    {strings.sellerProductVariantSummaryMissing}
+                                </span>
+                                <button type="button" class="variant-remove-btn flex items-center justify-center w-7 h-7 rounded-lg text-text-tertiary hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors shrink-0" aria-label={strings.sellerProductVariantRemove}>
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                </button>
+                            </header>
 
-                            <!-- Variant body -->
-                            <div class="variant-body p-4 space-y-5">
-                                <div class="grid gap-4 sm:grid-cols-12">
+                            <div class="variant-body hidden border-t border-border px-4 py-4 space-y-5">
+                                <!-- Datos básicos -->
+                                <div class="grid gap-3 sm:grid-cols-12">
                                     <div class="sm:col-span-5">
-                                        <label class="block text-[11px] font-medium text-text-tertiary mb-1">{strings.sellerProductVariantNameLabel}</label>
+                                        <label class="block text-[11px] font-medium text-text-tertiary mb-1.5">{strings.sellerProductVariantNameLabel}</label>
                                         <input
                                             type="text"
-                                            class="variant-name-input w-full px-3 py-2 rounded-lg border border-border bg-surface text-text-primary text-sm focus:ring-2 focus:ring-accent focus:border-transparent outline-none transition"
+                                            class="variant-name-input w-full px-3 py-2 rounded-lg border border-border bg-surface text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition"
                                             placeholder={strings.sellerProductVariantNamePlaceholder}
                                             value={v.variant_name}
                                         />
                                     </div>
-                                    <div class="sm:col-span-4">
-                                        <label class="block text-[11px] font-medium text-text-tertiary mb-1">{strings.sellerProductVariantPriceLabel}</label>
+                                    <div class="sm:col-span-3">
+                                        <label class="block text-[11px] font-medium text-text-tertiary mb-1.5">{strings.sellerProductVariantPriceLabel}</label>
                                         <input
                                             type="number"
                                             step="0.01"
                                             min="0"
-                                            class="variant-price-input w-full px-3 py-2 rounded-lg border border-border bg-surface text-text-primary text-sm focus:ring-2 focus:ring-accent focus:border-transparent outline-none transition tabular-nums"
+                                            class="variant-price-input w-full px-3 py-2 rounded-lg border border-border bg-surface text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition tabular-nums"
                                             placeholder={strings.sellerProductVariantPricePlaceholder}
                                             value={v.price}
                                         />
                                     </div>
-                                    <div class="sm:col-span-3">
-                                        <label class="block text-[11px] font-medium text-text-tertiary mb-1">{strings.sellerProductVariantStockLabel}</label>
+                                    <div class="sm:col-span-2">
+                                        <label class="block text-[11px] font-medium text-text-tertiary mb-1.5">{strings.sellerProductVariantStockLabel}</label>
                                         <input
                                             type="number"
                                             min="0"
-                                            class="variant-stock-input w-full px-3 py-2 rounded-lg border border-border bg-surface text-text-primary text-sm focus:ring-2 focus:ring-accent focus:border-transparent outline-none transition tabular-nums"
+                                            class="variant-stock-input w-full px-3 py-2 rounded-lg border border-border bg-surface text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition tabular-nums"
                                             placeholder={strings.sellerProductVariantStockPlaceholder}
                                             value={v.stock}
                                         />
                                     </div>
-                                </div>
-
-                                <div class="flex flex-wrap items-center gap-3 pt-1">
-                                    <label class="flex items-center gap-2 text-xs text-text-secondary cursor-pointer select-none">
-                                        <input type="checkbox" class="variant-default-checkbox rounded border-border accent-neutral-900 dark:accent-white" checked={v.is_default} />
-                                        {strings.sellerProductVariantDefaultNote}
-                                    </label>
-                                    <div class="ml-auto flex items-center gap-2">
-                                        <button type="button" class="variant-image-btn flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium text-text-secondary border border-border hover:bg-border-light transition-colors">
-                                            <Icon name="camera" size={12} />
-                                            {v.variant_image ? 'Cambiar foto' : 'Foto'}
-                                        </button>
-                                        <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" class="variant-image-input hidden" />
+                                    <div class="sm:col-span-2 flex items-end pb-1">
+                                        <label class="flex items-center gap-2 text-xs text-text-secondary cursor-pointer select-none">
+                                            <input type="checkbox" class="variant-default-checkbox rounded border-border accent-neutral-900 dark:accent-white" checked={v.is_default} />
+                                            {strings.sellerProductVariantDefault}
+                                        </label>
                                     </div>
                                 </div>
 
-                                <!-- Shipping subsection -->
-                                <div class="rounded-2xl border border-border bg-surface p-4 space-y-4">
-                                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                                        <div>
-                                            <h3 class="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-secondary">{strings.sellerProductVariantSizeWeight}</h3>
-                                            <p class="text-[11px] text-text-tertiary mt-0.5">{strings.sellerProductVariantSizeWeightHint}</p>
-                                        </div>
-                                        <div class="flex items-center gap-2">
-                                            <button type="button" class="variant-use-defaults-btn px-2.5 py-1 rounded-lg text-[11px] font-medium text-text-secondary border border-border hover:bg-border-light transition-colors">
-                                                {strings.sellerProductVariantUseDefaults}
-                                            </button>
-                                            <button type="button" class="variant-apply-shipping-btn px-2.5 py-1 rounded-lg text-[11px] font-medium text-text-secondary border border-border hover:bg-border-light transition-colors">
-                                                {strings.sellerProductVariantApplyToRest}
-                                            </button>
-                                        </div>
+                                <!-- Imagen + Personalizar envío -->
+                                <div class="flex items-center gap-3 pt-3 border-t border-border flex-wrap">
+                                    <div class="variant-thumb w-11 h-11 rounded-lg border border-border bg-surface overflow-hidden flex items-center justify-center shrink-0">
+                                        {v.variant_image ? (
+                                            <img src={v.variant_image} alt="" class="w-full h-full object-cover" />
+                                        ) : (
+                                            <Icon name="image" size={16} class="text-text-tertiary" />
+                                        )}
                                     </div>
-                                    <div class="grid gap-3 grid-cols-2 sm:grid-cols-4">
-                                        <div>
-                                            <label class="block text-[10px] font-medium uppercase tracking-wider text-text-tertiary mb-1">{strings.sellerProductVariantWeightLabel}</label>
-                                            <input type="number" step="0.001" min="0" class="variant-weight-input w-full px-3 py-2 rounded-lg border border-border bg-bg text-text-primary text-sm focus:ring-2 focus:ring-accent focus:border-transparent outline-none transition tabular-nums" placeholder={strings.sellerProductVariantWeightPlaceholder} value={v.weight_kg ?? ''} />
-                                        </div>
-                                        <div>
-                                            <label class="block text-[10px] font-medium uppercase tracking-wider text-text-tertiary mb-1">{strings.sellerProductVariantLengthLabel}</label>
-                                            <input type="number" step="0.1" min="0" class="variant-length-input w-full px-3 py-2 rounded-lg border border-border bg-bg text-text-primary text-sm focus:ring-2 focus:ring-accent focus:border-transparent outline-none transition tabular-nums" placeholder={strings.sellerProductVariantLengthPlaceholder} value={v.length_cm ?? ''} />
-                                        </div>
-                                        <div>
-                                            <label class="block text-[10px] font-medium uppercase tracking-wider text-text-tertiary mb-1">{strings.sellerProductVariantWidthLabel}</label>
-                                            <input type="number" step="0.1" min="0" class="variant-width-input w-full px-3 py-2 rounded-lg border border-border bg-bg text-text-primary text-sm focus:ring-2 focus:ring-accent focus:border-transparent outline-none transition tabular-nums" placeholder={strings.sellerProductVariantWidthPlaceholder} value={v.width_cm ?? ''} />
-                                        </div>
-                                        <div>
-                                            <label class="block text-[10px] font-medium uppercase tracking-wider text-text-tertiary mb-1">{strings.sellerProductVariantHeightLabel}</label>
-                                            <input type="number" step="0.1" min="0" class="variant-height-input w-full px-3 py-2 rounded-lg border border-border bg-bg text-text-primary text-sm focus:ring-2 focus:ring-accent focus:border-transparent outline-none transition tabular-nums" placeholder={strings.sellerProductVariantHeightPlaceholder} value={v.height_cm ?? ''} />
-                                        </div>
-                                    </div>
+                                    <button type="button" class="variant-image-btn flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium text-text-secondary border border-border hover:bg-border-light transition-colors">
+                                        <Icon name="camera" size={12} />
+                                        {v.variant_image ? 'Cambiar foto' : 'Subir foto'}
+                                    </button>
+                                    <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" class="variant-image-input hidden" />
+                                    <button type="button" class="variant-customize-shipping-btn ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium text-text-secondary border border-border hover:bg-border-light transition-colors">
+                                        <Icon name="truck" size={12} />
+                                        <span class="variant-customize-shipping-label">{variantHasShippingOverride(v) ? strings.sellerProductVariantEditShipping : strings.sellerProductVariantCustomizeShipping}</span>
+                                    </button>
+                                </div>
 
-                                    <div class="variant-shipping-cost border-t border-border pt-3" data-free={v.shipping_cost === 0 ? 'true' : 'false'}>
-                                        <div class="flex items-center justify-between gap-3 mb-2">
-                                            <label class="block text-[10px] font-medium uppercase tracking-wider text-text-tertiary">{strings.sellerProductVariantBaseShipping}</label>
-                                            <label class="flex items-center gap-2 cursor-pointer select-none">
-                                                <span class="text-[11px] font-medium text-text-secondary">{strings.sellerProductVariantFreeShipping}</span>
-                                                <span class="relative inline-flex shrink-0">
-                                                    <input type="checkbox" class="variant-free-shipping-checkbox sr-only peer" checked={v.shipping_cost === 0} />
-                                                    <span class="block w-9 h-5 bg-border-light rounded-full peer-focus-visible:ring-2 peer-focus-visible:ring-accent peer-checked:bg-green-500 transition-colors"></span>
-                                                    <span class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform peer-checked:translate-x-4"></span>
-                                                </span>
-                                            </label>
-                                        </div>
-                                        <div class={`variant-shipping-input-wrap flex items-center gap-2 ${v.shipping_cost === 0 ? 'hidden' : ''}`}>
-                                            <input type="number" step="0.01" min="0" class="variant-shipping-input flex-1 px-3 py-2 rounded-lg border border-border bg-bg text-text-primary text-sm focus:ring-2 focus:ring-accent focus:border-transparent outline-none transition tabular-nums" placeholder={strings.sellerProductVariantShippingPlaceholder} value={v.shipping_cost ?? ''} />
-                                            <span class="text-xs text-text-tertiary shrink-0">{strings.sellerProductVariantBaseShippingHint}</span>
-                                        </div>
-                                        <div class={`variant-free-shipping-display ${v.shipping_cost === 0 ? '' : 'hidden'} flex items-center gap-2 px-3 py-2.5 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200/70 dark:border-green-800/60`}>
-                                            <span class="flex items-center justify-center w-5 h-5 rounded-full bg-green-500 text-white shrink-0">
-                                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                                            </span>
-                                            <span class="text-[11px] font-medium text-green-700 dark:text-green-400">{strings.sellerProductVariantFreeShippingActive}</span>
-                                        </div>
-                                    </div>
+                                <!-- Override status -->
+                                <p class={`variant-shipping-status text-[11px] flex items-center gap-1.5 ${variantHasShippingOverride(v) ? 'text-accent' : 'text-text-tertiary'}`}>
+                                    <span class="variant-shipping-status-icon">{variantHasShippingOverride(v) ? '✦' : '·'}</span>
+                                    <span class="variant-shipping-status-text">{variantHasShippingOverride(v) ? strings.sellerProductVariantUsesCustomShipping : strings.sellerProductVariantUsesCommonShipping}</span>
+                                    {variantHasShippingOverride(v) && (
+                                        <button type="button" class="variant-reset-shipping-btn ml-1 text-text-tertiary hover:text-text-primary underline underline-offset-2">{strings.sellerProductVariantResetShipping}</button>
+                                    )}
+                                </p>
 
-                                    <!-- Live shipping preview -->
-                                    <div class="shipping-live rounded-xl border border-border bg-bg p-3.5 mt-3">
-                                        <div class="flex items-start gap-2 mb-3">
-                                            <Icon name="truck" size={14} class="text-text-secondary mt-0.5" />
-                                            <div class="flex-1 min-w-0">
-                                                <p class="text-xs font-semibold text-text-primary">{strings.sellerProductShippingLiveTitle}</p>
-                                                <p class="text-[10px] text-text-tertiary mt-0.5">{strings.sellerProductShippingLiveSubtitle}</p>
-                                            </div>
-                                            <span class="shipping-billable hidden text-[10px] font-medium text-text-tertiary tabular-nums shrink-0"></span>
-                                        </div>
-                                        <div class="shipping-quotes hidden grid gap-2"></div>
-                                        <p class="shipping-empty text-[11px] text-text-tertiary text-center py-2">{strings.sellerProductShippingLiveAwaiting}</p>
-                                        <div class="shipping-loading hidden flex items-center justify-center gap-2 py-3 text-[11px] text-text-tertiary">
-                                            <svg class="animate-spin" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
-                                            <span>{strings.sellerProductShippingLiveLoading}</span>
-                                        </div>
-                                        <p class="shipping-error hidden text-[11px] text-amber-700 dark:text-amber-400 text-center py-2"></p>
-                                    </div>
+                                <!-- Per-variant shipping override (hidden inputs, populated via modal) -->
+                                <div class="variant-shipping-override hidden" data-shipping-override={variantHasShippingOverride(v) ? 'true' : 'false'}>
+                                    <input type="hidden" class="variant-weight-input" value={v.weight_kg ?? ''} />
+                                    <input type="hidden" class="variant-length-input" value={v.length_cm ?? ''} />
+                                    <input type="hidden" class="variant-width-input" value={v.width_cm ?? ''} />
+                                    <input type="hidden" class="variant-height-input" value={v.height_cm ?? ''} />
+                                    <input type="hidden" class="variant-shipping-input" value={v.shipping_cost ?? ''} />
                                 </div>
                             </div>
                         </article>
@@ -455,68 +429,168 @@ const hasDefaults = !!shippingDefaults && (
                 <button
                     type="button"
                     id="add-variant-btn"
-                    class="mt-4 flex items-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-border text-sm text-text-secondary hover:text-text-primary hover:border-accent transition-colors"
+                    class="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-border text-sm text-text-secondary hover:text-text-primary hover:border-accent transition-colors"
                 >
                     <Icon name="plus" size={16} />
                     {strings.sellerProductAddVariant}
                 </button>
             </section>
 
-            <!-- Specifications -->
-            <section class="rounded-3xl border border-border bg-surface p-5 sm:p-6 lg:p-7">
-                <header class="flex items-start gap-3 mb-6">
-                    <span class="flex items-center justify-center w-9 h-9 rounded-xl bg-bg border border-border text-text-secondary shrink-0">
-                        <Icon name="sliders" size={16} />
-                    </span>
+            <!-- Opciones avanzadas -->
+            <details class="group">
+                <summary class="flex items-center gap-2 cursor-pointer list-none border-b border-border pb-2 [&::-webkit-details-marker]:hidden">
+                    <svg class="text-text-tertiary transition-transform duration-200 group-open:rotate-90 shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>
+                    <h2 class="text-lg font-medium text-text-primary">{strings.sellerProductAdvancedSection}</h2>
+                    <span class="hidden sm:inline text-xs text-text-tertiary ml-2 truncate font-normal">{strings.sellerProductAdvancedHint}</span>
+                </summary>
+
+                <div class="space-y-6 pt-5">
+                    <!-- Slug -->
                     <div>
-                        <h2 class="text-base font-semibold text-text-primary">{strings.sellerProductSectionSpecsTitle}</h2>
-                        <p class="text-xs text-text-tertiary mt-0.5">{strings.sellerProductSectionSpecsSubtitle}</p>
-                    </div>
-                </header>
-
-                <div id="specs-container" class="space-y-2.5 max-w-2xl">
-                    {Object.entries(specs).map(([key, value]) => (
-                        <div class="spec-row flex items-center gap-2">
-                            <input type="text" class="spec-key-input flex-1 min-w-0 px-3 py-2 rounded-lg border border-border bg-bg text-text-primary text-sm focus:ring-2 focus:ring-accent focus:border-transparent outline-none transition" placeholder={strings.sellerProductSpecsKeyPlaceholder} value={key} />
-                            <input type="text" class="spec-value-input flex-1 min-w-0 px-3 py-2 rounded-lg border border-border bg-bg text-text-primary text-sm focus:ring-2 focus:ring-accent focus:border-transparent outline-none transition" placeholder={strings.sellerProductSpecsValuePlaceholder} value={String(value)} />
-                            <button type="button" class="spec-remove-btn flex items-center justify-center w-8 h-8 rounded-lg text-text-tertiary hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors shrink-0" aria-label={strings.sellerCatalogDelete}>
-                                <Icon name="x" size={14} />
-                            </button>
+                        <label for="product-slug" class="block text-sm font-medium text-text-secondary mb-2">{strings.sellerProductSlugLabel}</label>
+                        <div class="flex items-stretch rounded-xl border border-border bg-transparent focus-within:ring-2 focus-within:ring-accent transition overflow-hidden">
+                            <span class="flex items-center pl-4 pr-1 text-text-tertiary whitespace-nowrap select-none text-sm">{shopId}/</span>
+                            <input
+                                type="text"
+                                id="product-slug"
+                                value={slug}
+                                class="w-full px-2 py-3 bg-transparent text-text-primary outline-none text-sm"
+                                placeholder={strings.sellerProductSlugPlaceholder}
+                            />
                         </div>
-                    ))}
-                </div>
+                        <p class="text-[11px] text-text-tertiary mt-1.5">{strings.sellerProductSlugNote}</p>
+                    </div>
 
-                <button
-                    type="button"
-                    id="add-spec-btn"
-                    class="mt-3 flex items-center gap-2 px-4 py-2 rounded-xl border border-dashed border-border text-sm text-text-secondary hover:text-text-primary hover:border-accent transition-colors"
-                >
-                    <Icon name="plus" size={14} />
-                    {strings.sellerProductAddSpec}
-                </button>
-            </section>
+                    <!-- Especificaciones -->
+                    <div>
+                        <label class="block text-sm font-medium text-text-secondary mb-2">{strings.sellerProductSpecsLabel}</label>
+                        <div id="specs-container" class="space-y-2">
+                            {Object.entries(specs).map(([key, value]) => (
+                                <div class="spec-row flex items-center gap-2">
+                                    <input type="text" class="spec-key-input flex-1 min-w-0 px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition" placeholder={strings.sellerProductSpecsKeyPlaceholder} value={key} />
+                                    <input type="text" class="spec-value-input flex-1 min-w-0 px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition" placeholder={strings.sellerProductSpecsValuePlaceholder} value={String(value)} />
+                                    <button type="button" class="spec-remove-btn flex items-center justify-center w-8 h-8 rounded-lg text-text-tertiary hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors shrink-0" aria-label={strings.sellerCatalogDelete}>
+                                        <Icon name="x" size={14} />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                        <button
+                            type="button"
+                            id="add-spec-btn"
+                            class="mt-3 flex items-center gap-2 px-3 py-1.5 rounded-lg border border-dashed border-border text-xs text-text-secondary hover:text-text-primary hover:border-accent transition-colors"
+                        >
+                            <Icon name="plus" size={14} />
+                            {strings.sellerProductAddSpec}
+                        </button>
+                    </div>
 
-            <!-- Visibility -->
-            <section class="rounded-3xl border border-border bg-surface p-5 sm:p-6 lg:p-7">
-                <div class="flex items-start gap-3">
-                    <span class="flex items-center justify-center w-9 h-9 rounded-xl bg-bg border border-border text-text-secondary shrink-0">
-                        <Icon name="eye-off" size={16} />
-                    </span>
-                    <div class="flex-1 min-w-0">
-                        <div class="flex items-start justify-between gap-3">
-                            <div>
-                                <h2 class="text-base font-semibold text-text-primary">{strings.sellerProductSectionStatusTitle}</h2>
-                                <p class="text-xs text-text-tertiary mt-0.5">{strings.sellerProductActiveNote}</p>
-                            </div>
-                            <label class="relative inline-flex items-center cursor-pointer shrink-0">
-                                <input type="checkbox" id="product-active" class="sr-only peer" checked={isActive} />
-                                <div class="w-11 h-6 bg-border-light rounded-full peer-focus-visible:ring-2 peer-focus-visible:ring-accent peer-checked:bg-accent transition-colors after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-transform peer-checked:after:translate-x-full"></div>
+                    <!-- Visibilidad -->
+                    <div class="flex items-center justify-between gap-3 pt-2">
+                        <div>
+                            <label for="product-active" class="text-sm font-medium text-text-primary cursor-pointer select-none">
+                                {strings.sellerProductActiveInline}
                             </label>
+                            <p class="text-[11px] text-text-tertiary mt-0.5">{strings.sellerProductActiveNote}</p>
                         </div>
+                        <label class="relative inline-flex items-center cursor-pointer shrink-0">
+                            <input type="checkbox" id="product-active" class="sr-only peer" checked={isActive} />
+                            <div class="w-11 h-6 bg-border-light rounded-full peer-focus-visible:ring-2 peer-focus-visible:ring-accent peer-checked:bg-accent transition-colors after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-transform peer-checked:after:translate-x-full"></div>
+                        </label>
                     </div>
                 </div>
-            </section>
+            </details>
         </div>
+    </div>
+</div>
+
+<!-- Modal: personalizar envío para una variante -->
+<div id="variant-shipping-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4">
+    <div class="bg-surface rounded-2xl border border-border w-full max-w-md shadow-xl max-h-[90vh] overflow-y-auto">
+        <header class="flex items-center justify-between gap-3 px-5 py-4 border-b border-border">
+            <div class="min-w-0">
+                <h3 class="text-base font-semibold text-text-primary">{strings.sellerProductShippingModalTitle}</h3>
+                <p class="text-xs text-text-tertiary mt-0.5 truncate">
+                    <span>{strings.sellerProductShippingModalFor}</span>
+                    <span id="variant-shipping-modal-variant-name" class="font-medium text-text-secondary">—</span>
+                </p>
+            </div>
+            <button type="button" id="variant-shipping-modal-close" class="flex items-center justify-center w-8 h-8 rounded-lg text-text-tertiary hover:text-text-primary hover:bg-border-light transition-colors shrink-0" aria-label={strings.sellerProductShippingModalClose}>
+                <Icon name="x" size={16} />
+            </button>
+        </header>
+
+        <div class="p-5 space-y-5">
+            <!-- Dimensiones -->
+            <div>
+                <label class="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-tertiary block mb-2">{strings.sellerProductVariantSizeWeight}</label>
+                <div class="grid gap-2.5 grid-cols-2 sm:grid-cols-4">
+                    <div>
+                        <label class="block text-[10px] font-medium uppercase tracking-wider text-text-tertiary mb-1">{strings.sellerProductVariantWeightLabel}</label>
+                        <input type="number" id="modal-weight-input" step="0.001" min="0" class="w-full px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition tabular-nums" placeholder={strings.sellerProductVariantWeightPlaceholder} />
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-medium uppercase tracking-wider text-text-tertiary mb-1">{strings.sellerProductVariantLengthLabel}</label>
+                        <input type="number" id="modal-length-input" step="0.1" min="0" class="w-full px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition tabular-nums" placeholder={strings.sellerProductVariantLengthPlaceholder} />
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-medium uppercase tracking-wider text-text-tertiary mb-1">{strings.sellerProductVariantWidthLabel}</label>
+                        <input type="number" id="modal-width-input" step="0.1" min="0" class="w-full px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition tabular-nums" placeholder={strings.sellerProductVariantWidthPlaceholder} />
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-medium uppercase tracking-wider text-text-tertiary mb-1">{strings.sellerProductVariantHeightLabel}</label>
+                        <input type="number" id="modal-height-input" step="0.1" min="0" class="w-full px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition tabular-nums" placeholder={strings.sellerProductVariantHeightPlaceholder} />
+                    </div>
+                </div>
+            </div>
+
+            <!-- Coste -->
+            <div id="modal-shipping-cost" class="pt-4 border-t border-border" data-free="false">
+                <div class="flex items-center justify-between gap-3 mb-3 flex-wrap">
+                    <label class="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-tertiary">{strings.sellerProductVariantBaseShipping}</label>
+                    <label class="flex items-center gap-2 cursor-pointer select-none">
+                        <span class="text-[11px] font-medium text-text-secondary">{strings.sellerProductVariantFreeShipping}</span>
+                        <span class="relative inline-flex shrink-0">
+                            <input type="checkbox" id="modal-free-shipping" class="sr-only peer" />
+                            <span class="block w-9 h-5 bg-border-light rounded-full peer-focus-visible:ring-2 peer-focus-visible:ring-accent peer-checked:bg-accent transition-colors"></span>
+                            <span class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform peer-checked:translate-x-4"></span>
+                        </span>
+                    </label>
+                </div>
+                <div id="modal-shipping-input-wrap" class="flex items-center gap-2">
+                    <input type="number" id="modal-shipping-input" step="0.01" min="0" class="flex-1 px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition tabular-nums" placeholder={strings.sellerProductVariantShippingPlaceholder} />
+                    <span class="text-xs text-text-tertiary shrink-0 px-1">€</span>
+                </div>
+                <p id="modal-free-shipping-display" class="text-xs text-text-secondary hidden">{strings.sellerProductVariantFreeShippingActive}</p>
+            </div>
+
+            <!-- Live preview -->
+            <div id="modal-shipping-live" class="shipping-live pt-3 border-t border-border">
+                <button type="button" class="shipping-toggle flex items-center w-full gap-2 text-left text-xs text-text-secondary hover:text-text-primary transition-colors">
+                    <Icon name="truck" size={13} class="text-text-tertiary shrink-0" />
+                    <span class="shipping-summary truncate flex-1 min-w-0">{strings.sellerProductShippingLiveAwaiting}</span>
+                    <span class="shipping-billable hidden text-[10px] font-medium text-text-tertiary tabular-nums shrink-0"></span>
+                    <span class="shipping-quotes-cta hidden items-center gap-1 text-[11px] font-medium text-accent shrink-0">
+                        <span class="shipping-quotes-cta-show">{strings.sellerProductShippingShowQuotes}</span>
+                        <span class="shipping-quotes-cta-hide hidden">{strings.sellerProductShippingHideQuotes}</span>
+                    </span>
+                </button>
+                <div class="shipping-quotes hidden grid gap-2 mt-3"></div>
+                <div class="shipping-loading hidden items-center gap-2 py-1.5 text-[11px] text-text-tertiary mt-1">
+                    <svg class="animate-spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
+                    <span>{strings.sellerProductShippingLiveLoading}</span>
+                </div>
+                <p class="shipping-error hidden text-[11px] text-amber-700 dark:text-amber-400 mt-2"></p>
+            </div>
+        </div>
+
+        <footer class="flex items-center gap-2 px-5 py-4 border-t border-border bg-bg/40 flex-wrap">
+            <button type="button" id="variant-shipping-modal-reset" class="text-xs text-text-tertiary hover:text-text-primary underline underline-offset-2">{strings.sellerProductShippingModalReset}</button>
+            <div class="ml-auto flex items-center gap-2">
+                <button type="button" id="variant-shipping-modal-cancel" class="px-4 py-2 rounded-full text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-border-light transition-colors">{strings.sellerProductShippingModalCancel}</button>
+                <button type="button" id="variant-shipping-modal-apply" class="px-4 py-2 rounded-full text-sm font-medium bg-accent text-bg hover:scale-[1.02] transition-transform">{strings.sellerProductShippingModalApply}</button>
+            </div>
+        </footer>
     </div>
 </div>
 
@@ -534,6 +608,14 @@ const hasDefaults = !!shippingDefaults && (
         serviceName: string | null;
     }
 
+    interface ShippingValues {
+        weight: number;
+        length: number;
+        width: number;
+        height: number;
+        shipping: number;
+    }
+
     function fmtCurrency(value: number, currency: string = 'EUR'): string {
         return value.toLocaleString('es-ES', { style: 'currency', currency });
     }
@@ -543,47 +625,92 @@ const hasDefaults = !!shippingDefaults && (
         return `${Math.round(value * 1000)} g`;
     }
 
+    function readNum(el: HTMLInputElement | null): number {
+        if (!el) return NaN;
+        const v = el.value;
+        if (v === '') return NaN;
+        return parseFloat(v);
+    }
+
+    function valuesEqual(a: number, b: number): boolean {
+        const aN = Number.isFinite(a);
+        const bN = Number.isFinite(b);
+        if (!aN && !bN) return true;
+        if (!aN || !bN) return false;
+        return Math.abs(a - b) < 0.0001;
+    }
+
     const shippingTimers = new WeakMap<HTMLElement, ReturnType<typeof setTimeout>>();
     const shippingRequestIds = new WeakMap<HTMLElement, number>();
     const SHIPPING_DEBOUNCE_MS = 600;
 
-    function setShippingState(row: HTMLElement, state: 'empty' | 'loading' | 'error' | 'ready', payload?: { estimates?: RemoteEstimate[]; billable?: number; errorMsg?: string }) {
-        const container = row.querySelector('.shipping-live') as HTMLElement | null;
-        if (!container) return;
-        const quotesEl = container.querySelector('.shipping-quotes') as HTMLElement;
-        const emptyEl = container.querySelector('.shipping-empty') as HTMLElement;
-        const loadingEl = container.querySelector('.shipping-loading') as HTMLElement;
-        const errorEl = container.querySelector('.shipping-error') as HTMLElement;
-        const billableEl = container.querySelector('.shipping-billable') as HTMLElement;
+    function setShippingSummary(scope: HTMLElement, text: string) {
+        const el = scope.querySelector('.shipping-summary') as HTMLElement | null;
+        if (el) el.textContent = text;
+    }
 
-        quotesEl.classList.add('hidden');
-        emptyEl.classList.add('hidden');
+    function setShippingState(scope: HTMLElement, state: 'empty' | 'loading' | 'error' | 'ready', payload?: { estimates?: RemoteEstimate[]; billable?: number; errorMsg?: string }) {
+        const quotesEl = scope.querySelector('.shipping-quotes') as HTMLElement;
+        const loadingEl = scope.querySelector('.shipping-loading') as HTMLElement;
+        const errorEl = scope.querySelector('.shipping-error') as HTMLElement;
+        const billableEl = scope.querySelector('.shipping-billable') as HTMLElement;
+        const cta = scope.querySelector('.shipping-quotes-cta') as HTMLElement;
+        const ctaShow = scope.querySelector('.shipping-quotes-cta-show') as HTMLElement;
+        const ctaHide = scope.querySelector('.shipping-quotes-cta-hide') as HTMLElement;
+
         loadingEl.classList.add('hidden');
+        loadingEl.classList.remove('flex');
         errorEl.classList.add('hidden');
         billableEl.classList.add('hidden');
+        cta.classList.add('hidden');
+        cta.classList.remove('inline-flex');
 
         if (state === 'empty') {
-            emptyEl.classList.remove('hidden');
+            setShippingSummary(scope, strings.sellerProductShippingLiveAwaiting);
+            quotesEl.classList.add('hidden');
             quotesEl.innerHTML = '';
+            if (ctaShow) ctaShow.classList.remove('hidden');
+            if (ctaHide) ctaHide.classList.add('hidden');
             return;
         }
         if (state === 'loading') {
+            setShippingSummary(scope, strings.sellerProductShippingLiveLoading);
             loadingEl.classList.remove('hidden');
+            loadingEl.classList.add('flex');
             return;
         }
         if (state === 'error') {
+            setShippingSummary(scope, strings.sellerProductShippingLiveError);
             errorEl.textContent = payload?.errorMsg || strings.sellerProductShippingLiveError;
             errorEl.classList.remove('hidden');
             return;
         }
-        // ready
         const estimates = payload?.estimates ?? [];
         const billable = payload?.billable ?? 0;
+        const availablePrices = estimates.filter(e => e.price != null).map(e => e.price!);
+
         if (billable > 0) {
-            billableEl.textContent = `${strings.sellerProductShippingLiveBillable}: ${fmtWeight(billable)}`;
+            billableEl.textContent = fmtWeight(billable);
             billableEl.classList.remove('hidden');
         }
-        quotesEl.classList.remove('hidden');
+
+        if (availablePrices.length > 0) {
+            const min = Math.min(...availablePrices);
+            const formatted = fmtCurrency(min);
+            if (billable > 0) {
+                setShippingSummary(scope, strings.sellerProductShippingEstimateLine
+                    .replace('{price}', formatted)
+                    .replace('{weight}', fmtWeight(billable)));
+            } else {
+                setShippingSummary(scope, strings.sellerProductShippingEstimateLineSimple
+                    .replace('{price}', formatted));
+            }
+            cta.classList.remove('hidden');
+            cta.classList.add('inline-flex');
+        } else {
+            setShippingSummary(scope, strings.sellerProductShippingEstimateNone);
+        }
+
         quotesEl.innerHTML = estimates.map((e) => {
             const available = e.price != null;
             const dotClass = available ? 'bg-green-500' : 'bg-amber-500';
@@ -602,9 +729,9 @@ const hasDefaults = !!shippingDefaults && (
         }).join('');
     }
 
-    async function fetchShippingPreview(row: HTMLElement, weight: number, length: number | null, width: number | null, height: number | null) {
-        const reqId = (shippingRequestIds.get(row) ?? 0) + 1;
-        shippingRequestIds.set(row, reqId);
+    async function fetchShippingPreview(scope: HTMLElement, weight: number, length: number | null, width: number | null, height: number | null) {
+        const reqId = (shippingRequestIds.get(scope) ?? 0) + 1;
+        shippingRequestIds.set(scope, reqId);
 
         try {
             const res = await fetch('/api/sendcloud/preview-quote', {
@@ -617,68 +744,61 @@ const hasDefaults = !!shippingDefaults && (
                     height_cm: height,
                 }),
             });
-            // Drop response if a newer request started after this one
-            if (shippingRequestIds.get(row) !== reqId) return;
+            if (shippingRequestIds.get(scope) !== reqId) return;
 
             const data = await res.json() as { estimates?: RemoteEstimate[]; billableWeightKg?: number; error?: string };
             if (!res.ok) {
-                setShippingState(row, 'error', { errorMsg: strings.sellerProductShippingLiveError });
+                setShippingState(scope, 'error', { errorMsg: strings.sellerProductShippingLiveError });
                 return;
             }
-            setShippingState(row, 'ready', {
+            setShippingState(scope, 'ready', {
                 estimates: data.estimates ?? [],
                 billable: data.billableWeightKg ?? weight,
             });
         } catch {
-            if (shippingRequestIds.get(row) !== reqId) return;
-            setShippingState(row, 'error');
+            if (shippingRequestIds.get(scope) !== reqId) return;
+            setShippingState(scope, 'error');
         }
     }
 
-    function renderShippingPreview(row: HTMLElement) {
-        const w = (row.querySelector('.variant-weight-input') as HTMLInputElement | null)?.value;
-        const l = (row.querySelector('.variant-length-input') as HTMLInputElement | null)?.value;
-        const wd = (row.querySelector('.variant-width-input') as HTMLInputElement | null)?.value;
-        const h = (row.querySelector('.variant-height-input') as HTMLInputElement | null)?.value;
-
-        const weight = w ? parseFloat(w) : NaN;
-        const length = l ? parseFloat(l) : NaN;
-        const width = wd ? parseFloat(wd) : NaN;
-        const height = h ? parseFloat(h) : NaN;
-
-        const existing = shippingTimers.get(row);
+    function renderPreviewForScope(scope: HTMLElement, weight: number, length: number, width: number, height: number) {
+        const existing = shippingTimers.get(scope);
         if (existing) clearTimeout(existing);
 
         if (!Number.isFinite(weight) || weight <= 0) {
-            // Invalidate any pending response
-            shippingRequestIds.set(row, (shippingRequestIds.get(row) ?? 0) + 1);
-            setShippingState(row, 'empty');
+            shippingRequestIds.set(scope, (shippingRequestIds.get(scope) ?? 0) + 1);
+            setShippingState(scope, 'empty');
             return;
         }
 
-        setShippingState(row, 'loading');
+        setShippingState(scope, 'loading');
         const timer = setTimeout(() => {
             void fetchShippingPreview(
-                row,
+                scope,
                 weight,
                 Number.isFinite(length) ? length : null,
                 Number.isFinite(width) ? width : null,
                 Number.isFinite(height) ? height : null,
             );
         }, SHIPPING_DEBOUNCE_MS);
-        shippingTimers.set(row, timer);
+        shippingTimers.set(scope, timer);
     }
 
-    function updateVariantSummary(row: HTMLElement) {
-        const nameEl = row.querySelector('.variant-name-display') as HTMLElement;
-        const priceEl = row.querySelector('.variant-price-display') as HTMLElement;
-        const stockEl = row.querySelector('.variant-stock-display') as HTMLElement;
-        const name = (row.querySelector('.variant-name-input') as HTMLInputElement)?.value.trim();
-        const price = parseFloat((row.querySelector('.variant-price-input') as HTMLInputElement)?.value || '');
-        const stock = parseInt((row.querySelector('.variant-stock-input') as HTMLInputElement)?.value || '0');
-        if (nameEl) nameEl.textContent = name || strings.sellerProductVariantPlaceholderName;
-        if (priceEl) priceEl.textContent = Number.isFinite(price) && price > 0 ? `${price.toFixed(2)} €` : '—';
-        if (stockEl) stockEl.textContent = `${Number.isFinite(stock) ? stock : 0} uds`;
+    function toggleQuotesVisibility(scope: HTMLElement) {
+        const quotes = scope.querySelector('.shipping-quotes') as HTMLElement;
+        const ctaShow = scope.querySelector('.shipping-quotes-cta-show') as HTMLElement | null;
+        const ctaHide = scope.querySelector('.shipping-quotes-cta-hide') as HTMLElement | null;
+        if (!quotes.innerHTML.trim()) return;
+        const isHidden = quotes.classList.contains('hidden');
+        if (isHidden) {
+            quotes.classList.remove('hidden');
+            if (ctaShow) ctaShow.classList.add('hidden');
+            if (ctaHide) ctaHide.classList.remove('hidden');
+        } else {
+            quotes.classList.add('hidden');
+            if (ctaShow) ctaShow.classList.remove('hidden');
+            if (ctaHide) ctaHide.classList.add('hidden');
+        }
     }
 
     function initProductForm() {
@@ -703,13 +823,233 @@ const hasDefaults = !!shippingDefaults && (
         const specsContainer = document.getElementById('specs-container') as HTMLDivElement;
         const addSpecBtn = document.getElementById('add-spec-btn') as HTMLButtonElement;
         const headerTitle = document.getElementById('header-product-title');
-        const variantsCountEl = document.getElementById('variants-count');
-        const completionBar = document.getElementById('completion-bar');
-        const statusBadge = document.getElementById('status-badge');
-        const statusBadgeDot = document.getElementById('status-badge-dot');
-        const statusBadgeText = document.getElementById('status-badge-text');
+        const headerSummary = document.getElementById('header-summary');
+
+        // Central shipping
+        const centralWeight = document.getElementById('central-weight-input') as HTMLInputElement;
+        const centralLength = document.getElementById('central-length-input') as HTMLInputElement;
+        const centralWidth = document.getElementById('central-width-input') as HTMLInputElement;
+        const centralHeight = document.getElementById('central-height-input') as HTMLInputElement;
+        const centralShippingInput = document.getElementById('central-shipping-input') as HTMLInputElement;
+        const centralFreeShipping = document.getElementById('central-free-shipping') as HTMLInputElement;
+        const centralShippingCost = document.getElementById('central-shipping-cost') as HTMLElement;
+        const centralShippingInputWrap = document.getElementById('central-shipping-input-wrap') as HTMLElement;
+        const centralFreeShippingDisplay = document.getElementById('central-free-shipping-display') as HTMLElement;
+        const centralShippingLive = document.getElementById('central-shipping-live') as HTMLElement;
+        const centralUseDefaultsBtn = document.getElementById('central-use-defaults-btn') as HTMLButtonElement | null;
+
+        // Modal
+        const modal = document.getElementById('variant-shipping-modal') as HTMLElement;
+        const modalNameEl = document.getElementById('variant-shipping-modal-variant-name') as HTMLElement;
+        const modalWeight = document.getElementById('modal-weight-input') as HTMLInputElement;
+        const modalLength = document.getElementById('modal-length-input') as HTMLInputElement;
+        const modalWidth = document.getElementById('modal-width-input') as HTMLInputElement;
+        const modalHeight = document.getElementById('modal-height-input') as HTMLInputElement;
+        const modalShippingInput = document.getElementById('modal-shipping-input') as HTMLInputElement;
+        const modalFreeShipping = document.getElementById('modal-free-shipping') as HTMLInputElement;
+        const modalShippingCost = document.getElementById('modal-shipping-cost') as HTMLElement;
+        const modalShippingInputWrap = document.getElementById('modal-shipping-input-wrap') as HTMLElement;
+        const modalFreeShippingDisplay = document.getElementById('modal-free-shipping-display') as HTMLElement;
+        const modalShippingLive = document.getElementById('modal-shipping-live') as HTMLElement;
+        const modalCloseBtn = document.getElementById('variant-shipping-modal-close') as HTMLButtonElement;
+        const modalCancelBtn = document.getElementById('variant-shipping-modal-cancel') as HTMLButtonElement;
+        const modalApplyBtn = document.getElementById('variant-shipping-modal-apply') as HTMLButtonElement;
+        const modalResetBtn = document.getElementById('variant-shipping-modal-reset') as HTMLButtonElement;
+
+        let activeModalRow: HTMLElement | null = null;
 
         if (!titleInput || !saveBtn) return;
+
+        // ---- Effective shipping helpers ----
+
+        function getCentralValues(): ShippingValues {
+            return {
+                weight: readNum(centralWeight),
+                length: readNum(centralLength),
+                width: readNum(centralWidth),
+                height: readNum(centralHeight),
+                shipping: readNum(centralShippingInput),
+            };
+        }
+
+        function readModalValues(): ShippingValues {
+            return {
+                weight: readNum(modalWeight),
+                length: readNum(modalLength),
+                width: readNum(modalWidth),
+                height: readNum(modalHeight),
+                shipping: readNum(modalShippingInput),
+            };
+        }
+
+        function variantOverrideContainer(row: HTMLElement) {
+            return row.querySelector('.variant-shipping-override') as HTMLElement | null;
+        }
+
+        function isVariantOverride(row: HTMLElement): boolean {
+            return variantOverrideContainer(row)?.dataset.shippingOverride === 'true';
+        }
+
+        function readVariantOverrideValues(row: HTMLElement): ShippingValues | null {
+            const c = variantOverrideContainer(row);
+            if (!c || c.dataset.shippingOverride !== 'true') return null;
+            return {
+                weight: readNum(c.querySelector('.variant-weight-input') as HTMLInputElement),
+                length: readNum(c.querySelector('.variant-length-input') as HTMLInputElement),
+                width: readNum(c.querySelector('.variant-width-input') as HTMLInputElement),
+                height: readNum(c.querySelector('.variant-height-input') as HTMLInputElement),
+                shipping: readNum(c.querySelector('.variant-shipping-input') as HTMLInputElement),
+            };
+        }
+
+        function getEffectiveShipping(row: HTMLElement): ShippingValues {
+            const ov = readVariantOverrideValues(row);
+            return ov ?? getCentralValues();
+        }
+
+        function readVariantBasic(row: HTMLElement) {
+            return {
+                name: (row.querySelector('.variant-name-input') as HTMLInputElement | null)?.value ?? '',
+                price: parseFloat((row.querySelector('.variant-price-input') as HTMLInputElement | null)?.value || '') || 0,
+                stock: parseInt((row.querySelector('.variant-stock-input') as HTMLInputElement | null)?.value || '0', 10) || 0,
+            };
+        }
+
+        function isVariantComplete(row: HTMLElement): boolean {
+            const basic = readVariantBasic(row);
+            const s = getEffectiveShipping(row);
+            return basic.price > 0 && basic.stock >= 0 &&
+                Number.isFinite(s.weight) && s.weight > 0 &&
+                Number.isFinite(s.length) && s.length > 0 &&
+                Number.isFinite(s.width) && s.width > 0 &&
+                Number.isFinite(s.height) && s.height > 0 &&
+                Number.isFinite(s.shipping) && s.shipping >= 0;
+        }
+
+        function renderCentralPreview() {
+            const v = getCentralValues();
+            renderPreviewForScope(centralShippingLive, v.weight, v.length, v.width, v.height);
+        }
+
+        function renderModalPreview() {
+            const v = readModalValues();
+            renderPreviewForScope(modalShippingLive, v.weight, v.length, v.width, v.height);
+        }
+
+        function updateVariantHeader(row: HTMLElement) {
+            const basic = readVariantBasic(row);
+            const eff = getEffectiveShipping(row);
+            const nameEl = row.querySelector('.variant-name-display') as HTMLElement | null;
+            const priceEl = row.querySelector('.variant-price-display') as HTMLElement | null;
+            const stockEl = row.querySelector('.variant-stock-display') as HTMLElement | null;
+            const summaryShipping = row.querySelector('.variant-summary-shipping') as HTMLElement | null;
+            const summaryWarning = row.querySelector('.variant-summary-warning') as HTMLElement | null;
+            const summaryMeta = row.querySelector('.variant-summary-meta') as HTMLElement | null;
+
+            if (nameEl) nameEl.textContent = basic.name.trim() || strings.sellerProductVariantPlaceholderName;
+            if (priceEl) priceEl.textContent = basic.price > 0 ? `${basic.price.toFixed(2)} €` : '—';
+            if (stockEl) stockEl.textContent = strings.sellerProductVariantSummaryStock.replace('{count}', String(basic.stock));
+
+            const complete = isVariantComplete(row);
+            if (complete) {
+                if (summaryWarning) {
+                    summaryWarning.classList.add('hidden');
+                    summaryWarning.classList.remove('inline-flex');
+                }
+                if (summaryShipping) {
+                    summaryShipping.classList.remove('hidden');
+                    const prefix = isVariantOverride(row) ? '✦ ' : '';
+                    summaryShipping.textContent = eff.shipping === 0
+                        ? prefix + strings.sellerProductVariantSummaryFree
+                        : prefix + strings.sellerProductVariantSummaryShipping.replace('{price}', `${eff.shipping.toFixed(2)} €`);
+                }
+                if (summaryMeta) summaryMeta.classList.remove('hidden');
+            } else {
+                if (summaryShipping) {
+                    summaryShipping.classList.add('hidden');
+                    summaryShipping.textContent = '';
+                }
+                if (summaryWarning) {
+                    summaryWarning.classList.remove('hidden');
+                    summaryWarning.classList.add('inline-flex');
+                }
+                if (summaryMeta) summaryMeta.classList.add('hidden');
+            }
+        }
+
+        function toggleVariantExpansion(row: HTMLElement, expand: boolean | 'toggle' = 'toggle') {
+            const body = row.querySelector('.variant-body') as HTMLElement | null;
+            if (!body) return;
+            const chevron = row.querySelector('.variant-chevron') as SVGElement | null;
+            const currentlyExpanded = !body.classList.contains('hidden');
+            const willExpand = expand === 'toggle' ? !currentlyExpanded : expand;
+
+            if (willExpand) {
+                variantsContainer.querySelectorAll('.variant-row').forEach((other) => {
+                    if (other === row) return;
+                    const otherBody = other.querySelector('.variant-body') as HTMLElement | null;
+                    const otherChevron = other.querySelector('.variant-chevron') as SVGElement | null;
+                    if (otherBody) otherBody.classList.add('hidden');
+                    if (otherChevron) otherChevron.style.transform = '';
+                });
+                body.classList.remove('hidden');
+                if (chevron) chevron.style.transform = 'rotate(90deg)';
+            } else {
+                body.classList.add('hidden');
+                if (chevron) chevron.style.transform = '';
+            }
+        }
+
+        function updateVariantShippingStatus(row: HTMLElement) {
+            const isOv = isVariantOverride(row);
+            const statusIcon = row.querySelector('.variant-shipping-status-icon') as HTMLElement | null;
+            const statusText = row.querySelector('.variant-shipping-status-text') as HTMLElement | null;
+            const customizeLabel = row.querySelector('.variant-customize-shipping-label') as HTMLElement | null;
+            const status = row.querySelector('.variant-shipping-status') as HTMLElement | null;
+
+            if (statusIcon) statusIcon.textContent = isOv ? '✦' : '·';
+            if (statusText) statusText.textContent = isOv ? strings.sellerProductVariantUsesCustomShipping : strings.sellerProductVariantUsesCommonShipping;
+            if (customizeLabel) customizeLabel.textContent = isOv ? strings.sellerProductVariantEditShipping : strings.sellerProductVariantCustomizeShipping;
+            if (status) {
+                status.classList.toggle('text-accent', isOv);
+                status.classList.toggle('text-text-tertiary', !isOv);
+            }
+
+            const existingReset = row.querySelector('.variant-reset-shipping-btn') as HTMLButtonElement | null;
+            if (isOv && !existingReset && status) {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'variant-reset-shipping-btn ml-1 text-text-tertiary hover:text-text-primary underline underline-offset-2';
+                btn.textContent = strings.sellerProductVariantResetShipping;
+                status.appendChild(btn);
+            } else if (!isOv && existingReset) {
+                existingReset.remove();
+            }
+        }
+
+        function setVariantOverride(row: HTMLElement, v: ShippingValues) {
+            const c = variantOverrideContainer(row);
+            if (!c) return;
+            c.dataset.shippingOverride = 'true';
+            (c.querySelector('.variant-weight-input') as HTMLInputElement).value = Number.isFinite(v.weight) ? String(v.weight) : '';
+            (c.querySelector('.variant-length-input') as HTMLInputElement).value = Number.isFinite(v.length) ? String(v.length) : '';
+            (c.querySelector('.variant-width-input') as HTMLInputElement).value = Number.isFinite(v.width) ? String(v.width) : '';
+            (c.querySelector('.variant-height-input') as HTMLInputElement).value = Number.isFinite(v.height) ? String(v.height) : '';
+            (c.querySelector('.variant-shipping-input') as HTMLInputElement).value = Number.isFinite(v.shipping) ? String(v.shipping) : '';
+            updateVariantShippingStatus(row);
+        }
+
+        function clearVariantOverride(row: HTMLElement) {
+            const c = variantOverrideContainer(row);
+            if (!c) return;
+            c.dataset.shippingOverride = 'false';
+            (c.querySelector('.variant-weight-input') as HTMLInputElement).value = '';
+            (c.querySelector('.variant-length-input') as HTMLInputElement).value = '';
+            (c.querySelector('.variant-width-input') as HTMLInputElement).value = '';
+            (c.querySelector('.variant-height-input') as HTMLInputElement).value = '';
+            (c.querySelector('.variant-shipping-input') as HTMLInputElement).value = '';
+            updateVariantShippingStatus(row);
+        }
 
         const refreshChecks = () => {
             const title = titleInput.value.trim();
@@ -718,16 +1058,7 @@ const hasDefaults = !!shippingDefaults && (
             const category = categorySelect.value;
 
             const variantRows = Array.from(variantsContainer.querySelectorAll('.variant-row')) as HTMLElement[];
-            const allVariantsComplete = variantRows.length > 0 && variantRows.every((row) => {
-                const price = parseFloat((row.querySelector('.variant-price-input') as HTMLInputElement).value) || 0;
-                const stock = parseInt((row.querySelector('.variant-stock-input') as HTMLInputElement).value) || 0;
-                const w = parseFloat((row.querySelector('.variant-weight-input') as HTMLInputElement).value);
-                const l = parseFloat((row.querySelector('.variant-length-input') as HTMLInputElement).value);
-                const wi = parseFloat((row.querySelector('.variant-width-input') as HTMLInputElement).value);
-                const h = parseFloat((row.querySelector('.variant-height-input') as HTMLInputElement).value);
-                const s = parseFloat((row.querySelector('.variant-shipping-input') as HTMLInputElement).value);
-                return price > 0 && stock >= 0 && w > 0 && l > 0 && wi > 0 && h > 0 && Number.isFinite(s) && s >= 0;
-            });
+            const allVariantsComplete = variantRows.length > 0 && variantRows.every(isVariantComplete);
 
             const checks = {
                 title: !!title,
@@ -740,30 +1071,28 @@ const hasDefaults = !!shippingDefaults && (
 
             const total = Object.keys(checks).length;
             const done = Object.values(checks).filter(Boolean).length;
-            const pct = Math.round((done / total) * 100);
-            if (completionBar) completionBar.style.width = `${pct}%`;
+            const pending = total - done;
 
-            const allDone = done === total;
-            if (statusBadge && statusBadgeDot && statusBadgeText) {
-                if (allDone) {
-                    statusBadgeText.textContent = strings.sellerProductFormReadyBadge;
-                    statusBadge.className = 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400';
-                    statusBadgeDot.className = 'inline-block w-1.5 h-1.5 rounded-full bg-green-500';
+            if (headerSummary) {
+                if (pending === 0) {
+                    headerSummary.textContent = strings.sellerProductHeaderSummaryReady;
+                    headerSummary.className = 'text-[11px] mt-0.5 font-medium text-green-700 dark:text-green-400';
+                } else if (pending === 1) {
+                    headerSummary.textContent = strings.sellerProductHeaderSummaryPendingSingle;
+                    headerSummary.className = 'text-[11px] mt-0.5 font-medium text-amber-600 dark:text-amber-400';
                 } else {
-                    statusBadgeText.textContent = strings.sellerProductFormIncompleteBadge;
-                    statusBadge.className = 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400';
-                    statusBadgeDot.className = 'inline-block w-1.5 h-1.5 rounded-full bg-amber-500';
+                    headerSummary.textContent = strings.sellerProductHeaderSummaryPendingPlural.replace('{count}', String(pending));
+                    headerSummary.className = 'text-[11px] mt-0.5 font-medium text-amber-600 dark:text-amber-400';
                 }
             }
 
-            if (variantsCountEl) {
-                const c = variantRows.length;
-                variantsCountEl.textContent = c === 1 ? strings.sellerProductVariantsCountSingle : strings.sellerProductVariantsCount.replace('{count}', String(c));
-            }
+            variantRows.forEach(updateVariantHeader);
         };
 
         const refreshHeaderTitle = () => {
-            if (headerTitle) headerTitle.textContent = titleInput.value.trim() || strings.sellerProductTitlePlaceholder;
+            if (headerTitle) {
+                headerTitle.textContent = titleInput.value.trim() || (mode === 'edit' ? strings.sellerProductEditTitle : strings.sellerProductNewTitle);
+            }
         };
 
         let slugManual = slugInput.value !== '';
@@ -777,6 +1106,59 @@ const hasDefaults = !!shippingDefaults && (
         slugInput.addEventListener('input', () => { slugManual = true; refreshChecks(); });
         descriptionInput.addEventListener('input', refreshChecks);
         categorySelect.addEventListener('change', refreshChecks);
+
+        // ---- Central shipping handlers ----
+
+        [centralWeight, centralLength, centralWidth, centralHeight].forEach((el) => {
+            el.addEventListener('input', () => {
+                renderCentralPreview();
+                refreshChecks();
+            });
+        });
+        centralShippingInput.addEventListener('input', refreshChecks);
+        centralFreeShipping.addEventListener('change', () => {
+            if (centralFreeShipping.checked) {
+                if (centralShippingInput.value !== '0') centralShippingInput.dataset.prevValue = centralShippingInput.value;
+                centralShippingInput.value = '0';
+                centralShippingInputWrap.classList.add('hidden');
+                centralFreeShippingDisplay.classList.remove('hidden');
+                centralShippingCost.dataset.free = 'true';
+            } else {
+                centralShippingInput.value = centralShippingInput.dataset.prevValue ?? '';
+                centralShippingInputWrap.classList.remove('hidden');
+                centralFreeShippingDisplay.classList.add('hidden');
+                centralShippingCost.dataset.free = 'false';
+                centralShippingInput.focus();
+            }
+            refreshChecks();
+        });
+        centralUseDefaultsBtn?.addEventListener('click', () => {
+            if (shippingDefaults.weight_kg != null) centralWeight.value = String(shippingDefaults.weight_kg);
+            if (shippingDefaults.length_cm != null) centralLength.value = String(shippingDefaults.length_cm);
+            if (shippingDefaults.width_cm != null) centralWidth.value = String(shippingDefaults.width_cm);
+            if (shippingDefaults.height_cm != null) centralHeight.value = String(shippingDefaults.height_cm);
+            if (shippingDefaults.shipping_cost != null) {
+                centralShippingInput.value = String(shippingDefaults.shipping_cost);
+                const isFree = shippingDefaults.shipping_cost === 0;
+                centralFreeShipping.checked = isFree;
+                if (isFree) {
+                    centralShippingInputWrap.classList.add('hidden');
+                    centralFreeShippingDisplay.classList.remove('hidden');
+                    centralShippingCost.dataset.free = 'true';
+                } else {
+                    centralShippingInputWrap.classList.remove('hidden');
+                    centralFreeShippingDisplay.classList.add('hidden');
+                    centralShippingCost.dataset.free = 'false';
+                }
+            }
+            renderCentralPreview();
+            refreshChecks();
+        });
+        centralShippingLive.addEventListener('click', (e: MouseEvent) => {
+            if ((e.target as HTMLElement).closest('.shipping-toggle')) {
+                toggleQuotesVisibility(centralShippingLive);
+            }
+        });
 
         imageUploadInput.addEventListener('change', async () => {
             const files = Array.from(imageUploadInput.files || []);
@@ -809,319 +1191,6 @@ const hasDefaults = !!shippingDefaults && (
             });
         }
 
-        variantsContainer.addEventListener('change', async (e: Event) => {
-            const target = e.target as HTMLInputElement;
-            if (!target || !target.classList.contains('variant-image-input') || !target.files?.length) return;
-            const variantRow = target.closest('.variant-row') as HTMLElement;
-            const btn = variantRow.querySelector('.variant-image-btn') as HTMLButtonElement;
-            const thumb = variantRow.querySelector('.variant-thumb') as HTMLElement;
-
-            btn.disabled = true;
-            const originalLabel = btn.innerHTML;
-            btn.innerHTML = `<span>${strings.sellerProductImageUploading}</span>`;
-
-            const formData = new FormData();
-            formData.append('file', target.files[0]);
-            try {
-                const res = await fetch('/api/sell/catalog/upload', { method: 'POST', body: formData });
-                const data: { error?: string; url?: string } = await res.json();
-                if (res.ok) {
-                    variantRow.dataset.variantImage = data.url!;
-                    thumb.innerHTML = `<img src="${data.url}" alt="" class="w-full h-full object-cover" />`;
-                    btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>Cambiar foto`;
-                } else {
-                    toast.error(data.error || strings.incidentUploadError);
-                    btn.innerHTML = originalLabel;
-                }
-            } catch {
-                toast.error(strings.incidentUploadError);
-                btn.innerHTML = originalLabel;
-            } finally {
-                btn.disabled = false;
-                target.value = '';
-            }
-        });
-
-        // Click delegate: image button + use-defaults + apply-to-rest + toggle collapse + remove
-        variantsContainer.addEventListener('click', (e: MouseEvent) => {
-            const target = e.target as HTMLElement;
-
-            const imgBtn = target.closest('.variant-image-btn') as HTMLElement | null;
-            if (imgBtn) {
-                const variantRow = imgBtn.closest('.variant-row') as HTMLElement;
-                const fileInput = variantRow.querySelector('.variant-image-input') as HTMLInputElement;
-                fileInput.click();
-                return;
-            }
-
-            const toggleBtn = target.closest('.variant-toggle-btn') as HTMLElement | null;
-            if (toggleBtn) {
-                const row = toggleBtn.closest('.variant-row') as HTMLElement;
-                const body = row.querySelector('.variant-body') as HTMLElement;
-                const icon = toggleBtn.querySelector('svg');
-                const expanded = toggleBtn.getAttribute('aria-expanded') === 'true';
-                if (expanded) {
-                    body.style.display = 'none';
-                    toggleBtn.setAttribute('aria-expanded', 'false');
-                    if (icon) (icon as SVGElement).style.transform = 'rotate(-90deg)';
-                } else {
-                    body.style.display = '';
-                    toggleBtn.setAttribute('aria-expanded', 'true');
-                    if (icon) (icon as SVGElement).style.transform = '';
-                }
-                return;
-            }
-
-            const useDefaultsBtn = target.closest('.variant-use-defaults-btn') as HTMLElement | null;
-            if (useDefaultsBtn) {
-                const row = useDefaultsBtn.closest('.variant-row') as HTMLElement;
-                const w = row.querySelector('.variant-weight-input') as HTMLInputElement;
-                const l = row.querySelector('.variant-length-input') as HTMLInputElement;
-                const wi = row.querySelector('.variant-width-input') as HTMLInputElement;
-                const h = row.querySelector('.variant-height-input') as HTMLInputElement;
-                const s = row.querySelector('.variant-shipping-input') as HTMLInputElement;
-                if (w) w.value = shippingDefaults.weight_kg != null ? String(shippingDefaults.weight_kg) : '';
-                if (l) l.value = shippingDefaults.length_cm != null ? String(shippingDefaults.length_cm) : '';
-                if (wi) wi.value = shippingDefaults.width_cm != null ? String(shippingDefaults.width_cm) : '';
-                if (h) h.value = shippingDefaults.height_cm != null ? String(shippingDefaults.height_cm) : '';
-                if (s) s.value = shippingDefaults.shipping_cost != null ? String(shippingDefaults.shipping_cost) : '';
-                renderShippingPreview(row);
-                refreshChecks();
-                return;
-            }
-
-            const applyShippingBtn = target.closest('.variant-apply-shipping-btn') as HTMLElement | null;
-            if (applyShippingBtn) {
-                const sourceRow = applyShippingBtn.closest('.variant-row') as HTMLElement;
-                const weight = (sourceRow.querySelector('.variant-weight-input') as HTMLInputElement)?.value ?? '';
-                const length = (sourceRow.querySelector('.variant-length-input') as HTMLInputElement)?.value ?? '';
-                const width = (sourceRow.querySelector('.variant-width-input') as HTMLInputElement)?.value ?? '';
-                const height = (sourceRow.querySelector('.variant-height-input') as HTMLInputElement)?.value ?? '';
-                const shipping = (sourceRow.querySelector('.variant-shipping-input') as HTMLInputElement)?.value ?? '';
-
-                variantsContainer.querySelectorAll('.variant-row').forEach((rowEl) => {
-                    if (rowEl === sourceRow) return;
-                    const el = rowEl as HTMLElement;
-                    (el.querySelector('.variant-weight-input') as HTMLInputElement).value = weight;
-                    (el.querySelector('.variant-length-input') as HTMLInputElement).value = length;
-                    (el.querySelector('.variant-width-input') as HTMLInputElement).value = width;
-                    (el.querySelector('.variant-height-input') as HTMLInputElement).value = height;
-                    (el.querySelector('.variant-shipping-input') as HTMLInputElement).value = shipping;
-                    renderShippingPreview(el);
-                });
-                refreshChecks();
-                return;
-            }
-
-            const removeBtn = target.closest('.variant-remove-btn') as HTMLElement | null;
-            if (removeBtn) {
-                const row = removeBtn.closest('.variant-row') as HTMLElement;
-                row.remove();
-                refreshChecks();
-                return;
-            }
-
-        });
-
-        // Input delegate: live shipping preview + summary update + checks
-        variantsContainer.addEventListener('input', (e: Event) => {
-            const target = e.target as HTMLElement;
-            const row = target.closest('.variant-row') as HTMLElement | null;
-            if (!row) return;
-            if (
-                target.classList.contains('variant-weight-input') ||
-                target.classList.contains('variant-length-input') ||
-                target.classList.contains('variant-width-input') ||
-                target.classList.contains('variant-height-input')
-            ) {
-                renderShippingPreview(row);
-            }
-            if (
-                target.classList.contains('variant-name-input') ||
-                target.classList.contains('variant-price-input') ||
-                target.classList.contains('variant-stock-input')
-            ) {
-                updateVariantSummary(row);
-            }
-            refreshChecks();
-        });
-
-        variantsContainer.addEventListener('change', (e: Event) => {
-            const target = e.target as HTMLInputElement;
-            if (target.classList.contains('variant-default-checkbox')) {
-                if (target.checked) {
-                    variantsContainer.querySelectorAll('.variant-default-checkbox').forEach((cb) => {
-                        if (cb !== target) (cb as HTMLInputElement).checked = false;
-                    });
-                    // update pill display
-                    variantsContainer.querySelectorAll('.variant-row').forEach((rowEl) => {
-                        const row = rowEl as HTMLElement;
-                        const checked = (row.querySelector('.variant-default-checkbox') as HTMLInputElement).checked;
-                        const headerCell = row.querySelector('.variant-row > div') as HTMLElement;
-                        const namePill = row.querySelector('.variant-default-pill');
-                        if (checked && !namePill && headerCell) {
-                            const span = document.createElement('span');
-                            span.className = 'variant-default-pill inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-medium bg-accent text-bg';
-                            span.textContent = strings.sellerProductVariantDefault;
-                            const titleWrap = row.querySelector('.variant-name-display')?.parentElement;
-                            if (titleWrap) titleWrap.appendChild(span);
-                        } else if (!checked && namePill) {
-                            namePill.remove();
-                        }
-                    });
-                }
-            }
-
-            if (target.classList.contains('variant-free-shipping-checkbox')) {
-                const row = target.closest('.variant-row') as HTMLElement;
-                const wrap = row.querySelector('.variant-shipping-cost') as HTMLElement;
-                const inputWrap = row.querySelector('.variant-shipping-input-wrap') as HTMLElement;
-                const display = row.querySelector('.variant-free-shipping-display') as HTMLElement;
-                const input = row.querySelector('.variant-shipping-input') as HTMLInputElement;
-                if (target.checked) {
-                    if (input.value !== '0') input.dataset.prevValue = input.value;
-                    input.value = '0';
-                    inputWrap.classList.add('hidden');
-                    display.classList.remove('hidden');
-                    wrap.dataset.free = 'true';
-                } else {
-                    input.value = input.dataset.prevValue ?? '';
-                    inputWrap.classList.remove('hidden');
-                    display.classList.add('hidden');
-                    wrap.dataset.free = 'false';
-                    input.focus();
-                }
-                refreshChecks();
-            }
-        });
-
-        addVariantBtn.addEventListener('click', () => {
-            const row = createVariantRow(false);
-            variantsContainer.appendChild(row);
-            renderShippingPreview(row);
-            row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            refreshChecks();
-        });
-
-        function createVariantRow(isDefault: boolean): HTMLElement {
-            const wrap = document.createElement('div');
-            wrap.innerHTML = `
-                <article class="variant-row rounded-2xl border border-border bg-bg overflow-hidden" data-variant-id="" data-is-new="true" data-variant-image="">
-                    <div class="flex items-center gap-3 px-4 py-3 border-b border-border">
-                        <div class="variant-thumb w-10 h-10 rounded-lg border border-border bg-surface overflow-hidden flex items-center justify-center shrink-0">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="text-text-tertiary"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-                        </div>
-                        <div class="min-w-0 flex-1">
-                            <div class="flex items-center gap-2 flex-wrap">
-                                <span class="text-sm font-medium text-text-primary truncate"><span class="variant-name-display">${strings.sellerProductVariantPlaceholderName}</span></span>
-                                ${isDefault ? `<span class="variant-default-pill inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-medium bg-accent text-bg">${strings.sellerProductVariantDefault}</span>` : ''}
-                            </div>
-                            <p class="text-[11px] text-text-tertiary mt-0.5 tabular-nums"><span class="variant-price-display">—</span><span class="mx-1.5 opacity-50">·</span><span class="variant-stock-display">0 uds</span></p>
-                        </div>
-                        <button type="button" class="variant-toggle-btn flex items-center justify-center w-8 h-8 rounded-lg text-text-secondary hover:text-text-primary hover:bg-border-light transition-colors" aria-expanded="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>
-                        <button type="button" class="variant-remove-btn flex items-center justify-center w-8 h-8 rounded-lg text-text-tertiary hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" aria-label="${strings.sellerProductVariantRemove}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
-                    </div>
-                    <div class="variant-body p-4 space-y-5">
-                        <div class="grid gap-4 sm:grid-cols-12">
-                            <div class="sm:col-span-5">
-                                <label class="block text-[11px] font-medium text-text-tertiary mb-1">${strings.sellerProductVariantNameLabel}</label>
-                                <input type="text" class="variant-name-input w-full px-3 py-2 rounded-lg border border-border bg-surface text-text-primary text-sm focus:ring-2 focus:ring-accent focus:border-transparent outline-none transition" placeholder="${strings.sellerProductVariantNamePlaceholder}" />
-                            </div>
-                            <div class="sm:col-span-4">
-                                <label class="block text-[11px] font-medium text-text-tertiary mb-1">${strings.sellerProductVariantPriceLabel}</label>
-                                <input type="number" step="0.01" min="0" class="variant-price-input w-full px-3 py-2 rounded-lg border border-border bg-surface text-text-primary text-sm focus:ring-2 focus:ring-accent focus:border-transparent outline-none transition tabular-nums" placeholder="${strings.sellerProductVariantPricePlaceholder}" />
-                            </div>
-                            <div class="sm:col-span-3">
-                                <label class="block text-[11px] font-medium text-text-tertiary mb-1">${strings.sellerProductVariantStockLabel}</label>
-                                <input type="number" min="0" class="variant-stock-input w-full px-3 py-2 rounded-lg border border-border bg-surface text-text-primary text-sm focus:ring-2 focus:ring-accent focus:border-transparent outline-none transition tabular-nums" placeholder="${strings.sellerProductVariantStockPlaceholder}" />
-                            </div>
-                        </div>
-                        <div class="flex flex-wrap items-center gap-3 pt-1">
-                            <label class="flex items-center gap-2 text-xs text-text-secondary cursor-pointer select-none">
-                                <input type="checkbox" class="variant-default-checkbox rounded border-border accent-neutral-900 dark:accent-white" ${isDefault ? 'checked' : ''} />
-                                ${strings.sellerProductVariantDefaultNote}
-                            </label>
-                            <div class="ml-auto flex items-center gap-2">
-                                <button type="button" class="variant-image-btn flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium text-text-secondary border border-border hover:bg-border-light transition-colors"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>Foto</button>
-                                <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" class="variant-image-input hidden" />
-                            </div>
-                        </div>
-                        <div class="rounded-2xl border border-border bg-surface p-4 space-y-4">
-                            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                                <div>
-                                    <h3 class="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-secondary">${strings.sellerProductVariantSizeWeight}</h3>
-                                    <p class="text-[11px] text-text-tertiary mt-0.5">${strings.sellerProductVariantSizeWeightHint}</p>
-                                </div>
-                                <div class="flex items-center gap-2">
-                                    <button type="button" class="variant-use-defaults-btn px-2.5 py-1 rounded-lg text-[11px] font-medium text-text-secondary border border-border hover:bg-border-light transition-colors">${strings.sellerProductVariantUseDefaults}</button>
-                                    <button type="button" class="variant-apply-shipping-btn px-2.5 py-1 rounded-lg text-[11px] font-medium text-text-secondary border border-border hover:bg-border-light transition-colors">${strings.sellerProductVariantApplyToRest}</button>
-                                </div>
-                            </div>
-                            <div class="grid gap-3 grid-cols-2 sm:grid-cols-4">
-                                <div><label class="block text-[10px] font-medium uppercase tracking-wider text-text-tertiary mb-1">${strings.sellerProductVariantWeightLabel}</label><input type="number" step="0.001" min="0" class="variant-weight-input w-full px-3 py-2 rounded-lg border border-border bg-bg text-text-primary text-sm focus:ring-2 focus:ring-accent focus:border-transparent outline-none transition tabular-nums" placeholder="${strings.sellerProductVariantWeightPlaceholder}" value="${shippingDefaults.weight_kg ?? ''}" /></div>
-                                <div><label class="block text-[10px] font-medium uppercase tracking-wider text-text-tertiary mb-1">${strings.sellerProductVariantLengthLabel}</label><input type="number" step="0.1" min="0" class="variant-length-input w-full px-3 py-2 rounded-lg border border-border bg-bg text-text-primary text-sm focus:ring-2 focus:ring-accent focus:border-transparent outline-none transition tabular-nums" placeholder="${strings.sellerProductVariantLengthPlaceholder}" value="${shippingDefaults.length_cm ?? ''}" /></div>
-                                <div><label class="block text-[10px] font-medium uppercase tracking-wider text-text-tertiary mb-1">${strings.sellerProductVariantWidthLabel}</label><input type="number" step="0.1" min="0" class="variant-width-input w-full px-3 py-2 rounded-lg border border-border bg-bg text-text-primary text-sm focus:ring-2 focus:ring-accent focus:border-transparent outline-none transition tabular-nums" placeholder="${strings.sellerProductVariantWidthPlaceholder}" value="${shippingDefaults.width_cm ?? ''}" /></div>
-                                <div><label class="block text-[10px] font-medium uppercase tracking-wider text-text-tertiary mb-1">${strings.sellerProductVariantHeightLabel}</label><input type="number" step="0.1" min="0" class="variant-height-input w-full px-3 py-2 rounded-lg border border-border bg-bg text-text-primary text-sm focus:ring-2 focus:ring-accent focus:border-transparent outline-none transition tabular-nums" placeholder="${strings.sellerProductVariantHeightPlaceholder}" value="${shippingDefaults.height_cm ?? ''}" /></div>
-                            </div>
-                            <div class="variant-shipping-cost border-t border-border pt-3" data-free="false">
-                                <div class="flex items-center justify-between gap-3 mb-2">
-                                    <label class="block text-[10px] font-medium uppercase tracking-wider text-text-tertiary">${strings.sellerProductVariantBaseShipping}</label>
-                                    <label class="flex items-center gap-2 cursor-pointer select-none">
-                                        <span class="text-[11px] font-medium text-text-secondary">${strings.sellerProductVariantFreeShipping}</span>
-                                        <span class="relative inline-flex shrink-0">
-                                            <input type="checkbox" class="variant-free-shipping-checkbox sr-only peer" />
-                                            <span class="block w-9 h-5 bg-border-light rounded-full peer-focus-visible:ring-2 peer-focus-visible:ring-accent peer-checked:bg-green-500 transition-colors"></span>
-                                            <span class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform peer-checked:translate-x-4"></span>
-                                        </span>
-                                    </label>
-                                </div>
-                                <div class="variant-shipping-input-wrap flex items-center gap-2">
-                                    <input type="number" step="0.01" min="0" class="variant-shipping-input flex-1 px-3 py-2 rounded-lg border border-border bg-bg text-text-primary text-sm focus:ring-2 focus:ring-accent focus:border-transparent outline-none transition tabular-nums" placeholder="${strings.sellerProductVariantShippingPlaceholder}" value="${shippingDefaults.shipping_cost ?? ''}" />
-                                    <span class="text-xs text-text-tertiary shrink-0">${strings.sellerProductVariantBaseShippingHint}</span>
-                                </div>
-                                <div class="variant-free-shipping-display hidden flex items-center gap-2 px-3 py-2.5 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200/70 dark:border-green-800/60">
-                                    <span class="flex items-center justify-center w-5 h-5 rounded-full bg-green-500 text-white shrink-0"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
-                                    <span class="text-[11px] font-medium text-green-700 dark:text-green-400">${strings.sellerProductVariantFreeShippingActive}</span>
-                                </div>
-                            </div>
-
-                            <!-- Live shipping preview -->
-                            <div class="shipping-live rounded-xl border border-border bg-bg p-3.5 mt-3">
-                                <div class="flex items-start gap-2 mb-3">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="text-text-secondary mt-0.5"><path d="M10 17h4V5H2v12h3"/><path d="M20 17h2v-3.34a4 4 0 0 0-1.17-2.83L19 9h-5v8h1"/><circle cx="7.5" cy="17.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>
-                                    <div class="flex-1 min-w-0">
-                                        <p class="text-xs font-semibold text-text-primary">${strings.sellerProductShippingLiveTitle}</p>
-                                        <p class="text-[10px] text-text-tertiary mt-0.5">${strings.sellerProductShippingLiveSubtitle}</p>
-                                    </div>
-                                    <span class="shipping-billable hidden text-[10px] font-medium text-text-tertiary tabular-nums shrink-0"></span>
-                                </div>
-                                <div class="shipping-quotes hidden grid gap-2"></div>
-                                <p class="shipping-empty text-[11px] text-text-tertiary text-center py-2">${strings.sellerProductShippingLiveAwaiting}</p>
-                                <div class="shipping-loading hidden flex items-center justify-center gap-2 py-3 text-[11px] text-text-tertiary">
-                                    <svg class="animate-spin" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
-                                    <span>${strings.sellerProductShippingLiveLoading}</span>
-                                </div>
-                                <p class="shipping-error hidden text-[11px] text-amber-700 dark:text-amber-400 text-center py-2"></p>
-                            </div>
-                        </div>
-                    </div>
-                </article>`;
-            return wrap.firstElementChild as HTMLElement;
-        }
-
-        addSpecBtn.addEventListener('click', () => {
-            const div = document.createElement('div');
-            div.className = 'spec-row flex items-center gap-2';
-            div.innerHTML = `<input type="text" class="spec-key-input flex-1 min-w-0 px-3 py-2 rounded-lg border border-border bg-bg text-text-primary text-sm focus:ring-2 focus:ring-accent focus:border-transparent outline-none transition" placeholder="${strings.sellerProductSpecsKeyPlaceholder}" /><input type="text" class="spec-value-input flex-1 min-w-0 px-3 py-2 rounded-lg border border-border bg-bg text-text-primary text-sm focus:ring-2 focus:ring-accent focus:border-transparent outline-none transition" placeholder="${strings.sellerProductSpecsValuePlaceholder}" /><button type="button" class="spec-remove-btn flex items-center justify-center w-8 h-8 rounded-lg text-text-tertiary hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors shrink-0"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>`;
-            specsContainer.appendChild(div);
-        });
-
-        specsContainer.addEventListener('click', (e: MouseEvent) => {
-            const removeBtn = (e.target as HTMLElement).closest('.spec-remove-btn') as HTMLElement | null;
-            if (!removeBtn) return;
-            removeBtn.closest('.spec-row')!.remove();
-        });
-
         imageGallery.addEventListener('click', (e: MouseEvent) => {
             const removeBtn = (e.target as HTMLElement).closest('.image-remove-btn') as HTMLElement | null;
             if (!removeBtn) return;
@@ -1132,6 +1201,312 @@ const hasDefaults = !!shippingDefaults && (
             renderGallery();
             refreshChecks();
         });
+
+        // ---- Variantes ----
+
+        variantsContainer.addEventListener('click', (e: MouseEvent) => {
+            const target = e.target as HTMLElement;
+
+            const imgBtn = target.closest('.variant-image-btn') as HTMLElement | null;
+            if (imgBtn) {
+                e.stopPropagation();
+                const row = imgBtn.closest('.variant-row') as HTMLElement;
+                const fileInput = row.querySelector('input.variant-image-input[type="file"]') as HTMLInputElement;
+                fileInput?.click();
+                return;
+            }
+
+            const customizeBtn = target.closest('.variant-customize-shipping-btn') as HTMLElement | null;
+            if (customizeBtn) {
+                e.stopPropagation();
+                const row = customizeBtn.closest('.variant-row') as HTMLElement;
+                openShippingModal(row);
+                return;
+            }
+
+            const resetBtn = target.closest('.variant-reset-shipping-btn') as HTMLElement | null;
+            if (resetBtn) {
+                e.stopPropagation();
+                const row = resetBtn.closest('.variant-row') as HTMLElement;
+                clearVariantOverride(row);
+                updateVariantHeader(row);
+                refreshChecks();
+                return;
+            }
+
+            const removeBtn = target.closest('.variant-remove-btn') as HTMLElement | null;
+            if (removeBtn) {
+                e.stopPropagation();
+                if (variantsContainer.querySelectorAll('.variant-row').length <= 1) {
+                    toast.error(strings.sellerProductNoVariantsError);
+                    return;
+                }
+                const row = removeBtn.closest('.variant-row') as HTMLElement;
+                row.remove();
+                refreshChecks();
+                return;
+            }
+
+            const header = target.closest('.variant-header') as HTMLElement | null;
+            if (header) {
+                const row = header.closest('.variant-row') as HTMLElement;
+                toggleVariantExpansion(row, 'toggle');
+                return;
+            }
+        });
+
+        variantsContainer.addEventListener('input', (e: Event) => {
+            const target = e.target as HTMLElement;
+            const row = target.closest('.variant-row') as HTMLElement | null;
+            if (!row) return;
+            if (
+                target.classList.contains('variant-name-input') ||
+                target.classList.contains('variant-price-input') ||
+                target.classList.contains('variant-stock-input')
+            ) {
+                refreshChecks();
+            }
+        });
+
+        variantsContainer.addEventListener('change', async (e: Event) => {
+            const target = e.target as HTMLInputElement;
+            if (!target) return;
+
+            if (target.classList.contains('variant-image-input') && target.type === 'file' && target.files?.length) {
+                const variantRow = target.closest('.variant-row') as HTMLElement;
+                const btn = variantRow.querySelector('.variant-image-btn') as HTMLButtonElement;
+                const thumb = variantRow.querySelector('.variant-thumb') as HTMLElement;
+
+                btn.disabled = true;
+                const originalLabel = btn.innerHTML;
+                btn.innerHTML = `<span>${strings.sellerProductImageUploading}</span>`;
+
+                const formData = new FormData();
+                formData.append('file', target.files[0]);
+                try {
+                    const res = await fetch('/api/sell/catalog/upload', { method: 'POST', body: formData });
+                    const data: { error?: string; url?: string } = await res.json();
+                    if (res.ok) {
+                        variantRow.dataset.variantImage = data.url!;
+                        thumb.innerHTML = `<img src="${data.url}" alt="" class="w-full h-full object-cover" />`;
+                        btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>Cambiar foto`;
+                    } else {
+                        toast.error(data.error || strings.incidentUploadError);
+                        btn.innerHTML = originalLabel;
+                    }
+                } catch {
+                    toast.error(strings.incidentUploadError);
+                    btn.innerHTML = originalLabel;
+                } finally {
+                    btn.disabled = false;
+                    target.value = '';
+                }
+                return;
+            }
+
+            if (target.classList.contains('variant-default-checkbox')) {
+                if (target.checked) {
+                    variantsContainer.querySelectorAll('.variant-default-checkbox').forEach((cb) => {
+                        if (cb !== target) (cb as HTMLInputElement).checked = false;
+                    });
+                    variantsContainer.querySelectorAll('.variant-row').forEach((rowEl) => {
+                        const row = rowEl as HTMLElement;
+                        const checked = (row.querySelector('.variant-default-checkbox') as HTMLInputElement).checked;
+                        const pill = row.querySelector('.variant-default-pill');
+                        if (checked && !pill) {
+                            const nameDisplay = row.querySelector('.variant-name-display');
+                            if (nameDisplay) {
+                                const span = document.createElement('span');
+                                span.className = 'variant-default-pill inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-medium bg-accent text-bg shrink-0';
+                                span.textContent = strings.sellerProductVariantDefault;
+                                nameDisplay.insertAdjacentElement('afterend', span);
+                            }
+                        } else if (!checked && pill) {
+                            pill.remove();
+                        }
+                    });
+                }
+                return;
+            }
+        });
+
+        addVariantBtn.addEventListener('click', () => {
+            const row = createVariantRow(false);
+            variantsContainer.appendChild(row);
+            toggleVariantExpansion(row, true);
+            row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            refreshChecks();
+        });
+
+        function createVariantRow(isDefault: boolean): HTMLElement {
+            const wrap = document.createElement('div');
+            wrap.innerHTML = `
+                <article class="variant-row rounded-xl border border-border bg-bg overflow-hidden" data-variant-id="" data-is-new="true" data-variant-image="">
+                    <header class="variant-header flex items-center gap-2.5 px-4 py-3 cursor-pointer hover:bg-border-light/40 transition-colors select-none">
+                        <svg class="variant-chevron text-text-tertiary transition-transform duration-200 shrink-0" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>
+                        <span class="variant-name-display text-sm font-medium text-text-primary min-w-0 truncate">${strings.sellerProductVariantPlaceholderName}</span>
+                        ${isDefault ? `<span class="variant-default-pill inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-medium bg-accent text-bg shrink-0">${strings.sellerProductVariantDefault}</span>` : ''}
+                        <span class="variant-summary-meta hidden sm:flex items-center gap-1.5 text-xs text-text-secondary tabular-nums shrink-0">
+                            <span class="text-text-tertiary">·</span>
+                            <span class="variant-price-display">—</span>
+                            <span class="text-text-tertiary">·</span>
+                            <span class="variant-stock-display">0 uds</span>
+                        </span>
+                        <span class="variant-summary-shipping hidden sm:inline ml-auto text-xs text-text-secondary tabular-nums truncate"></span>
+                        <span class="variant-summary-warning hidden ml-auto items-center gap-1 text-amber-600 dark:text-amber-400 text-xs font-medium shrink-0">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                            ${strings.sellerProductVariantSummaryMissing}
+                        </span>
+                        <button type="button" class="variant-remove-btn flex items-center justify-center w-7 h-7 rounded-lg text-text-tertiary hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors shrink-0" aria-label="${strings.sellerProductVariantRemove}">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                        </button>
+                    </header>
+                    <div class="variant-body hidden border-t border-border px-4 py-4 space-y-4">
+                        <div class="grid gap-3 sm:grid-cols-12">
+                            <div class="sm:col-span-5"><label class="block text-[11px] font-medium text-text-tertiary mb-1.5">${strings.sellerProductVariantNameLabel}</label><input type="text" class="variant-name-input w-full px-3 py-2 rounded-lg border border-border bg-surface text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition" placeholder="${strings.sellerProductVariantNamePlaceholder}" /></div>
+                            <div class="sm:col-span-3"><label class="block text-[11px] font-medium text-text-tertiary mb-1.5">${strings.sellerProductVariantPriceLabel}</label><input type="number" step="0.01" min="0" class="variant-price-input w-full px-3 py-2 rounded-lg border border-border bg-surface text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition tabular-nums" placeholder="${strings.sellerProductVariantPricePlaceholder}" /></div>
+                            <div class="sm:col-span-2"><label class="block text-[11px] font-medium text-text-tertiary mb-1.5">${strings.sellerProductVariantStockLabel}</label><input type="number" min="0" class="variant-stock-input w-full px-3 py-2 rounded-lg border border-border bg-surface text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition tabular-nums" placeholder="${strings.sellerProductVariantStockPlaceholder}" /></div>
+                            <div class="sm:col-span-2 flex items-end pb-1"><label class="flex items-center gap-2 text-xs text-text-secondary cursor-pointer select-none"><input type="checkbox" class="variant-default-checkbox rounded border-border accent-neutral-900 dark:accent-white" ${isDefault ? 'checked' : ''} />${strings.sellerProductVariantDefault}</label></div>
+                        </div>
+                        <div class="flex items-center gap-3 pt-3 border-t border-border flex-wrap">
+                            <div class="variant-thumb w-11 h-11 rounded-lg border border-border bg-surface overflow-hidden flex items-center justify-center shrink-0">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="text-text-tertiary"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+                            </div>
+                            <button type="button" class="variant-image-btn flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium text-text-secondary border border-border hover:bg-border-light transition-colors"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>Subir foto</button>
+                            <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" class="variant-image-input hidden" />
+                            <button type="button" class="variant-customize-shipping-btn ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium text-text-secondary border border-border hover:bg-border-light transition-colors">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10 17h4V5H2v12h3"/><path d="M20 17h2v-3.34a4 4 0 0 0-1.17-2.83L19 9h-5v8h1"/><circle cx="7.5" cy="17.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>
+                                <span class="variant-customize-shipping-label">${strings.sellerProductVariantCustomizeShipping}</span>
+                            </button>
+                        </div>
+                        <p class="variant-shipping-status text-[11px] flex items-center gap-1.5 text-text-tertiary">
+                            <span class="variant-shipping-status-icon">·</span>
+                            <span class="variant-shipping-status-text">${strings.sellerProductVariantUsesCommonShipping}</span>
+                        </p>
+                        <div class="variant-shipping-override hidden" data-shipping-override="false">
+                            <input type="hidden" class="variant-weight-input" value="" />
+                            <input type="hidden" class="variant-length-input" value="" />
+                            <input type="hidden" class="variant-width-input" value="" />
+                            <input type="hidden" class="variant-height-input" value="" />
+                            <input type="hidden" class="variant-shipping-input" value="" />
+                        </div>
+                    </div>
+                </article>`;
+            return wrap.firstElementChild as HTMLElement;
+        }
+
+        // ---- Specs ----
+
+        addSpecBtn.addEventListener('click', () => {
+            const div = document.createElement('div');
+            div.className = 'spec-row flex items-center gap-2';
+            div.innerHTML = `<input type="text" class="spec-key-input flex-1 min-w-0 px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition" placeholder="${strings.sellerProductSpecsKeyPlaceholder}" /><input type="text" class="spec-value-input flex-1 min-w-0 px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition" placeholder="${strings.sellerProductSpecsValuePlaceholder}" /><button type="button" class="spec-remove-btn flex items-center justify-center w-8 h-8 rounded-lg text-text-tertiary hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors shrink-0"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>`;
+            specsContainer.appendChild(div);
+        });
+
+        specsContainer.addEventListener('click', (e: MouseEvent) => {
+            const removeBtn = (e.target as HTMLElement).closest('.spec-remove-btn') as HTMLElement | null;
+            if (!removeBtn) return;
+            removeBtn.closest('.spec-row')!.remove();
+        });
+
+        // ---- Modal ----
+
+        function openShippingModal(row: HTMLElement) {
+            activeModalRow = row;
+
+            const name = (row.querySelector('.variant-name-input') as HTMLInputElement).value.trim() || strings.sellerProductVariantPlaceholderName;
+            modalNameEl.textContent = name;
+
+            const init = readVariantOverrideValues(row) ?? getCentralValues();
+            modalWeight.value = Number.isFinite(init.weight) ? String(init.weight) : '';
+            modalLength.value = Number.isFinite(init.length) ? String(init.length) : '';
+            modalWidth.value = Number.isFinite(init.width) ? String(init.width) : '';
+            modalHeight.value = Number.isFinite(init.height) ? String(init.height) : '';
+            modalShippingInput.value = Number.isFinite(init.shipping) ? String(init.shipping) : '';
+
+            const isFree = init.shipping === 0;
+            modalFreeShipping.checked = isFree;
+            if (isFree) {
+                modalShippingInputWrap.classList.add('hidden');
+                modalFreeShippingDisplay.classList.remove('hidden');
+                modalShippingCost.dataset.free = 'true';
+            } else {
+                modalShippingInputWrap.classList.remove('hidden');
+                modalFreeShippingDisplay.classList.add('hidden');
+                modalShippingCost.dataset.free = 'false';
+            }
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            renderModalPreview();
+        }
+
+        function closeShippingModal() {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            activeModalRow = null;
+        }
+
+        function applyShippingModal() {
+            if (!activeModalRow) return;
+            const row = activeModalRow;
+            const v = readModalValues();
+            const c = getCentralValues();
+            const same = valuesEqual(v.weight, c.weight)
+                && valuesEqual(v.length, c.length)
+                && valuesEqual(v.width, c.width)
+                && valuesEqual(v.height, c.height)
+                && valuesEqual(v.shipping, c.shipping);
+
+            if (same) {
+                clearVariantOverride(row);
+            } else {
+                setVariantOverride(row, v);
+            }
+            updateVariantHeader(row);
+            refreshChecks();
+            closeShippingModal();
+        }
+
+        modalCloseBtn.addEventListener('click', closeShippingModal);
+        modalCancelBtn.addEventListener('click', closeShippingModal);
+        modal.addEventListener('click', (e: MouseEvent) => {
+            if (e.target === modal) closeShippingModal();
+        });
+        modalApplyBtn.addEventListener('click', applyShippingModal);
+        modalResetBtn.addEventListener('click', () => {
+            if (!activeModalRow) return;
+            clearVariantOverride(activeModalRow);
+            updateVariantHeader(activeModalRow);
+            refreshChecks();
+            closeShippingModal();
+        });
+        modalFreeShipping.addEventListener('change', () => {
+            if (modalFreeShipping.checked) {
+                if (modalShippingInput.value !== '0') modalShippingInput.dataset.prevValue = modalShippingInput.value;
+                modalShippingInput.value = '0';
+                modalShippingInputWrap.classList.add('hidden');
+                modalFreeShippingDisplay.classList.remove('hidden');
+                modalShippingCost.dataset.free = 'true';
+            } else {
+                modalShippingInput.value = modalShippingInput.dataset.prevValue ?? '';
+                modalShippingInputWrap.classList.remove('hidden');
+                modalFreeShippingDisplay.classList.add('hidden');
+                modalShippingCost.dataset.free = 'false';
+                modalShippingInput.focus();
+            }
+        });
+        [modalWeight, modalLength, modalWidth, modalHeight].forEach((el) => {
+            el.addEventListener('input', renderModalPreview);
+        });
+        modalShippingLive.addEventListener('click', (e: MouseEvent) => {
+            if ((e.target as HTMLElement).closest('.shipping-toggle')) {
+                toggleQuotesVisibility(modalShippingLive);
+            }
+        });
+
+        // ---- Save ----
 
         saveBtn.addEventListener('click', async () => {
             const title = titleInput.value.trim();
@@ -1146,19 +1521,19 @@ const hasDefaults = !!shippingDefaults && (
 
             const variants = Array.from(variantsContainer.querySelectorAll('.variant-row')).map((row: Element) => {
                 const el = row as HTMLElement;
-                const price = parseFloat((el.querySelector('.variant-price-input') as HTMLInputElement).value) || 0;
+                const eff = getEffectiveShipping(el);
                 return {
                     id: el.dataset.variantId || undefined,
                     variant_name: (el.querySelector('.variant-name-input') as HTMLInputElement).value.trim() || null,
-                    price,
+                    price: parseFloat((el.querySelector('.variant-price-input') as HTMLInputElement).value) || 0,
                     stock: parseInt((el.querySelector('.variant-stock-input') as HTMLInputElement).value) || 0,
                     is_default: (el.querySelector('.variant-default-checkbox') as HTMLInputElement).checked,
                     variant_image: el.dataset.variantImage || (el.querySelector('.variant-thumb img')?.getAttribute('src')) || null,
-                    weight_kg: (el.querySelector('.variant-weight-input') as HTMLInputElement).value === '' ? null : parseFloat((el.querySelector('.variant-weight-input') as HTMLInputElement).value),
-                    length_cm: (el.querySelector('.variant-length-input') as HTMLInputElement).value === '' ? null : parseFloat((el.querySelector('.variant-length-input') as HTMLInputElement).value),
-                    width_cm: (el.querySelector('.variant-width-input') as HTMLInputElement).value === '' ? null : parseFloat((el.querySelector('.variant-width-input') as HTMLInputElement).value),
-                    height_cm: (el.querySelector('.variant-height-input') as HTMLInputElement).value === '' ? null : parseFloat((el.querySelector('.variant-height-input') as HTMLInputElement).value),
-                    shipping_cost: (el.querySelector('.variant-shipping-input') as HTMLInputElement).value === '' ? null : parseFloat((el.querySelector('.variant-shipping-input') as HTMLInputElement).value),
+                    weight_kg: Number.isFinite(eff.weight) ? eff.weight : null,
+                    length_cm: Number.isFinite(eff.length) ? eff.length : null,
+                    width_cm: Number.isFinite(eff.width) ? eff.width : null,
+                    height_cm: Number.isFinite(eff.height) ? eff.height : null,
+                    shipping_cost: Number.isFinite(eff.shipping) ? eff.shipping : null,
                 };
             });
 
@@ -1183,6 +1558,9 @@ const hasDefaults = !!shippingDefaults && (
 
             if (missingFields.length > 0) {
                 toast.error(strings.sellerProductIncompleteError.replace('{fields}', missingFields.join(', ')));
+                const variantRows = Array.from(variantsContainer.querySelectorAll('.variant-row')) as HTMLElement[];
+                const firstIncomplete = variantRows.find((row) => !isVariantComplete(row));
+                if (firstIncomplete) toggleVariantExpansion(firstIncomplete, true);
                 return;
             }
 
@@ -1234,14 +1612,22 @@ const hasDefaults = !!shippingDefaults && (
             }
         });
 
-        // Initial render of live shipping preview + summaries
-        variantsContainer.querySelectorAll('.variant-row').forEach((rowEl) => {
-            const row = rowEl as HTMLElement;
-            renderShippingPreview(row);
-            updateVariantSummary(row);
+        // ---- Initial render ----
+
+        const variantRows = Array.from(variantsContainer.querySelectorAll('.variant-row')) as HTMLElement[];
+        variantRows.forEach((row) => {
+            updateVariantShippingStatus(row);
+            updateVariantHeader(row);
         });
+        renderCentralPreview();
         refreshChecks();
         refreshHeaderTitle();
+
+        const firstIncomplete = variantRows.find((row) => !isVariantComplete(row));
+        const initialExpand = firstIncomplete ?? variantRows[0];
+        if (initialExpand) {
+            toggleVariantExpansion(initialExpand, true);
+        }
     }
 
     document.addEventListener('astro:page-load', initProductForm);
