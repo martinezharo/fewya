@@ -133,8 +133,8 @@ const profileImg = shopData.profile_img || '';
         {!isEdit && <p class="text-sm text-text-tertiary mb-6 font-normal">{strings.sellerOnboardingStep3Subtitle}</p>}
         <div class="space-y-6 max-w-2xl">
             <div>
-                <label class="block text-sm font-medium text-text-secondary mb-2">{strings.sellerOnboardingContactEmailLabel}</label>
-                <input type="email" name="contact_email" value={defaultEmail} class="w-full px-4 py-3 rounded-xl border border-border bg-transparent text-text-primary focus:ring-2 focus:ring-accent outline-none transition" placeholder={strings.sellerOnboardingContactEmailPlaceholder}/>
+                <label class="block text-sm font-medium text-text-secondary mb-2">{strings.sellerOnboardingContactEmailLabel} <span class="text-red-500">*</span></label>
+                <input type="email" name="contact_email" required value={defaultEmail} class="w-full px-4 py-3 rounded-xl border border-border bg-transparent text-text-primary focus:ring-2 focus:ring-accent outline-none transition" placeholder={strings.sellerOnboardingContactEmailPlaceholder}/>
             </div>
             <div>
                 <label class="block text-sm font-medium text-text-secondary mb-2">{strings.sellerOnboardingWhatsappLabel}</label>
