@@ -1,7 +1,8 @@
 import type { APIRoute } from 'astro';
 import { getShippingQuotes, getConfig, type SendcloudShippingQuote } from '../../../lib/shipping/sendcloud';
+import { categorize, CARRIER_META, type CarrierKey } from '../../../lib/shipping/carrierKey';
 
-export type CarrierKey = 'inpost' | 'correos_home' | 'correos_pickup';
+export type { CarrierKey };
 
 interface CarrierEstimate {
     key: CarrierKey;
@@ -14,28 +15,6 @@ interface CarrierEstimate {
 }
 
 const IVA_RATE = 1.21;
-
-const CARRIER_META: Record<CarrierKey, { label: string; sublabel: string }> = {
-    inpost: { label: 'InPost Locker', sublabel: 'Punto de recogida 24/7' },
-    correos_home: { label: 'Correos a domicilio', sublabel: 'Entrega en el domicilio' },
-    correos_pickup: { label: 'Correos en oficina', sublabel: 'Recogida en oficina' },
-};
-
-function categorize(carrierCode: string, serviceName: string, servicePointInput?: string): CarrierKey | null {
-    const code = (carrierCode || '').toLowerCase();
-    const name = (serviceName || '').toLowerCase();
-    const pickupRequired = (servicePointInput || '').toLowerCase() === 'required';
-
-    if (code.includes('inpost')) return 'inpost';
-
-    if (code.includes('correos')) {
-        if (pickupRequired || name.includes('oficina') || name.includes('office') || name.includes('shop') || name.includes('drop') || name.includes('pickup') || name.includes('recogida')) {
-            return 'correos_pickup';
-        }
-        return 'correos_home';
-    }
-    return null;
-}
 
 function jsonResponse(payload: Record<string, unknown>, status: number) {
     return new Response(JSON.stringify(payload), {
