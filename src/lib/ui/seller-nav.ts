@@ -8,6 +8,12 @@ export const sellerNavItems = [
     { href: '/sell/claims', label: strings.sellerNavClaims, icon: 'alert-circle' as const },
 ] satisfies { href: string; label: string; icon: string }[];
 
+export const sellerDetailsNavItem = {
+    href: '/sell/details',
+    label: strings.sellerNavDetails,
+    icon: 'user' as const,
+} satisfies { href: string; label: string; icon: string };
+
 export const sellerFooterNavItem = {
     href: '/sell/settings',
     label: strings.sellerNavSettings,

@@ -1,0 +1,467 @@
+---
+import SellerLayout from "../../layouts/SellerLayout.astro";
+import { strings } from "../../lib/core/i18n";
+import { createSupabaseAuthClient } from "../../lib/core/auth";
+import { getAllCountries } from "../../lib/shipping/countries";
+import { spainProvinces } from "../../lib/shipping/spain-provinces";
+import { isProfileComplete } from "../../lib/core/validation";
+
+const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
+const { data: { user } } = await supabase.auth.getUser();
+
+if (!user) {
+    return Astro.redirect('/login?redirect_to=/sell/details');
+}
+
+const { data: profile } = await supabase
+    .from('profiles')
+    .select('is_seller, first_name, last_name, email, phone, phone_prefix, address_street, address_number, address_floor, address_postal_code, address_city, address_province, address_country')
+    .eq('id', user.id)
+    .single();
+
+if (!profile?.is_seller) return Astro.redirect('/sell');
+
+const { data: shop } = await supabase
+    .from('shops')
+    .select('id, slug')
+    .eq('owner_id', user.id)
+    .maybeSingle();
+
+if (!shop) return Astro.redirect('/sell/onboarding');
+
+const profileCheck = isProfileComplete(profile ?? {});
+const profileIncomplete = !profileCheck.complete;
+
+const allCountries = getAllCountries();
+const currentCountry = profile?.address_country || 'ES';
+const currentPrefix = profile?.phone_prefix || '+34';
+const isSpain = currentCountry === 'ES';
+---
+
+<SellerLayout title={strings.sellerDetailsPageTitle} shopSlug={shop.slug} shopId={shop.id}>
+    <main class="w-full max-w-2xl mx-auto px-4 py-8 lg:py-12">
+
+        <div class="mb-8">
+            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-text-tertiary">{strings.sellerBrandName}</p>
+            <h1 class="mt-2 text-2xl font-semibold tracking-tight text-text-primary">{strings.sellerDetailsHeading}</h1>
+            <p class="mt-2 text-sm text-text-secondary">{strings.sellerDetailsSubtitle}</p>
+        </div>
+
+        {profileIncomplete && (
+            <div class="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
+                <div class="flex items-start gap-3">
+                    <svg class="shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+                    <div>
+                        <p class="text-sm font-semibold">{strings.sellerDetailsIncompleteNoticeTitle}</p>
+                        <p class="mt-1 text-sm">{strings.sellerDetailsIncompleteNoticeSubtitle}</p>
+                    </div>
+                </div>
+            </div>
+        )}
+
+        <form id="seller-profile-form" class="flex flex-col gap-5" novalidate>
+
+            {/* Nombre y Apellidos */}
+            <div class="grid grid-cols-2 gap-3">
+                <div class="flex flex-col gap-1.5">
+                    <label for="first_name" class="text-[13px] font-medium text-text-secondary">
+                        Nombre
+                    </label>
+                    <input
+                        id="first_name"
+                        name="first_name"
+                        type="text"
+                        value={profile?.first_name ?? ''}
+                        autocomplete="given-name"
+                        placeholder="Fernando"
+                        maxlength="50"
+                        class="w-full rounded-xl border border-border bg-surface px-4 py-3 text-[15px] text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-text-primary transition-colors"
+                    />
+                    <p id="first_name_error" class="hidden text-[12px] text-red-500"></p>
+                </div>
+                <div class="flex flex-col gap-1.5">
+                    <label for="last_name" class="text-[13px] font-medium text-text-secondary">
+                        Apellidos
+                    </label>
+                    <input
+                        id="last_name"
+                        name="last_name"
+                        type="text"
+                        value={profile?.last_name ?? ''}
+                        autocomplete="family-name"
+                        placeholder="Alonso Díaz"
+                        maxlength="100"
+                        class="w-full rounded-xl border border-border bg-surface px-4 py-3 text-[15px] text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-text-primary transition-colors"
+                    />
+                    <p id="last_name_error" class="hidden text-[12px] text-red-500"></p>
+                </div>
+            </div>
+
+            {/* Email (read-only) */}
+            <div class="flex flex-col gap-1.5">
+                <label for="email" class="text-[13px] font-medium text-text-secondary">
+                    {strings.meDataEmail}
+                </label>
+                <input
+                    id="email"
+                    type="email"
+                    value={profile?.email ?? user.email ?? ''}
+                    disabled
+                    class="w-full rounded-xl border border-border-light bg-surface/50 px-4 py-3 text-[15px] text-text-tertiary cursor-not-allowed select-none"
+                />
+            </div>
+
+            {/* Teléfono con prefijo */}
+            <div class="flex flex-col gap-1.5">
+                <label for="phone" class="text-[13px] font-medium text-text-secondary">
+                    {strings.meDataPhone}
+                </label>
+                <div class="flex gap-2">
+                    <select
+                        id="phone_prefix"
+                        name="phone_prefix"
+                        autocomplete="tel-country-code"
+                        class="shrink-0 w-[130px] rounded-xl border border-border bg-surface px-3 py-3 text-[15px] text-text-primary focus:outline-none focus:border-text-primary transition-colors cursor-pointer appearance-none"
+                        style="background-image: url('data:image/svg+xml;charset=UTF-8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2712%27 height=%2712%27 viewBox=%270 0 12 12%27%3E%3Cpath fill=%27%23999%27 d=%27M3 4.5L6 7.5l3-3%27/%3E%3C/svg%3E'); background-repeat: no-repeat; background-position: right 8px center; padding-right: 24px;"
+                    >
+                        {allCountries.map(country => (
+                            <option value={country.phonePrefix} selected={currentPrefix === country.phonePrefix}>
+                                {country.flag} {country.phonePrefix}
+                            </option>
+                        ))}
+                    </select>
+                    <input
+                        id="phone"
+                        name="phone"
+                        type="tel"
+                        value={profile?.phone ?? ''}
+                        autocomplete="tel"
+                        placeholder="612 345 678"
+                        class="flex-1 rounded-xl border border-border bg-surface px-4 py-3 text-[15px] text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-text-primary transition-colors"
+                    />
+                </div>
+                <p id="phone_error" class="hidden text-[12px] text-red-500"></p>
+            </div>
+
+            {/* Calle y Número */}
+            <div class="grid grid-cols-3 gap-3">
+                <div class="col-span-2 flex flex-col gap-1.5">
+                    <label for="address_street" class="text-[13px] font-medium text-text-secondary">
+                        Calle
+                    </label>
+                    <input
+                        id="address_street"
+                        name="address_street"
+                        type="text"
+                        value={profile?.address_street ?? ''}
+                        autocomplete="address-line1"
+                        placeholder="Calle Gran Vía"
+                        maxlength="100"
+                        class="w-full rounded-xl border border-border bg-surface px-4 py-3 text-[15px] text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-text-primary transition-colors"
+                    />
+                    <p id="address_street_error" class="hidden text-[12px] text-red-500"></p>
+                </div>
+                <div class="flex flex-col gap-1.5">
+                    <label for="address_number" class="text-[13px] font-medium text-text-secondary">
+                        Número
+                    </label>
+                    <input
+                        id="address_number"
+                        name="address_number"
+                        type="text"
+                        value={profile?.address_number ?? ''}
+                        autocomplete="address-line2"
+                        placeholder="42"
+                        maxlength="20"
+                        class="w-full rounded-xl border border-border bg-surface px-4 py-3 text-[15px] text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-text-primary transition-colors"
+                    />
+                    <p id="address_number_error" class="hidden text-[12px] text-red-500"></p>
+                </div>
+            </div>
+
+            {/* Piso / Puerta (opcional) */}
+            <div class="flex flex-col gap-1.5">
+                <label for="address_floor" class="text-[13px] font-medium text-text-secondary">
+                    Piso / Puerta <span class="text-text-tertiary font-normal">(opcional)</span>
+                </label>
+                <input
+                    id="address_floor"
+                    name="address_floor"
+                    type="text"
+                    value={profile?.address_floor ?? ''}
+                    autocomplete="address-line3"
+                    placeholder="3ºB, Portal 2..."
+                    maxlength="30"
+                    class="w-full rounded-xl border border-border bg-surface px-4 py-3 text-[15px] text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-text-primary transition-colors"
+                />
+                <p id="address_floor_error" class="hidden text-[12px] text-red-500"></p>
+            </div>
+
+            {/* Código Postal y Ciudad */}
+            <div class="grid grid-cols-3 gap-3">
+                <div class="flex flex-col gap-1.5">
+                    <label for="address_postal_code" class="text-[13px] font-medium text-text-secondary">
+                        C.P.
+                    </label>
+                    <input
+                        id="address_postal_code"
+                        name="address_postal_code"
+                        type="text"
+                        value={profile?.address_postal_code ?? ''}
+                        autocomplete="postal-code"
+                        placeholder="28013"
+                        maxlength="5"
+                        inputmode="numeric"
+                        class="w-full rounded-xl border border-border bg-surface px-4 py-3 text-[15px] text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-text-primary transition-colors"
+                    />
+                    <p id="address_postal_code_error" class="hidden text-[12px] text-red-500"></p>
+                </div>
+                <div class="col-span-2 flex flex-col gap-1.5">
+                    <label for="address_city" class="text-[13px] font-medium text-text-secondary">
+                        Ciudad
+                    </label>
+                    <input
+                        id="address_city"
+                        name="address_city"
+                        type="text"
+                        value={profile?.address_city ?? ''}
+                        autocomplete="address-level2"
+                        placeholder="Madrid"
+                        maxlength="100"
+                        class="w-full rounded-xl border border-border bg-surface px-4 py-3 text-[15px] text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-text-primary transition-colors"
+                    />
+                    <p id="address_city_error" class="hidden text-[12px] text-red-500"></p>
+                </div>
+            </div>
+
+            {/* País */}
+            <div class="flex flex-col gap-1.5">
+                <label for="address_country" class="text-[13px] font-medium text-text-secondary">
+                    País
+                </label>
+                <select
+                    id="address_country"
+                    name="address_country"
+                    autocomplete="country"
+                    class="w-full rounded-xl border border-border bg-surface px-4 py-3 text-[15px] text-text-primary focus:outline-none focus:border-text-primary transition-colors cursor-pointer appearance-none"
+                    style="background-image: url('data:image/svg+xml;charset=UTF-8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2712%27 height=%2712%27 viewBox=%270 0 12 12%27%3E%3Cpath fill=%27%23999%27 d=%27M3 4.5L6 7.5l3-3%27/%3E%3C/svg%3E'); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px;"
+                >
+                    {allCountries.map(country => (
+                        <option value={country.code} selected={currentCountry === country.code}>
+                            {country.flag} {country.name}
+                        </option>
+                    ))}
+                </select>
+            </div>
+
+            {/* Provincia / Estado */}
+            <div class="flex flex-col gap-1.5" id="province-container" data-is-spain={isSpain ? 'true' : 'false'}>
+                <label for="address_province" class="text-[13px] font-medium text-text-secondary">
+                    Provincia
+                </label>
+                {isSpain ? (
+                    <select
+                        id="address_province"
+                        name="address_province"
+                        autocomplete="address-level1"
+                        class="w-full rounded-xl border border-border bg-surface px-4 py-3 text-[15px] text-text-primary focus:outline-none focus:border-text-primary transition-colors cursor-pointer appearance-none"
+                        style="background-image: url('data:image/svg+xml;charset=UTF-8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2712%27 height=%2712%27 viewBox=%270 0 12 12%27%3E%3Cpath fill=%27%23999%27 d=%27M3 4.5L6 7.5l3-3%27/%3E%3C/svg%3E'); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px;"
+                    >
+                        <option value="">Selecciona provincia</option>
+                        {spainProvinces.map(province => (
+                            <option value={province.name} selected={profile?.address_province === province.name}>
+                                {province.name}
+                            </option>
+                        ))}
+                    </select>
+                ) : (
+                    <input
+                        id="address_province"
+                        name="address_province"
+                        type="text"
+                        value={profile?.address_province ?? ''}
+                        autocomplete="address-level1"
+                        placeholder="Madrid"
+                        class="w-full rounded-xl border border-border bg-surface px-4 py-3 text-[15px] text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-text-primary transition-colors"
+                    />
+                )}
+                <p id="address_province_error" class="hidden text-[12px] text-red-500"></p>
+            </div>
+
+            {/* Submit */}
+            <button
+                type="submit"
+                id="save-btn"
+                class="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-accent text-bg font-semibold text-[15px] py-3.5 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed mt-1"
+            >
+                <span data-busy-label>{strings.meDataSave}</span>
+            </button>
+
+        </form>
+    </main>
+</SellerLayout>
+
+<script>
+    import { strings } from '../../lib/core/i18n';
+    import { spainProvinces } from '../../lib/shipping/spain-provinces';
+    import { validateProfileForm, type ProfileFormData } from '../../lib/core/validation';
+    import { runSubmit } from '../../lib/ui/submit';
+
+    const form = document.getElementById('seller-profile-form') as HTMLFormElement | null;
+    if (form) {
+        const btn = document.getElementById('save-btn') as HTMLButtonElement;
+        const countrySelect = document.getElementById('address_country') as unknown as HTMLSelectElement;
+        const provinceContainer = document.getElementById('province-container') as unknown as HTMLDivElement;
+
+        const errorMessages: Record<string, string> = {
+            validationRequired: strings.validationRequired,
+            validationNameMinLength: strings.validationNameMinLength,
+            validationNameMaxLength: strings.validationNameMaxLength,
+            validationLastNameMinLength: strings.validationLastNameMinLength,
+            validationLastNameMaxLength: strings.validationLastNameMaxLength,
+            validationPhoneFormat: strings.validationPhoneFormat,
+            validationPhonePrefixMissing: strings.validationPhonePrefixMissing,
+            validationStreetMinLength: strings.validationStreetMinLength,
+            validationStreetMaxLength: strings.validationStreetMaxLength,
+            validationNumberMaxLength: strings.validationNumberMaxLength,
+            validationFloorMaxLength: strings.validationFloorMaxLength,
+            validationPostalCodeFormat: strings.validationPostalCodeFormat,
+            validationPostalCodeFormatEs: strings.validationPostalCodeFormatEs,
+            validationCityMinLength: strings.validationCityMinLength,
+            validationCityMaxLength: strings.validationCityMaxLength,
+            validationProvinceRequiredEs: strings.validationProvinceRequiredEs,
+            validationNameFormat: strings.validationNameFormat,
+            validationCityFormat: strings.validationCityFormat,
+        };
+
+        function showFieldError(fieldId: string, message: string | null) {
+            const errorEl = document.getElementById(`${fieldId}_error`);
+            const inputEl = document.getElementById(fieldId);
+            if (errorEl && message) {
+                errorEl.textContent = message;
+                errorEl.classList.remove('hidden');
+                inputEl?.classList.add('border-red-500');
+                inputEl?.classList.remove('border-border');
+            } else if (errorEl) {
+                errorEl.classList.add('hidden');
+                inputEl?.classList.remove('border-red-500');
+                inputEl?.classList.add('border-border');
+            }
+        }
+
+        function clearAllErrors() {
+            const errorFields = ['first_name', 'last_name', 'phone', 'phone_prefix', 'address_street', 'address_number', 'address_floor', 'address_postal_code', 'address_city', 'address_province'];
+            errorFields.forEach(field => showFieldError(field, null));
+        }
+
+        function getProvinceValue(): string {
+            const el = provinceContainer.querySelector('input, select');
+            if (el instanceof HTMLInputElement || el instanceof HTMLSelectElement) {
+                return el.value || '';
+            }
+            return '';
+        }
+
+        function updateProvinceField() {
+            const country = countrySelect.value;
+            const isSpain = country === 'ES';
+            const currentProvince = getProvinceValue();
+
+            if (isSpain) {
+                provinceContainer.innerHTML = `
+                    <label for="address_province" class="text-[13px] font-medium text-text-secondary">
+                        Provincia
+                    </label>
+                    <select
+                        id="address_province"
+                        name="address_province"
+                        autocomplete="address-level1"
+                        class="w-full rounded-xl border border-border bg-surface px-4 py-3 text-[15px] text-text-primary focus:outline-none focus:border-text-primary transition-colors cursor-pointer appearance-none"
+                        style="background-image: url('data:image/svg+xml;charset=UTF-8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2712%27 height=%2712%27 viewBox=%270 0 12 12%27%3E%3Cpath fill=%27%23999%27 d=%27M3 4.5L6 7.5l3-3%27/%3E%3C/svg%3E'); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px;"
+                    >
+                        <option value="">Selecciona provincia</option>
+                        ${spainProvinces.map(p => `<option value="${p.name}" ${p.name === currentProvince ? 'selected' : ''}>${p.name}</option>`).join('')}
+                    </select>
+                    <p id="address_province_error" class="hidden text-[12px] text-red-500"></p>
+                `;
+            } else {
+                provinceContainer.innerHTML = `
+                    <label for="address_province" class="text-[13px] font-medium text-text-secondary">
+                        Provincia / Estado
+                    </label>
+                    <input
+                        id="address_province"
+                        name="address_province"
+                        type="text"
+                        value="${currentProvince}"
+                        autocomplete="address-level1"
+                        placeholder="Madrid"
+                        class="w-full rounded-xl border border-border bg-surface px-4 py-3 text-[15px] text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-text-primary transition-colors"
+                    />
+                    <p id="address_province_error" class="hidden text-[12px] text-red-500"></p>
+                `;
+            }
+        }
+
+        countrySelect.addEventListener('change', updateProvinceField);
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            clearAllErrors();
+
+            const provinceEl = form.querySelector('#address_province') as HTMLInputElement | HTMLSelectElement | null;
+
+            const data: ProfileFormData = {
+                first_name: (form.querySelector('#first_name') as HTMLInputElement).value,
+                last_name: (form.querySelector('#last_name') as HTMLInputElement).value,
+                phone: (form.querySelector('#phone') as HTMLInputElement).value,
+                phone_prefix: (form.querySelector('#phone_prefix') as unknown as HTMLSelectElement).value,
+                address_street: (form.querySelector('#address_street') as HTMLInputElement).value,
+                address_number: (form.querySelector('#address_number') as HTMLInputElement).value,
+                address_floor: (form.querySelector('#address_floor') as HTMLInputElement).value,
+                address_postal_code: (form.querySelector('#address_postal_code') as HTMLInputElement).value,
+                address_city: (form.querySelector('#address_city') as HTMLInputElement).value,
+                address_province: provinceEl?.value || '',
+                address_country: (form.querySelector('#address_country') as unknown as HTMLSelectElement).value,
+            };
+
+            const errors = validateProfileForm(data);
+
+            if (errors.length > 0) {
+                errors.forEach(err => {
+                    const translatedMsg = errorMessages[err.message] || err.message;
+                    showFieldError(err.field, translatedMsg);
+                });
+                const firstErrorField = errors[0].field;
+                const firstInput = form.querySelector(`#${firstErrorField}`) as HTMLElement | null;
+                firstInput?.focus();
+                return;
+            }
+
+            const result = await runSubmit({
+                button: btn,
+                busyLabel: strings.meDataSaving,
+                action: () => fetch('/api/profile/update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data),
+                }),
+                successMsg: strings.meDataSaveSuccess,
+                errorFallback: strings.meDataSaveError,
+            });
+            if (result.ok) {
+                window.setTimeout(() => {
+                    window.location.reload();
+                }, 900);
+            }
+        });
+
+        const inputFields = ['first_name', 'last_name', 'address_street', 'address_postal_code', 'address_city'];
+        inputFields.forEach(fieldId => {
+            const input = form.querySelector(`#${fieldId}`) as HTMLInputElement | null;
+            input?.addEventListener('input', () => {
+                showFieldError(fieldId, null);
+            });
+        });
+    }
+</script>

@@ -5,6 +5,7 @@ import Icon from '../components/icons/Icon.astro';
 import { strings } from '../lib/core/i18n';
 import { createSupabaseAuthClient } from '../lib/core/auth';
 import { validateProductCompleteness } from '../lib/products/productValidation';
+import { isProfileComplete } from '../lib/core/validation';
 
 interface Props {
     title?: string;
@@ -21,9 +22,21 @@ let activeIncidents = 0;
 let pendingOrdersCount = 0;
 let deliveryFailedCount = 0;
 let incompleteProductsCount = 0;
+let sellerDetailsIncomplete = false;
 
 if (shopId) {
     const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (user) {
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('first_name, last_name, phone, address_street, address_number, address_postal_code, address_city, address_province, address_country')
+            .eq('id', user.id)
+            .maybeSingle();
+        sellerDetailsIncomplete = !isProfileComplete(profile ?? {}).complete;
+    }
+
     const { data: paymentAccount } = await supabase
         .from('shop_payment_accounts')
         .select('stripe_account_id, charges_enabled, payouts_enabled, details_submitted')
@@ -84,7 +97,7 @@ if (shopId) {
 
 <Layout title={title} description={description}>
     <div class="flex h-dvh overflow-hidden bg-bg">
-        <SellerSidebar currentPath={currentPath} shopSlug={shopSlug} stripeStatus={stripeStatus} activeIncidents={activeIncidents} pendingOrdersCount={pendingOrdersCount} deliveryFailedCount={deliveryFailedCount} incompleteProductsCount={incompleteProductsCount} />
+        <SellerSidebar currentPath={currentPath} shopSlug={shopSlug} stripeStatus={stripeStatus} activeIncidents={activeIncidents} pendingOrdersCount={pendingOrdersCount} deliveryFailedCount={deliveryFailedCount} incompleteProductsCount={incompleteProductsCount} sellerDetailsIncomplete={sellerDetailsIncomplete} />
 
         <div class="flex flex-col flex-1 min-w-0 overflow-hidden">
             <!-- Mobile top bar (hidden on lg+) -->
@@ -110,6 +123,17 @@ if (shopId) {
                     <p class="flex-1 text-[13px] text-amber-800 dark:text-amber-200">{strings.sellerStripeWarningBanner}</p>
                     <a href="/sell/onboarding" class="shrink-0 text-[13px] font-medium text-amber-700 dark:text-amber-300 underline underline-offset-2 hover:text-amber-900 dark:hover:text-amber-100 transition-colors">
                         {strings.sellerStripeWarningCta}
+                    </a>
+                </div>
+            )}
+
+            <!-- Seller details incomplete banner (only when Stripe is already set up) -->
+            {stripeStatus === 'ready' && sellerDetailsIncomplete && currentPath !== '/sell/details' && (
+                <div class="flex items-center gap-3 px-4 py-2.5 bg-amber-50 border-b border-amber-200 dark:bg-amber-950/40 dark:border-amber-800 shrink-0">
+                    <svg class="shrink-0 text-amber-600 dark:text-amber-400" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+                    <p class="flex-1 text-[13px] text-amber-800 dark:text-amber-200">{strings.sellerDetailsWarningBanner}</p>
+                    <a href="/sell/details" class="shrink-0 text-[13px] font-medium text-amber-700 dark:text-amber-300 underline underline-offset-2 hover:text-amber-900 dark:hover:text-amber-100 transition-colors">
+                        {strings.sellerDetailsWarningCta}
                     </a>
                 </div>
             )}
