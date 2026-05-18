@@ -280,7 +280,7 @@ export const strings = {
     orderFundsHeld: 'Fondos retenidos',
     orderFundsHeldTooltip: 'Fewya retiene el dinero hasta que el comprador confirme la recepción o pasen 48h desde la entrega.',
     orderFundsReleased: 'Fondos liberados',
-    orderAutoConfirmHint: 'Se confirmará automáticamente en 48h si no hay incidencias',
+    orderAutoConfirmHint: 'El vendedor podrá confirmarlo manualmente en 48h si no hay incidencias',
     orderIncidentReported: 'Incidencia reportada por el comprador',
     orderCancellationReason: 'Motivo de cancelación',
     orderHideBtn: 'Eliminar',
