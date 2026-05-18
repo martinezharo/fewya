@@ -46,6 +46,7 @@ CREATE TABLE public.shops (
   default_height_cm decimal(8,3),
   default_shipping_cost numeric(8,2),
   payments_active boolean NOT NULL DEFAULT false,
+  seller_details_complete boolean NOT NULL DEFAULT false,
   CONSTRAINT shops_pkey PRIMARY KEY (id),
   CONSTRAINT shops_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES public.profiles(id)
 );
@@ -90,6 +91,53 @@ CREATE TABLE public.shop_payment_accounts (
 -- ============================================================
 -- Functions
 -- ============================================================
+
+-- Shared check used to keep shops.seller_details_complete in sync.
+CREATE OR REPLACE FUNCTION public.profile_shipping_complete(p public.profiles)
+RETURNS boolean AS $$
+BEGIN
+  RETURN
+    coalesce(btrim(p.first_name), '') <> '' AND
+    coalesce(btrim(p.last_name), '') <> '' AND
+    coalesce(btrim(p.phone), '') <> '' AND
+    coalesce(btrim(p.address_street), '') <> '' AND
+    coalesce(btrim(p.address_number), '') <> '' AND
+    coalesce(btrim(p.address_postal_code), '') <> '' AND
+    coalesce(btrim(p.address_city), '') <> '' AND
+    (
+      coalesce(p.address_country, 'ES') <> 'ES'
+      OR coalesce(btrim(p.address_province), '') <> ''
+    );
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
+CREATE OR REPLACE FUNCTION public.sync_shops_seller_details_complete(p_owner_id uuid)
+RETURNS void AS $$
+DECLARE
+  v_profile public.profiles;
+BEGIN
+  SELECT * INTO v_profile FROM public.profiles WHERE id = p_owner_id;
+  UPDATE public.shops
+  SET seller_details_complete = COALESCE(public.profile_shipping_complete(v_profile), false)
+  WHERE owner_id = p_owner_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+CREATE OR REPLACE FUNCTION public.profiles_after_update_sync_shops()
+RETURNS trigger AS $$
+BEGIN
+  PERFORM public.sync_shops_seller_details_complete(NEW.id);
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+CREATE OR REPLACE FUNCTION public.shops_after_insert_sync_seller_details()
+RETURNS trigger AS $$
+BEGIN
+  PERFORM public.sync_shops_seller_details_complete(NEW.owner_id);
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
@@ -183,6 +231,18 @@ $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+CREATE TRIGGER profiles_seller_details_sync
+  AFTER UPDATE OF
+    first_name, last_name, phone,
+    address_street, address_number, address_postal_code,
+    address_city, address_province, address_country
+  ON public.profiles
+  FOR EACH ROW EXECUTE FUNCTION public.profiles_after_update_sync_shops();
+
+CREATE TRIGGER shops_seller_details_sync
+  AFTER INSERT ON public.shops
+  FOR EACH ROW EXECUTE FUNCTION public.shops_after_insert_sync_seller_details();
 
 -- ============================================================
 -- Policies
