@@ -33,6 +33,9 @@ export interface SellerOrderCardData {
     shippingFullName: string | null;
     shippingPhone: string | null;
     shippingAddress: string | null;
+    deliveryType?: 'home' | 'pickup_point' | null;
+    pickupPointCarrier?: string | null;
+    pickupPointName?: string | null;
     subtotal: number;
     shipping: number;
     itemsSold: number;
@@ -46,6 +49,7 @@ export interface SellerOrderCardData {
     labelUrl?: string;
     carrierName?: string;
     serviceName?: string;
+    labelCost?: number | null;
     refundedAmount?: number | null;
     shippingRetained?: number | null;
 }
@@ -206,17 +210,31 @@ const { showRefunded, refundedAmountFormatted, shippingRetainedFormatted } = get
                 ))}
             </div>
 
-            <div class="mt-2 pt-4 border-t border-border-light">
+            <div class="mt-2 pt-4 border-t border-border-light space-y-2">
                 <div class="flex items-center justify-between text-sm">
-                    <span class="text-text-secondary">{strings.cartShipping}</span>
-                    <span class="font-semibold text-text-primary tabular-nums">
+                    <span class="text-text-secondary">{strings.sellerPayoutProducts}</span>
+                    <span class="font-medium text-text-primary tabular-nums">
+                        {formatEur(order.subtotal)}
+                    </span>
+                </div>
+                <div class="flex items-center justify-between text-sm">
+                    <span class="text-text-secondary">{strings.sellerPayoutShippingCharged}</span>
+                    <span class="font-medium text-text-primary tabular-nums">
                         {formatShippingCell(order.shipping)}
                     </span>
                 </div>
-                <div class="flex items-center justify-between text-sm mt-2">
-                    <span class="font-semibold text-text-primary">{strings.cartTotal}</span>
-                    <span class="font-bold text-text-primary tabular-nums">
-                        {formatEur(order.subtotal + order.shipping)}
+                {order.labelCost != null && order.labelCost > 0 && (
+                    <div class="flex items-center justify-between text-sm">
+                        <span class="text-text-secondary">{strings.sellerPayoutLabelCost}</span>
+                        <span class="font-medium text-rose-600 dark:text-rose-400 tabular-nums">
+                            −{formatEur(order.labelCost)}
+                        </span>
+                    </div>
+                )}
+                <div class="flex items-center justify-between text-sm pt-2 mt-1 border-t border-border-light">
+                    <span class="font-semibold text-text-primary">{strings.sellerPayoutNet}</span>
+                    <span class="text-base font-bold text-text-primary tabular-nums">
+                        {formatEur(order.subtotal + order.shipping - (order.labelCost ?? 0))}
                     </span>
                 </div>
             </div>
@@ -452,6 +470,68 @@ const { showRefunded, refundedAmountFormatted, shippingRetainedFormatted } = get
             </div>
         </div>
     </div>
+
+    {/* Label cost modal */}
+    {(normalizedStatus === 'paid' || normalizedStatus === 'processing') && (
+        <div class="label-cost-modal hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" data-order-id={order.orderId}>
+            <div class="w-full max-w-md rounded-2xl border border-border bg-surface p-5 shadow-xl">
+                <h3 class="text-base font-semibold text-text-primary">{strings.sellerLabelCostModalTitle}</h3>
+
+                <div class="label-cost-loading mt-5 flex items-center gap-3 text-sm text-text-secondary">
+                    <span class="inline-block h-4 w-4 rounded-full border-2 border-border border-t-accent animate-spin" aria-hidden="true" />
+                    <span class="label-cost-loading-text">{strings.sellerLabelCostLoading}</span>
+                </div>
+
+                <div class="label-cost-error hidden mt-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-3 py-2.5 text-sm text-red-700 dark:text-red-300">
+                    <span class="label-cost-error-msg">{strings.sellerLabelCostError}</span>
+                </div>
+
+                <div class="label-cost-ready hidden mt-4 flex flex-col gap-3">
+                    <div class="rounded-xl border border-border bg-bg px-3 py-2.5">
+                        <p class="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">{strings.sellerLabelCostCarrierLine}</p>
+                        <p class="mt-1 text-sm font-semibold text-text-primary label-cost-carrier" />
+                        <p class="mt-0.5 text-xs text-text-tertiary label-cost-service" />
+                        <p class="hidden mt-1.5 text-xs text-text-secondary label-cost-pickup-line">
+                            <span class="font-medium">{strings.sellerLabelCostPickupPointLine}:</span> <span class="label-cost-pickup-name" />
+                        </p>
+                    </div>
+
+                    <dl class="rounded-xl border border-border bg-surface divide-y divide-border text-sm">
+                        <div class="flex items-center justify-between gap-3 px-3 py-2">
+                            <dt class="text-text-secondary">{strings.sellerLabelCostGrossLabel}</dt>
+                            <dd class="font-medium text-text-primary tabular-nums label-cost-gross" />
+                        </div>
+                        <div class="flex items-center justify-between gap-3 px-3 py-2">
+                            <dt class="text-text-secondary">{strings.sellerLabelCostSubsidyLabel}</dt>
+                            <dd class="font-medium text-emerald-600 dark:text-emerald-400 tabular-nums label-cost-subsidy" />
+                        </div>
+                        <div class="flex items-center justify-between gap-3 px-3 py-2.5 bg-bg">
+                            <dt class="font-semibold text-text-primary">{strings.sellerLabelCostNetLabel}</dt>
+                            <dd class="text-base font-bold text-text-primary tabular-nums label-cost-net" />
+                        </div>
+                    </dl>
+
+                    <p class="text-xs text-text-tertiary label-cost-buyer-paid" />
+                    <p class="text-xs text-text-tertiary">{strings.sellerOrderMockLabelHint}</p>
+                </div>
+
+                <div class="mt-5 flex gap-2 justify-end">
+                    <button type="button" class="close-label-modal-btn px-3 py-1.5 text-sm font-medium text-text-secondary hover:text-text-primary transition-colors">
+                        {strings.sellerLabelCostCancel}
+                    </button>
+                    <button
+                        type="button"
+                        class="confirm-label-btn inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        data-order-id={order.orderId}
+                        disabled
+                    >
+                        <Icon name="truck" size={13} />
+                        {strings.sellerLabelCostConfirm}
+                    </button>
+                </div>
+            </div>
+        </div>
+    )}
 </article>
 
 <script>
@@ -516,137 +596,296 @@ const { showRefunded, refundedAmountFormatted, shippingRetainedFormatted } = get
         customElements.define('order-id-popover', OrderIdPopover);
     }
 
-    document.querySelectorAll('.funds-badge').forEach((badge) => {
-        const tooltip = badge.querySelector('.tooltip') as HTMLElement | null;
-        if (!tooltip) return;
+    // Label cost modal — open, fetch cost, confirm
+    interface LabelCostResponse {
+        carrierKey?: string;
+        carrierLabel?: string;
+        serviceName?: string | null;
+        grossPrice?: number;
+        subsidy?: number;
+        netDeduction?: number;
+        buyerPaidShipping?: number;
+        pickupPointName?: string | null;
+        currency?: string;
+        unavailable?: boolean;
+        error?: string;
+    }
 
-        badge.addEventListener('mouseenter', () => tooltip.classList.remove('hidden'));
-        badge.addEventListener('mouseleave', () => tooltip.classList.add('hidden'));
-        badge.addEventListener('focus', () => tooltip.classList.remove('hidden'));
-        badge.addEventListener('blur', () => tooltip.classList.add('hidden'));
-    });
+    const eurFmt = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' });
+    const formatEur = (value: number) => eurFmt.format(value);
 
-    // Mock label generation
-    document.querySelectorAll<HTMLButtonElement>('.mock-label-btn').forEach((btn) => {
-        btn.addEventListener('click', async (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const orderId = btn.dataset.orderId;
-            if (!orderId) return;
+    function getLabelModal(orderId: string): HTMLElement | null {
+        return document.querySelector<HTMLElement>(`.label-cost-modal[data-order-id="${orderId}"]`);
+    }
 
-            const result = await runSubmit({
-                button: btn,
-                busyLabel: strings.shippingCreatingShipment,
-                action: async () => {
-                    const res = await fetch('/api/sendcloud/mock-shipment', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ orderId }),
-                    });
-                    const data = await res.json() as { success?: boolean; error?: string };
-                    if (!data.success) throw new SubmitError(data.error || strings.sellerOrderLabelError);
-                    return data;
-                },
-                successMsg: strings.labelGeneratedToast,
-            });
-            if (result.ok) {
-                window.setTimeout(() => window.location.reload(), 800);
-            }
-        });
-    });
+    function setLabelModalState(modal: HTMLElement, state: 'loading' | 'ready' | 'error') {
+        const loading = modal.querySelector<HTMLElement>('.label-cost-loading');
+        const ready = modal.querySelector<HTMLElement>('.label-cost-ready');
+        const error = modal.querySelector<HTMLElement>('.label-cost-error');
+        const confirmBtn = modal.querySelector<HTMLButtonElement>('.confirm-label-btn');
 
-    // Cancel order modal
-    document.querySelectorAll('.open-cancel-modal-btn').forEach((btn) => {
-        btn.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const orderId = (btn as HTMLElement).dataset.orderId;
-            if (!orderId) return;
-            const modal = document.querySelector(`.cancel-modal[data-order-id="${orderId}"]`);
-            if (modal) modal.classList.remove('hidden');
-        });
-    });
+        loading?.classList.toggle('hidden', state !== 'loading');
+        ready?.classList.toggle('hidden', state !== 'ready');
+        error?.classList.toggle('hidden', state !== 'error');
+        if (confirmBtn) confirmBtn.disabled = state !== 'ready';
+    }
 
-    document.querySelectorAll('.close-cancel-modal-btn').forEach((btn) => {
-        btn.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const modal = btn.closest('.cancel-modal');
-            if (modal) modal.classList.add('hidden');
-        });
-    });
+    function openLabelModal(modal: HTMLElement) {
+        setLabelModalState(modal, 'loading');
+        modal.classList.remove('hidden');
+    }
 
-    document.querySelectorAll('.cancel-modal').forEach((modal) => {
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) modal.classList.add('hidden');
-        });
-    });
+    function closeLabelModal(modal: HTMLElement) {
+        modal.classList.add('hidden');
+    }
 
-    // Seller confirm delivery
-    document.querySelectorAll<HTMLButtonElement>('.seller-confirm-btn').forEach((btn) => {
-        btn.addEventListener('click', async (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const orderId = btn.dataset.orderId;
-            if (!orderId) return;
+    function fillLabelModal(modal: HTMLElement, data: LabelCostResponse) {
+        const setText = (selector: string, value: string) => {
+            const el = modal.querySelector<HTMLElement>(selector);
+            if (el) el.textContent = value;
+        };
 
-            const result = await runSubmit({
-                button: btn,
-                action: async () => {
-                    const res = await fetch('/api/orders/seller-confirm', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ orderId }),
-                    });
-                    const data = await res.json() as { success?: boolean; error?: string };
-                    if (!data.success) throw new SubmitError(data.error || strings.sellerOrderConfirmDeliveryError);
-                    return data;
-                },
-                successMsg: strings.sellerOrderConfirmDeliverySuccess,
-            });
-            if (result.ok) {
-                window.setTimeout(() => window.location.reload(), 800);
-            }
-        });
-    });
+        setText('.label-cost-carrier', data.carrierLabel ?? '');
+        setText('.label-cost-service', data.serviceName ?? '');
+        setText('.label-cost-gross', data.grossPrice != null ? formatEur(data.grossPrice) : '');
+        setText('.label-cost-subsidy', data.subsidy != null ? `−${formatEur(data.subsidy)}` : '');
+        setText('.label-cost-net', data.netDeduction != null ? formatEur(data.netDeduction) : '');
+        setText(
+            '.label-cost-buyer-paid',
+            data.buyerPaidShipping != null
+                ? strings.sellerLabelCostBuyerPaid.replace('{amount}', formatEur(data.buyerPaidShipping))
+                : '',
+        );
 
-    // Confirm cancel order + refund
-    document.querySelectorAll<HTMLButtonElement>('.confirm-cancel-btn').forEach((btn) => {
-        btn.addEventListener('click', async (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const orderId = btn.dataset.orderId;
-            if (!orderId) return;
+        const pickupLine = modal.querySelector<HTMLElement>('.label-cost-pickup-line');
+        if (data.pickupPointName) {
+            setText('.label-cost-pickup-name', data.pickupPointName);
+            pickupLine?.classList.remove('hidden');
+        } else {
+            pickupLine?.classList.add('hidden');
+        }
 
-            const modal = btn.closest('.cancel-modal');
-            const textarea = modal?.querySelector('.cancel-reason-input') as HTMLTextAreaElement | null;
-            const errorText = modal?.querySelector('.cancel-reason-error') as HTMLElement | null;
-            const reason = textarea?.value.trim() ?? '';
+        if (data.netDeduction != null) {
+            modal.dataset.labelCost = String(data.netDeduction);
+        } else {
+            delete modal.dataset.labelCost;
+        }
+    }
 
-            if (!reason) {
-                errorText?.classList.remove('hidden');
-                textarea?.focus();
+    function showLabelModalError(modal: HTMLElement, message: string) {
+        const msgEl = modal.querySelector<HTMLElement>('.label-cost-error-msg');
+        if (msgEl) msgEl.textContent = message;
+        setLabelModalState(modal, 'error');
+    }
+
+    // Single delegated listener on document — works regardless of when elements
+    // appear in the DOM. Necessary because DeferredSellerOrders uses server:defer,
+    // which streams its HTML in after astro:page-load and DOMContentLoaded have
+    // already fired (same pattern as OrderCard.astro).
+    let listenersAttached = false;
+
+    function attachDelegatedListeners() {
+        if (listenersAttached) return;
+        listenersAttached = true;
+
+        // Tooltip hover/focus for funds-badge. mouseenter/mouseleave do not
+        // bubble, so we use mouseover/mouseout with .closest() for delegation.
+        const setBadgeTooltip = (target: EventTarget | null, visible: boolean) => {
+            const badge = (target as HTMLElement | null)?.closest?.('.funds-badge') ?? null;
+            const tooltip = badge?.querySelector('.tooltip') as HTMLElement | null;
+            if (!tooltip) return;
+            tooltip.classList.toggle('hidden', !visible);
+        };
+        document.addEventListener('mouseover', (e) => setBadgeTooltip(e.target, true));
+        document.addEventListener('mouseout', (e) => setBadgeTooltip(e.target, false));
+        document.addEventListener('focusin', (e) => setBadgeTooltip(e.target, true));
+        document.addEventListener('focusout', (e) => setBadgeTooltip(e.target, false));
+
+        document.addEventListener('click', async (e) => {
+            const rawTarget = e.target;
+            if (!(rawTarget instanceof Element)) return;
+            const target = rawTarget as HTMLElement;
+
+            // Open label-cost modal and fetch quote
+            const mockBtn = target.closest<HTMLButtonElement>('.mock-label-btn');
+            if (mockBtn) {
+                e.preventDefault();
+                e.stopPropagation();
+                const orderId = mockBtn.dataset.orderId;
+                if (!orderId) return;
+                const modal = getLabelModal(orderId);
+                if (!modal) return;
+
+                openLabelModal(modal);
+                try {
+                    const res = await fetch(`/api/sendcloud/order-label-cost?orderId=${encodeURIComponent(orderId)}`);
+                    const data = await res.json() as LabelCostResponse;
+                    if (!res.ok) {
+                        showLabelModalError(modal, data.error || strings.sellerLabelCostError);
+                        return;
+                    }
+                    if (data.unavailable) {
+                        showLabelModalError(modal, data.error || strings.sellerLabelCostUnavailable);
+                        return;
+                    }
+                    fillLabelModal(modal, data);
+                    setLabelModalState(modal, 'ready');
+                } catch (err) {
+                    console.error('label-cost fetch failed', err);
+                    showLabelModalError(modal, strings.sellerLabelCostError);
+                }
                 return;
             }
-            errorText?.classList.add('hidden');
 
-            const result = await runSubmit({
-                button: btn,
-                action: async () => {
-                    const res = await fetch('/api/orders/refund', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ orderId, cancellationReason: reason }),
-                    });
-                    const data = await res.json() as { success?: boolean; error?: string };
-                    if (!data.success) throw new SubmitError(data.error || strings.sellerOrderRefundError);
-                    return data;
-                },
-                successMsg: strings.sellerOrderRefundSuccess,
-            });
-            if (result.ok) {
-                window.setTimeout(() => window.location.reload(), 800);
+            // Close label-cost modal (X button)
+            const closeLabelBtn = target.closest<HTMLButtonElement>('.close-label-modal-btn');
+            if (closeLabelBtn) {
+                e.preventDefault();
+                e.stopPropagation();
+                const modal = closeLabelBtn.closest<HTMLElement>('.label-cost-modal');
+                if (modal) closeLabelModal(modal);
+                return;
+            }
+
+            // Confirm label generation
+            const confirmLabelBtn = target.closest<HTMLButtonElement>('.confirm-label-btn');
+            if (confirmLabelBtn) {
+                e.preventDefault();
+                e.stopPropagation();
+                const orderId = confirmLabelBtn.dataset.orderId;
+                if (!orderId) return;
+
+                const modal = getLabelModal(orderId);
+                const labelCostAttr = modal?.dataset.labelCost;
+                const labelCost = labelCostAttr != null ? Number(labelCostAttr) : undefined;
+
+                const result = await runSubmit({
+                    button: confirmLabelBtn,
+                    busyLabel: strings.shippingCreatingShipment,
+                    action: async () => {
+                        const res = await fetch('/api/sendcloud/mock-shipment', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ orderId, labelCost }),
+                        });
+                        const data = await res.json() as { success?: boolean; error?: string };
+                        if (!data.success) throw new SubmitError(data.error || strings.sellerOrderLabelError);
+                        return data;
+                    },
+                    successMsg: strings.labelGeneratedToast,
+                });
+                if (result.ok && modal) {
+                    const loadingText = modal.querySelector<HTMLElement>('.label-cost-loading-text');
+                    if (loadingText) loadingText.textContent = strings.sellerLabelCostRefreshing;
+                    setLabelModalState(modal, 'loading');
+                    window.location.reload();
+                }
+                return;
+            }
+
+            // Backdrop click on label-cost modal
+            if (target.classList.contains('label-cost-modal')) {
+                closeLabelModal(target);
+                return;
+            }
+
+            // Open cancel-order modal
+            const openCancelBtn = target.closest<HTMLElement>('.open-cancel-modal-btn');
+            if (openCancelBtn) {
+                e.preventDefault();
+                e.stopPropagation();
+                const orderId = openCancelBtn.dataset.orderId;
+                if (!orderId) return;
+                document.querySelector(`.cancel-modal[data-order-id="${orderId}"]`)?.classList.remove('hidden');
+                return;
+            }
+
+            // Close cancel-order modal (X button)
+            const closeCancelBtn = target.closest<HTMLElement>('.close-cancel-modal-btn');
+            if (closeCancelBtn) {
+                e.preventDefault();
+                e.stopPropagation();
+                closeCancelBtn.closest('.cancel-modal')?.classList.add('hidden');
+                return;
+            }
+
+            // Backdrop click on cancel-modal
+            if (target.classList.contains('cancel-modal')) {
+                target.classList.add('hidden');
+                return;
+            }
+
+            // Seller confirm delivery
+            const sellerConfirmBtn = target.closest<HTMLButtonElement>('.seller-confirm-btn');
+            if (sellerConfirmBtn) {
+                e.preventDefault();
+                e.stopPropagation();
+                const orderId = sellerConfirmBtn.dataset.orderId;
+                if (!orderId) return;
+
+                const result = await runSubmit({
+                    button: sellerConfirmBtn,
+                    action: async () => {
+                        const res = await fetch('/api/orders/seller-confirm', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ orderId }),
+                        });
+                        const data = await res.json() as { success?: boolean; error?: string };
+                        if (!data.success) throw new SubmitError(data.error || strings.sellerOrderConfirmDeliveryError);
+                        return data;
+                    },
+                    successMsg: strings.sellerOrderConfirmDeliverySuccess,
+                });
+                if (result.ok) {
+                    window.setTimeout(() => window.location.reload(), 800);
+                }
+                return;
+            }
+
+            // Confirm cancel order + refund
+            const confirmCancelBtn = target.closest<HTMLButtonElement>('.confirm-cancel-btn');
+            if (confirmCancelBtn) {
+                e.preventDefault();
+                e.stopPropagation();
+                const orderId = confirmCancelBtn.dataset.orderId;
+                if (!orderId) return;
+
+                const modal = confirmCancelBtn.closest('.cancel-modal');
+                const textarea = modal?.querySelector('.cancel-reason-input') as HTMLTextAreaElement | null;
+                const errorText = modal?.querySelector('.cancel-reason-error') as HTMLElement | null;
+                const reason = textarea?.value.trim() ?? '';
+
+                if (!reason) {
+                    errorText?.classList.remove('hidden');
+                    textarea?.focus();
+                    return;
+                }
+                errorText?.classList.add('hidden');
+
+                const result = await runSubmit({
+                    button: confirmCancelBtn,
+                    action: async () => {
+                        const res = await fetch('/api/orders/refund', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ orderId, cancellationReason: reason }),
+                        });
+                        const data = await res.json() as { success?: boolean; error?: string };
+                        if (!data.success) throw new SubmitError(data.error || strings.sellerOrderRefundError);
+                        return data;
+                    },
+                    successMsg: strings.sellerOrderRefundSuccess,
+                });
+                if (result.ok) {
+                    window.setTimeout(() => window.location.reload(), 800);
+                }
+                return;
             }
         });
-    });
+    }
+
+    document.addEventListener('astro:page-load', attachDelegatedListeners);
+    if (document.readyState !== 'loading') attachDelegatedListeners();
+    else document.addEventListener('DOMContentLoaded', attachDelegatedListeners);
 </script>

@@ -29,6 +29,9 @@ const { data: ordersData } = await supabase
         shipping_full_name,
         shipping_phone,
         shipping_address,
+        delivery_type,
+        pickup_point_carrier,
+        pickup_point_name,
         order_items (
             quantity,
             price_at_purchase,
@@ -51,7 +54,8 @@ const { data: ordersData } = await supabase
             status,
             tracking_number,
             tracking_url,
-            label_url
+            label_url,
+            price
         ),
         refunds (
             amount
@@ -115,6 +119,9 @@ const orders: SellerOrderCardData[] = (ordersData ?? []).map((order: any) => {
         shippingFullName: order.shipping_full_name ?? null,
         shippingPhone: order.shipping_phone ?? null,
         shippingAddress: order.shipping_address ?? null,
+        deliveryType: order.delivery_type ?? null,
+        pickupPointCarrier: order.pickup_point_carrier ?? null,
+        pickupPointName: order.pickup_point_name ?? null,
         subtotal,
         shipping,
         itemsSold,
@@ -128,6 +135,7 @@ const orders: SellerOrderCardData[] = (ordersData ?? []).map((order: any) => {
         labelUrl: shipment?.sendcloud_shipment_id ? `/api/sendcloud/label?shipmentId=${encodeURIComponent(shipment.sendcloud_shipment_id)}` : undefined,
         carrierName: shipment?.carrier_name ?? null,
         serviceName: shipment?.service_name ?? null,
+        labelCost: shipment?.price != null ? Number(shipment.price) : null,
         refundedAmount: refundedAmount > 0 ? refundedAmount : null,
         shippingRetained: shippingRetained > 0 ? shippingRetained : null,
     };
