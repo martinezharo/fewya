@@ -307,6 +307,27 @@ export const strings = {
     sellerOrderLabelError: 'Error al generar la etiqueta',
     sellerOrderViewLabel: 'Ver etiqueta',
 
+    // Label cost modal (seller)
+    sellerLabelCostModalTitle: 'Confirmar generación de etiqueta',
+    sellerLabelCostLoading: 'Calculando coste…',
+    sellerLabelCostRefreshing: 'Etiqueta generada, actualizando…',
+    sellerLabelCostError: 'No hemos podido calcular el coste. Inténtalo de nuevo.',
+    sellerLabelCostUnavailable: 'No hay tarifa disponible para este transportista ahora mismo.',
+    sellerLabelCostCarrierLine: 'Transportista',
+    sellerLabelCostPickupPointLine: 'Punto de recogida',
+    sellerLabelCostGrossLabel: 'Coste del transportista (IVA incl.)',
+    sellerLabelCostSubsidyLabel: 'Descuento Fewya',
+    sellerLabelCostNetLabel: 'Se descontará de tu pago final',
+    sellerLabelCostBuyerPaid: 'El comprador pagó {amount} por envío',
+    sellerLabelCostConfirm: 'Confirmar y generar',
+    sellerLabelCostCancel: 'Cancelar',
+
+    // Seller order payout breakdown
+    sellerPayoutProducts: 'Productos',
+    sellerPayoutShippingCharged: 'Envío cobrado al comprador',
+    sellerPayoutLabelCost: 'Coste etiqueta (descuento Fewya incl.)',
+    sellerPayoutNet: 'Tu ingreso final',
+
     // Variant fallbacks
     variantDefaultName: 'Estandar',
     variantFallbackName: 'Variante {index}',
