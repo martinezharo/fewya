@@ -394,6 +394,65 @@ export async function cancelShipment(parcelId: string): Promise<void> {
     });
 }
 
+const LABEL_IVA_RATE = 1.21;
+const LABEL_QUOTE_DESTINATION = '28001';
+
+/**
+ * Returns the most expensive *net* label price the seller would actually
+ * absorb for a variant's weight + dimensions: the worst-case across the
+ * known carrier buckets after applying IVA and subtracting Fewya's
+ * per-carrier shipping subsidy. Returns null if no recognized carrier
+ * returned a quote.
+ */
+export async function getMaxLabelPriceEur(
+    weightKg: number,
+    lengthCm: number | null | undefined,
+    widthCm: number | null | undefined,
+    heightCm: number | null | undefined,
+): Promise<number | null> {
+    const { categorize } = await import('./carrierKey');
+    const { getCarrierSubsidy } = await import('../cart/checkout');
+    const config = getConfig();
+
+    const length = Number(lengthCm) || 0;
+    const width = Number(widthCm) || 0;
+    const height = Number(heightCm) || 0;
+    const volumetric = length > 0 && width > 0 && height > 0 ? (length * width * height) / 5000 : 0;
+    const billable = Math.max(weightKg, volumetric);
+
+    const quotes = await getShippingQuotes(
+        config.senderPostalCode,
+        'ES',
+        LABEL_QUOTE_DESTINATION,
+        'ES',
+        [{
+            weight: billable,
+            length: length || undefined,
+            width: width || undefined,
+            height: height || undefined,
+        }],
+    );
+
+    const cheapestByBucket: Record<string, number> = {};
+    for (const q of quotes) {
+        const key = categorize(q.carrierId, q.serviceName, q.servicePointInput);
+        if (!key) continue;
+        if (cheapestByBucket[key] == null || q.price < cheapestByBucket[key]) {
+            cheapestByBucket[key] = q.price;
+        }
+    }
+
+    const netByBucket = Object.entries(cheapestByBucket).map(([key, base]) => {
+        const gross = base * LABEL_IVA_RATE;
+        const subsidy = getCarrierSubsidy(key);
+        return Math.max(0, gross - subsidy);
+    });
+
+    if (netByBucket.length === 0) return null;
+
+    return Math.round(Math.max(...netByBucket) * 100) / 100;
+}
+
 export function calculateParcelFromItems(
     items: Array<{
         weightKg?: number | null;
