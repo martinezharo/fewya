@@ -724,6 +724,11 @@ export const strings = {
     sellerProductMissingPhotos: 'fotos',
     sellerProductMissingVariants: 'variantes',
     sellerProductMissingVariantData: 'todas las variantes con precio, stock y datos de envío completos',
+    sellerProductPricingPriceBelowMin: 'El precio mínimo por variante es 1,00 €. Sube el precio de "{variant}".',
+    sellerProductPricingShippingExceedsLabel: 'No puedes cobrar más por envío ({charged}) que la etiqueta más cara para esas medidas tras la subvención de Fewya ({maxLabel}). Ajusta el envío de "{variant}".',
+    sellerProductPricingMarginTooLow: 'Con estos números perderías dinero al vender "{variant}": precio + envío ({total}) deben cubrir la etiqueta más cara tras la subvención de Fewya ({maxLabel}) y dejar al menos 1 € de margen.',
+    sellerProductPricingLabelUnavailable: 'No podemos validar las tarifas de envío para "{variant}" ahora mismo. Revisa peso y medidas o reintenta en unos segundos.',
+    sellerProductPricingVariantFallbackName: 'una variante',
     sellerCatalogIncompleteWarning: 'Incompleto',
     sellerCatalogIncompleteTooltip: 'Faltan datos obligatorios. Los compradores no pueden ver este producto hasta que lo completes.',
 
