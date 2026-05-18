@@ -73,7 +73,15 @@ export const GET: APIRoute = async ({ request, cookies, url }) => {
     }
 
     const expectedBucket = resolveExpectedBucket(order.delivery_type, order.pickup_point_carrier);
+    console.log('[order-label-cost] order context', {
+        orderId,
+        delivery_type: order.delivery_type,
+        pickup_point_carrier: order.pickup_point_carrier,
+        pickup_point_postal_code: order.pickup_point_postal_code,
+        expectedBucket,
+    });
     if (!expectedBucket) {
+        console.warn('[order-label-cost] expectedBucket could not be resolved');
         return jsonResponse({
             unavailable: true,
             error: 'No se puede determinar el tipo de entrega del pedido.',
@@ -122,17 +130,33 @@ export const GET: APIRoute = async ({ request, cookies, url }) => {
     }
 
     const parcels = calculateParcelFromItems(items);
+    console.log('[order-label-cost] quote request', {
+        senderPostalCode,
+        recipientPostalCode,
+        items,
+        parcels,
+    });
 
     let quotes: SendcloudShippingQuote[];
     try {
         quotes = await getShippingQuotes(senderPostalCode, 'ES', recipientPostalCode, 'ES', parcels);
     } catch (err) {
-        console.error('order-label-cost: Sendcloud quote error', err);
+        console.error('[order-label-cost] Sendcloud quote error', err);
         return jsonResponse({
             unavailable: true,
             error: 'No hemos podido obtener tarifas de Sendcloud.',
         }, 200);
     }
+    console.log('[order-label-cost] quotes received', {
+        count: quotes.length,
+        quotes: quotes.map((q) => ({
+            carrierId: q.carrierId,
+            serviceName: q.serviceName,
+            servicePointInput: q.servicePointInput,
+            shippingOptionCode: q.shippingOptionCode,
+            price: q.price,
+        })),
+    });
 
     const buckets: Record<CarrierKey, SendcloudShippingQuote | null> = {
         inpost: null,
@@ -140,17 +164,36 @@ export const GET: APIRoute = async ({ request, cookies, url }) => {
         correos_pickup: null,
     };
 
+    const categorization: Array<{ carrierId: string; serviceName: string; servicePointInput: unknown; price: number; key: CarrierKey | null }> = [];
     for (const q of quotes) {
         const key = categorize(q.carrierId, q.serviceName, q.servicePointInput);
+        categorization.push({
+            carrierId: q.carrierId,
+            serviceName: q.serviceName,
+            servicePointInput: q.servicePointInput,
+            price: q.price,
+            key,
+        });
         if (!key) continue;
         const current = buckets[key];
         if (!current || q.price < current.price) {
             buckets[key] = q;
         }
     }
+    console.log('[order-label-cost] categorization', categorization);
+    console.log('[order-label-cost] buckets', {
+        inpost: buckets.inpost ? { serviceName: buckets.inpost.serviceName, price: buckets.inpost.price } : null,
+        correos_home: buckets.correos_home ? { serviceName: buckets.correos_home.serviceName, price: buckets.correos_home.price } : null,
+        correos_pickup: buckets.correos_pickup ? { serviceName: buckets.correos_pickup.serviceName, price: buckets.correos_pickup.price } : null,
+        expectedBucket,
+    });
 
     const chosen = buckets[expectedBucket];
     if (!chosen) {
+        console.warn('[order-label-cost] no quote in expected bucket', {
+            expectedBucket,
+            availableBuckets: Object.entries(buckets).filter(([, v]) => v !== null).map(([k]) => k),
+        });
         return jsonResponse({
             unavailable: true,
             carrierKey: expectedBucket,
