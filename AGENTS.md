@@ -10,6 +10,7 @@
 - Las rutas de las páginas deben estar siempre en inglés.
 - Cuando hagas un cambio en la estructura de la base de datos actualiza db-structure y genera un nuevo archivo SQL en una carpeta de migraciones con los cambios listos para ser importados en Supabase.
 - NUNCA hagas commits, push o cualquier otra cosa que altere el historial de Git a menos que te lo pida explicitamente.
+- Si te pido hacer un commit, sigue las mejores prácticas de Git dividiéndolo por categoría / funcionalidad. Escribe el mensaje siempre en inglés.
 
 ## Fewya
 
