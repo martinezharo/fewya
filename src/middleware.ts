@@ -17,7 +17,13 @@ const AUTH_RATE_PATHS = ['/api/auth/'];
 
 const CSP = [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' https://js.stripe.com",
+    // script-src includes `data:` because Astro's ClientRouter re-executes
+    // inline <script> tags after a page swap by inserting them as
+    // `data:application/javascript,...` URIs. Without `data:` the swap stalls
+    // and astro:page-load never fires — event handlers stop re-binding on
+    // SPA navigation. The XSS surface is essentially unchanged because
+    // 'unsafe-inline' already permits inline script execution.
+    "script-src 'self' 'unsafe-inline' https://js.stripe.com data:",
     "frame-src https://js.stripe.com https://hooks.stripe.com",
     "img-src 'self' data: blob: https://*.supabase.co https://imagedelivery.net",
     // style-src: Google Fonts stylesheet loaded via <link> in Layout.astro
