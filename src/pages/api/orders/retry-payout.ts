@@ -5,6 +5,7 @@ import { strings } from '../../../lib/core/i18n';
 import { getStripeClient } from '../../../lib/payments/stripe';
 import { releaseOrderFunds } from '../../../lib/cart/checkout';
 import { buildPayoutItemsFromJoins, type JoinedOrderItem } from '../../../lib/orders/orderJoins';
+import { getLabelCostByShop } from '../../../lib/orders/shipmentCost';
 
 function jsonResponse(payload: Record<string, unknown>, status: number) {
     return new Response(JSON.stringify(payload), {
@@ -95,12 +96,14 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     const payoutItems = buildPayoutItemsFromJoins((orderItems ?? []) as JoinedOrderItem[]);
 
     const stripe = getStripeClient();
+    const labelCostByShop = await getLabelCostByShop(adminClient, typedOrder.id);
     const releaseResult = await releaseOrderFunds({
         stripe,
         orderId: typedOrder.id,
         publicId: typedOrder.public_id,
         paymentIntentId: typedOrder.stripe_payment_intent_id!,
         items: payoutItems,
+        labelCostByShop,
     });
 
     // Record payout outcome

@@ -28,6 +28,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     let body: {
         orderId: string;
         shippingOptionCode: string;
+        labelCost?: number;
     };
 
     try {
@@ -41,6 +42,10 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     if (!orderId || !shippingOptionCode) {
         return jsonResponse({ error: 'orderId and shippingOptionCode are required' }, 400);
     }
+
+    const labelCost = Number.isFinite(body.labelCost) && (body.labelCost as number) >= 0
+        ? Math.round((body.labelCost as number) * 100) / 100
+        : 0;
 
     const { data: order, error: orderError } = await authClient
         .from('orders')
@@ -128,7 +133,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             p_carrier_id: shippingOptionCode,
             p_carrier_name: shippingOptionCode,
             p_service_name: shippingOptionCode,
-            p_price: result.price,
+            p_price: labelCost || result.price,
             p_tracking_number: result.trackingNumber,
             p_tracking_url: result.trackingUrl,
             p_label_url: result.labelUrl,

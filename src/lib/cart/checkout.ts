@@ -89,8 +89,9 @@ export async function releaseOrderFunds(options: {
     publicId: string;
     paymentIntentId: string;
     items: CheckoutPricedItem[];
+    labelCostByShop?: Record<string, number>;
 }): Promise<{ success: boolean; error?: string }> {
-    const { stripe, orderId, publicId, paymentIntentId, items } = options;
+    const { stripe, orderId, publicId, paymentIntentId, items, labelCostByShop } = options;
 
     try {
         const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
@@ -98,17 +99,24 @@ export async function releaseOrderFunds(options: {
         const payoutBreakdown = buildShopPayouts(items);
 
         const results = await Promise.allSettled(
-            payoutBreakdown.map(payout =>
-                stripe.transfers.create({
-                    amount: toMinorUnits(payout.total),
+            payoutBreakdown.map(payout => {
+                const labelCost = labelCostByShop?.[payout.shopId] ?? 0;
+                const netAmount = Math.max(0, payout.total - labelCost);
+                return stripe.transfers.create({
+                    amount: toMinorUnits(netAmount),
                     currency: CHECKOUT_CURRENCY,
                     destination: payout.stripeAccountId,
                     transfer_group: transferGroup,
-                    metadata: { orderId, publicId, shopId: payout.shopId },
+                    metadata: {
+                        orderId,
+                        publicId,
+                        shopId: payout.shopId,
+                        labelCost: labelCost.toFixed(2),
+                    },
                 }, {
                     idempotencyKey: `order-transfer:${orderId}:${payout.shopId}`,
-                })
-            )
+                });
+            })
         );
 
         const failures = results

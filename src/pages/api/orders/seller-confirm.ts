@@ -7,6 +7,7 @@ import { releaseOrderFunds } from '../../../lib/cart/checkout';
 import { createAutoReviewsForOrder } from '../../../lib/orders/autoReview';
 import { buildPayoutItemsFromJoins, pickOne, type JoinedOrderItem } from '../../../lib/orders/orderJoins';
 import { FUND_HOLD_MS } from '../../../lib/orders/timing';
+import { getLabelCostByShop } from '../../../lib/orders/shipmentCost';
 
 function jsonResponse(payload: Record<string, unknown>, status: number) {
     return new Response(JSON.stringify(payload), {
@@ -115,12 +116,14 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     const payoutItems = buildPayoutItemsFromJoins((orderItems ?? []) as JoinedOrderItem[]);
 
     const stripe = getStripeClient();
+    const labelCostByShop = await getLabelCostByShop(adminClient, order.id);
     const releaseResult = await releaseOrderFunds({
         stripe,
         orderId: order.id,
         publicId: order.public_id,
         paymentIntentId: order.stripe_payment_intent_id,
         items: payoutItems,
+        labelCostByShop,
     });
 
     // C3: record payout outcome for monitoring and retry

@@ -5,6 +5,7 @@ import { strings } from '../../../lib/core/i18n';
 import { getStripeClient } from '../../../lib/payments/stripe';
 import { releaseOrderFunds, type CheckoutPricedItem } from '../../../lib/cart/checkout';
 import { createAutoReviewsForOrder } from '../../../lib/orders/autoReview';
+import { getLabelCostByShop } from '../../../lib/orders/shipmentCost';
 
 function jsonResponse(payload: Record<string, unknown>, status: number) {
     return new Response(JSON.stringify(payload), {
@@ -109,12 +110,14 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     }
 
     const stripe = getStripeClient();
+    const labelCostByShop = await getLabelCostByShop(adminClient, order.id);
     const releaseResult = await releaseOrderFunds({
         stripe,
         orderId: order.id,
         publicId: order.public_id,
         paymentIntentId: order.stripe_payment_intent_id,
         items: payoutItems,
+        labelCostByShop,
     });
 
     if (!releaseResult.success) {

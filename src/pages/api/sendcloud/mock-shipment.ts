@@ -27,7 +27,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         return jsonResponse({ error: strings.apiUnauthorized }, 401);
     }
 
-    let body: { orderId?: string };
+    let body: { orderId?: string; labelCost?: number };
     try {
         body = await request.json();
     } catch {
@@ -38,6 +38,10 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     if (!orderId) {
         return jsonResponse({ error: strings.apiInvalidBody }, 400);
     }
+
+    const labelCost = Number.isFinite(body.labelCost) && (body.labelCost as number) >= 0
+        ? Math.round((body.labelCost as number) * 100) / 100
+        : 0;
 
     // Verify seller owns this order
     const { data: hasAccess } = await authClient.rpc('order_belongs_to_seller', {
@@ -204,7 +208,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         p_carrier_id: carrierName.toLowerCase(),
         p_carrier_name: carrierName,
         p_service_name: serviceName,
-        p_price: 0,
+        p_price: labelCost,
         p_tracking_number: mockTracking,
         p_tracking_url: `https://track.${carrierName.toLowerCase().replace(/\s/g, '')}.com/?tracking=${mockTracking}`,
         p_label_url: labelUrl,

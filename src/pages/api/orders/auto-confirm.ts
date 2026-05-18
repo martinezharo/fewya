@@ -4,6 +4,7 @@ import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
 import { getStripeClient } from '../../../lib/payments/stripe';
 import { releaseOrderFunds } from '../../../lib/cart/checkout';
 import { buildPayoutItemsFromJoins, type JoinedOrderItem } from '../../../lib/orders/orderJoins';
+import { getLabelCostByShop } from '../../../lib/orders/shipmentCost';
 import { timingSafeEqual } from '../../../lib/core/timing-safe';
 import { securityLog } from '../../../lib/core/security-log';
 
@@ -106,12 +107,14 @@ export const POST: APIRoute = async ({ request, locals }) => {
             }
 
             const payoutItems = buildPayoutItemsFromJoins(itemsByOrder.get(order.id) ?? []);
+            const labelCostByShop = await getLabelCostByShop(adminClient, order.id);
             const result = await releaseOrderFunds({
                 stripe,
                 orderId: order.id,
                 publicId: order.public_id,
                 paymentIntentId: order.stripe_payment_intent_id,
                 items: payoutItems,
+                labelCostByShop,
             });
 
             // C3: record payout status
