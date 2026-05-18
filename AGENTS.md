@@ -1,51 +1,51 @@
-# Ten siempre en cuenta estas reglas y conceptos:
+# Always keep these rules and concepts in mind:
 
 ## Coding Standards
 
-- Ten el código más eficiente posible: el código con menos errores es el que no se escribe. Debes buscar la forma más inteligente y escalable de hacer todo lo que te digo.
-- Modulariza y componetiza siempre que sea posible, crea archivos separados para componente y funciones que sean propensos de ser reutilizado o simplemente son lo suficientemente complejos para estar en un archivo a parte.
-- Haz que el código sea escalable.
-- Explica en el chat siempre lo que has hecho y no te cortes en proponer mejoras o reportar malas prácticas o errores que encuentres.
-- No hardcodees texto, crea archivos con variables para facilitar futuros cambios o traducciónes.
-- Las rutas de las páginas deben estar siempre en inglés.
-- Cuando hagas un cambio en la estructura de la base de datos actualiza db-structure y genera un nuevo archivo SQL en una carpeta de migraciones con los cambios listos para ser importados en Supabase.
-- NUNCA hagas commits, push o cualquier otra cosa que altere el historial de Git a menos que te lo pida explicitamente.
-- Si te pido hacer un commit, sigue las mejores prácticas de Git dividiendo por responsabilidad / categoría / funcionalidad y evitando commits monolíticos. Escribe el mensaje siempre en inglés.
+- Keep code as efficient as possible: code with fewer errors is the one that isn't written. You should seek the smartest and most scalable way to do everything I tell you.
+- Modularize and componentize whenever possible, create separate files for components and functions that are prone to being reused or are simply complex enough to warrant a separate file.
+- Make the code scalable.
+- Always explain in chat what you've done and don't hesitate to suggest improvements or report bad practices or errors you find.
+- Don't hardcode text, create files with variables to facilitate future changes or translations.
+- Page routes must always be in English.
+- When you make changes to the database structure, update db-structure and generate a new SQL file in a migrations folder with the changes ready to be imported into Supabase.
+- NEVER make commits, push, or anything else that alters the Git history unless I explicitly ask you to.
+- If I ask you to make a commit, follow Git best practices by dividing by responsibility / category / functionality and avoiding monolithic commits. Always write the message in English.
 
 ## Fewya
 
-### Producto
-- Será una PWA Mobile First en la sección de compras, actua más cómo si estuvieses desarrollando una app móvil nativa que una web.
-- La sección de vendedor se centrará en tener una buena experiencia en escritorio.
-- Sección de comprador y vendedor separadas a nivel de usuario pero compartiendo el código necesario para aumentar eficiencia.
+### Product
+- It will be a Mobile First PWA in the shopping section, act more like you're developing a native mobile app than a website.
+- The seller section will focus on providing a good desktop experience.
+- Buyer and seller sections separated at the user level but sharing the necessary code to increase efficiency.
 
-### Ideas concepto
-- Marketplace donde pequeños negocios pueden vender de una forma más profesional que Wallapop o Vinted, pero igual de fácil de usar sin las complicaciones de una propia web o de vender en Amazon.
-- El comprador puede comprar directamente y confianza sin chatear, con información clara y variantes en un clic.
-- “Amazon deshumaniza al vendedor. Wallapop sobrehumaniza la transacción.”
-- Compras al vendedor, no a la plataforma. Debe quedar claro.
-- Objetivo: Democratizar el eCommerce.
-- Enfocado en productos nuevos, no segunda mano.
-- El comprado paga por lo que ve, productos y envío. Comisiones y seguros corren a cargo del vendedor.
-- Dar más libertad de gestión al vendedor (como Shopify) y que gestione todo como crea conveniente a nivel políticas.
+### Concept Ideas
+- A marketplace where small businesses can sell in a more professional way than Wallapop or Vinted, but just as easy to use without the complications of their own website or selling on Amazon.
+- The buyer can purchase directly with confidence without chatting, with clear information and variants in a click.
+- "Amazon dehumanizes the seller. Wallapop over-humanizes the transaction."
+- Buy from the seller, not the platform. This must be clear.
+- Goal: Democratize eCommerce.
+- Focused on new products, not second-hand.
+- The buyer pays for what they see: products and shipping. Commissions and insurance are the seller's responsibility.
+- Give sellers more management freedom (like Shopify) and let them manage everything as they see fit in terms of policies.
 
-### Diseño
-El diseño del marketplace debe ser extremadamente profesional y ultramoderno. Tiene que tener una estética minimalista y moderna a la altura de Notion, OpenAI, Revolut o Apple.
-Haz siempre versiones para modo claro y modo oscuro.
+### Design
+The marketplace design must be extremely professional and ultramodern. It must have a minimalist and modern aesthetic on par with Notion, OpenAI, Revolut, or Apple.
+Always create versions for light mode and dark mode.
 
 ## Stack
 
 ### Core
-- **Framework:** Astro (SSR activado para Cloudflare/Supabase).
-- **Lenguaje:** TypeScript.
-- **Estilos:** Tailwind CSS
+- **Framework:** Astro (SSR enabled for Cloudflare/Supabase).
+- **Language:** TypeScript.
+- **Styling:** Tailwind CSS
 
-### Infraestructura y Backend
-- **Despliegue:** Cloudflare Workers.
-- **Base de Datos:** Supabase (PostgreSQL).
-- **Autenticación:** Supabase Auth (Inicialmente solo Google).
+### Infrastructure and Backend
+- **Deployment:** Cloudflare Workers.
+- **Database:** Supabase (PostgreSQL).
+- **Authentication:** Supabase Auth (Initially Google only).
 
-### Herramientas de Desarrollo
-- **Gestor de paquetes:** Bun.
-- **Linter:** ESLint con `eslint-plugin-astro`.
-- **PWA:** `vite-plugin-pwa` para funcionalidad offline e instalación.
+### Development Tools
+- **Package Manager:** Bun.
+- **Linter:** ESLint with `eslint-plugin-astro`.
+- **PWA:** `vite-plugin-pwa` for offline functionality and installation.
