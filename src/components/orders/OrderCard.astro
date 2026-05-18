@@ -631,6 +631,7 @@ const showHide = normalizedStatus === 'pending';
     import { toast } from '../../lib/ui/toast';
     import { setBusy } from '../../lib/ui/busy';
     import { runSubmit, SubmitError } from '../../lib/ui/submit';
+    import { compressImage, INCIDENT_PRESET } from '../../lib/ui/imageCompress';
 
     class OrderIdPopover extends HTMLElement {
         constructor() {
@@ -738,8 +739,9 @@ const showHide = normalizedStatus === 'pending';
             setBusy(submitBtn!, true, { label: strings.incidentUploading });
 
             for (const file of toUpload) {
+                const compressed = await compressImage(file, INCIDENT_PRESET);
                 const formData = new FormData();
-                formData.append('file', file);
+                formData.append('file', compressed);
                 formData.append('orderId', orderId!);
                 try {
                     const res = await fetch('/api/orders/incident-upload', { method: 'POST', body: formData });

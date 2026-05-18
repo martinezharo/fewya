@@ -159,6 +159,7 @@ const bannerImg = shop.banner_img || '';
 <script>
     import { strings } from '../../../lib/core/i18n';
     import { toast } from '../../../lib/ui/toast';
+    import { compressImage, SHOP_LOGO_PRESET, SHOP_BANNER_PRESET } from '../../../lib/ui/imageCompress';
 
     type ShopUpdateResponse = {
         success?: boolean;
@@ -209,8 +210,10 @@ const bannerImg = shop.banner_img || '';
     const bannerSavedIndicator = document.getElementById('banner-saved-indicator');
 
     const uploadImage = async (file: File, type: 'profile' | 'banner'): Promise<{ url: string } | null> => {
+        const preset = type === 'profile' ? SHOP_LOGO_PRESET : SHOP_BANNER_PRESET;
+        const compressed = await compressImage(file, preset);
         const formData = new FormData();
-        formData.append('file', file);
+        formData.append('file', compressed);
         formData.append('type', type);
 
         try {

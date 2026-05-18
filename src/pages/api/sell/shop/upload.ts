@@ -1,6 +1,15 @@
 import type { APIRoute } from 'astro';
 import { createSupabaseAuthClient } from '../../../../lib/core/auth';
 import { strings } from '../../../../lib/core/i18n';
+import { detectImageMimeType, ALLOWED_IMAGE_TYPES } from '../../../../lib/core/file-validation';
+import { securityLog } from '../../../../lib/core/security-log';
+
+const EXT_BY_TYPE: Record<string, string> = {
+    'image/jpeg': 'jpg',
+    'image/png': 'png',
+    'image/webp': 'webp',
+    'image/gif': 'gif',
+};
 
 export const POST: APIRoute = async ({ cookies, request }) => {
     const supabase = createSupabaseAuthClient(cookies, request);
@@ -18,9 +27,10 @@ export const POST: APIRoute = async ({ cookies, request }) => {
         return new Response(JSON.stringify({ error: 'Invalid request' }), { status: 400 });
     }
 
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-    if (!allowedTypes.includes(file.type)) {
-        return new Response(JSON.stringify({ error: 'Invalid file type. Allowed: JPEG, PNG, WebP, GIF' }), { status: 400 });
+    const detectedType = await detectImageMimeType(file);
+    if (!detectedType || !ALLOWED_IMAGE_TYPES.includes(detectedType)) {
+        securityLog('security.upload.invalid_magic_bytes', { userId: user.id, context: `shop_${type}` });
+        return new Response(JSON.stringify({ error: strings.apiFileInvalid }), { status: 400 });
     }
 
     if (file.size > 5 * 1024 * 1024) {
@@ -28,7 +38,7 @@ export const POST: APIRoute = async ({ cookies, request }) => {
     }
 
     const folder = type === 'profile' ? 'profiles' : 'banners';
-    const ext = file.name.split('.').pop() || 'jpg';
+    const ext = EXT_BY_TYPE[detectedType] ?? 'jpg';
     const filename = `${user.id}/${crypto.randomUUID()}.${ext}`;
     const path = `${folder}/${filename}`;
 
@@ -37,7 +47,7 @@ export const POST: APIRoute = async ({ cookies, request }) => {
     const { error: uploadError } = await supabase.storage
         .from('imgs')
         .upload(path, buffer, {
-            contentType: file.type,
+            contentType: detectedType,
             upsert: false,
         });
 

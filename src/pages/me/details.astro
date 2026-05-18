@@ -362,6 +362,7 @@ const isSpain = currentCountry === 'ES';
     import { validateProfileForm, type ProfileFormData } from '../../lib/core/validation';
     import { toast } from '../../lib/ui/toast';
     import { runSubmit } from '../../lib/ui/submit';
+    import { compressImage, AVATAR_PRESET } from '../../lib/ui/imageCompress';
 
     const form = document.getElementById('profile-form') as HTMLFormElement;
     const btn = document.getElementById('save-btn') as HTMLButtonElement;
@@ -483,8 +484,9 @@ const isSpain = currentCountry === 'ES';
     }
 
     async function uploadAvatarFile(file: File): Promise<{ url: string; path: string } | null> {
+        const compressed = await compressImage(file, AVATAR_PRESET);
         const formData = new FormData();
-        formData.append('file', file);
+        formData.append('file', compressed);
         try {
             const res = await fetch('/api/profile/avatar-upload', { method: 'POST', body: formData });
             const data = await res.json() as { url?: string; path?: string; error?: string };

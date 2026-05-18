@@ -548,6 +548,7 @@ function variantHasShippingOverride(v: VariantData): boolean {
         applyShippingDefaults,
         initShippingEditor,
     } from '../../lib/ui/shipping-editor';
+    import { compressImage, PRODUCT_PRESET } from '../../lib/ui/imageCompress';
 
     interface ShippingValues {
         weight: number;
@@ -907,8 +908,9 @@ function variantHasShippingOverride(v: VariantData): boolean {
             if (files.length === 0) return;
 
             for (const file of files) {
+                const compressed = await compressImage(file, PRODUCT_PRESET);
                 const formData = new FormData();
-                formData.append('file', file);
+                formData.append('file', compressed);
                 try {
                     const res = await fetch('/api/sell/catalog/upload', { method: 'POST', body: formData });
                     const data: { error?: string; url?: string } = await res.json();
@@ -1023,8 +1025,9 @@ function variantHasShippingOverride(v: VariantData): boolean {
                 const originalLabel = btn.innerHTML;
                 btn.innerHTML = `<span>${strings.sellerProductImageUploading}</span>`;
 
+                const compressed = await compressImage(target.files[0], PRODUCT_PRESET);
                 const formData = new FormData();
-                formData.append('file', target.files[0]);
+                formData.append('file', compressed);
                 try {
                     const res = await fetch('/api/sell/catalog/upload', { method: 'POST', body: formData });
                     const data: { error?: string; url?: string } = await res.json();

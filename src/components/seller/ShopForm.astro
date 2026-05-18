@@ -173,6 +173,7 @@ const profileImg = shopData.profile_img || '';
 <script>
 import { strings } from '../../lib/core/i18n';
 import { toast } from '../../lib/ui/toast';
+import { compressImage, SHOP_LOGO_PRESET } from '../../lib/ui/imageCompress';
 
     const initShopForm = () => {
         const nameInput = document.getElementById('shop-name') as HTMLInputElement;
@@ -284,8 +285,9 @@ import { toast } from '../../lib/ui/toast';
 
         if (profileUpload && profileInput && profileValue) {
             const uploadProfileImage = async (file: File) => {
+                const compressed = await compressImage(file, SHOP_LOGO_PRESET);
                 const formData = new FormData();
-                formData.append('file', file);
+                formData.append('file', compressed);
                 formData.append('type', 'profile');
 
                 try {
