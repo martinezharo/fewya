@@ -1309,6 +1309,15 @@ function variantHasShippingOverride(v: VariantData): boolean {
                 return;
             }
 
+            if (is_active) {
+                const underpriced = variants.find((v: any) => (v.price ?? 0) < 1);
+                if (underpriced) {
+                    const variantName = underpriced.variant_name?.trim() || strings.sellerProductPricingVariantFallbackName;
+                    toast.error(strings.sellerProductPricingPriceBelowMin.replace('{variant}', variantName));
+                    return;
+                }
+            }
+
             const specs: Record<string, string> = {};
             specsContainer.querySelectorAll('.spec-row').forEach((row: Element) => {
                 const key = (row.querySelector('.spec-key-input') as HTMLInputElement).value.trim();

@@ -2,6 +2,7 @@ import type { APIRoute } from 'astro';
 import { createSupabaseAuthClient } from '../../../../lib/core/auth';
 import { strings } from '../../../../lib/core/i18n';
 import { validateProductCompleteness } from '../../../../lib/products/productValidation';
+import { enforceVariantPricing, type PricingCheckVariant } from '../../../../lib/products/pricingEnforcement';
 
 type VariantInput = {
     id?: string;
@@ -73,6 +74,14 @@ export const POST: APIRoute = async ({ cookies, request }) => {
     if (!completeness.complete) {
         const list = completeness.missing.join(', ');
         return new Response(JSON.stringify({ error: strings.sellerProductIncompleteError.replace('{fields}', list) }), { status: 400 });
+    }
+
+    const willBeActive = body.is_active !== false;
+    if (willBeActive && body.variants && body.variants.length > 0) {
+        const pricing = await enforceVariantPricing(body.variants as PricingCheckVariant[]);
+        if (!pricing.ok) {
+            return new Response(JSON.stringify({ error: pricing.errors.join('\n') }), { status: 400 });
+        }
     }
 
     const slug = body.slug?.trim() || slugify(body.title);
@@ -209,7 +218,7 @@ export const PATCH: APIRoute = async ({ cookies, request, url }) => {
 
     const { data: existing } = await supabase
         .from('products')
-        .select('id, slug')
+        .select('id, slug, is_active')
         .eq('id', productId)
         .eq('shop_id', shop.id)
         .maybeSingle();
@@ -256,6 +265,14 @@ export const PATCH: APIRoute = async ({ cookies, request, url }) => {
                 const list = completeness.missing.join(', ');
                 return new Response(JSON.stringify({ error: strings.sellerProductIncompleteError.replace('{fields}', list) }), { status: 400 });
             }
+        }
+    }
+
+    const willBeActive = body.is_active === undefined ? existing.is_active : body.is_active;
+    if (willBeActive && body.variants && body.variants.length > 0) {
+        const pricing = await enforceVariantPricing(body.variants as PricingCheckVariant[]);
+        if (!pricing.ok) {
+            return new Response(JSON.stringify({ error: pricing.errors.join('\n') }), { status: 400 });
         }
     }
 

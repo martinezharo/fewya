@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { createSupabaseAuthClient } from '../../../../lib/core/auth';
 import { strings } from '../../../../lib/core/i18n';
+import { enforceVariantPricing, type PricingCheckVariant } from '../../../../lib/products/pricingEnforcement';
 
 export const PATCH: APIRoute = async ({ cookies, request, url }) => {
     const supabase = createSupabaseAuthClient(cookies, request);
@@ -30,6 +31,18 @@ export const PATCH: APIRoute = async ({ cookies, request, url }) => {
 
     if (!shop) {
         return new Response(JSON.stringify({ error: strings.apiForbidden }), { status: 403 });
+    }
+
+    if (body.is_active === true) {
+        const { data: variants } = await supabase
+            .from('product_variants')
+            .select('variant_name, price, shipping_cost, weight_kg, length_cm, width_cm, height_cm')
+            .eq('product_id', productId);
+
+        const pricing = await enforceVariantPricing((variants ?? []) as PricingCheckVariant[]);
+        if (!pricing.ok) {
+            return new Response(JSON.stringify({ error: pricing.errors.join('\n') }), { status: 400 });
+        }
     }
 
     const { data: product, error } = await supabase
