@@ -4,6 +4,9 @@ import {
     formatShippingDisplay,
     isProductComplete,
     validateCheckoutReadiness,
+    validateVariantPricing,
+    MIN_VARIANT_PRICE_EUR,
+    MIN_LISTING_MARGIN_EUR,
 } from '../../src/lib/products/productValidation';
 
 describe('validateProductCompleteness', () => {
@@ -188,5 +191,84 @@ describe('validateCheckoutReadiness', () => {
             1
         );
         expect(result.reason).toBe('missing_shipping');
+    });
+});
+
+describe('validateVariantPricing', () => {
+    it('acepta precio + envío que cubren la etiqueta más cara con 1 € de margen', () => {
+        const violations = validateVariantPricing({
+            price: 8,
+            shipping_cost: 3,
+            maxLabelPriceEur: 5,
+        });
+        expect(violations).toHaveLength(0);
+    });
+
+    it('rechaza precio por debajo del mínimo (1 €)', () => {
+        const violations = validateVariantPricing({
+            price: 0.5,
+            shipping_cost: 10,
+            maxLabelPriceEur: 4,
+        });
+        expect(violations).toContain('price_below_min');
+    });
+
+    it('acepta precio justo en el mínimo', () => {
+        const violations = validateVariantPricing({
+            price: MIN_VARIANT_PRICE_EUR,
+            shipping_cost: 10,
+            maxLabelPriceEur: 4,
+        });
+        expect(violations).not.toContain('price_below_min');
+    });
+
+    it('rechaza envío cobrado superior a la etiqueta más cara', () => {
+        const violations = validateVariantPricing({
+            price: 20,
+            shipping_cost: 7,
+            maxLabelPriceEur: 5,
+        });
+        expect(violations).toContain('shipping_exceeds_label');
+    });
+
+    it('acepta envío cobrado igual a la etiqueta más cara', () => {
+        const violations = validateVariantPricing({
+            price: 20,
+            shipping_cost: 5,
+            maxLabelPriceEur: 5,
+        });
+        expect(violations).not.toContain('shipping_exceeds_label');
+    });
+
+    it('rechaza si precio + envío no cubre etiqueta + margen', () => {
+        const violations = validateVariantPricing({
+            price: 2,
+            shipping_cost: 1,
+            maxLabelPriceEur: 5,
+        });
+        expect(violations).toContain('margin_below_floor');
+    });
+
+    it('acepta si precio + envío cubre exactamente etiqueta + margen', () => {
+        const violations = validateVariantPricing({
+            price: 4,
+            shipping_cost: 2,
+            maxLabelPriceEur: 5,
+        });
+        expect(violations).not.toContain('margin_below_floor');
+    });
+
+    it('puede devolver varias violaciones simultáneas', () => {
+        const violations = validateVariantPricing({
+            price: 0.5,
+            shipping_cost: 1,
+            maxLabelPriceEur: 4,
+        });
+        expect(violations).toContain('price_below_min');
+        expect(violations).toContain('margin_below_floor');
+    });
+
+    it('usa el margen mínimo configurado', () => {
+        expect(MIN_LISTING_MARGIN_EUR).toBe(1);
     });
 });

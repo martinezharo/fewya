@@ -5,6 +5,40 @@ export interface ProductCompletenessResult {
     missing: string[];
 }
 
+export const MIN_VARIANT_PRICE_EUR = 1;
+export const MIN_LISTING_MARGIN_EUR = 1;
+const FLOAT_TOLERANCE_EUR = 0.005;
+
+export type VariantPricingViolation =
+    | 'price_below_min'
+    | 'shipping_exceeds_label'
+    | 'margin_below_floor';
+
+export interface VariantPricingInput {
+    price: number;
+    shipping_cost: number;
+    maxLabelPriceEur: number;
+}
+
+export function validateVariantPricing(input: VariantPricingInput): VariantPricingViolation[] {
+    const violations: VariantPricingViolation[] = [];
+    const price = Number(input.price) || 0;
+    const shipping = Number(input.shipping_cost) || 0;
+    const maxLabel = Number(input.maxLabelPriceEur) || 0;
+
+    if (price + FLOAT_TOLERANCE_EUR < MIN_VARIANT_PRICE_EUR) {
+        violations.push('price_below_min');
+    }
+    if (shipping > maxLabel + FLOAT_TOLERANCE_EUR) {
+        violations.push('shipping_exceeds_label');
+    }
+    if (price + shipping + FLOAT_TOLERANCE_EUR < maxLabel + MIN_LISTING_MARGIN_EUR) {
+        violations.push('margin_below_floor');
+    }
+
+    return violations;
+}
+
 export function validateProductCompleteness(
     product: Record<string, any>,
     variants: Record<string, any>[]
