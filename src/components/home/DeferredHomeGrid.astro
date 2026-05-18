@@ -16,7 +16,7 @@ const { userId = null } = Astro.props;
 // ProductCard and isProductComplete need (description + variant dimensions required for the filter)
 const productsQuery = supabase
     .from("products")
-    .select("id, slug, title, description, gallery_images, is_active, created_at, category, brand, shop:shops(id, slug, name, accent_color, payments_active), variants:product_variants(id, price, stock, shipping_cost, is_default, variant_name, weight_kg, length_cm, width_cm, height_cm)")
+    .select("id, slug, title, description, gallery_images, is_active, created_at, category, brand, shop:shops(id, slug, name, accent_color, payments_active, seller_details_complete), variants:product_variants(id, price, stock, shipping_cost, is_default, variant_name, weight_kg, length_cm, width_cm, height_cm)")
     .eq("is_active", true)
     .order("created_at", { ascending: false });
 
@@ -34,7 +34,7 @@ if (productsResult.error) {
 }
 
 const rawProducts: Product[] = (productsResult.data ?? []) as Product[];
-const products = rawProducts.filter(p => p.shop?.payments_active && isProductComplete(p));
+const products = rawProducts.filter(p => p.shop?.payments_active && p.shop?.seller_details_complete && isProductComplete(p));
 
 // Ratings enrichment and wishlist lookup in parallel
 const [, wishedProductIds] = await Promise.all([

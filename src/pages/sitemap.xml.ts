@@ -45,10 +45,12 @@ export const GET: APIRoute = async ({ url }) => {
                 .from('shops')
                 .select('slug, created_at')
                 .eq('is_active', true)
+                .eq('payments_active', true)
+                .eq('seller_details_complete', true)
                 .limit(5000),
             admin
                 .from('products')
-                .select('slug, created_at, shops!inner(slug, is_active)')
+                .select('slug, created_at, shops!inner(slug, is_active, payments_active, seller_details_complete)')
                 .eq('is_active', true)
                 .limit(20000),
         ]);
@@ -65,6 +67,7 @@ export const GET: APIRoute = async ({ url }) => {
         for (const product of productsRes.data ?? []) {
             const shop = Array.isArray(product.shops) ? product.shops[0] : product.shops;
             if (!shop?.is_active || !shop.slug) continue;
+            if (!shop.payments_active || !shop.seller_details_complete) continue;
             entries.push({
                 loc: `${origin}/${shop.slug}/${product.slug}`,
                 lastmod: product.created_at ? new Date(product.created_at).toISOString().slice(0, 10) : undefined,

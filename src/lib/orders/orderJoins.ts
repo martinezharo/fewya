@@ -13,6 +13,7 @@ export interface JoinedShop {
     slug: string;
     is_active?: boolean | null;
     owner_id?: string | null;
+    seller_details_complete?: boolean | null;
     shop_payment_accounts?: JoinedPaymentAccount | JoinedPaymentAccount[] | null;
 }
 

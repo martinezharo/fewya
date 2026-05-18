@@ -18,6 +18,7 @@ export interface Shop {
     default_height_cm: number | null;
     default_shipping_cost: number | null;
     payments_active: boolean;
+    seller_details_complete: boolean;
 }
 
 export interface Product {

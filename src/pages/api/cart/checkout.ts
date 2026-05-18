@@ -185,6 +185,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
                     name,
                     slug,
                     is_active,
+                    seller_details_complete,
                     shop_payment_accounts (
                         stripe_account_id,
                         charges_enabled,
@@ -260,6 +261,14 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         }
 
         if (!paymentAccount?.stripe_account_id || !paymentAccount.charges_enabled || !paymentAccount.payouts_enabled || !paymentAccount.details_submitted) {
+            return jsonResponse({ error: strings.apiCheckoutSellerNotReady }, 400);
+        }
+
+        if (!shop.seller_details_complete) {
+            console.error(JSON.stringify({
+                event: 'checkout.seller_details_incomplete',
+                shopId: shop.id,
+            }));
             return jsonResponse({ error: strings.apiCheckoutSellerNotReady }, 400);
         }
 

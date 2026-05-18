@@ -21,7 +21,7 @@ const { data: shopData } = await supabase
   .eq('is_active', true)
   .single();
 
-if (!shopData || !shopData.payments_active) return Astro.redirect('/');
+if (!shopData || !shopData.payments_active || !shopData.seller_details_complete) return Astro.redirect('/');
 const shop = shopData as Shop;
 
 // Fetch shop products
