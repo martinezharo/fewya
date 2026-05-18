@@ -453,6 +453,9 @@ export async function getMaxLabelPriceEur(
     return Math.round(Math.max(...netByBucket) * 100) / 100;
 }
 
+// Items are always consolidated into a single parcel so that Sendcloud returns
+// service-point (pickup point) rates, which only support single-parcel shipments.
+// Heuristic: weight = sum, length/width = max, height = sum (items stacked).
 export function calculateParcelFromItems(
     items: Array<{
         weightKg?: number | null;
@@ -462,22 +465,38 @@ export function calculateParcelFromItems(
         quantity: number;
     }>
 ): SendcloudParcel[] {
-    const parcels: SendcloudParcel[] = [];
     const DEFAULT_WEIGHT = 0.5;
     const DEFAULT_DIMENSION = 10;
 
+    let totalWeight = 0;
+    let maxLength = 0;
+    let maxWidth = 0;
+    let totalHeight = 0;
+    let anyItem = false;
+
     for (const item of items) {
+        const qty = Math.max(0, item.quantity ?? 0);
+        if (qty === 0) continue;
         const weight = item.weightKg ?? DEFAULT_WEIGHT;
         const length = item.lengthCm ?? DEFAULT_DIMENSION;
         const width = item.widthCm ?? DEFAULT_DIMENSION;
         const height = item.heightCm ?? DEFAULT_DIMENSION;
 
-        for (let i = 0; i < item.quantity; i++) {
-            parcels.push({ weight, length, width, height });
-        }
+        totalWeight += weight * qty;
+        totalHeight += height * qty;
+        if (length > maxLength) maxLength = length;
+        if (width > maxWidth) maxWidth = width;
+        anyItem = true;
     }
 
-    return parcels;
+    if (!anyItem) return [];
+
+    return [{
+        weight: Math.round(totalWeight * 1000) / 1000,
+        length: Math.round(maxLength * 10) / 10,
+        width: Math.round(maxWidth * 10) / 10,
+        height: Math.round(totalHeight * 10) / 10,
+    }];
 }
 
 export interface SendcloudServicePoint {

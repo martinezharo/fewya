@@ -2,34 +2,36 @@ import { describe, it, expect } from 'vitest';
 import { calculateParcelFromItems, parseSpanishAddress } from '../../src/lib/shipping/sendcloud';
 
 describe('calculateParcelFromItems', () => {
-    it('calcula un parcel por unidad de cada item', () => {
+    it('consolida varias unidades del mismo item en un único parcel apilado', () => {
         const items = [
             { weightKg: 1, lengthCm: 20, widthCm: 15, heightCm: 10, quantity: 2 },
         ];
         const parcels = calculateParcelFromItems(items);
-        expect(parcels).toHaveLength(2);
-        expect(parcels[0]).toEqual({ weight: 1, length: 20, width: 15, height: 10 });
+        expect(parcels).toHaveLength(1);
+        expect(parcels[0]).toEqual({ weight: 2, length: 20, width: 15, height: 20 });
     });
 
     it('usa valores por defecto cuando faltan dimensiones', () => {
         const items = [{ quantity: 1 }];
         const parcels = calculateParcelFromItems(items);
-        expect(parcels[0].weight).toBe(0.5);
-        expect(parcels[0].length).toBe(10);
-        expect(parcels[0].width).toBe(10);
-        expect(parcels[0].height).toBe(10);
+        expect(parcels).toHaveLength(1);
+        expect(parcels[0]).toEqual({ weight: 0.5, length: 10, width: 10, height: 10 });
     });
 
-    it('suma correctamente múltiples items con distintas cantidades', () => {
+    it('consolida múltiples items en un único paquete', () => {
         const items = [
             { weightKg: 1, lengthCm: 10, widthCm: 10, heightCm: 10, quantity: 1 },
             { weightKg: 2, lengthCm: 20, widthCm: 20, heightCm: 20, quantity: 2 },
         ];
         const parcels = calculateParcelFromItems(items);
-        expect(parcels).toHaveLength(3);
-        expect(parcels[0]).toEqual({ weight: 1, length: 10, width: 10, height: 10 });
-        expect(parcels[1]).toEqual({ weight: 2, length: 20, width: 20, height: 20 });
-        expect(parcels[2]).toEqual({ weight: 2, length: 20, width: 20, height: 20 });
+        expect(parcels).toHaveLength(1);
+        // peso = 1 + 2*2 = 5; largo/ancho = max(10,20) = 20; alto = 10 + 20*2 = 50
+        expect(parcels[0]).toEqual({ weight: 5, length: 20, width: 20, height: 50 });
+    });
+
+    it('devuelve array vacío si no hay items con cantidad', () => {
+        expect(calculateParcelFromItems([])).toEqual([]);
+        expect(calculateParcelFromItems([{ quantity: 0 }])).toEqual([]);
     });
 });
 
