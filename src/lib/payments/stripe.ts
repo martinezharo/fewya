@@ -1,5 +1,5 @@
-import { STRIPE_SECRET_KEY } from 'astro:env/server';
 import Stripe from 'stripe';
+import { getStripeSecretKey } from '../core/env';
 import { strings } from '../core/i18n';
 
 export const DEFAULT_STRIPE_ACCOUNT_COUNTRY = 'ES';
@@ -13,11 +13,12 @@ export interface StripeAccountStatus {
 }
 
 export function getStripeClient() {
-    if (!STRIPE_SECRET_KEY) {
+    const secretKey = getStripeSecretKey();
+    if (!secretKey) {
         throw new Error(strings.authMissingStripeEnv);
     }
 
-    return new Stripe(STRIPE_SECRET_KEY, {
+    return new Stripe(secretKey, {
         httpClient: Stripe.createFetchHttpClient(),
     });
 }

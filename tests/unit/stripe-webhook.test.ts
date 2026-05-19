@@ -9,11 +9,14 @@ const mockInsert = vi.fn();
 const mockRpc = vi.fn();
 
 vi.mock('astro:env/server', () => ({
-    STRIPE_WEBHOOK_SECRET: 'whsec_test_secret',
+    APP_MODE: 'production',
+    STRIPE_WEBHOOK_SECRET_TEST: 'whsec_test_secret_test',
+    STRIPE_WEBHOOK_SECRET_LIVE: 'whsec_test_secret',
+    STRIPE_SECRET_KEY_TEST: 'sk_test_key_test',
+    STRIPE_SECRET_KEY_LIVE: 'sk_test_key',
     SUPABASE_URL: 'https://test.supabase.co',
     SUPABASE_KEY: 'test-key',
     SUPABASE_SECRET_KEY: 'test-secret-key',
-    STRIPE_SECRET_KEY: 'sk_test_key',
 }));
 
 vi.mock('../../src/lib/payments/stripe', () => ({

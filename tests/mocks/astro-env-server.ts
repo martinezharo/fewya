@@ -1,8 +1,11 @@
 export const SUPABASE_URL = 'https://mock.supabase.co';
 export const SUPABASE_KEY = 'mock-key';
 export const SUPABASE_SECRET_KEY = 'sb_secret_mock';
-export const STRIPE_SECRET_KEY = 'sk_test_mock';
-export const STRIPE_WEBHOOK_SECRET = 'whsec_mock';
+export const APP_MODE = 'production';
+export const STRIPE_SECRET_KEY_TEST = 'sk_test_mock';
+export const STRIPE_SECRET_KEY_LIVE = 'sk_live_mock';
+export const STRIPE_WEBHOOK_SECRET_TEST = 'whsec_test_mock';
+export const STRIPE_WEBHOOK_SECRET_LIVE = 'whsec_live_mock';
 export const SENDCLOUD_API_KEY = 'mock-key';
 export const SENDCLOUD_API_SECRET = 'mock-secret';
 export const SENDCLOUD_WEBHOOK_SECRET = 'mock-secret';

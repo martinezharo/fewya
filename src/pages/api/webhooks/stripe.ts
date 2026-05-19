@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { STRIPE_WEBHOOK_SECRET } from 'astro:env/server';
+import { getStripeWebhookSecret } from '../../../lib/core/env';
 import { getStripeClient } from '../../../lib/payments/stripe';
 import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
 import { securityLog } from '../../../lib/core/security-log';
@@ -19,7 +19,8 @@ function err(message: string, status: number): Response {
 }
 
 export const POST: APIRoute = async ({ request }) => {
-    if (!STRIPE_WEBHOOK_SECRET) {
+    const webhookSecret = getStripeWebhookSecret();
+    if (!webhookSecret) {
         return err('Webhook not configured', 500);
     }
 
@@ -36,7 +37,7 @@ export const POST: APIRoute = async ({ request }) => {
 
     try {
         // constructEventAsync is the Workers-compatible variant (uses Web Crypto, not Node crypto)
-        event = await stripe.webhooks.constructEventAsync(rawBody, sig, STRIPE_WEBHOOK_SECRET);
+        event = await stripe.webhooks.constructEventAsync(rawBody, sig, webhookSecret);
     } catch (e) {
         const msg = e instanceof Error ? e.message : 'unknown';
         securityLog('security.webhook.invalid_signature', { source: 'stripe', error: msg });
