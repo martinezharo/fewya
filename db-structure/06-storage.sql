@@ -46,27 +46,10 @@ SET public = false,
     allowed_mime_types = ARRAY['application/pdf']
 WHERE id = 'labels';
 
+-- Labels bucket has no RLS policies: every access happens through
+-- /api/sendcloud/label, which validates DB access via RLS on `shipments`
+-- and then issues a short-lived signed URL with the service role.
 DROP POLICY IF EXISTS "Allow public read of shipping labels" ON storage.objects;
 DROP POLICY IF EXISTS "Allow authenticated users to upload shipping labels" ON storage.objects;
 DROP POLICY IF EXISTS "Allow buyers and sellers to read shipping labels" ON storage.objects;
 DROP POLICY IF EXISTS "Allow sellers to upload shipping labels" ON storage.objects;
-
-CREATE POLICY "Allow buyers and sellers to read shipping labels" ON storage.objects FOR SELECT TO authenticated USING (
-  bucket_id = 'labels'
-  AND EXISTS (
-    SELECT 1 FROM public.orders o
-    LEFT JOIN public.shops s ON s.id = o.shop_id
-    WHERE o.id = (storage.foldername(name))[1]::uuid
-      AND (o.buyer_id = auth.uid() OR s.owner_id = auth.uid())
-  )
-);
-
-CREATE POLICY "Allow sellers to upload shipping labels" ON storage.objects FOR INSERT TO authenticated WITH CHECK (
-  bucket_id = 'labels'
-  AND EXISTS (
-    SELECT 1 FROM public.orders o
-    JOIN public.shops s ON s.id = o.shop_id
-    WHERE o.id = (storage.foldername(name))[1]::uuid
-      AND s.owner_id = auth.uid()
-  )
-);
