@@ -55,6 +55,9 @@ export interface SendcloudShipmentData {
     requestedService?: {
         shippingOptionCode: string;
     };
+    // Sendcloud service point id (pickup point). Required when the shipping
+    // option ends in /service_point — without it Sendcloud has no destination point.
+    toServicePointId?: string;
 }
 
 export interface SendcloudShipmentResult {
@@ -253,64 +256,88 @@ export async function getShippingQuotes(
 }
 
 export async function createShipment(data: SendcloudShipmentData): Promise<SendcloudShipmentResult> {
-    const payload = {
-        name: data.recipientName,
-        company_name: '',
-        address: data.recipientAddress,
-        address_2: '',
-        house_number: '',
-        city: data.recipientCity,
-        postal_code: data.recipientPostalCode,
-        country: data.recipientCountry,
-        telephone: data.recipientPhone,
-        email: data.recipientEmail,
-        request_label: true,
-        sender_address: {
+    if (!data.requestedService) {
+        throw new Error('Sendcloud createShipment requires a requestedService (shipping_option_code)');
+    }
+
+    const payload: Record<string, unknown> = {
+        apply_shipping_defaults: false,
+        apply_shipping_rules: false,
+        order_number: data.orderId,
+        from_address: {
             name: data.senderName,
             company_name: data.senderCompany || '',
-            address: data.senderAddress,
-            city: data.senderCity,
+            address_line_1: data.senderAddress,
             postal_code: data.senderPostalCode,
-            country: data.senderCountry,
-            telephone: data.senderPhone,
+            city: data.senderCity,
+            country_code: data.senderCountry,
+            phone_number: data.senderPhone,
             email: data.senderEmail,
         },
-        parcels: data.parcels.map((p, index) => ({
-            name: `${data.recipientName} - Parcel ${index + 1}`,
-            weight: p.weight.toFixed(3),
-            weight_unit: 'kilogram',
-            length: p.length ? String(p.length) : undefined,
-            width: p.width ? String(p.width) : undefined,
-            height: p.height ? String(p.height) : undefined,
-        })),
-        shipment: data.requestedService
-            ? {
+        to_address: {
+            name: data.recipientName,
+            address_line_1: data.recipientAddress,
+            postal_code: data.recipientPostalCode,
+            city: data.recipientCity,
+            country_code: data.recipientCountry,
+            phone_number: data.recipientPhone,
+            email: data.recipientEmail,
+        },
+        ship_with: {
+            type: 'shipping_option_code',
+            properties: {
                 shipping_option_code: data.requestedService.shippingOptionCode,
-            }
-            : undefined,
-        order_number: data.orderId,
+            },
+        },
+        parcels: data.parcels.map((p) => ({
+            weight: { value: p.weight.toFixed(3), unit: 'kg' },
+            ...(p.length && p.width && p.height
+                ? {
+                    dimensions: {
+                        length: String(p.length),
+                        width: String(p.width),
+                        height: String(p.height),
+                        unit: 'cm',
+                    },
+                }
+                : {}),
+        })),
     };
 
-    const result = await sendcloudRequest<{
-        parcel: {
-            id: number;
-            tracking_number?: string;
-            tracking_url?: string;
-            status?: {
-                message?: string;
-            };
+    if (data.toServicePointId) {
+        payload.to_service_point = { id: data.toServicePointId };
+    }
+
+    console.log(JSON.stringify(payload));
+
+    const result = await sendcloudRequestV3<{
+        data: {
+            id: string;
+            parcels: Array<{
+                id: number;
+                tracking_number?: string;
+                tracking_url?: string;
+                status?: { code?: string; message?: string };
+                documents?: Array<{ type?: string; link?: string }>;
+                label_file?: string;
+            }>;
+            errors?: Array<{ status?: string; code?: string; detail?: string }>;
         };
-        label?: {
-            normal_printer?: string;
-            label_printer?: string;
-        };
-    }>('/parcels', {
+    }>('/shipments/announce-with-shipping-rules', {
         method: 'POST',
         body: JSON.stringify(payload),
     });
 
-    const parcel = result.parcel;
-    const labelUrl = result.label?.normal_printer || result.label?.label_printer || '';
+    const shipment = result.data;
+    const parcel = shipment.parcels?.[0];
+
+    if (!parcel) {
+        const detail = shipment.errors?.map((e) => e.detail).filter(Boolean).join('; ') || 'no parcel returned';
+        throw new Error(`Sendcloud v3 announce returned no parcel: ${detail}`);
+    }
+
+    const labelDoc = parcel.documents?.find((d) => d.type === 'label');
+    const labelUrl = labelDoc?.link || '';
 
     return {
         shipmentId: String(parcel.id),
@@ -320,8 +347,24 @@ export async function createShipment(data: SendcloudShipmentData): Promise<Sendc
         labelUrl,
         price: 0, // Price is invoiced separately by Sendcloud
         currency: 'EUR',
-        status: parcel.status?.message || 'created',
+        status: parcel.status?.message || parcel.status?.code || 'created',
     };
+}
+
+export async function downloadSendcloudLabelPdf(documentUrl: string): Promise<Uint8Array> {
+    const response = await fetch(documentUrl, {
+        method: 'GET',
+        headers: getAuthHeaders(),
+    });
+
+    if (!response.ok) {
+        throw new Error(
+            `Sendcloud label download failed: ${response.status} ${response.statusText}`,
+        );
+    }
+
+    const buffer = await response.arrayBuffer();
+    return new Uint8Array(buffer);
 }
 
 export async function getShipmentLabel(parcelId: string): Promise<string> {
@@ -585,8 +628,17 @@ export function parseSpanishAddress(
     const postalCode = postalCodeMatch ? postalCodeMatch[0] : '';
 
     const parts = fullText.split(',').map((p) => p.trim());
-    const city = parts[parts.length - 1] || '';
-    const street = parts.slice(0, -1).join(', ') || fullText;
+    const rawCity = parts[parts.length - 1] || '';
+    // Strip the postal code from the city portion ("29720 LA CALA DEL MORAL" → "LA CALA DEL MORAL")
+    const city = (postalCode ? rawCity.replace(postalCode, '') : rawCity)
+        .replace(/\s+/g, ' ')
+        .trim();
+    const rawStreet = parts.slice(0, -1).join(', ') || fullText;
+    // Also strip postal code from street if it leaked there
+    const street = (postalCode ? rawStreet.replace(postalCode, '') : rawStreet)
+        .replace(/\s+/g, ' ')
+        .replace(/[,\s]+$/, '')
+        .trim();
 
     return { street, postalCode, city };
 }

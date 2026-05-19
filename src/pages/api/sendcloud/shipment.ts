@@ -3,8 +3,12 @@ import {
     createShipment,
     parseSpanishAddress,
     calculateParcelFromItems,
+    downloadSendcloudLabelPdf,
 } from '../../../lib/shipping/sendcloud';
+import { uploadLabelPdf } from '../../../lib/shipping/labelStorage';
 import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
+import { isDevelopment } from '../../../lib/core/env';
+import { runMockShipment } from '../../../lib/shipping/mockShipment';
 
 function jsonResponse(payload: Record<string, unknown>, status: number) {
     return new Response(JSON.stringify(payload), {
@@ -27,7 +31,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     let body: {
         orderId: string;
-        shippingOptionCode: string;
+        shippingOptionCode?: string;
         labelCost?: number;
     };
 
@@ -39,13 +43,40 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     const { orderId, shippingOptionCode } = body;
 
-    if (!orderId || !shippingOptionCode) {
-        return jsonResponse({ error: 'orderId and shippingOptionCode are required' }, 400);
+    if (!orderId) {
+        return jsonResponse({ error: 'orderId is required' }, 400);
     }
 
     const labelCost = Number.isFinite(body.labelCost) && (body.labelCost as number) >= 0
         ? Math.round((body.labelCost as number) * 100) / 100
         : 0;
+
+    // In development we never hit Sendcloud — we generate a mock PDF label locally
+    // so sellers can exercise the full flow without real shipping charges.
+    if (isDevelopment) {
+        const result = await runMockShipment({
+            userId: user.id,
+            authClient,
+            orderId,
+            labelCost,
+        });
+        if (!result.success) {
+            return jsonResponse({ error: result.error }, result.status);
+        }
+        return jsonResponse({
+            success: true,
+            shipmentId: result.shipmentId,
+            trackingNumber: result.trackingNumber,
+            trackingUrl: result.trackingUrl,
+            labelUrl: result.labelUrl,
+            carrierName: result.carrierName,
+        }, 200);
+    }
+
+    // Production: real Sendcloud call requires a chosen shipping option.
+    if (!shippingOptionCode) {
+        return jsonResponse({ error: 'shippingOptionCode is required' }, 400);
+    }
 
     const { data: order, error: orderError } = await authClient
         .from('orders')
@@ -53,9 +84,31 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             id,
             public_id,
             buyer_email,
+            delivery_type,
             shipping_full_name,
             shipping_phone,
             shipping_address,
+            pickup_point_id,
+            pickup_point_address,
+            pickup_point_postal_code,
+            pickup_point_city,
+            shops!inner (
+                name,
+                contact_email,
+                owner:profiles!inner (
+                    first_name,
+                    last_name,
+                    phone,
+                    phone_prefix,
+                    email,
+                    address_street,
+                    address_number,
+                    address_floor,
+                    address_postal_code,
+                    address_city,
+                    address_country
+                )
+            ),
             order_items (
                 quantity,
                 product_variants (
@@ -78,15 +131,48 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         return jsonResponse({ error: 'Forbidden' }, 403);
     }
 
-    const senderAddress = process.env.SENDCLOUD_SENDER_ADDRESS || 'Calle Principal 1';
-    const senderCountry = process.env.SENDCLOUD_SENDER_COUNTRY || 'ES';
-    const senderPhone = process.env.SENDCLOUD_SENDER_PHONE || '+34600000000';
-    const senderEmail = process.env.SENDCLOUD_SENDER_EMAIL || 'envios@fewya.com';
-    const senderName = process.env.SENDCLOUD_SENDER_NAME || 'Fewya';
-    const senderCompany = process.env.SENDCLOUD_SENDER_COMPANY || 'Fewya Marketplace';
+    const shop = Array.isArray(order.shops) ? order.shops[0] : order.shops;
+    const owner = shop && (Array.isArray(shop.owner) ? shop.owner[0] : shop.owner);
+    if (!shop || !owner) {
+        return jsonResponse({ error: 'Seller profile not found' }, 500);
+    }
 
-    const { street: senderStreet, postalCode: senderPostalCode, city: senderCityName } = parseSpanishAddress(senderAddress);
-    const { street: recipientStreet, postalCode: recipientPostalCode, city: recipientCityName } = parseSpanishAddress(order.shipping_address || '');
+    const senderStreet = [owner.address_street, owner.address_number, owner.address_floor]
+        .filter((p: string | null | undefined) => p && p.trim().length > 0)
+        .join(' ');
+    const senderName = `${owner.first_name ?? ''} ${owner.last_name ?? ''}`.trim() || shop.name;
+    const senderCompany = shop.name;
+    const senderCityName = owner.address_city ?? '';
+    const senderPostalCode = owner.address_postal_code ?? '';
+    const senderCountry = owner.address_country || 'ES';
+    const senderPhone = owner.phone
+        ? `${owner.phone_prefix ?? '+34'}${owner.phone}`.replace(/\s+/g, '')
+        : '';
+    const senderEmail = owner.email ?? shop.contact_email ?? '';
+
+    if (!senderStreet || !senderCityName || !senderPostalCode || !senderName || !senderPhone) {
+        return jsonResponse(
+            { error: 'Completa los datos del vendedor antes de generar etiquetas' },
+            400,
+        );
+    }
+
+    const isPickup = order.delivery_type === 'pickup_point';
+    let recipientStreet: string;
+    let recipientCityName: string;
+    let recipientPostalCode: string;
+
+    if (isPickup && order.pickup_point_address) {
+        const parsed = parseSpanishAddress(order.pickup_point_address);
+        recipientStreet = parsed.street || order.pickup_point_address;
+        recipientCityName = parsed.city || order.pickup_point_city || '';
+        recipientPostalCode = parsed.postalCode || order.pickup_point_postal_code || '';
+    } else {
+        const parsed = parseSpanishAddress(order.shipping_address || '');
+        recipientStreet = parsed.street || order.shipping_address || '';
+        recipientCityName = parsed.city || '';
+        recipientPostalCode = parsed.postalCode || '';
+    }
 
     const items = (order.order_items ?? []).flatMap((oi: any) => {
         const variant = Array.isArray(oi.product_variants) ? oi.product_variants[0] : oi.product_variants;
@@ -107,14 +193,14 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             orderId: order.public_id,
             senderName,
             senderCompany,
-            senderAddress: `${senderStreet}, ${senderPostalCode} ${senderCityName}`,
+            senderAddress: senderStreet,
             senderCity: senderCityName,
             senderPostalCode: senderPostalCode,
             senderCountry: senderCountry,
             senderPhone,
             senderEmail,
             recipientName: order.shipping_full_name || 'Cliente',
-            recipientAddress: `${recipientStreet}, ${recipientPostalCode} ${recipientCityName}`,
+            recipientAddress: recipientStreet,
             recipientCity: recipientCityName,
             recipientPostalCode: recipientPostalCode,
             recipientCountry: 'ES',
@@ -122,7 +208,21 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             recipientEmail: order.buyer_email || '',
             parcels,
             requestedService: { shippingOptionCode },
+            toServicePointId: isPickup ? (order.pickup_point_id || undefined) : undefined,
         });
+
+        let storedLabelUrl = result.labelUrl;
+        if (result.labelUrl) {
+            try {
+                const pdfBytes = await downloadSendcloudLabelPdf(result.labelUrl);
+                storedLabelUrl = await uploadLabelPdf(order.public_id, pdfBytes);
+            } catch (err) {
+                console.warn(
+                    'Sendcloud label download/upload failed, storing raw URL for later retry:',
+                    err,
+                );
+            }
+        }
 
         const adminClient = createSupabaseAdminClient();
         const { error: shipmentError } = await adminClient.rpc('create_shipment', {
@@ -136,14 +236,13 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             p_price: labelCost || result.price,
             p_tracking_number: result.trackingNumber,
             p_tracking_url: result.trackingUrl,
-            p_label_url: result.labelUrl,
+            p_label_url: storedLabelUrl,
         });
 
         if (shipmentError) {
             console.error('Failed to save shipment:', shipmentError);
         }
 
-        // Mark order as processing
         await adminClient.rpc('mark_order_processing', { p_actor_id: user.id, p_order_id: orderId });
 
         return jsonResponse({

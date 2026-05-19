@@ -2,6 +2,7 @@
 import Icon from '../icons/Icon.astro';
 import RefundOrderModal from './RefundOrderModal.astro';
 import { strings } from '../../lib/core/i18n';
+import { isDevelopment } from '../../lib/core/env';
 import {
     normalizeOrderStatus,
     getStatusBadgeClass,
@@ -320,7 +321,9 @@ const { showRefunded, refundedAmountFormatted, shippingRetainedFormatted } = get
                     </div>
                 ) : (normalizedStatus === 'paid' || normalizedStatus === 'processing') ? (
                     <div class="flex flex-col gap-3">
-                        <p class="text-sm text-text-secondary">{strings.sellerOrderMockLabelHint}</p>
+                        {isDevelopment && (
+                            <p class="text-sm text-text-secondary">{strings.sellerOrderMockLabelHint}</p>
+                        )}
                         <div class="flex flex-wrap gap-2">
                             <button
                                 type="button"
@@ -513,7 +516,9 @@ const { showRefunded, refundedAmountFormatted, shippingRetainedFormatted } = get
                     </dl>
 
                     <p class="text-xs text-text-tertiary label-cost-buyer-paid" />
-                    <p class="text-xs text-text-tertiary">{strings.sellerOrderMockLabelHint}</p>
+                    {isDevelopment && (
+                        <p class="text-xs text-text-tertiary">{strings.sellerOrderMockLabelHint}</p>
+                    )}
                 </div>
 
                 <div class="mt-5 flex gap-2 justify-end">
@@ -602,6 +607,7 @@ const { showRefunded, refundedAmountFormatted, shippingRetainedFormatted } = get
         carrierKey?: string;
         carrierLabel?: string;
         serviceName?: string | null;
+        shippingOptionCode?: string | null;
         grossPrice?: number;
         subsidy?: number;
         netDeduction?: number;
@@ -670,6 +676,12 @@ const { showRefunded, refundedAmountFormatted, shippingRetainedFormatted } = get
             modal.dataset.labelCost = String(data.netDeduction);
         } else {
             delete modal.dataset.labelCost;
+        }
+
+        if (data.shippingOptionCode) {
+            modal.dataset.shippingOptionCode = data.shippingOptionCode;
+        } else {
+            delete modal.dataset.shippingOptionCode;
         }
     }
 
@@ -759,15 +771,16 @@ const { showRefunded, refundedAmountFormatted, shippingRetainedFormatted } = get
                 const modal = getLabelModal(orderId);
                 const labelCostAttr = modal?.dataset.labelCost;
                 const labelCost = labelCostAttr != null ? Number(labelCostAttr) : undefined;
+                const shippingOptionCode = modal?.dataset.shippingOptionCode;
 
                 const result = await runSubmit({
                     button: confirmLabelBtn,
                     busyLabel: strings.shippingCreatingShipment,
                     action: async () => {
-                        const res = await fetch('/api/sendcloud/mock-shipment', {
+                        const res = await fetch('/api/sendcloud/shipment', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ orderId, labelCost }),
+                            body: JSON.stringify({ orderId, labelCost, shippingOptionCode }),
                         });
                         const data = await res.json() as { success?: boolean; error?: string };
                         if (!data.success) throw new SubmitError(data.error || strings.sellerOrderLabelError);

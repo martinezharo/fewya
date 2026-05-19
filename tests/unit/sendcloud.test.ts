@@ -1,5 +1,9 @@
-import { describe, it, expect } from 'vitest';
-import { calculateParcelFromItems, parseSpanishAddress } from '../../src/lib/shipping/sendcloud';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import {
+    calculateParcelFromItems,
+    downloadSendcloudLabelPdf,
+    parseSpanishAddress,
+} from '../../src/lib/shipping/sendcloud';
 
 describe('calculateParcelFromItems', () => {
     it('consolida varias unidades del mismo item en un único parcel apilado', () => {
@@ -54,10 +58,68 @@ describe('parseSpanishAddress', () => {
         expect(result.postalCode).toBe('');
     });
 
-    it('documenta comportamiento cuando CP y ciudad no están separados por coma', () => {
+    it('extrae el CP del nombre de la ciudad aunque vayan juntos', () => {
         const result = parseSpanishAddress('Calle Mayor 5, 28001 Madrid');
         expect(result.postalCode).toBe('28001');
-        // La ciudad incluye el CP porque la función toma la última parte después de split(',')
-        expect(result.city).toBe('28001 Madrid');
+        expect(result.city).toBe('Madrid');
+    });
+
+    it('limpia el CP que aparece pegado a la ciudad en direcciones multilínea', () => {
+        const result = parseSpanishAddress('AVENIDA DE MALAGA 107\n29720 LA CALA DEL MORAL');
+        expect(result.postalCode).toBe('29720');
+        expect(result.city).toBe('LA CALA DEL MORAL');
+        expect(result.street).toBe('AVENIDA DE MALAGA 107');
+    });
+});
+
+describe('downloadSendcloudLabelPdf', () => {
+    const originalFetch = globalThis.fetch;
+    const originalKey = process.env.SENDCLOUD_API_KEY;
+    const originalSecret = process.env.SENDCLOUD_API_SECRET;
+
+    beforeEach(() => {
+        process.env.SENDCLOUD_API_KEY = 'test-key';
+        process.env.SENDCLOUD_API_SECRET = 'test-secret';
+        globalThis.fetch = vi.fn() as unknown as typeof fetch;
+    });
+
+    afterEach(() => {
+        globalThis.fetch = originalFetch;
+        if (originalKey === undefined) delete process.env.SENDCLOUD_API_KEY;
+        else process.env.SENDCLOUD_API_KEY = originalKey;
+        if (originalSecret === undefined) delete process.env.SENDCLOUD_API_SECRET;
+        else process.env.SENDCLOUD_API_SECRET = originalSecret;
+        vi.restoreAllMocks();
+    });
+
+    it('descarga el PDF de Sendcloud con Basic auth y devuelve Uint8Array', async () => {
+        const fakeBytes = new Uint8Array([0x25, 0x50, 0x44, 0x46]); // %PDF
+        const fetchMock = vi.mocked(globalThis.fetch);
+        fetchMock.mockResolvedValueOnce({
+            ok: true,
+            arrayBuffer: async () => fakeBytes.buffer,
+        } as unknown as Response);
+
+        const result = await downloadSendcloudLabelPdf('https://panel.sendcloud.sc/api/v3/docs/label/123');
+
+        expect(result).toBeInstanceOf(Uint8Array);
+        expect(Array.from(result)).toEqual(Array.from(fakeBytes));
+
+        const [url, init] = fetchMock.mock.calls[0];
+        expect(url).toBe('https://panel.sendcloud.sc/api/v3/docs/label/123');
+        const headers = (init?.headers ?? {}) as Record<string, string>;
+        expect(headers.Authorization).toMatch(/^Basic /);
+    });
+
+    it('lanza error si Sendcloud responde con estado != 2xx', async () => {
+        vi.mocked(globalThis.fetch).mockResolvedValueOnce({
+            ok: false,
+            status: 401,
+            statusText: 'Unauthorized',
+        } as unknown as Response);
+
+        await expect(
+            downloadSendcloudLabelPdf('https://panel.sendcloud.sc/api/v3/docs/label/123'),
+        ).rejects.toThrow(/401 Unauthorized/);
     });
 });
