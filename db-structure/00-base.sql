@@ -37,6 +37,7 @@ CREATE TABLE public.shops (
   contact_email text,
   whatsapp text,
   is_active boolean DEFAULT true,
+  status text NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
   created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
   accent_color text,
   location text,
@@ -244,6 +245,8 @@ CREATE TRIGGER shops_seller_details_sync
   AFTER INSERT ON public.shops
   FOR EACH ROW EXECUTE FUNCTION public.shops_after_insert_sync_seller_details();
 
+CREATE INDEX idx_shops_status ON public.shops(status);
+
 -- ============================================================
 -- Policies
 -- ============================================================
@@ -257,7 +260,7 @@ CREATE POLICY "Allow public read access to shops" ON public.shops FOR SELECT TO 
 CREATE POLICY "Allow authenticated read access to shops" ON public.shops FOR SELECT TO authenticated USING (true);
 CREATE POLICY "Allow authenticated users to insert shops" ON public.shops FOR INSERT TO authenticated WITH CHECK (auth.uid() = owner_id);
 CREATE POLICY "Allow owners to update their shops" ON public.shops FOR UPDATE TO authenticated USING (auth.uid() = owner_id);
-CREATE POLICY "Allow owners to delete their shops" ON public.shops FOR DELETE TO authenticated USING (auth.uid() = owner_id);
+-- NOTE: Hard DELETE is disabled. Shops use soft-delete via status='inactive'.
 CREATE POLICY "Allow authenticated read access to payment accounts" ON public.shop_payment_accounts FOR SELECT TO authenticated USING (true);
 
 -- ============================================================

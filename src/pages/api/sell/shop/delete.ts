@@ -18,6 +18,7 @@ export const DELETE: APIRoute = async ({ cookies, request }) => {
         .from('shops')
         .select('id')
         .eq('owner_id', user.id)
+        .eq('status', 'active')
         .maybeSingle();
 
     if (shopError || !shop) {
@@ -27,17 +28,24 @@ export const DELETE: APIRoute = async ({ cookies, request }) => {
         });
     }
 
-    const { error: deleteError } = await supabase
+    // Soft-delete: mark shop as inactive instead of hard DELETE
+    const { error: updateError } = await supabase
         .from('shops')
-        .delete()
+        .update({ status: 'inactive' })
         .eq('id', shop.id);
 
-    if (deleteError) {
-        return new Response(JSON.stringify({ error: deleteError.message }), {
+    if (updateError) {
+        return new Response(JSON.stringify({ error: updateError.message }), {
             status: 500,
             headers: { 'Content-Type': 'application/json' },
         });
     }
+
+    // Deactivate all products so they disappear from public listings
+    await supabase
+        .from('products')
+        .update({ is_active: false })
+        .eq('shop_id', shop.id);
 
     await supabase
         .from('profiles')

@@ -362,10 +362,10 @@ export const strings = {
     sellerSettingsSaving: 'Guardando...',
     sellerSettingsSaveSuccess: 'Configuración guardada correctamente',
     sellerSettingsSaveError: 'Error al guardar la configuración',
-    sellerSettingsDeleteShop: 'Eliminar tienda',
-    sellerSettingsDeleteShopConfirm: '¿Estás seguro de que quieres eliminar tu tienda? Esta acción no se puede deshacer y se eliminarán todos los productos y pedidos.',
-    sellerSettingsDeleteShopSuccess: 'Tienda eliminada correctamente',
-    sellerSettingsDeleteShopError: 'Error al eliminar la tienda',
+    sellerSettingsDeleteShop: 'Desactivar tienda',
+    sellerSettingsDeleteShopConfirm: '¿Estás seguro de que quieres desactivar tu tienda? Tus productos dejarán de estar visibles, pero conservarás el historial de pedidos y podrás reactivarla en el futuro.',
+    sellerSettingsDeleteShopSuccess: 'Tienda desactivada correctamente',
+    sellerSettingsDeleteShopError: 'Error al desactivar la tienda',
 
     // Seller sidebar / nav
     sellerNavDashboard: 'Inicio',
@@ -512,7 +512,7 @@ export const strings = {
     // Auth / API / errors
     authGoogleLoginError: 'Error al iniciar sesion con Google',
     authMissingSupabaseEnv: 'Variables de entorno SUPABASE_URL o SUPABASE_KEY no configuradas',
-    authMissingStripeEnv: 'Variable de entorno STRIPE_SECRET_KEY no configurada',
+    authMissingStripeEnv: 'Variable de entorno STRIPE_SECRET_KEY_TEST/STRIPE_SECRET_KEY_LIVE no configurada para el modo actual',
     apiUnauthorized: 'No autenticado',
     apiForbidden: 'No autorizado',
     apiInvalidBody: 'Cuerpo invalido',

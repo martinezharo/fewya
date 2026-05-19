@@ -45,6 +45,7 @@ export const GET: APIRoute = async ({ url }) => {
                 .from('shops')
                 .select('slug, created_at')
                 .eq('is_active', true)
+                .eq('status', 'active')
                 .eq('payments_active', true)
                 .eq('seller_details_complete', true)
                 .limit(5000),

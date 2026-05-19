@@ -19,6 +19,7 @@ const { data: shopData } = await supabase
   .select('*')
   .eq('slug', shopSlug!)
   .eq('is_active', true)
+  .eq('status', 'active')
   .single();
 
 if (!shopData || !shopData.payments_active || !shopData.seller_details_complete) return Astro.redirect('/');

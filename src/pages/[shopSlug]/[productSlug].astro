@@ -26,6 +26,7 @@ const [shopResult, userResult] = await Promise.all([
     .select('*')
     .eq('slug', shopSlug!)
     .eq('is_active', true)
+    .eq('status', 'active')
     .single(),
   authClient.auth.getUser(),
 ]);
