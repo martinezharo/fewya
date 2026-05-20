@@ -110,7 +110,7 @@ export const POST: APIRoute = async ({ request }) => {
         .single();
 
     if (!shipmentRow) {
-        return jsonResponse({ error: 'Shipment not found' }, 404);
+        return jsonResponse({ received: true }, 200);
     }
 
     const shipment = shipmentRow as { id: string; order_id: string };
