@@ -199,7 +199,7 @@ RETURNS public.shipments AS $$
         WHERE sh.id = o.shop_id AND sh.owner_id = auth.uid()
       )
     );
-$$ LANGUAGE sql SECURITY DEFINER;
+$$ LANGUAGE sql SECURITY DEFINER SET search_path = public;
 
 -- ============================================================
 -- Policies
@@ -248,4 +248,5 @@ REVOKE EXECUTE ON FUNCTION public.create_shipment(uuid, uuid, text, text, text, 
 REVOKE EXECUTE ON FUNCTION public.update_shipment_tracking(uuid, text, text, text, timestamp with time zone, text, text, jsonb) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.create_shipment(uuid, uuid, text, text, text, text, text, numeric, text, text, text) TO service_role;
 GRANT EXECUTE ON FUNCTION public.update_shipment_tracking(uuid, text, text, text, timestamp with time zone, text, text, jsonb) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.get_order_shipment(uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.get_order_shipment(uuid) TO authenticated;

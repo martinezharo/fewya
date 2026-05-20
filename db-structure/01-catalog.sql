@@ -49,7 +49,7 @@ BEGIN
   VALUES (NEW.id, 0, 0, NULL, true);
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- ============================================================
 -- Triggers
@@ -75,3 +75,10 @@ CREATE POLICY "Allow public read access to variants" ON public.product_variants 
 CREATE POLICY "Allow shop owners to insert product variants" ON public.product_variants FOR INSERT TO authenticated WITH CHECK (EXISTS (SELECT 1 FROM public.products p JOIN public.shops s ON p.shop_id = s.id WHERE p.id = product_variants.product_id AND s.owner_id = auth.uid()));
 CREATE POLICY "Allow shop owners to update product variants" ON public.product_variants FOR UPDATE TO authenticated USING (EXISTS (SELECT 1 FROM public.products p JOIN public.shops s ON p.shop_id = s.id WHERE p.id = product_variants.product_id AND s.owner_id = auth.uid()));
 CREATE POLICY "Allow shop owners to delete product variants" ON public.product_variants FOR DELETE TO authenticated USING (EXISTS (SELECT 1 FROM public.products p JOIN public.shops s ON p.shop_id = s.id WHERE p.id = product_variants.product_id AND s.owner_id = auth.uid()));
+
+-- ============================================================
+-- Grants
+-- ============================================================
+
+-- Trigger function: never callable via REST
+REVOKE EXECUTE ON FUNCTION public.handle_new_product() FROM PUBLIC, anon, authenticated;

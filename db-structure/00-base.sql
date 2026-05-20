@@ -110,7 +110,7 @@ BEGIN
       OR coalesce(btrim(p.address_province), '') <> ''
     );
 END;
-$$ LANGUAGE plpgsql IMMUTABLE;
+$$ LANGUAGE plpgsql IMMUTABLE SET search_path = public;
 
 CREATE OR REPLACE FUNCTION public.sync_shops_seller_details_complete(p_owner_id uuid)
 RETURNS void AS $$
@@ -151,7 +151,7 @@ BEGIN
   );
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 CREATE OR REPLACE FUNCTION public.upsert_shop_payment_account(
   p_actor_id uuid,
@@ -269,3 +269,8 @@ CREATE POLICY "Allow authenticated read access to payment accounts" ON public.sh
 
 REVOKE EXECUTE ON FUNCTION public.upsert_shop_payment_account(uuid, uuid, text, boolean, boolean, boolean) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.upsert_shop_payment_account(uuid, uuid, text, boolean, boolean, boolean) TO service_role;
+-- Trigger and internal functions: never callable via REST
+REVOKE EXECUTE ON FUNCTION public.handle_new_user() FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.profiles_after_update_sync_shops() FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.shops_after_insert_sync_seller_details() FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.sync_shops_seller_details_complete(uuid) FROM PUBLIC, anon, authenticated;

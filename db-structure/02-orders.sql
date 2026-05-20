@@ -104,7 +104,7 @@ RETURNS boolean AS $$
     SELECT 1 FROM public.orders
     WHERE id = p_order_id AND buyer_id = auth.uid()
   );
-$$ LANGUAGE sql SECURITY DEFINER;
+$$ LANGUAGE sql SECURITY DEFINER SET search_path = public;
 
 CREATE OR REPLACE FUNCTION public.order_belongs_to_seller(p_order_id uuid)
 RETURNS boolean AS $$
@@ -113,7 +113,7 @@ RETURNS boolean AS $$
     JOIN public.shops s ON o.shop_id = s.id
     WHERE o.id = p_order_id AND s.owner_id = auth.uid()
   );
-$$ LANGUAGE sql SECURITY DEFINER;
+$$ LANGUAGE sql SECURITY DEFINER SET search_path = public;
 
 CREATE OR REPLACE FUNCTION public.create_checkout_order(
   p_buyer_id uuid,
@@ -226,7 +226,7 @@ BEGIN
 
   RETURN new_stock;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 CREATE OR REPLACE FUNCTION public.restore_stock(p_variant_id uuid, p_quantity integer)
 RETURNS void AS $$
@@ -239,7 +239,7 @@ BEGIN
   SET stock = stock + p_quantity
   WHERE id = p_variant_id;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 CREATE OR REPLACE FUNCTION public.mark_order_paid(
   p_buyer_id uuid,
@@ -590,6 +590,8 @@ CREATE POLICY "Sellers can view incidents from their shop" ON public.order_incid
 -- Grants
 -- ============================================================
 
+REVOKE EXECUTE ON FUNCTION public.order_belongs_to_user(uuid) FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION public.order_belongs_to_seller(uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.order_belongs_to_user(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.order_belongs_to_seller(uuid) TO authenticated;
 REVOKE EXECUTE ON FUNCTION public.reserve_stock(uuid, integer) FROM PUBLIC, anon, authenticated;
