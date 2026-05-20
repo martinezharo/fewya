@@ -34,6 +34,8 @@ async function verifySignature(body: string, signature: string, secret: string):
     return diff === 0;
 }
 
+export const GET: APIRoute = () => jsonResponse({ ok: true }, 200);
+
 export const POST: APIRoute = async ({ request }) => {
     const secret = SENDCLOUD_API_SECRET ?? '';
     const signature = request.headers.get('Sendcloud-Signature') ?? '';
