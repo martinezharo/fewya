@@ -42,9 +42,17 @@ export const POST: APIRoute = async ({ request }) => {
 
     const rawBody = await request.text();
 
-    if (!secret || !signature || !(await verifySignature(rawBody, signature, secret))) {
+    // Skip signature check for empty verification pings from Sendcloud
+    const hasSignature = signature.length > 0;
+    const hasBody = rawBody.trim().length > 0 && rawBody.trim() !== '{}';
+
+    if (hasBody && (!secret || !hasSignature || !(await verifySignature(rawBody, signature, secret)))) {
         securityLog('security.webhook.invalid_signature', { source: 'sendcloud' });
         return jsonResponse({ error: 'Unauthorized' }, 401);
+    }
+
+    if (!hasBody) {
+        return jsonResponse({ ok: true }, 200);
     }
 
     let body: {
