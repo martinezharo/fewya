@@ -1,7 +1,6 @@
 import type { APIRoute } from 'astro';
-import { SENDCLOUD_WEBHOOK_SECRET } from 'astro:env/server';
+import { SENDCLOUD_API_SECRET } from 'astro:env/server';
 import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
-import { timingSafeEqual } from '../../../lib/core/timing-safe';
 import { securityLog } from '../../../lib/core/security-log';
 
 const MAX_TIMESTAMP_DRIFT_MS = 5 * 60 * 1000; // 5 minutes
@@ -13,12 +12,35 @@ function jsonResponse(payload: Record<string, unknown>, status: number) {
     });
 }
 
-export const POST: APIRoute = async ({ request }) => {
-    const webhookSecret = SENDCLOUD_WEBHOOK_SECRET ?? '';
-    const requestSecret = request.headers.get('X-Webhook-Secret') ?? '';
+async function verifySignature(body: string, signature: string, secret: string): Promise<boolean> {
+    const encoder = new TextEncoder();
+    const key = await crypto.subtle.importKey(
+        'raw',
+        encoder.encode(secret),
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['sign'],
+    );
+    const mac = await crypto.subtle.sign('HMAC', key, encoder.encode(body));
+    const computed = Array.from(new Uint8Array(mac))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+    // timing-safe comparison via constant-time iteration
+    if (computed.length !== signature.length) return false;
+    let diff = 0;
+    for (let i = 0; i < computed.length; i++) {
+        diff |= computed.charCodeAt(i) ^ signature.charCodeAt(i);
+    }
+    return diff === 0;
+}
 
-    // A2: timing-safe comparison to prevent secret enumeration via timing
-    if (!webhookSecret || !timingSafeEqual(requestSecret, webhookSecret)) {
+export const POST: APIRoute = async ({ request }) => {
+    const secret = SENDCLOUD_API_SECRET ?? '';
+    const signature = request.headers.get('Sendcloud-Signature') ?? '';
+
+    const rawBody = await request.text();
+
+    if (!secret || !signature || !(await verifySignature(rawBody, signature, secret))) {
         securityLog('security.webhook.invalid_signature', { source: 'sendcloud' });
         return jsonResponse({ error: 'Unauthorized' }, 401);
     }
@@ -39,14 +61,14 @@ export const POST: APIRoute = async ({ request }) => {
     };
 
     try {
-        body = await request.json();
+        body = JSON.parse(rawBody);
     } catch {
         return jsonResponse({ error: 'Invalid body' }, 400);
     }
 
     const { action, parcel, timestamp } = body;
 
-    // A2: reject stale events to mitigate replay attacks with a leaked secret
+    // reject stale events to mitigate replay attacks
     if (timestamp !== undefined) {
         const drift = Math.abs(Date.now() - timestamp * 1000);
         if (drift > MAX_TIMESTAMP_DRIFT_MS) {
@@ -61,7 +83,7 @@ export const POST: APIRoute = async ({ request }) => {
 
     const supabase = createSupabaseAdminClient();
 
-    // M2: idempotency — skip already-processed events
+    // idempotency — skip already-processed events
     const eventId = `sendcloud:${parcel.id}:${action ?? ''}:${timestamp ?? ''}`;
     const { error: insertConflict } = await supabase
         .from('processed_webhook_events')
@@ -71,7 +93,6 @@ export const POST: APIRoute = async ({ request }) => {
         return jsonResponse({ received: true }, 200);
     }
 
-    // Find shipment by sendcloud_shipment_id
     const { data: shipmentRow } = await supabase
         .from('shipments')
         .select('id, order_id')
@@ -100,7 +121,6 @@ export const POST: APIRoute = async ({ request }) => {
         });
 
         if (error) {
-            // M3: do not expose internal error to webhook caller
             console.error(JSON.stringify({ event: 'sendcloud_webhook.tracking_update_failed', error: error.message }));
             return jsonResponse({ error: 'Failed to update tracking' }, 500);
         }

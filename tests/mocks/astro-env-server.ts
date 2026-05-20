@@ -8,4 +8,3 @@ export const STRIPE_WEBHOOK_SECRET_TEST = 'whsec_test_mock';
 export const STRIPE_WEBHOOK_SECRET_LIVE = 'whsec_live_mock';
 export const SENDCLOUD_API_KEY = 'mock-key';
 export const SENDCLOUD_API_SECRET = 'mock-secret';
-export const SENDCLOUD_WEBHOOK_SECRET = 'mock-secret';

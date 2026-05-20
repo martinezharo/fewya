@@ -29,7 +29,6 @@ export default defineConfig({
       CRON_SECRET: envField.string({ context: 'server', access: 'secret', optional: true }),
       SENDCLOUD_API_KEY: envField.string({ context: 'server', access: 'secret', optional: true }),
       SENDCLOUD_API_SECRET: envField.string({ context: 'server', access: 'secret', optional: true }),
-      SENDCLOUD_WEBHOOK_SECRET: envField.string({ context: 'server', access: 'secret', optional: true }),
     }
   },
   vite: {
