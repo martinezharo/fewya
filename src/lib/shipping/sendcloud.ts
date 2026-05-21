@@ -84,17 +84,18 @@ export interface SendcloudLabelResult {
     labelUrl: string;
 }
 
+import { SENDCLOUD_API_KEY, SENDCLOUD_API_SECRET } from 'astro:env/server';
+
 const SENDCLOUD_API_BASE = 'https://panel.sendcloud.sc/api/v2';
 const SENDCLOUD_API_V3_BASE = 'https://panel.sendcloud.sc/api/v3';
 
-function env(key: string): string | undefined {
-    // Astro/Vite exposes .env vars via import.meta.env; fallback to process.env for Node/CF compat
-    return (import.meta.env as Record<string, string | undefined>)?.[key] ?? process.env?.[key];
+function envVar(key: string): string | undefined {
+    return (import.meta.env as Record<string, string | undefined>)?.[key];
 }
 
 export function getConfig(): SendcloudConfig {
-    const apiKey = env('SENDCLOUD_API_KEY');
-    const apiSecret = env('SENDCLOUD_API_SECRET');
+    const apiKey = SENDCLOUD_API_KEY;
+    const apiSecret = SENDCLOUD_API_SECRET;
     if (!apiKey || !apiSecret) {
         throw new Error('SENDCLOUD_API_KEY and SENDCLOUD_API_SECRET environment variables are required');
     }
@@ -102,14 +103,14 @@ export function getConfig(): SendcloudConfig {
     return {
         apiKey,
         apiSecret,
-        senderName: env('SENDCLOUD_SENDER_NAME') || 'Fewya',
-        senderCompany: env('SENDCLOUD_SENDER_COMPANY') || 'Fewya Marketplace',
-        senderAddress: env('SENDCLOUD_SENDER_ADDRESS') || 'Calle Principal 1',
-        senderCity: env('SENDCLOUD_SENDER_CITY') || 'Madrid',
-        senderPostalCode: env('SENDCLOUD_SENDER_POSTAL_CODE') || '28001',
-        senderCountry: env('SENDCLOUD_SENDER_COUNTRY') || 'ES',
-        senderPhone: env('SENDCLOUD_SENDER_PHONE') || '+34600000000',
-        senderEmail: env('SENDCLOUD_SENDER_EMAIL') || 'envios@fewya.com',
+        senderName: envVar('SENDCLOUD_SENDER_NAME') || 'Fewya',
+        senderCompany: envVar('SENDCLOUD_SENDER_COMPANY') || 'Fewya Marketplace',
+        senderAddress: envVar('SENDCLOUD_SENDER_ADDRESS') || 'Calle Principal 1',
+        senderCity: envVar('SENDCLOUD_SENDER_CITY') || 'Madrid',
+        senderPostalCode: envVar('SENDCLOUD_SENDER_POSTAL_CODE') || '28001',
+        senderCountry: envVar('SENDCLOUD_SENDER_COUNTRY') || 'ES',
+        senderPhone: envVar('SENDCLOUD_SENDER_PHONE') || '+34600000000',
+        senderEmail: envVar('SENDCLOUD_SENDER_EMAIL') || 'envios@fewya.com',
     };
 }
 
