@@ -738,7 +738,7 @@ const isLoggedIn = !!user;
     }
   }
 
-  function handleCheckout() {
+  async function handleCheckout() {
     const items = cart.get();
     if (items.length === 0) return;
     const main = document.querySelector('main');
@@ -747,6 +747,22 @@ const isLoggedIn = !!user;
       window.location.href = '/login?redirect_to=/cart';
       return;
     }
+
+    try {
+      const res = await fetch('/api/me/profile-status');
+      if (res.ok) {
+        const data = await res.json() as { complete?: boolean };
+        if (data.complete === false) {
+          progress.start();
+          window.location.href = '/me/details?checkout=1&return_to=/cart';
+          return;
+        }
+      }
+    } catch {
+      // Network failure: fall through to the modal — the checkout API will
+      // catch the incomplete profile and return a redirect as a safety net.
+    }
+
     openDeliveryModal();
   }
 
