@@ -157,11 +157,11 @@ function variantHasShippingOverride(v: VariantData): boolean {
                             <select
                                 id="product-category"
                                 required
-                                class="w-full px-4 py-3 rounded-xl border border-border bg-transparent text-text-primary focus:ring-2 focus:ring-accent outline-none transition appearance-none"
+                                class="w-full px-4 py-3 rounded-xl border border-border bg-surface text-text-primary focus:ring-2 focus:ring-accent outline-none transition appearance-none [color-scheme:light] dark:[color-scheme:dark]"
                             >
-                                <option value="" disabled selected={category === ''} class="text-text-tertiary">{strings.sellerProductCategoryPlaceholder}</option>
+                                <option value="" disabled selected={category === ''} class="bg-surface text-text-tertiary">{strings.sellerProductCategoryPlaceholder}</option>
                                 {categories.map(cat => (
-                                    <option value={cat.value} selected={category === cat.value}>{cat.label}</option>
+                                    <option value={cat.value} selected={category === cat.value} class="bg-surface text-text-primary">{cat.label}</option>
                                 ))}
                             </select>
                         </div>
