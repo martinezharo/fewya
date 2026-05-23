@@ -6,6 +6,7 @@ import { enrichProductsWithRatings } from "../../lib/products/productUtils";
 import { isProductComplete } from "../../lib/products/productValidation";
 import { getMergedWishlistIds } from "../../lib/wishlist/wishlist";
 import type { Product } from "../../lib/core/types";
+import { SHOP_STATUS } from "../../lib/core/shopStatus";
 
 interface Props {
     userId?: string | null;
@@ -18,7 +19,7 @@ const productsQuery = supabase
     .from("products")
     .select("id, slug, title, description, gallery_images, is_active, created_at, category, brand, shop:shops(id, slug, name, accent_color, payments_active, seller_details_complete, status), variants:product_variants(id, price, stock, shipping_cost, is_default, variant_name, weight_kg, length_cm, width_cm, height_cm)")
     .eq("is_active", true)
-    .eq("shop.status", "active")
+    .eq("shop.status", SHOP_STATUS.ACTIVE)
     .order("created_at", { ascending: false });
 
 // Products and auth in parallel (userId may come from the parent page)
@@ -35,7 +36,7 @@ if (productsResult.error) {
 }
 
 const rawProducts: Product[] = (productsResult.data ?? []) as Product[];
-const products = rawProducts.filter(p => p.shop?.status === 'active' && p.shop?.payments_active && p.shop?.seller_details_complete && isProductComplete(p));
+const products = rawProducts.filter(p => p.shop?.status === SHOP_STATUS.ACTIVE && p.shop?.payments_active && p.shop?.seller_details_complete && isProductComplete(p));
 
 // Ratings enrichment and wishlist lookup in parallel
 const [, wishedProductIds] = await Promise.all([

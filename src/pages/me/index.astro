@@ -3,7 +3,7 @@ import BuyerAppLayout from "../../layouts/BuyerAppLayout.astro";
 import Icon from "../../components/icons/Icon.astro";
 import { strings } from "../../lib/core/i18n";
 import { createSupabaseAuthClient } from "../../lib/core/auth";
-import { orderStatusLabels } from "../../lib/orders/orderStatus";
+import { orderStatusLabels, ORDER_STATUS } from "../../lib/orders/orderStatus";
 import { isProfileComplete } from "../../lib/core/validation";
 
 interface PurchaseGroup {
@@ -138,7 +138,7 @@ const recentPurchases = purchaseGroups.slice(0, 5);
                 <div id="purchases-slider" class="w-[100vw] -ml-4 md:w-full md:ml-0 overflow-x-auto scrollbar-hide snap-x snap-mandatory cursor-grab active:cursor-grabbing select-none">
                     <div class="flex gap-4 px-4 md:px-0 min-w-max pb-4">
                         {recentPurchases.map(purchase => {
-                            const statusColor = statusColorMap[purchase.status?.toLowerCase() ?? "pending"] ?? statusColorMap.pending;
+                            const statusColor = statusColorMap[purchase.status?.toLowerCase() ?? ORDER_STATUS.PENDING] ?? statusColorMap.pending;
                             return (
                             <a
                                 href={`/me/orders#order-${purchase.orderId}`}

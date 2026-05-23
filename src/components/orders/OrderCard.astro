@@ -9,6 +9,7 @@ import {
     formatEur,
     getRefundedAmounts,
 } from "../../lib/orders/orderCardModel";
+import { ORDER_STATUS } from "../../lib/orders/orderStatus";
 
 export interface OrderItem {
     productTitle: string;
@@ -66,10 +67,10 @@ const dateFormatted = formatOrderDate(order.createdAt);
 const totalFormatted = formatEur(order.totalAmount);
 
 const showTracking = order.hasShipment && (order.trackingNumber || order.trackingUrl);
-const showActions = normalizedStatus === 'delivered';
-const showIncident = normalizedStatus === 'incident' && order.incidentDescription;
-const showCancelIncident = normalizedStatus === 'incident';
-const showReview = normalizedStatus === 'confirmed' && order.items.length > 0;
+const showActions = normalizedStatus === ORDER_STATUS.DELIVERED;
+const showIncident = normalizedStatus === ORDER_STATUS.INCIDENT && order.incidentDescription;
+const showCancelIncident = normalizedStatus === ORDER_STATUS.INCIDENT;
+const showReview = normalizedStatus === ORDER_STATUS.CONFIRMED && order.items.length > 0;
 const { showRefunded, refundedAmountFormatted, shippingRetainedFormatted } = getRefundedAmounts(
     normalizedStatus,
     order.refundedAmount,
@@ -77,7 +78,7 @@ const { showRefunded, refundedAmountFormatted, shippingRetainedFormatted } = get
 );
 const hasAnyReview = order.items.some(item => item.productId && order.reviews?.[item.productId]);
 const reviewableItems = order.items.filter(item => item.productId);
-const showHide = normalizedStatus === 'pending';
+const showHide = normalizedStatus === ORDER_STATUS.PENDING;
 ---
 
 <article class="bg-surface rounded-2xl border border-border-light overflow-hidden" data-order-id={order.orderId} data-order-status={normalizedStatus}>
@@ -232,7 +233,7 @@ const showHide = normalizedStatus === 'pending';
         </div>
     </div>
 
-    {normalizedStatus === 'delivery_failed' && (
+    {normalizedStatus === ORDER_STATUS.DELIVERY_FAILED && (
         <div class="px-4 pb-4 -mt-1 md:px-5 md:pb-5">
             <div class="p-4 rounded-2xl bg-rose-50 dark:bg-rose-900/20 border border-rose-100 dark:border-rose-800">
                 <p class="text-[11px] font-semibold uppercase tracking-wider text-rose-700 dark:text-rose-400 mb-1">
@@ -245,7 +246,7 @@ const showHide = normalizedStatus === 'pending';
         </div>
     )}
 
-    {normalizedStatus === 'cancelled' && order.cancellationReason && (
+    {normalizedStatus === ORDER_STATUS.CANCELLED && order.cancellationReason && (
         <div class="px-4 pb-3 -mt-1 md:px-5 md:pb-4">
             <div class="p-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800">
                 <p class="text-[11px] font-semibold uppercase tracking-wider text-red-700 dark:text-red-400 mb-1">

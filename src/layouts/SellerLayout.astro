@@ -6,6 +6,7 @@ import { strings } from '../lib/core/i18n';
 import { createSupabaseAuthClient } from '../lib/core/auth';
 import { validateProductCompleteness } from '../lib/products/productValidation';
 import { isProfileComplete } from '../lib/core/validation';
+import { ORDER_STATUS } from '../lib/orders/orderStatus';
 
 interface Props {
     title?: string;
@@ -55,7 +56,7 @@ if (shopId) {
         .from('orders')
         .select('id', { count: 'exact', head: true })
         .eq('shop_id', shopId)
-        .eq('status', 'incident');
+        .eq('status', ORDER_STATUS.INCIDENT);
 
     activeIncidents = incidentsCount ?? 0;
 
@@ -63,7 +64,7 @@ if (shopId) {
         .from('orders')
         .select('id', { count: 'exact', head: true })
         .eq('shop_id', shopId)
-        .in('status', ['paid', 'processing']);
+        .in('status', [ORDER_STATUS.PAID, ORDER_STATUS.PROCESSING]);
 
     pendingOrdersCount = pendingCount ?? 0;
 
@@ -71,7 +72,7 @@ if (shopId) {
         .from('orders')
         .select('id', { count: 'exact', head: true })
         .eq('shop_id', shopId)
-        .eq('status', 'delivery_failed');
+        .eq('status', ORDER_STATUS.DELIVERY_FAILED);
 
     deliveryFailedCount = failedCount ?? 0;
 

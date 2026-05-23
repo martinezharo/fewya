@@ -13,6 +13,7 @@ import {
     getRefundedAmounts,
     formatShippingCell,
 } from '../../lib/orders/orderCardModel';
+import { ORDER_STATUS, type DeliveryType } from '../../lib/orders/orderStatus';
 
 export interface SellerOrderItem {
     productTitle: string;
@@ -34,7 +35,7 @@ export interface SellerOrderCardData {
     shippingFullName: string | null;
     shippingPhone: string | null;
     shippingAddress: string | null;
-    deliveryType?: 'home' | 'pickup_point' | null;
+    deliveryType?: DeliveryType | null;
     pickupPointCarrier?: string | null;
     pickupPointName?: string | null;
     subtotal: number;
@@ -81,7 +82,7 @@ const { showRefunded, refundedAmountFormatted, shippingRetainedFormatted } = get
                 <span class={`shrink-0 inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${statusColor}`}>
                     {statusLabel}
                 </span>
-                {(normalizedStatus === 'paid' || normalizedStatus === 'processing' || normalizedStatus === 'shipped' || normalizedStatus === 'delivered') && (
+                {(normalizedStatus === ORDER_STATUS.PAID || normalizedStatus === ORDER_STATUS.PROCESSING || normalizedStatus === ORDER_STATUS.SHIPPED || normalizedStatus === ORDER_STATUS.DELIVERED) && (
                     <span class="funds-badge relative shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 cursor-help" data-tooltip={strings.orderFundsHeldTooltip}>
                         <Icon name="info" size={9} class="mr-1" />
                         {strings.orderFundsHeld}
@@ -93,19 +94,19 @@ const { showRefunded, refundedAmountFormatted, shippingRetainedFormatted } = get
                         </span>
                     </span>
                 )}
-                {normalizedStatus === 'confirmed' && (
+                {normalizedStatus === ORDER_STATUS.CONFIRMED && (
                     <span class="shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
                         <Icon name="check" size={9} class="mr-1" />
                         {strings.orderFundsReleased}
                     </span>
                 )}
-                {normalizedStatus === 'incident' && (
+                {normalizedStatus === ORDER_STATUS.INCIDENT && (
                     <span class="shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800">
                         <Icon name="alert-circle" size={9} class="mr-1" />
                         {strings.orderIncidentReported}
                     </span>
                 )}
-                {normalizedStatus === 'delivery_failed' && (
+                {normalizedStatus === ORDER_STATUS.DELIVERY_FAILED && (
                     <span class="shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400 border border-rose-200 dark:border-rose-800">
                         <Icon name="alert-circle" size={9} class="mr-1" />
                         {strings.deliveryFailedSellerTitle}
@@ -117,7 +118,7 @@ const { showRefunded, refundedAmountFormatted, shippingRetainedFormatted } = get
                         {strings.orderRefundedBadge}
                     </span>
                 )}
-                {normalizedStatus === 'cancelled' && order.cancellationReason && (
+                {normalizedStatus === ORDER_STATUS.CANCELLED && order.cancellationReason && (
                     <span class="shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800">
                         <Icon name="message-circle" size={9} class="mr-1" />
                         {strings.orderCancellationReason}
@@ -312,7 +313,7 @@ const { showRefunded, refundedAmountFormatted, shippingRetainedFormatted } = get
                             )}
                         </div>
                     </div>
-                ) : (normalizedStatus === 'paid' || normalizedStatus === 'processing') ? (
+                ) : (normalizedStatus === ORDER_STATUS.PAID || normalizedStatus === ORDER_STATUS.PROCESSING) ? (
                     <div class="flex flex-col gap-3">
                         {isDevelopment && (
                             <p class="text-sm text-text-secondary">{strings.sellerOrderMockLabelHint}</p>
@@ -336,7 +337,7 @@ const { showRefunded, refundedAmountFormatted, shippingRetainedFormatted } = get
                             </button>
                         </div>
                     </div>
-                ) : normalizedStatus === 'incident' ? (
+                ) : normalizedStatus === ORDER_STATUS.INCIDENT ? (
                     <div class="flex flex-col gap-3">
                         <p class="text-sm text-text-secondary">{strings.sellerIncidentNoticeForSeller}</p>
                         <a
@@ -369,7 +370,7 @@ const { showRefunded, refundedAmountFormatted, shippingRetainedFormatted } = get
                         <p class="text-sm text-text-secondary">{strings.sellerOrderDeliveredWaiting}</p>
                     </div>
                 )}
-                {normalizedStatus === 'delivery_failed' && (
+                {normalizedStatus === ORDER_STATUS.DELIVERY_FAILED && (
                     <div class="mt-4 pt-4 border-t border-border-light flex flex-col gap-3">
                         <p class="text-sm text-text-secondary">{strings.deliveryFailedSellerNotice}</p>
                         <button
@@ -386,7 +387,7 @@ const { showRefunded, refundedAmountFormatted, shippingRetainedFormatted } = get
         </section>
     </div>
 
-    {normalizedStatus === 'cancelled' && order.cancellationReason && (
+    {normalizedStatus === ORDER_STATUS.CANCELLED && order.cancellationReason && (
         <div class="p-4 rounded-2xl bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800">
             <p class="text-[11px] font-semibold uppercase tracking-wider text-red-700 dark:text-red-400 mb-1">
                 {strings.orderCancellationReason}
@@ -427,7 +428,7 @@ const { showRefunded, refundedAmountFormatted, shippingRetainedFormatted } = get
         </div>
     )}
 
-    {normalizedStatus === 'delivery_failed' && (
+    {normalizedStatus === ORDER_STATUS.DELIVERY_FAILED && (
         <RefundOrderModal
             orderId={order.orderId}
             totalAmount={order.subtotal + order.shipping}
@@ -469,7 +470,7 @@ const { showRefunded, refundedAmountFormatted, shippingRetainedFormatted } = get
     </div>
 
     {/* Label cost modal */}
-    {(normalizedStatus === 'paid' || normalizedStatus === 'processing') && (
+    {(normalizedStatus === ORDER_STATUS.PAID || normalizedStatus === ORDER_STATUS.PROCESSING) && (
         <div class="label-cost-modal hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" data-order-id={order.orderId}>
             <div class="w-full max-w-md rounded-2xl border border-border bg-surface p-5 shadow-xl">
                 <h3 class="text-base font-semibold text-text-primary">{strings.sellerLabelCostModalTitle}</h3>

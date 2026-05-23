@@ -10,6 +10,7 @@ import { isProductComplete } from '../../lib/products/productValidation';
 import { getMergedWishlistIds } from '../../lib/wishlist/wishlist';
 import { strings } from '../../lib/core/i18n';
 import type { Shop, Product } from '../../lib/core/types';
+import { SHOP_STATUS } from '../../lib/core/shopStatus';
 
 const { shopSlug } = Astro.params;
 
@@ -19,7 +20,7 @@ const { data: shopData } = await supabase
   .select('*')
   .eq('slug', shopSlug!)
   .eq('is_active', true)
-  .eq('status', 'active')
+  .eq('status', SHOP_STATUS.ACTIVE)
   .single();
 
 if (!shopData || !shopData.payments_active || !shopData.seller_details_complete) return Astro.redirect('/');

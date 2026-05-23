@@ -6,6 +6,7 @@ import { getStripeClient } from '../../../lib/payments/stripe';
 import { releaseOrderFunds } from '../../../lib/cart/checkout';
 import { buildPayoutItemsFromJoins, type JoinedOrderItem } from '../../../lib/orders/orderJoins';
 import { getLabelCostByShop } from '../../../lib/orders/shipmentCost';
+import { FUNDS_RELEASE_STATUS, type FundsReleaseStatus } from '../../../lib/orders/orderStatus';
 
 function jsonResponse(payload: Record<string, unknown>, status: number) {
     return new Response(JSON.stringify(payload), {
@@ -54,7 +55,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         id: string;
         public_id: string;
         stripe_payment_intent_id: string | null;
-        funds_release_status: string;
+        funds_release_status: FundsReleaseStatus;
         shops: { id: string; owner_id: string | null } | { id: string; owner_id: string | null }[] | null;
     };
     const typedOrder = order as unknown as OrderWithShop;
@@ -63,7 +64,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         return jsonResponse({ error: strings.apiForbidden }, 403);
     }
 
-    if (typedOrder.funds_release_status !== 'failed') {
+    if (typedOrder.funds_release_status !== FUNDS_RELEASE_STATUS.FAILED) {
         return jsonResponse({ error: strings.apiInvalidBody }, 400);
     }
 
@@ -110,7 +111,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     await adminClient
         .from('orders')
         .update({
-            funds_release_status: releaseResult.success ? 'released' : 'failed',
+            funds_release_status: releaseResult.success ? FUNDS_RELEASE_STATUS.RELEASED : FUNDS_RELEASE_STATUS.FAILED,
             funds_release_last_error: releaseResult.success ? null : (releaseResult.error ?? null),
         })
         .eq('id', orderId);

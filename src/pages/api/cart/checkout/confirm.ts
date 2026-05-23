@@ -3,6 +3,7 @@ import { createSupabaseAuthClient } from '../../../../lib/core/auth';
 import { createSupabaseAdminClient } from '../../../../lib/core/supabase-admin';
 import { strings } from '../../../../lib/core/i18n';
 import { getStripeClient } from '../../../../lib/payments/stripe';
+import { ORDER_STATUS, PAYMENT_STATUS } from '../../../../lib/orders/orderStatus';
 
 function jsonResponse(payload: Record<string, unknown>, status: number) {
     return new Response(JSON.stringify(payload), {
@@ -41,7 +42,7 @@ export const GET: APIRoute = async ({ url, request, cookies }) => {
         return jsonResponse({ error: strings.apiCheckoutConfirmationError }, 404);
     }
 
-    const allPaid = orders.every((o) => o.payment_status === 'paid' || o.status === 'paid');
+    const allPaid = orders.every((o) => o.payment_status === PAYMENT_STATUS.PAID || o.status === ORDER_STATUS.PAID);
     if (allPaid) {
         return jsonResponse({ success: true, orders }, 200);
     }

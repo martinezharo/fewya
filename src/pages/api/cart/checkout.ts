@@ -13,6 +13,7 @@ import { buildAbsoluteUrl, getStripeClient } from '../../../lib/payments/stripe'
 import { isProfileComplete } from '../../../lib/core/validation';
 import { resolvePhonePrefix } from '../../../lib/core/phone';
 import { pickOne, type JoinedProduct, type JoinedShop, type JoinedVariant, type JoinedPaymentAccount } from '../../../lib/orders/orderJoins';
+import { DELIVERY_TYPE, type DeliveryType } from '../../../lib/orders/orderStatus';
 
 interface CheckoutItemPayload {
     variantId: string;
@@ -20,7 +21,7 @@ interface CheckoutItemPayload {
 }
 
 interface DeliveryPayload {
-    type: 'home' | 'pickup_point';
+    type: DeliveryType;
     pickupPointId?: string;
     pickupPointName?: string;
     pickupPointAddress?: string;
@@ -368,7 +369,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         const shopTotal = group.subtotal + group.shipping;
 
         const delivery = body.delivery;
-        const isPickup = delivery?.type === 'pickup_point';
+        const isPickup = delivery?.type === DELIVERY_TYPE.PICKUP_POINT;
 
         const adminClient = createSupabaseAdminClient();
         const { data: orderData, error: orderError } = await adminClient.rpc('create_checkout_order', {
@@ -390,7 +391,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
                 quantity: item.quantity,
                 price_at_purchase: item.unitPrice,
             })),
-            p_delivery_type: delivery?.type || 'home',
+            p_delivery_type: delivery?.type || DELIVERY_TYPE.HOME,
             p_pickup_point_id: delivery?.pickupPointId || null,
             p_pickup_point_name: delivery?.pickupPointName || null,
             p_pickup_point_address: delivery?.pickupPointAddress || null,

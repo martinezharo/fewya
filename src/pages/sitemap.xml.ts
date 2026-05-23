@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { createSupabaseAdminClient } from '../lib/core/supabase-admin';
+import { SHOP_STATUS } from '../lib/core/shopStatus';
 
 interface SitemapEntry {
     loc: string;
@@ -45,7 +46,7 @@ export const GET: APIRoute = async ({ url }) => {
                 .from('shops')
                 .select('slug, created_at')
                 .eq('is_active', true)
-                .eq('status', 'active')
+                .eq('status', SHOP_STATUS.ACTIVE)
                 .eq('payments_active', true)
                 .eq('seller_details_complete', true)
                 .limit(5000),

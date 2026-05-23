@@ -2,6 +2,7 @@ import type { APIRoute } from 'astro';
 import { createSupabaseAuthClient } from '../../../lib/core/auth';
 import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
 import { strings } from '../../../lib/core/i18n';
+import { ORDER_STATUS } from '../../../lib/orders/orderStatus';
 
 function jsonResponse(payload: Record<string, unknown>, status: number) {
     return new Response(JSON.stringify(payload), {
@@ -43,7 +44,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         return jsonResponse({ error: strings.apiUnauthorized }, 403);
     }
 
-    if (order.status !== 'pending') {
+    if (order.status !== ORDER_STATUS.PENDING) {
         return jsonResponse({ error: strings.orderHideNotAllowed }, 400);
     }
 
@@ -52,7 +53,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         .update({ buyer_hidden_at: new Date().toISOString() })
         .eq('id', orderId)
         .eq('buyer_id', user.id)
-        .eq('status', 'pending');
+        .eq('status', ORDER_STATUS.PENDING);
 
     if (error) {
         console.error('hide order failed', error);

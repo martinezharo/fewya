@@ -4,6 +4,7 @@ import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
 import { strings } from '../../../lib/core/i18n';
 import { getStripeClient } from '../../../lib/payments/stripe';
 import { toMinorUnits } from '../../../lib/cart/checkout';
+import { ORDER_STATUS } from '../../../lib/orders/orderStatus';
 
 function jsonResponse(payload: Record<string, unknown>, status: number) {
     return new Response(JSON.stringify(payload), {
@@ -57,7 +58,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     }
 
     // Only allow cancelling paid/processing orders
-    if (!['paid', 'processing'].includes(order.status)) {
+    if (!([ORDER_STATUS.PAID, ORDER_STATUS.PROCESSING] as string[]).includes(order.status)) {
         return jsonResponse({ error: strings.apiOrderCannotBeCancelled }, 400);
     }
 

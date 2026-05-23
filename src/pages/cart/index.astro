@@ -212,6 +212,7 @@ const isLoggedIn = !!user;
   import { setBusy } from '../../lib/ui/busy';
   import { toast } from '../../lib/ui/toast';
   import { progress } from '../../lib/ui/progress-bar';
+  import { DELIVERY_TYPE, type DeliveryType } from '../../lib/orders/orderStatus';
 
   const currencyFormatter = new Intl.NumberFormat('es-ES', {
     style: 'currency',
@@ -221,7 +222,7 @@ const isLoggedIn = !!user;
   let isCheckingOut = false;
 
   // Delivery modal state
-  let selectedDeliveryType: 'home' | 'pickup_point' | null = null;
+  let selectedDeliveryType: DeliveryType | null = null;
   let selectedPickupPoint: {
     id: string;
     name: string;
@@ -481,20 +482,20 @@ const isLoggedIn = !!user;
 
   function updateDeliveryUI() {
     // Update checkmarks
-    optionHome?.querySelector('.delivery-check')?.classList.toggle('hidden', selectedDeliveryType !== 'home');
-    optionHome?.classList.toggle('border-accent', selectedDeliveryType === 'home');
-    optionHome?.classList.toggle('border-border-light', selectedDeliveryType !== 'home');
+    optionHome?.querySelector('.delivery-check')?.classList.toggle('hidden', selectedDeliveryType !== DELIVERY_TYPE.HOME);
+    optionHome?.classList.toggle('border-accent', selectedDeliveryType === DELIVERY_TYPE.HOME);
+    optionHome?.classList.toggle('border-border-light', selectedDeliveryType !== DELIVERY_TYPE.HOME);
 
-    optionPickup?.querySelector('.delivery-check')?.classList.toggle('hidden', selectedDeliveryType !== 'pickup_point');
-    optionPickup?.classList.toggle('border-accent', selectedDeliveryType === 'pickup_point');
-    optionPickup?.classList.toggle('border-border-light', selectedDeliveryType !== 'pickup_point');
+    optionPickup?.querySelector('.delivery-check')?.classList.toggle('hidden', selectedDeliveryType !== DELIVERY_TYPE.PICKUP_POINT);
+    optionPickup?.classList.toggle('border-accent', selectedDeliveryType === DELIVERY_TYPE.PICKUP_POINT);
+    optionPickup?.classList.toggle('border-border-light', selectedDeliveryType !== DELIVERY_TYPE.PICKUP_POINT);
 
     // Enable/disable continue button
     if (!btnContinue) return;
-    if (selectedDeliveryType === 'home') {
+    if (selectedDeliveryType === DELIVERY_TYPE.HOME) {
       btnContinue.disabled = false;
       btnContinue.textContent = strings.deliveryContinue;
-    } else if (selectedDeliveryType === 'pickup_point' && selectedPickupPoint) {
+    } else if (selectedDeliveryType === DELIVERY_TYPE.PICKUP_POINT && selectedPickupPoint) {
       btnContinue.disabled = false;
       btnContinue.textContent = strings.deliveryContinue;
     } else {
@@ -503,12 +504,12 @@ const isLoggedIn = !!user;
     }
   }
 
-  function selectDeliveryType(type: 'home' | 'pickup_point') {
+  function selectDeliveryType(type: DeliveryType) {
     selectedDeliveryType = type;
     selectedPickupPoint = null;
     updateDeliveryUI();
 
-    if (type === 'pickup_point') {
+    if (type === DELIVERY_TYPE.PICKUP_POINT) {
       stepType?.classList.add('hidden');
       stepType?.classList.remove('flex');
       stepPickup?.classList.remove('hidden');
@@ -669,9 +670,9 @@ const isLoggedIn = !!user;
 
     let success = false;
 
-    const deliveryPayload = selectedDeliveryType === 'pickup_point' && selectedPickupPoint
+    const deliveryPayload = selectedDeliveryType === DELIVERY_TYPE.PICKUP_POINT && selectedPickupPoint
       ? {
-          type: 'pickup_point' as const,
+          type: DELIVERY_TYPE.PICKUP_POINT,
           pickupPointId: selectedPickupPoint.id,
           pickupPointName: selectedPickupPoint.name,
           pickupPointAddress: selectedPickupPoint.address,
@@ -679,7 +680,7 @@ const isLoggedIn = !!user;
           pickupPointCity: selectedPickupPoint.city,
           pickupPointCarrier: selectedPickupPoint.carrier,
         }
-      : { type: 'home' as const };
+      : { type: DELIVERY_TYPE.HOME };
 
     try {
       const res = await fetch('/api/cart/checkout', {
@@ -833,8 +834,8 @@ const isLoggedIn = !!user;
       if (e.target === deliveryModal) closeDeliveryModal();
     });
 
-    optionHome?.addEventListener('click', () => selectDeliveryType('home'));
-    optionPickup?.addEventListener('click', () => selectDeliveryType('pickup_point'));
+    optionHome?.addEventListener('click', () => selectDeliveryType(DELIVERY_TYPE.HOME));
+    optionPickup?.addEventListener('click', () => selectDeliveryType(DELIVERY_TYPE.PICKUP_POINT));
 
     btnBack?.addEventListener('click', () => {
       stepPickup?.classList.add('hidden');

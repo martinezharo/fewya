@@ -1,5 +1,5 @@
 import { strings } from '../core/i18n';
-import { ORDER_STATUSES, orderStatusLabels, type OrderStatus } from './orderStatus';
+import { ORDER_STATUS, ORDER_STATUSES, orderStatusLabels, type OrderStatus } from './orderStatus';
 import { FUND_HOLD_MS } from './timing';
 
 export const ORDER_STATUS_BADGE_CLASSES: Record<OrderStatus, string> = {
@@ -18,8 +18,8 @@ export const ORDER_STATUS_BADGE_CLASSES: Record<OrderStatus, string> = {
 const STATUS_SET = new Set<string>(ORDER_STATUSES);
 
 export function normalizeOrderStatus(raw: string | null | undefined): OrderStatus {
-    const lower = raw?.toLowerCase() ?? 'pending';
-    return STATUS_SET.has(lower) ? (lower as OrderStatus) : 'pending';
+    const lower = raw?.toLowerCase() ?? ORDER_STATUS.PENDING;
+    return STATUS_SET.has(lower) ? (lower as OrderStatus) : ORDER_STATUS.PENDING;
 }
 
 export function getStatusLabel(status: OrderStatus): string {
@@ -59,7 +59,7 @@ export function getSellerDeliveryFlags(
     deliveredAt: Date | null | undefined,
     now: number = Date.now()
 ): SellerDeliveryFlags {
-    if (status !== 'delivered' || !deliveredAt) {
+    if (status !== ORDER_STATUS.DELIVERED || !deliveredAt) {
         return { canSellerConfirm: false, isRecentlyDelivered: false };
     }
     const elapsed = now - deliveredAt.getTime();
@@ -78,7 +78,7 @@ export function getRefundedAmounts(
     refundedAmount: number | null | undefined,
     shippingRetained: number | null | undefined
 ): RefundedAmounts {
-    const showRefunded = status === 'refunded' && (refundedAmount ?? 0) > 0;
+    const showRefunded = status === ORDER_STATUS.REFUNDED && (refundedAmount ?? 0) > 0;
     return {
         showRefunded,
         refundedAmountFormatted: showRefunded ? formatEur(refundedAmount ?? 0) : '',

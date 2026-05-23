@@ -8,6 +8,7 @@ import { createAutoReviewsForOrder } from '../../../lib/orders/autoReview';
 import { buildPayoutItemsFromJoins, pickOne, type JoinedOrderItem } from '../../../lib/orders/orderJoins';
 import { FUND_HOLD_MS } from '../../../lib/orders/timing';
 import { getLabelCostByShop } from '../../../lib/orders/shipmentCost';
+import { ORDER_STATUS, FUNDS_RELEASE_STATUS } from '../../../lib/orders/orderStatus';
 
 function jsonResponse(payload: Record<string, unknown>, status: number) {
     return new Response(JSON.stringify(payload), {
@@ -61,7 +62,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         return jsonResponse({ error: strings.apiForbidden }, 403);
     }
 
-    if (order.status !== 'delivered') {
+    if (order.status !== ORDER_STATUS.DELIVERED) {
         return jsonResponse({ error: strings.apiInvalidBody }, 400);
     }
 
@@ -78,7 +79,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     const now = new Date().toISOString();
     const { error: updateError } = await adminClient
         .from('orders')
-        .update({ status: 'confirmed', funds_released_at: now })
+        .update({ status: ORDER_STATUS.CONFIRMED, funds_released_at: now })
         .eq('id', orderId);
 
     if (updateError) {
@@ -130,7 +131,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     await adminClient
         .from('orders')
         .update({
-            funds_release_status: releaseResult.success ? 'released' : 'failed',
+            funds_release_status: releaseResult.success ? FUNDS_RELEASE_STATUS.RELEASED : FUNDS_RELEASE_STATUS.FAILED,
             funds_release_last_error: releaseResult.success ? null : (releaseResult.error ?? null),
         })
         .eq('id', orderId);

@@ -2,6 +2,7 @@ import type { APIRoute } from 'astro';
 import { createSupabaseAuthClient } from '../../../lib/core/auth';
 import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
 import { strings } from '../../../lib/core/i18n';
+import { ORDER_STATUS } from '../../../lib/orders/orderStatus';
 
 function jsonResponse(payload: Record<string, unknown>, status: number) {
     return new Response(JSON.stringify(payload), {
@@ -44,7 +45,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         .from('orders')
         .select('id')
         .eq('buyer_id', user.id)
-        .eq('status', 'confirmed')
+        .eq('status', ORDER_STATUS.CONFIRMED)
         .limit(1);
 
     if (purchaseError || !purchaseData || purchaseData.length === 0) {
@@ -56,7 +57,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         .from('orders')
         .select('id, order_items!inner(product_variants!inner(product_id))')
         .eq('buyer_id', user.id)
-        .eq('status', 'confirmed')
+        .eq('status', ORDER_STATUS.CONFIRMED)
         .eq('order_items.product_variants.product_id', productId)
         .limit(1)
         .maybeSingle();

@@ -9,6 +9,7 @@ import {
 } from '../../../lib/shipping/sendcloud';
 import { categorize, CARRIER_META, type CarrierKey } from '../../../lib/shipping/carrierKey';
 import { getCarrierSubsidy } from '../../../lib/cart/checkout';
+import { DELIVERY_TYPE } from '../../../lib/orders/orderStatus';
 
 const IVA_RATE = 1.21;
 
@@ -23,8 +24,8 @@ function resolveExpectedBucket(
     deliveryType: string | null | undefined,
     pickupPointCarrier: string | null | undefined,
 ): CarrierKey | null {
-    if (deliveryType === 'home') return 'correos_home';
-    if (deliveryType === 'pickup_point') {
+    if (deliveryType === DELIVERY_TYPE.HOME) return 'correos_home';
+    if (deliveryType === DELIVERY_TYPE.PICKUP_POINT) {
         const carrier = (pickupPointCarrier || '').toLowerCase();
         if (carrier.includes('inpost')) return 'inpost';
         if (carrier.includes('correos')) return 'correos_pickup';
@@ -114,7 +115,7 @@ export const GET: APIRoute = async ({ request, cookies, url }) => {
     const senderPostalCode = config.senderPostalCode;
 
     let recipientPostalCode = '';
-    if (order.delivery_type === 'pickup_point') {
+    if (order.delivery_type === DELIVERY_TYPE.PICKUP_POINT) {
         recipientPostalCode = order.pickup_point_postal_code
             || parseSpanishAddress(order.pickup_point_address || '').postalCode
             || '';

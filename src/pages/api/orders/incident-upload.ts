@@ -4,6 +4,7 @@ import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
 import { strings } from '../../../lib/core/i18n';
 import { detectImageMimeType, ALLOWED_IMAGE_TYPES } from '../../../lib/core/file-validation';
 import { securityLog } from '../../../lib/core/security-log';
+import { ORDER_STATUS } from '../../../lib/orders/orderStatus';
 
 const MAX_SIZE = 5 * 1024 * 1024;
 
@@ -49,7 +50,7 @@ export const POST: APIRoute = async ({ cookies, request }) => {
         return new Response(JSON.stringify({ error: strings.apiForbidden }), { status: 403 });
     }
 
-    if (!['delivered', 'confirmed'].includes(order.status)) {
+    if (!([ORDER_STATUS.DELIVERED, ORDER_STATUS.CONFIRMED] as string[]).includes(order.status)) {
         return new Response(JSON.stringify({ error: 'Order cannot be reported at this stage' }), { status: 400 });
     }
 

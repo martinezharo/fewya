@@ -4,6 +4,7 @@ import OrderCard from "./OrderCard.astro";
 import type { OrderCardData, OrderItem } from "./OrderCard.astro";
 import { strings } from "../../lib/core/i18n";
 import { createSupabaseAuthClient } from "../../lib/core/auth";
+import { ORDER_STATUS } from "../../lib/orders/orderStatus";
 
 const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
 const { data: { user } } = await supabase.auth.getUser();
@@ -153,7 +154,7 @@ if (user) {
         return {
             orderId: order.id,
             publicId: order.public_id,
-            status: order.status ?? "pending",
+            status: order.status ?? ORDER_STATUS.PENDING,
             totalAmount: order.total_amount ?? 0,
             subtotal,
             shipping,

@@ -6,6 +6,7 @@ import { getStripeClient } from '../../../lib/payments/stripe';
 import { releaseOrderFunds, type CheckoutPricedItem } from '../../../lib/cart/checkout';
 import { createAutoReviewsForOrder } from '../../../lib/orders/autoReview';
 import { getLabelCostByShop } from '../../../lib/orders/shipmentCost';
+import { FUNDS_RELEASE_STATUS } from '../../../lib/orders/orderStatus';
 
 function jsonResponse(payload: Record<string, unknown>, status: number) {
     return new Response(JSON.stringify(payload), {
@@ -123,7 +124,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     await adminClient
         .from('orders')
         .update({
-            funds_release_status: releaseResult.success ? 'released' : 'failed',
+            funds_release_status: releaseResult.success ? FUNDS_RELEASE_STATUS.RELEASED : FUNDS_RELEASE_STATUS.FAILED,
             funds_release_last_error: releaseResult.success ? null : (releaseResult.error ?? null),
         })
         .eq('id', order.id);

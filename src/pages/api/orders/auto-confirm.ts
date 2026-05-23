@@ -7,6 +7,7 @@ import { buildPayoutItemsFromJoins, type JoinedOrderItem } from '../../../lib/or
 import { getLabelCostByShop } from '../../../lib/orders/shipmentCost';
 import { timingSafeEqual } from '../../../lib/core/timing-safe';
 import { securityLog } from '../../../lib/core/security-log';
+import { ORDER_STATUS, FUNDS_RELEASE_STATUS } from '../../../lib/orders/orderStatus';
 
 const FUND_HOLD_HOURS = 48;
 
@@ -35,7 +36,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
     const { data: eligibleOrders, error: fetchError } = await adminClient
         .from('orders')
         .select('id, public_id, stripe_payment_intent_id')
-        .eq('status', 'delivered')
+        .eq('status', ORDER_STATUS.DELIVERED)
         .lt('delivered_at', cutoffTime)
         .is('funds_released_at', null);
 
@@ -54,9 +55,9 @@ export const POST: APIRoute = async ({ request, locals }) => {
     // Mark all as confirmed in DB
     const { error: updateError } = await adminClient
         .from('orders')
-        .update({ status: 'confirmed', funds_released_at: now })
+        .update({ status: ORDER_STATUS.CONFIRMED, funds_released_at: now })
         .in('id', confirmedIds)
-        .eq('status', 'delivered');
+        .eq('status', ORDER_STATUS.DELIVERED);
 
     if (updateError) {
         console.error(JSON.stringify({ event: 'auto_confirm.update_failed', error: updateError.message }));
@@ -121,7 +122,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
             await adminClient
                 .from('orders')
                 .update({
-                    funds_release_status: result.success ? 'released' : 'failed',
+                    funds_release_status: result.success ? FUNDS_RELEASE_STATUS.RELEASED : FUNDS_RELEASE_STATUS.FAILED,
                     funds_release_last_error: result.success ? null : (result.error ?? null),
                 })
                 .eq('id', order.id);

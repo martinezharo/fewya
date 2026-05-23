@@ -9,6 +9,7 @@ import { uploadLabelPdf } from '../../../lib/shipping/labelStorage';
 import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
 import { isDevelopment } from '../../../lib/core/env';
 import { runMockShipment } from '../../../lib/shipping/mockShipment';
+import { DELIVERY_TYPE } from '../../../lib/orders/orderStatus';
 
 function jsonResponse(payload: Record<string, unknown>, status: number) {
     return new Response(JSON.stringify(payload), {
@@ -157,7 +158,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         );
     }
 
-    const isPickup = order.delivery_type === 'pickup_point';
+    const isPickup = order.delivery_type === DELIVERY_TYPE.PICKUP_POINT;
     let recipientStreet: string;
     let recipientCityName: string;
     let recipientPostalCode: string;

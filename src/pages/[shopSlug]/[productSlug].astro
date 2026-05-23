@@ -14,6 +14,7 @@ import { isProductComplete } from '../../lib/products/productValidation';
 import { strings } from '../../lib/core/i18n';
 import { getMergedWishlistIds } from '../../lib/wishlist/wishlist';
 import type { Product, Review, Shop } from '../../lib/core/types';
+import { SHOP_STATUS } from '../../lib/core/shopStatus';
 
 const { shopSlug, productSlug } = Astro.params;
 
@@ -26,7 +27,7 @@ const [shopResult, userResult] = await Promise.all([
     .select('*')
     .eq('slug', shopSlug!)
     .eq('is_active', true)
-    .eq('status', 'active')
+    .eq('status', SHOP_STATUS.ACTIVE)
     .single(),
   authClient.auth.getUser(),
 ]);

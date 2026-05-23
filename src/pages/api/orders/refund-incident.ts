@@ -5,6 +5,7 @@ import { strings } from '../../../lib/core/i18n';
 import { getStripeClient } from '../../../lib/payments/stripe';
 import { CHECKOUT_CURRENCY, toMinorUnits } from '../../../lib/cart/checkout';
 import { extractPayoutContext, type JoinedOrderItem } from '../../../lib/orders/orderJoins';
+import { ORDER_STATUS } from '../../../lib/orders/orderStatus';
 
 type RefundType = 'full' | 'product' | 'partial';
 
@@ -60,7 +61,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         return jsonResponse({ error: strings.apiShopNotFound }, 404);
     }
 
-    if (order.status !== 'incident') {
+    if (order.status !== ORDER_STATUS.INCIDENT) {
         return jsonResponse({ error: strings.sellerIncidentRefundInvalidStatus }, 400);
     }
 

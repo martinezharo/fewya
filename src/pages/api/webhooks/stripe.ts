@@ -3,6 +3,7 @@ import { getStripeWebhookSecret } from '../../../lib/core/env';
 import { getStripeClient } from '../../../lib/payments/stripe';
 import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
 import { securityLog } from '../../../lib/core/security-log';
+import { PAYMENT_STATUS } from '../../../lib/orders/orderStatus';
 
 function ok(): Response {
     return new Response(JSON.stringify({ received: true }), {
@@ -99,7 +100,7 @@ async function handlePaymentConfirmed(
     let query = adminClient
         .from('orders')
         .select('id, buyer_id, stripe_checkout_session_id')
-        .neq('payment_status', 'paid');
+        .neq('payment_status', PAYMENT_STATUS.PAID);
 
     if (sessionId) {
         query = query.eq('stripe_checkout_session_id', sessionId);
@@ -123,7 +124,7 @@ async function handlePaymentConfirmed(
             p_buyer_id: buyerId,
             p_session_id: sid,
             p_payment_intent_id: paymentIntentId,
-            p_payment_status: 'paid',
+            p_payment_status: PAYMENT_STATUS.PAID,
         });
 
         if (error) {

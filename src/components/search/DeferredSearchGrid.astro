@@ -7,6 +7,7 @@ import { parseSearchParams } from "../../lib/products/search";
 import { getMergedWishlistIds } from "../../lib/wishlist/wishlist";
 import { strings } from "../../lib/core/i18n";
 import type { Product } from "../../lib/core/types";
+import { SHOP_STATUS } from "../../lib/core/shopStatus";
 
 const url = new URL(Astro.request.url);
 const params = parseSearchParams(url);
@@ -17,7 +18,7 @@ let query = supabase
     .from("products")
     .select("id, slug, title, description, gallery_images, is_active, created_at, category, brand, shop:shops(id, slug, name, accent_color, payments_active, seller_details_complete, status), variants:product_variants(id, price, stock, shipping_cost, is_default, variant_name, weight_kg, length_cm, width_cm, height_cm)")
     .eq("is_active", true)
-    .eq("shop.status", "active");
+    .eq("shop.status", SHOP_STATUS.ACTIVE);
 
 if (params.q) {
     query = query.or(`title.ilike.%${params.q}%,description.ilike.%${params.q}%`);
@@ -31,7 +32,7 @@ const [dataResult, authResult] = await Promise.all([
     authClient.auth.getUser(),
 ]);
 
-let products: Product[] = (dataResult.data ?? []).filter((p: any) => p.shop?.status === 'active' && p.shop?.payments_active && p.shop?.seller_details_complete) as Product[];
+let products: Product[] = (dataResult.data ?? []).filter((p: any) => p.shop?.status === SHOP_STATUS.ACTIVE && p.shop?.payments_active && p.shop?.seller_details_complete) as Product[];
 
 products = products.filter(product => {
     const defaultVariant = product.variants?.find(v => v.is_default) || product.variants?.[0];

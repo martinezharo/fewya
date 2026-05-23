@@ -4,6 +4,7 @@ import Icon from '../../components/icons/Icon.astro';
 import RefundOrderModal from '../../components/orders/RefundOrderModal.astro';
 import { strings } from '../../lib/core/i18n';
 import { createSupabaseAuthClient } from '../../lib/core/auth';
+import { ORDER_STATUS } from '../../lib/orders/orderStatus';
 
 const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
 const {
@@ -63,7 +64,7 @@ const { data: ordersData } = await supabase
         )
     `)
     .eq('shop_id', shop.id)
-    .eq('status', 'incident')
+    .eq('status', ORDER_STATUS.INCIDENT)
     .order('created_at', { ascending: false });
 
 interface ClaimOrder {

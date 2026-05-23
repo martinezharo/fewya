@@ -4,6 +4,7 @@ import { generateMockShippingLabel } from './shippingLabelPdf';
 import { parseSpanishAddress } from './sendcloud';
 import { uploadLabelPdf } from './labelStorage';
 import type { createSupabaseAuthClient } from '../core/auth';
+import { DELIVERY_TYPE } from '../orders/orderStatus';
 
 type AuthClient = ReturnType<typeof createSupabaseAuthClient>;
 
@@ -87,7 +88,7 @@ export async function runMockShipment(params: MockShipmentParams): Promise<MockS
         return { success: false, status: 404, error: strings.apiShopNotFound };
     }
 
-    const isPickup = order.delivery_type === 'pickup_point';
+    const isPickup = order.delivery_type === DELIVERY_TYPE.PICKUP_POINT;
 
     const senderStreet = [owner.address_street, owner.address_number, owner.address_floor]
         .filter((p: string | null | undefined) => p && p.trim().length > 0)

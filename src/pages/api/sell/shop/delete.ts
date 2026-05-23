@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { createSupabaseAuthClient } from '../../../../lib/core/auth';
 import { strings } from '../../../../lib/core/i18n';
+import { SHOP_STATUS } from '../../../../lib/core/shopStatus';
 
 export const DELETE: APIRoute = async ({ cookies, request }) => {
     const supabase = createSupabaseAuthClient(cookies, request);
@@ -18,7 +19,7 @@ export const DELETE: APIRoute = async ({ cookies, request }) => {
         .from('shops')
         .select('id')
         .eq('owner_id', user.id)
-        .eq('status', 'active')
+        .eq('status', SHOP_STATUS.ACTIVE)
         .maybeSingle();
 
     if (shopError || !shop) {
@@ -31,7 +32,7 @@ export const DELETE: APIRoute = async ({ cookies, request }) => {
     // Soft-delete: mark shop as inactive instead of hard DELETE
     const { error: updateError } = await supabase
         .from('shops')
-        .update({ status: 'inactive' })
+        .update({ status: SHOP_STATUS.INACTIVE })
         .eq('id', shop.id);
 
     if (updateError) {

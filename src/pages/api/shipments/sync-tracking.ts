@@ -4,6 +4,7 @@ import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
 import { getShipment } from '../../../lib/shipping/sendcloud';
 import { timingSafeEqual } from '../../../lib/core/timing-safe';
 import { securityLog } from '../../../lib/core/security-log';
+import { SHIPMENT_STATUS } from '../../../lib/shipping/shipmentStatus';
 
 function jsonResponse(payload: Record<string, unknown>, status: number) {
     return new Response(JSON.stringify(payload), {
@@ -27,7 +28,7 @@ export const POST: APIRoute = async ({ request }) => {
         .from('shipments')
         .select('id, sendcloud_shipment_id, status')
         .not('sendcloud_shipment_id', 'is', null)
-        .not('status', 'in', '("delivered","failed","cancelled")');
+        .not('status', 'in', `(${[SHIPMENT_STATUS.DELIVERED, SHIPMENT_STATUS.FAILED, SHIPMENT_STATUS.CANCELLED].map((s) => `"${s}"`).join(',')})`);
 
     if (error) {
         console.error(JSON.stringify({ event: 'sync_tracking.fetch_error', error: error.message }));
