@@ -1,7 +1,7 @@
 export const strings = {
     // Meta / SEO
     siteTitle: 'Fewya — Marketplace de pequeños negocios',
-    siteDescription: 'Descubre productos únicos de vendedores independientes. Compra directamente, sin intermediarios.',
+    siteDescription: 'Descubre productos nuevos y únicos de vendedores independientes. Compra directamente, sin intermediarios.',
 
     // Header
     logoText: 'Fewya',
@@ -9,7 +9,7 @@ export const strings = {
 
     // Hero Banner — Web (unregistered)
     heroTitle: 'Compra a vendedores profesionales',
-    heroSubtitle: 'Productos únicos de vendedores independientes. Sin intermediarios, sin complicaciones.',
+    heroSubtitle: 'Productos nuevos de vendedores independientes. Descubre lo que las grandes tiendas no tienen — directo al vendedor, directo a ti.',
     heroCta: 'Explorar productos',
 
     // Hero Banner — PWA (unregistered)
