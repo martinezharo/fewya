@@ -8,7 +8,7 @@
 - Always explain in chat what you've done and don't hesitate to suggest improvements or report bad practices or errors you find.
 - Don't hardcode text, create files with variables to facilitate future changes or translations.
 - Page routes must always be in English.
-- When you make changes to the database structure, update db-structure and generate a new SQL file in a migrations folder with the changes ready to be imported into Supabase.
+- When you make changes to the database structure, update db-structure and generate a new SQL file in the .migrations/ folder with the changes ready to be imported into Supabase.
 - NEVER make commits, push, or anything else that alters the Git history unless I explicitly ask you to.
 - If I ask you to make a commit, follow Git best practices by dividing by responsibility / category / functionality and avoiding monolithic commits. Always write the message in English.
 
