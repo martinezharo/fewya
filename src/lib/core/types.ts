@@ -1,3 +1,7 @@
+import type { OrderStatus, PaymentStatus, FundsReleaseStatus, DeliveryType } from '../orders/orderStatus';
+import type { ShipmentStatus } from '../shipping/shipmentStatus';
+import type { ShopStatus } from './shopStatus';
+
 export interface Shop {
     id: string;
     owner_id: string;
@@ -19,7 +23,7 @@ export interface Shop {
     default_shipping_cost: number | null;
     payments_active: boolean;
     seller_details_complete: boolean;
-    status: 'active' | 'inactive';
+    status: ShopStatus;
 }
 
 export interface Product {
@@ -71,4 +75,57 @@ export interface Review {
         full_name: string | null;
         avatar_url: string | null;
     };
+}
+
+export interface Order {
+    id: string;
+    public_id: string;
+    checkout_group_id: string | null;
+    buyer_id: string | null;
+    shop_id: string | null;
+    status: OrderStatus;
+    payment_status: PaymentStatus;
+    total_amount: number;
+    currency: string;
+    has_insurance: boolean;
+    stripe_checkout_session_id: string | null;
+    stripe_payment_intent_id: string | null;
+    paid_at: string | null;
+    delivered_at: string | null;
+    funds_released_at: string | null;
+    cancellation_reason: string | null;
+    buyer_hidden_at: string | null;
+    funds_release_status: FundsReleaseStatus;
+    funds_release_last_error: string | null;
+    buyer_email: string | null;
+    shipping_full_name: string | null;
+    shipping_phone: string | null;
+    shipping_address: string | null;
+    delivery_type: DeliveryType | null;
+    pickup_point_id: string | null;
+    pickup_point_name: string | null;
+    pickup_point_address: string | null;
+    pickup_point_postal_code: string | null;
+    pickup_point_city: string | null;
+    pickup_point_carrier: string | null;
+    created_at: string;
+}
+
+export interface Shipment {
+    id: string;
+    order_id: string;
+    sendcloud_shipment_id: string | null;
+    sendcloud_reference: string | null;
+    carrier_id: string | null;
+    carrier_name: string | null;
+    service_name: string | null;
+    status: ShipmentStatus;
+    tracking_number: string | null;
+    tracking_url: string | null;
+    price: number | null;
+    currency: string | null;
+    label_url: string | null;
+    requested_at: string | null;
+    created_at: string;
+    updated_at: string;
 }
