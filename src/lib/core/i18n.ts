@@ -16,6 +16,23 @@ export const strings = {
     pwaSignupMessage: 'Regístrate para guardar favoritos y hacer seguimiento de tus pedidos.',
     pwaSignupCta: 'Crear cuenta',
 
+    // Hero Banner — Mobile
+    heroTitleMobile: 'Tu marketplace, siempre a mano',
+    heroSubtitleMobile: 'Descubre productos únicos de vendedores independientes. Compra directo, sin intermediarios.',
+    heroTitleMobileLoggedIn: 'Fewya siempre contigo',
+    heroSubtitleMobileLoggedIn: 'Añade Fewya a tu pantalla de inicio para acceder más rápido a tus pedidos y favoritos.',
+    heroInstallApp: 'Instalar Fewya',
+    heroMobileTagline: 'Marketplace de pequeños negocios',
+
+    // App Install Instructions
+    installIosTitle: 'Añade Fewya a tu pantalla de inicio',
+    installIosHint: 'Esta web funciona como una app. Añádela a tu pantalla de inicio para abrirla al instante.',
+    installIosStep1: 'Pulsa el botón Compartir en la barra de Safari',
+    installIosStep2: "Desplázate hacia abajo y pulsa 'Añadir a pantalla de inicio'",
+    installIosStep3: "Pulsa 'Añadir'",
+    installGenericMessage: "Para instalar Fewya, usa la opción 'Añadir a pantalla de inicio' en el menú de tu navegador.",
+    installClose: 'Entendido',
+
     // Navigation
     navHome: 'Inicio',
     navBackToBuyers: 'Volver a comprar',

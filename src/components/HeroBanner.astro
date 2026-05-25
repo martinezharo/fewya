@@ -1,5 +1,6 @@
 ---
 import { strings } from "../lib/core/i18n";
+import Logo from "./Logo.astro";
 
 interface Props {
   isLoggedIn?: boolean;
@@ -8,12 +9,86 @@ interface Props {
 const { isLoggedIn = false } = Astro.props;
 ---
 
+{/* Mobile Hero — always visible on mobile unless running as installed app + logged in */}
+<div class="mobile-hero md:hidden" data-is-logged-in={String(isLoggedIn)}>
+  <section class="px-4 pt-6 pb-5">
+    <div class="max-w-[560px] mx-auto">
+      {/* Branding + copy — hidden in installed app */}
+      <div class="mobile-hero-content">
+        {/* App branding */}
+        <div class="flex items-center gap-3 mb-5">
+          <div class="w-11 h-11 rounded-2xl bg-accent/10 flex items-center justify-center shrink-0">
+            <Logo class="w-7 h-7 text-accent" />
+          </div>
+          <div>
+            <p class="text-[15px] font-bold text-text-primary leading-tight">{strings.logoText}</p>
+            <p class="text-xs text-text-secondary">{strings.heroMobileTagline}</p>
+          </div>
+        </div>
+
+        {/* Headline */}
+        {!isLoggedIn ? (
+          <div class="mb-5">
+            <h1 class="text-[24px] font-bold tracking-[-0.4px] leading-[1.15] mb-2 text-text-primary">
+              {strings.heroTitleMobile}
+            </h1>
+            <p class="text-[15px] leading-[1.5] text-text-secondary">
+              {strings.heroSubtitleMobile}
+            </p>
+          </div>
+        ) : (
+          <div class="mb-5">
+            <h1 class="text-[22px] font-bold tracking-[-0.3px] leading-[1.15] mb-1.5 text-text-primary">
+              {strings.heroTitleMobileLoggedIn}
+            </h1>
+            <p class="text-[15px] leading-[1.5] text-text-secondary">
+              {strings.heroSubtitleMobileLoggedIn}
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* CTAs */}
+      <div class="flex flex-col gap-2.5">
+        <button
+          type="button"
+          class="install-app-btn w-full inline-flex items-center justify-center gap-2.5 px-5 py-3 bg-text-primary text-surface rounded-full text-[15px] font-semibold no-underline transition-all duration-150 hover:opacity-90 active:scale-[0.98]"
+        >
+          <Logo class="w-5 h-5 shrink-0" />
+          {strings.heroInstallApp}
+        </button>
+
+        {!isLoggedIn && (
+          <a
+            href="/api/auth/login"
+            class="w-full inline-flex items-center justify-center gap-2.5 px-5 py-3 bg-bg border border-border-light rounded-full text-[14px] font-semibold text-text-primary no-underline transition-colors duration-150 hover:bg-surface shadow-sm"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="18" height="18" aria-hidden="true">
+              <path fill="#EA4335" d="M24 9.5c3.14 0 5.95 1.08 8.17 2.86l6.08-6.08C34.46 3.1 29.5 1 24 1 14.82 1 7.01 6.49 3.46 14.3l7.09 5.51C12.27 13.38 17.67 9.5 24 9.5z"/>
+              <path fill="#4285F4" d="M46.52 24.5c0-1.64-.15-3.22-.42-4.74H24v8.98h12.67c-.55 2.94-2.2 5.43-4.68 7.1l7.2 5.6C43.38 37.26 46.52 31.34 46.52 24.5z"/>
+              <path fill="#FBBC05" d="M10.55 28.19A14.57 14.57 0 0 1 9.5 24c0-1.45.2-2.86.55-4.19l-7.09-5.51A22.98 22.98 0 0 0 1 24c0 3.73.9 7.25 2.46 10.38l7.09-6.19z"/>
+              <path fill="#34A853" d="M24 47c5.5 0 10.12-1.82 13.49-4.93l-7.2-5.6c-1.83 1.23-4.18 1.95-6.29 1.95-6.33 0-11.73-3.88-13.45-9.23l-7.09 6.19C7.01 41.51 14.82 47 24 47z"/>
+              <path fill="none" d="M1 1h46v46H1z"/>
+            </svg>
+            {strings.heroGoogleSignIn}
+          </a>
+        )}
+      </div>
+    </div>
+  </section>
+</div>
+
+{/* Desktop Hero — only visible when NOT logged in */}
 {!isLoggedIn && (
-  <section class="px-4 pt-8 pb-6 md:px-10 md:pt-12 md:pb-8 md:max-w-[1400px] md:mx-auto">
+  <section class="hidden md:block px-10 pt-12 pb-8 max-w-[1400px] mx-auto">
     <div class="max-w-[560px]">
       <div class="hero-text">
-        <h1 class="text-[26px] md:text-4xl font-bold tracking-[-0.5px] leading-[1.15] mb-2.5 text-text-primary">{strings.heroTitle}</h1>
-        <p class="text-[15px] md:text-[17px] leading-[1.5] text-text-secondary m-0">{strings.heroSubtitle}</p>
+        <h1 class="text-4xl font-bold tracking-[-0.5px] leading-[1.15] mb-2.5 text-text-primary">
+          {strings.heroTitle}
+        </h1>
+        <p class="text-[17px] leading-[1.5] text-text-secondary m-0">
+          {strings.heroSubtitle}
+        </p>
       </div>
       <a
         href="/api/auth/login"
@@ -32,8 +107,71 @@ const { isLoggedIn = false } = Astro.props;
   </section>
 )}
 
+{/* iOS Install Instructions Modal */}
+<div
+  id="ios-install-modal"
+  class="hidden fixed inset-0 z-[150] flex items-end sm:items-center justify-center p-4 sm:p-6"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="ios-install-title"
+>
+  <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" data-ios-modal-backdrop></div>
+  <div class="relative w-full max-w-sm bg-surface rounded-2xl p-5 shadow-2xl border border-border">
+    <div class="flex items-center justify-between mb-4">
+      <h2 id="ios-install-title" class="text-lg font-bold text-text-primary">{strings.installIosTitle}</h2>
+      <button
+        type="button"
+        class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-border-light transition-colors text-text-secondary"
+        data-ios-modal-close
+        aria-label={strings.installClose}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      </button>
+    </div>
+
+    <div class="flex items-center gap-3 mb-5 p-3 rounded-xl bg-accent/5 border border-accent/10">
+      <div class="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center shrink-0">
+        <Logo class="w-6 h-6 text-accent" />
+      </div>
+      <div>
+        <p class="text-sm font-semibold text-text-primary">{strings.logoText}</p>
+        <p class="text-xs text-text-secondary">{strings.installIosHint}</p>
+      </div>
+    </div>
+
+    <ol class="space-y-3 mb-5">
+      <li class="flex items-start gap-3 text-sm text-text-secondary">
+        <span class="w-6 h-6 rounded-full bg-accent/10 text-accent flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">1</span>
+        <span>{strings.installIosStep1}</span>
+      </li>
+      <li class="flex items-start gap-3 text-sm text-text-secondary">
+        <span class="w-6 h-6 rounded-full bg-accent/10 text-accent flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">2</span>
+        <span>{strings.installIosStep2}</span>
+      </li>
+      <li class="flex items-start gap-3 text-sm text-text-secondary">
+        <span class="w-6 h-6 rounded-full bg-accent/10 text-accent flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">3</span>
+        <span>{strings.installIosStep3}</span>
+      </li>
+    </ol>
+
+    <button
+      type="button"
+      class="w-full py-3 bg-text-primary text-surface rounded-full text-sm font-semibold hover:opacity-90 active:scale-[0.98] transition-all"
+      data-ios-modal-close
+    >
+      {strings.installClose}
+    </button>
+  </div>
+</div>
+
 <style>
   @media (display-mode: standalone) {
+    .mobile-hero-content {
+      display: none !important;
+    }
+    .install-app-btn {
+      display: none !important;
+    }
     .hero-text {
       display: none;
     }
@@ -42,3 +180,72 @@ const { isLoggedIn = false } = Astro.props;
     }
   }
 </style>
+
+<script>
+  import { toast } from '../lib/ui/toast';
+  import { strings } from '../lib/core/i18n';
+
+  (function () {
+    const w = window as unknown as { __fewyaInstallInit?: boolean };
+    if (w.__fewyaInstallInit) return;
+    w.__fewyaInstallInit = true;
+
+    let deferredPrompt: any = null;
+    const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+    });
+
+    const installBtn = document.querySelector('.install-app-btn');
+    const modal = document.getElementById('ios-install-modal');
+    const modalClosers = document.querySelectorAll('[data-ios-modal-close]');
+    const backdrop = document.querySelector('[data-ios-modal-backdrop]');
+
+    function openModal() {
+      if (!modal) return;
+      modal.classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal() {
+      if (!modal) return;
+      modal.classList.add('hidden');
+      document.body.style.overflow = '';
+    }
+
+    installBtn?.addEventListener('click', async () => {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') {
+          deferredPrompt = null;
+        }
+      } else if (isIos && isSafari) {
+        openModal();
+      } else {
+        toast.info(strings.installGenericMessage);
+      }
+    });
+
+    modalClosers.forEach((btn) => btn.addEventListener('click', closeModal));
+    backdrop?.addEventListener('click', closeModal);
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && modal && !modal.classList.contains('hidden')) {
+        closeModal();
+      }
+    });
+
+    // Hide mobile hero in standalone (installed app) when user is logged in
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      const hero = document.querySelector('.mobile-hero');
+      const isLoggedIn = hero?.getAttribute('data-is-logged-in') === 'true';
+      if (isLoggedIn && hero) {
+        (hero as HTMLElement).style.display = 'none';
+      }
+    }
+  })();
+</script>
