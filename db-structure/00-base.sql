@@ -274,3 +274,19 @@ REVOKE EXECUTE ON FUNCTION public.handle_new_user() FROM PUBLIC, anon, authentic
 REVOKE EXECUTE ON FUNCTION public.profiles_after_update_sync_shops() FROM PUBLIC, anon, authenticated;
 REVOKE EXECUTE ON FUNCTION public.shops_after_insert_sync_seller_details() FROM PUBLIC, anon, authenticated;
 REVOKE EXECUTE ON FUNCTION public.sync_shops_seller_details_complete(uuid) FROM PUBLIC, anon, authenticated;
+
+-- ============================================================
+-- Webhook idempotency ledger
+-- Shared by the Stripe and Sendcloud webhook handlers. A duplicate insert raises
+-- a unique violation on event_id, which the handlers treat as a replay and skip.
+-- service_role only (admin client bypasses RLS).
+-- ============================================================
+
+CREATE TABLE public.processed_webhook_events (
+  event_id text PRIMARY KEY,
+  source text NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+ALTER TABLE public.processed_webhook_events ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.processed_webhook_events FROM anon, authenticated;
