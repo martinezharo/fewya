@@ -96,7 +96,7 @@ These are thin vanilla-TS helpers used inside `<script>` blocks in Astro compone
 
 - **i18n:** All user-facing strings go in `lib/core/i18n.ts` (Spanish). Never hardcode UI text.
 - **Page routes:** English only (e.g., `/sell/catalog`, `/me/orders`).
-- **DB changes:** Update the relevant file in `db-structure/` **and** create a new migration SQL in `.migrations/` ready to run in Supabase.
+- **DB changes:** Update the relevant file in `db-structure/` **and** apply the migration directly to Supabase using the `mcp__supabase__apply_migration` MCP tool. If the MCP tool is unavailable or fails, fall back to writing the SQL in `.migrations/<YYYY-MM-DD-description>.sql` for manual execution.
 - **Unused vars:** Prefix with `_` to suppress the ESLint error.
 - **Types:** Shared domain types (`Shop`, `Product`, `ProductVariant`, `Review`) live in `lib/core/types.ts`.
 
