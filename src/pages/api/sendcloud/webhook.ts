@@ -114,7 +114,10 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     const shipment = shipmentRow as { id: string; order_id: string };
-    const normalizedStatus = action || parcel.status?.message || 'unknown';
+    // Prefer parcel.status.message (the actual carrier state, e.g. "Delivered",
+    // "Sorted") over `action` — Sendcloud actions like "parcel_status_changed"
+    // describe the event type, not the state, and won't match the SQL branches.
+    const normalizedStatus = parcel.status?.message || action || 'unknown';
     const description = `Sendcloud status: ${normalizedStatus}`;
     const eventTimestamp = timestamp ? new Date(timestamp * 1000) : new Date();
 

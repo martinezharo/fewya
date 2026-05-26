@@ -91,6 +91,7 @@ export interface Order {
     stripe_checkout_session_id: string | null;
     stripe_payment_intent_id: string | null;
     paid_at: string | null;
+    shipped_at: string | null;
     delivered_at: string | null;
     funds_released_at: string | null;
     cancellation_reason: string | null;
