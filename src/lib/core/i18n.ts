@@ -92,7 +92,10 @@ export const strings = {
     loginPageDescription: 'Inicia sesión en Fewya para continuar.',
     loginSubtitle: 'Inicia sesión para comprar, vender y gestionar tus pedidos.',
     loginGoogleCta: 'Continuar con Google',
-    loginTermsHint: 'Al continuar, aceptas nuestras condiciones de uso y política de privacidad.',
+    loginTermsHint: 'Al continuar, aceptas nuestras',
+    loginTermsHintTerms: 'condiciones de uso',
+    loginTermsHintAnd: 'y la',
+    loginTermsHintPrivacy: 'política de privacidad',
     loginBackToHome: 'Volver al inicio',
 
     // Profile Page
@@ -363,6 +366,13 @@ export const strings = {
     settingsThemeDark: 'Oscuro',
     settingsAccountSection: 'Cuenta',
     settingsSignOut: 'Cerrar sesión',
+    settingsLegalSection: 'Legal',
+    settingsPrivacyPolicy: 'Política de privacidad',
+    settingsTermsOfService: 'Condiciones de uso',
+
+    // Legal Pages
+    privacyPolicyPageTitle: 'Política de privacidad — Fewya',
+    termsOfServicePageTitle: 'Condiciones de uso — Fewya',
 
     // Seller Settings
     sellerSettingsPageTitle: 'Configuración — Fewya Seller',

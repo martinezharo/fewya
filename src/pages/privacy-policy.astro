@@ -1,0 +1,218 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { strings } from '../lib/core/i18n';
+---
+
+<Layout title={strings.privacyPolicyPageTitle} noindex>
+  <div class="min-h-dvh bg-bg">
+
+    <header class="border-b border-border sticky top-0 bg-bg/95 backdrop-blur-sm z-10">
+      <div class="max-w-3xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+        <a href="/" class="text-lg font-bold text-text-primary font-[Jost] hover:text-accent transition-colors">
+          {strings.logoText}
+        </a>
+        <a href="/" class="text-sm text-text-secondary hover:text-text-primary transition-colors">
+          {strings.loginBackToHome}
+        </a>
+      </div>
+    </header>
+
+    <main class="max-w-3xl mx-auto px-4 sm:px-6 py-10 pb-20">
+
+      <div class="mb-10">
+        <h1 class="text-3xl font-bold text-text-primary mb-2">Política de privacidad</h1>
+        <p class="text-sm text-text-tertiary">Última actualización: 26 de mayo de 2026</p>
+      </div>
+
+      <div class="space-y-10 text-[15px] leading-relaxed text-text-secondary">
+
+        <section>
+          <p>
+            En <strong class="text-text-primary">Fewya</strong> nos tomamos muy en serio la privacidad de nuestros usuarios. Esta política describe qué datos personales recopilamos, con qué finalidad, durante cuánto tiempo los conservamos y cuáles son tus derechos, de conformidad con el Reglamento (UE) 2016/679 (RGPD), la Ley Orgánica 3/2018 (LOPDGDD) y la Ley 34/2002 (LSSI).
+          </p>
+        </section>
+
+        <section>
+          <h2 class="text-lg font-semibold text-text-primary mb-3">1. Responsable del tratamiento</h2>
+          <div class="bg-surface border border-border-light rounded-xl p-5 space-y-1 text-sm">
+            <p><span class="text-text-tertiary w-32 inline-block">Denominación</span> <strong class="text-text-primary">Oliver Martínez Haro</strong></p>
+            <p><span class="text-text-tertiary w-32 inline-block">Contacto</span> <a href="mailto:privacidad@fewya.com" class="text-accent hover:underline">privacidad@fewya.com</a></p>
+          </div>
+        </section>
+
+        <section>
+          <h2 class="text-lg font-semibold text-text-primary mb-3">2. Datos que recopilamos</h2>
+          <p class="mb-4">Recopilamos únicamente los datos necesarios para prestar el servicio:</p>
+          <ul class="space-y-3 pl-4">
+            <li class="flex gap-3">
+              <span class="mt-1 w-1.5 h-1.5 rounded-full bg-accent shrink-0"></span>
+              <span><strong class="text-text-primary">Datos de cuenta:</strong> nombre, dirección de correo electrónico y foto de perfil, obtenidos a través del inicio de sesión con Google.</span>
+            </li>
+            <li class="flex gap-3">
+              <span class="mt-1 w-1.5 h-1.5 rounded-full bg-accent shrink-0"></span>
+              <span><strong class="text-text-primary">Datos de perfil:</strong> nombre de usuario y datos de dirección postal que el usuario facilita voluntariamente para la entrega de pedidos.</span>
+            </li>
+            <li class="flex gap-3">
+              <span class="mt-1 w-1.5 h-1.5 rounded-full bg-accent shrink-0"></span>
+              <span><strong class="text-text-primary">Datos de pedidos:</strong> productos comprados o vendidos, importes, estado del pedido e historial de transacciones.</span>
+            </li>
+            <li class="flex gap-3">
+              <span class="mt-1 w-1.5 h-1.5 rounded-full bg-accent shrink-0"></span>
+              <span><strong class="text-text-primary">Datos de vendedor:</strong> información bancaria y de identidad recabada por Stripe Connect para la verificación de cuenta y la realización de pagos.</span>
+            </li>
+            <li class="flex gap-3">
+              <span class="mt-1 w-1.5 h-1.5 rounded-full bg-accent shrink-0"></span>
+              <span><strong class="text-text-primary">Datos técnicos:</strong> dirección IP, tipo de dispositivo, navegador y preferencias de la aplicación (tema visual, idioma).</span>
+            </li>
+            <li class="flex gap-3">
+              <span class="mt-1 w-1.5 h-1.5 rounded-full bg-accent shrink-0"></span>
+              <span><strong class="text-text-primary">Datos de uso:</strong> interacciones con la plataforma (búsquedas, favoritos, visitas a productos) con fines exclusivamente analíticos internos.</span>
+            </li>
+          </ul>
+        </section>
+
+        <section>
+          <h2 class="text-lg font-semibold text-text-primary mb-3">3. Finalidades y base jurídica del tratamiento</h2>
+          <div class="space-y-4">
+            <div class="border-l-2 border-border-light pl-4">
+              <p class="font-medium text-text-primary mb-1">Gestión de la cuenta y prestación del servicio</p>
+              <p class="text-sm">Base: <em>ejecución del contrato</em> (art. 6.1.b RGPD). Necesario para autenticarte, gestionar tu perfil y permitirte comprar o vender en Fewya.</p>
+            </div>
+            <div class="border-l-2 border-border-light pl-4">
+              <p class="font-medium text-text-primary mb-1">Procesamiento de pedidos y pagos</p>
+              <p class="text-sm">Base: <em>ejecución del contrato</em> (art. 6.1.b RGPD). Necesario para crear, gestionar y liquidar pedidos, incluyendo la transmisión de datos a Stripe para el cobro y la transferencia al vendedor.</p>
+            </div>
+            <div class="border-l-2 border-border-light pl-4">
+              <p class="font-medium text-text-primary mb-1">Gestión de envíos</p>
+              <p class="text-sm">Base: <em>ejecución del contrato</em> (art. 6.1.b RGPD). Transmitimos los datos de dirección y pedido a Sendcloud para la generación de etiquetas y el seguimiento del envío.</p>
+            </div>
+            <div class="border-l-2 border-border-light pl-4">
+              <p class="font-medium text-text-primary mb-1">Comunicaciones transaccionales</p>
+              <p class="text-sm">Base: <em>ejecución del contrato</em> (art. 6.1.b RGPD). Envío de notificaciones sobre el estado de pedidos, confirmaciones de pago e incidencias.</p>
+            </div>
+            <div class="border-l-2 border-border-light pl-4">
+              <p class="font-medium text-text-primary mb-1">Prevención del fraude y seguridad</p>
+              <p class="text-sm">Base: <em>interés legítimo</em> (art. 6.1.f RGPD). Análisis de patrones de uso para detectar y prevenir actividades fraudulentas o contrarias a las condiciones de uso.</p>
+            </div>
+            <div class="border-l-2 border-border-light pl-4">
+              <p class="font-medium text-text-primary mb-1">Mejora del servicio y análisis interno</p>
+              <p class="text-sm">Base: <em>interés legítimo</em> (art. 6.1.f RGPD). Análisis agregado y anonimizado del uso de la plataforma para detectar errores y mejorar la experiencia de usuario.</p>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h2 class="text-lg font-semibold text-text-primary mb-3">4. Destinatarios y encargados del tratamiento</h2>
+          <p class="mb-4">Tus datos pueden ser compartidos con los siguientes proveedores de servicios, que actúan como encargados del tratamiento bajo contrato de confidencialidad:</p>
+          <div class="space-y-3">
+            <div class="bg-surface border border-border-light rounded-xl p-4">
+              <p class="font-medium text-text-primary mb-1">Stripe, Inc.</p>
+              <p class="text-sm mb-1">Procesamiento de pagos y gestión de cuentas de vendedor (Stripe Connect). Puede recopilar datos de identidad adicionales para cumplir con obligaciones KYC/AML.</p>
+              <a href="https://stripe.com/es/privacy" target="_blank" rel="noopener noreferrer" class="text-xs text-accent hover:underline">Política de privacidad de Stripe →</a>
+            </div>
+            <div class="bg-surface border border-border-light rounded-xl p-4">
+              <p class="font-medium text-text-primary mb-1">Sendcloud B.V.</p>
+              <p class="text-sm mb-1">Gestión logística y generación de etiquetas de envío. Recibe nombre, dirección postal y datos del pedido del comprador.</p>
+              <a href="https://www.sendcloud.com/es/privacidad/" target="_blank" rel="noopener noreferrer" class="text-xs text-accent hover:underline">Política de privacidad de Sendcloud →</a>
+            </div>
+            <div class="bg-surface border border-border-light rounded-xl p-4">
+              <p class="font-medium text-text-primary mb-1">Supabase, Inc.</p>
+              <p class="text-sm mb-1">Infraestructura de base de datos y autenticación. Almacena los datos de la plataforma en servidores en la Unión Europea.</p>
+              <a href="https://supabase.com/privacy" target="_blank" rel="noopener noreferrer" class="text-xs text-accent hover:underline">Política de privacidad de Supabase →</a>
+            </div>
+            <div class="bg-surface border border-border-light rounded-xl p-4">
+              <p class="font-medium text-text-primary mb-1">Google LLC</p>
+              <p class="text-sm mb-1">Proveedor de inicio de sesión OAuth. Únicamente se utiliza para autenticación; no compartimos datos adicionales con Google.</p>
+              <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" class="text-xs text-accent hover:underline">Política de privacidad de Google →</a>
+            </div>
+          </div>
+          <p class="mt-4 text-sm">No cedemos ni vendemos tus datos personales a terceros con fines publicitarios o comerciales.</p>
+        </section>
+
+        <section>
+          <h2 class="text-lg font-semibold text-text-primary mb-3">5. Transferencias internacionales</h2>
+          <p>Algunos de nuestros proveedores (Stripe, Google) están establecidos en Estados Unidos. Dichas transferencias se realizan con las garantías adecuadas exigidas por el RGPD, en particular mediante las <strong class="text-text-primary">Cláusulas Contractuales Tipo</strong> adoptadas por la Comisión Europea, o mediante el marco EU–EE.UU. Data Privacy Framework cuando aplique. Puedes obtener más información sobre las garantías aplicables contactando con nosotros en <a href="mailto:privacidad@fewya.com" class="text-accent hover:underline">privacidad@fewya.com</a>.</p>
+        </section>
+
+        <section>
+          <h2 class="text-lg font-semibold text-text-primary mb-3">6. Conservación de los datos</h2>
+          <ul class="space-y-3 pl-4">
+            <li class="flex gap-3">
+              <span class="mt-1 w-1.5 h-1.5 rounded-full bg-accent shrink-0"></span>
+              <span><strong class="text-text-primary">Datos de cuenta:</strong> mientras la cuenta esté activa y durante los 3 años siguientes a su cancelación, salvo que la ley exija un plazo mayor.</span>
+            </li>
+            <li class="flex gap-3">
+              <span class="mt-1 w-1.5 h-1.5 rounded-full bg-accent shrink-0"></span>
+              <span><strong class="text-text-primary">Datos de pedidos y transacciones:</strong> 6 años desde la transacción, en cumplimiento del artículo 30 del Código de Comercio y la normativa fiscal aplicable.</span>
+            </li>
+            <li class="flex gap-3">
+              <span class="mt-1 w-1.5 h-1.5 rounded-full bg-accent shrink-0"></span>
+              <span><strong class="text-text-primary">Datos técnicos y de acceso:</strong> máximo 12 meses, salvo que deban conservarse por razones de seguridad o requerimiento legal.</span>
+            </li>
+          </ul>
+        </section>
+
+        <section>
+          <h2 class="text-lg font-semibold text-text-primary mb-3">7. Tus derechos</h2>
+          <p class="mb-4">Puedes ejercer los siguientes derechos en cualquier momento escribiendo a <a href="mailto:privacidad@fewya.com" class="text-accent hover:underline">privacidad@fewya.com</a> adjuntando una copia de tu documento de identidad:</p>
+          <div class="grid sm:grid-cols-2 gap-3">
+            <div class="bg-surface border border-border-light rounded-xl p-4">
+              <p class="font-medium text-text-primary mb-1">Acceso</p>
+              <p class="text-sm">Obtener confirmación de si tratamos tus datos y recibir una copia de los mismos.</p>
+            </div>
+            <div class="bg-surface border border-border-light rounded-xl p-4">
+              <p class="font-medium text-text-primary mb-1">Rectificación</p>
+              <p class="text-sm">Corregir datos inexactos o incompletos.</p>
+            </div>
+            <div class="bg-surface border border-border-light rounded-xl p-4">
+              <p class="font-medium text-text-primary mb-1">Supresión</p>
+              <p class="text-sm">Solicitar la eliminación de tus datos cuando, entre otros motivos, ya no sean necesarios para los fines que motivaron su recogida.</p>
+            </div>
+            <div class="bg-surface border border-border-light rounded-xl p-4">
+              <p class="font-medium text-text-primary mb-1">Oposición</p>
+              <p class="text-sm">Oponerte al tratamiento basado en interés legítimo.</p>
+            </div>
+            <div class="bg-surface border border-border-light rounded-xl p-4">
+              <p class="font-medium text-text-primary mb-1">Portabilidad</p>
+              <p class="text-sm">Recibir tus datos en un formato estructurado y de uso común para transmitirlos a otro responsable.</p>
+            </div>
+            <div class="bg-surface border border-border-light rounded-xl p-4">
+              <p class="font-medium text-text-primary mb-1">Limitación</p>
+              <p class="text-sm">Solicitar la suspensión del tratamiento en determinadas circunstancias previstas en el RGPD.</p>
+            </div>
+          </div>
+          <p class="mt-4 text-sm">Responderemos a tu solicitud en el plazo máximo de <strong class="text-text-primary">un mes</strong> desde su recepción. Si consideras que el tratamiento de tus datos no es conforme a la normativa, puedes presentar una reclamación ante la <strong class="text-text-primary">Agencia Española de Protección de Datos (AEPD)</strong> en <a href="https://www.aepd.es" target="_blank" rel="noopener noreferrer" class="text-accent hover:underline">www.aepd.es</a>.</p>
+        </section>
+
+        <section>
+          <h2 class="text-lg font-semibold text-text-primary mb-3">8. Cookies y almacenamiento local</h2>
+          <p class="mb-3">Fewya utiliza exclusivamente las siguientes cookies y mecanismos de almacenamiento local:</p>
+          <ul class="space-y-3 pl-4">
+            <li class="flex gap-3">
+              <span class="mt-1 w-1.5 h-1.5 rounded-full bg-accent shrink-0"></span>
+              <span><strong class="text-text-primary">Cookies de sesión y autenticación</strong> (estrictamente necesarias): gestionadas por Supabase para mantener tu sesión iniciada. Sin estas cookies el servicio no puede funcionar.</span>
+            </li>
+            <li class="flex gap-3">
+              <span class="mt-1 w-1.5 h-1.5 rounded-full bg-accent shrink-0"></span>
+              <span><strong class="text-text-primary">Almacenamiento local (localStorage)</strong>: se utiliza para guardar preferencias de tema, el estado del carrito y la lista de favoritos de usuarios no registrados. Estos datos permanecen en tu dispositivo y no se transmiten a nuestros servidores salvo que inicies sesión.</span>
+            </li>
+          </ul>
+          <p class="mt-3 text-sm">No utilizamos cookies de publicidad ni de seguimiento de terceros.</p>
+        </section>
+
+        <section>
+          <h2 class="text-lg font-semibold text-text-primary mb-3">9. Modificaciones de esta política</h2>
+          <p>Podemos actualizar esta política de privacidad para reflejar cambios en nuestras prácticas o en la normativa aplicable. Cuando lo hagamos, actualizaremos la fecha al comienzo del documento y, si los cambios son significativos, te lo comunicaremos mediante un aviso en la plataforma o por correo electrónico.</p>
+        </section>
+
+        <section>
+          <h2 class="text-lg font-semibold text-text-primary mb-3">10. Contacto</h2>
+          <p>Para cualquier consulta sobre esta política o sobre el tratamiento de tus datos personales, puedes contactarnos en:</p>
+          <p class="mt-2"><a href="mailto:privacidad@fewya.com" class="text-accent hover:underline font-medium">privacidad@fewya.com</a></p>
+        </section>
+
+      </div>
+    </main>
+
+  </div>
+</Layout>

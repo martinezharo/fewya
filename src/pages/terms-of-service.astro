@@ -1,0 +1,298 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { strings } from '../lib/core/i18n';
+---
+
+<Layout title={strings.termsOfServicePageTitle} noindex>
+  <div class="min-h-dvh bg-bg">
+
+    <header class="border-b border-border sticky top-0 bg-bg/95 backdrop-blur-sm z-10">
+      <div class="max-w-3xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+        <a href="/" class="text-lg font-bold text-text-primary font-[Jost] hover:text-accent transition-colors">
+          {strings.logoText}
+        </a>
+        <a href="/" class="text-sm text-text-secondary hover:text-text-primary transition-colors">
+          {strings.loginBackToHome}
+        </a>
+      </div>
+    </header>
+
+    <main class="max-w-3xl mx-auto px-4 sm:px-6 py-10 pb-20">
+
+      <div class="mb-10">
+        <h1 class="text-3xl font-bold text-text-primary mb-2">Condiciones de uso</h1>
+        <p class="text-sm text-text-tertiary">Última actualización: 26 de mayo de 2026</p>
+      </div>
+
+      <div class="space-y-10 text-[15px] leading-relaxed text-text-secondary">
+
+        <section>
+          <p>
+            El acceso y uso de la plataforma <strong class="text-text-primary">Fewya</strong>, incluyendo su sitio web y aplicación progresiva (PWA), implica la aceptación plena y sin reservas de las presentes Condiciones de Uso. Si no estás de acuerdo con alguna de ellas, debes abstenerte de utilizar el servicio. Estas condiciones se rigen por la legislación española vigente, incluyendo el Real Decreto Legislativo 1/2007 (TRLGDCU) y la Ley 34/2002 (LSSI).
+          </p>
+        </section>
+
+        <section>
+          <h2 class="text-lg font-semibold text-text-primary mb-3">1. Objeto y partes</h2>
+          <p class="mb-3">
+            Fewya es una plataforma de comercio electrónico operada por <strong class="text-text-primary">Oliver Martínez Haro</strong> (en adelante, «Fewya»), que pone en contacto a compradores y vendedores independientes. Fewya actúa únicamente como intermediaria tecnológica y no es parte en los contratos de compraventa celebrados entre compradores y vendedores.
+          </p>
+          <p>
+            Las presentes condiciones regulan el uso de la plataforma por parte de:
+          </p>
+          <ul class="mt-3 space-y-2 pl-4">
+            <li class="flex gap-3">
+              <span class="mt-1 w-1.5 h-1.5 rounded-full bg-accent shrink-0"></span>
+              <span><strong class="text-text-primary">Compradores:</strong> personas físicas o jurídicas que adquieren productos a través de Fewya.</span>
+            </li>
+            <li class="flex gap-3">
+              <span class="mt-1 w-1.5 h-1.5 rounded-full bg-accent shrink-0"></span>
+              <span><strong class="text-text-primary">Vendedores:</strong> pequeños negocios y autónomos que publican y venden productos a través de Fewya.</span>
+            </li>
+          </ul>
+        </section>
+
+        <section>
+          <h2 class="text-lg font-semibold text-text-primary mb-3">2. Registro y cuenta de usuario</h2>
+          <ul class="space-y-3 pl-4">
+            <li class="flex gap-3">
+              <span class="mt-1 w-1.5 h-1.5 rounded-full bg-accent shrink-0"></span>
+              <span>Para acceder a las funcionalidades de Fewya (comprar, vender, guardar favoritos y gestionar pedidos) es necesario crear una cuenta mediante Google OAuth.</span>
+            </li>
+            <li class="flex gap-3">
+              <span class="mt-1 w-1.5 h-1.5 rounded-full bg-accent shrink-0"></span>
+              <span>El registro está reservado a mayores de 18 años o, en su defecto, a quienes cuenten con la autorización de su representante legal.</span>
+            </li>
+            <li class="flex gap-3">
+              <span class="mt-1 w-1.5 h-1.5 rounded-full bg-accent shrink-0"></span>
+              <span>Cada persona física puede registrar una única cuenta. Está prohibido ceder o transferir la cuenta a terceros.</span>
+            </li>
+            <li class="flex gap-3">
+              <span class="mt-1 w-1.5 h-1.5 rounded-full bg-accent shrink-0"></span>
+              <span>El usuario es responsable de mantener la confidencialidad de sus credenciales de acceso y de toda la actividad realizada desde su cuenta.</span>
+            </li>
+            <li class="flex gap-3">
+              <span class="mt-1 w-1.5 h-1.5 rounded-full bg-accent shrink-0"></span>
+              <span>Fewya se reserva el derecho a suspender o cancelar cuentas que incumplan estas condiciones o que muestren actividad fraudulenta.</span>
+            </li>
+          </ul>
+        </section>
+
+        <section>
+          <h2 class="text-lg font-semibold text-text-primary mb-3">3. Proceso de compra</h2>
+          <p class="mb-4">El proceso de compra en Fewya se desarrolla de la siguiente manera:</p>
+          <ol class="space-y-3 pl-4 list-none">
+            <li class="flex gap-3">
+              <span class="font-semibold text-accent shrink-0">01</span>
+              <span>El comprador añade los productos deseados al carrito y selecciona el método de entrega (envío a domicilio o punto de recogida).</span>
+            </li>
+            <li class="flex gap-3">
+              <span class="font-semibold text-accent shrink-0">02</span>
+              <span>El pago se realiza de forma segura a través de <strong class="text-text-primary">Stripe</strong>. Se generará una sesión de pago independiente por cada vendedor incluido en el carrito, dado que los fondos se transfieren directamente a la cuenta del vendedor.</span>
+            </li>
+            <li class="flex gap-3">
+              <span class="font-semibold text-accent shrink-0">03</span>
+              <span>Una vez confirmado el pago, el vendedor recibe la notificación del pedido y dispone de un plazo razonable para prepararlo y enviarlo.</span>
+            </li>
+            <li class="flex gap-3">
+              <span class="font-semibold text-accent shrink-0">04</span>
+              <span>Los fondos quedan retenidos hasta que el comprador confirma la recepción del pedido o transcurre el plazo establecido, momento en que se liberan al vendedor.</span>
+            </li>
+          </ol>
+          <p class="mt-4">La moneda utilizada en todas las transacciones es el <strong class="text-text-primary">euro (EUR)</strong>. Los precios mostrados incluyen el IVA aplicable cuando así corresponda.</p>
+        </section>
+
+        <section>
+          <h2 class="text-lg font-semibold text-text-primary mb-3">4. Envíos</h2>
+          <ul class="space-y-3 pl-4">
+            <li class="flex gap-3">
+              <span class="mt-1 w-1.5 h-1.5 rounded-full bg-accent shrink-0"></span>
+              <span>Los envíos son gestionados por los vendedores a través de <strong class="text-text-primary">Sendcloud</strong>. El coste de envío se calcula en función de los productos del carrito y se muestra antes de finalizar la compra.</span>
+            </li>
+            <li class="flex gap-3">
+              <span class="mt-1 w-1.5 h-1.5 rounded-full bg-accent shrink-0"></span>
+              <span>Los plazos de entrega son orientativos y dependen del vendedor y del transportista. Fewya no se responsabiliza de los retrasos causados por terceros o por causas de fuerza mayor.</span>
+            </li>
+            <li class="flex gap-3">
+              <span class="mt-1 w-1.5 h-1.5 rounded-full bg-accent shrink-0"></span>
+              <span>El vendedor es responsable de empaquetar y entregar los productos en las condiciones descritas en su ficha de producto.</span>
+            </li>
+          </ul>
+        </section>
+
+        <section>
+          <h2 class="text-lg font-semibold text-text-primary mb-3">5. Derecho de desistimiento y devoluciones</h2>
+          <p class="mb-3">De conformidad con el artículo 102 y siguientes del TRLGDCU, el comprador dispone de un plazo de <strong class="text-text-primary">14 días naturales</strong> desde la recepción del pedido para ejercer el derecho de desistimiento sin necesidad de justificación, salvo en los siguientes casos:</p>
+          <ul class="space-y-2 pl-4 mb-4">
+            <li class="flex gap-3">
+              <span class="mt-1 w-1.5 h-1.5 rounded-full bg-border-light shrink-0"></span>
+              <span>Bienes confeccionados conforme a las especificaciones del consumidor o claramente personalizados.</span>
+            </li>
+            <li class="flex gap-3">
+              <span class="mt-1 w-1.5 h-1.5 rounded-full bg-border-light shrink-0"></span>
+              <span>Bienes que puedan deteriorarse o caducar con rapidez.</span>
+            </li>
+            <li class="flex gap-3">
+              <span class="mt-1 w-1.5 h-1.5 rounded-full bg-border-light shrink-0"></span>
+              <span>Bienes precintados que no sean aptos para ser devueltos por razones de protección de la salud o de higiene, y que hayan sido desprecintados tras la entrega.</span>
+            </li>
+          </ul>
+          <p class="mb-3">Para ejercer el derecho de desistimiento, el comprador debe comunicarlo al vendedor a través de la plataforma. Los gastos de devolución corren a cargo del comprador salvo que el vendedor indique lo contrario.</p>
+          <p>El reembolso se efectuará en el mismo medio de pago utilizado en un plazo máximo de <strong class="text-text-primary">14 días</strong> desde que el vendedor reciba el producto devuelto en buen estado.</p>
+        </section>
+
+        <section>
+          <h2 class="text-lg font-semibold text-text-primary mb-3">6. Condiciones para vendedores</h2>
+          <p class="mb-4">Para vender en Fewya, el vendedor debe:</p>
+          <ul class="space-y-3 pl-4 mb-4">
+            <li class="flex gap-3">
+              <span class="mt-1 w-1.5 h-1.5 rounded-full bg-accent shrink-0"></span>
+              <span>Completar el proceso de alta como vendedor, que incluye la verificación de identidad y la conexión de una cuenta bancaria a través de <strong class="text-text-primary">Stripe Connect</strong>.</span>
+            </li>
+            <li class="flex gap-3">
+              <span class="mt-1 w-1.5 h-1.5 rounded-full bg-accent shrink-0"></span>
+              <span>Proporcionar información veraz, completa y actualizada sobre sus productos (descripción, precio, stock, dimensiones y coste de envío).</span>
+            </li>
+            <li class="flex gap-3">
+              <span class="mt-1 w-1.5 h-1.5 rounded-full bg-accent shrink-0"></span>
+              <span>Gestionar los pedidos de forma diligente y enviarlos en los plazos indicados.</span>
+            </li>
+            <li class="flex gap-3">
+              <span class="mt-1 w-1.5 h-1.5 rounded-full bg-accent shrink-0"></span>
+              <span>Cumplir con la normativa fiscal y tributaria aplicable a su actividad comercial.</span>
+            </li>
+            <li class="flex gap-3">
+              <span class="mt-1 w-1.5 h-1.5 rounded-full bg-accent shrink-0"></span>
+              <span>Emitir la documentación fiscal (facturas o tiques) requerida por la normativa española vigente.</span>
+            </li>
+          </ul>
+          <p>El vendedor es el único responsable de los productos que publica y vende. Fewya no garantiza ni avala los productos de los vendedores.</p>
+        </section>
+
+        <section>
+          <h2 class="text-lg font-semibold text-text-primary mb-3">7. Comisiones</h2>
+          <p class="mb-3">
+            Fewya aplica una comisión sobre cada venta realizada a través de la plataforma. La comisión vigente se comunica al vendedor durante el proceso de alta y puede ser actualizada con un preaviso mínimo de <strong class="text-text-primary">30 días</strong> antes de su entrada en vigor.
+          </p>
+          <p>La comisión se deduce automáticamente del importe de cada transacción antes de que los fondos sean transferidos al vendedor.</p>
+        </section>
+
+        <section>
+          <h2 class="text-lg font-semibold text-text-primary mb-3">8. Contenido prohibido</h2>
+          <p class="mb-3">Está prohibido publicar o vender a través de Fewya cualquier producto o contenido que:</p>
+          <ul class="space-y-2 pl-4">
+            <li class="flex gap-3">
+              <span class="mt-1 w-1.5 h-1.5 rounded-full bg-border-light shrink-0"></span>
+              <span>Sea ilegal según la legislación española o de la UE.</span>
+            </li>
+            <li class="flex gap-3">
+              <span class="mt-1 w-1.5 h-1.5 rounded-full bg-border-light shrink-0"></span>
+              <span>Infrinja derechos de propiedad intelectual o industrial de terceros (falsificaciones, productos piratas).</span>
+            </li>
+            <li class="flex gap-3">
+              <span class="mt-1 w-1.5 h-1.5 rounded-full bg-border-light shrink-0"></span>
+              <span>Constituya material pornográfico, violento o discriminatorio.</span>
+            </li>
+            <li class="flex gap-3">
+              <span class="mt-1 w-1.5 h-1.5 rounded-full bg-border-light shrink-0"></span>
+              <span>Sean armas, sustancias controladas o productos sujetos a restricciones especiales de venta.</span>
+            </li>
+            <li class="flex gap-3">
+              <span class="mt-1 w-1.5 h-1.5 rounded-full bg-border-light shrink-0"></span>
+              <span>Induzca a error o contenga información falsa o engañosa sobre el producto.</span>
+            </li>
+            <li class="flex gap-3">
+              <span class="mt-1 w-1.5 h-1.5 rounded-full bg-border-light shrink-0"></span>
+              <span>Sea de segunda mano, usado, reacondicionado o que no sea un producto nuevo con su embalaje original intacto.</span>
+            </li>
+          </ul>
+          <p class="mt-3">Fewya se reserva el derecho a retirar cualquier producto que infrinja esta política y a suspender la cuenta del vendedor responsable.</p>
+        </section>
+
+        <section>
+          <h2 class="text-lg font-semibold text-text-primary mb-3">9. Resolución de disputas e incidencias</h2>
+          <p class="mb-3">Si el comprador no recibe su pedido o este llega en mal estado, puede abrir una incidencia a través de la plataforma. El proceso es el siguiente:</p>
+          <ol class="space-y-3 pl-4 list-none">
+            <li class="flex gap-3">
+              <span class="font-semibold text-accent shrink-0">01</span>
+              <span>El comprador reporta la incidencia desde su historial de pedidos, adjuntando la descripción del problema.</span>
+            </li>
+            <li class="flex gap-3">
+              <span class="font-semibold text-accent shrink-0">02</span>
+              <span>El vendedor recibe la notificación y dispone de un plazo para responder y proponer una solución.</span>
+            </li>
+            <li class="flex gap-3">
+              <span class="font-semibold text-accent shrink-0">03</span>
+              <span>Si las partes no llegan a un acuerdo, Fewya actuará como mediadora y podrá decidir retener o devolver los fondos según la evidencia disponible.</span>
+            </li>
+          </ol>
+          <p class="mt-4 text-sm">Para resolución de litigios en línea, los consumidores pueden acceder a la <a href="https://ec.europa.eu/consumers/odr" target="_blank" rel="noopener noreferrer" class="text-accent hover:underline">plataforma ODR de la Comisión Europea</a>.</p>
+        </section>
+
+        <section>
+          <h2 class="text-lg font-semibold text-text-primary mb-3">10. Propiedad intelectual</h2>
+          <p class="mb-3">Todos los derechos de propiedad intelectual e industrial sobre la plataforma Fewya (código, diseño, marca, logotipo) pertenecen a <strong class="text-text-primary">Oliver Martínez Haro</strong> o a sus licenciantes.</p>
+          <p class="mb-3">Al publicar contenido en Fewya (fotografías, descripciones de productos, información de tienda), el usuario otorga a Fewya una licencia no exclusiva, gratuita y mundial para mostrar dicho contenido en la plataforma con el único fin de prestar el servicio.</p>
+          <p>El usuario garantiza que el contenido publicado no infringe derechos de terceros y responderá ante Fewya y dichos terceros por cualquier reclamación derivada de tal infracción.</p>
+        </section>
+
+        <section>
+          <h2 class="text-lg font-semibold text-text-primary mb-3">11. Limitación de responsabilidad</h2>
+          <p class="mb-3">Fewya actúa exclusivamente como intermediaria tecnológica entre compradores y vendedores. En consecuencia:</p>
+          <ul class="space-y-3 pl-4">
+            <li class="flex gap-3">
+              <span class="mt-1 w-1.5 h-1.5 rounded-full bg-border-light shrink-0"></span>
+              <span>Fewya no es responsable de la calidad, autenticidad, seguridad o legalidad de los productos publicados por los vendedores.</span>
+            </li>
+            <li class="flex gap-3">
+              <span class="mt-1 w-1.5 h-1.5 rounded-full bg-border-light shrink-0"></span>
+              <span>Fewya no garantiza la disponibilidad ininterrumpida del servicio y no será responsable por interrupciones causadas por mantenimiento, fallos técnicos o causas de fuerza mayor.</span>
+            </li>
+            <li class="flex gap-3">
+              <span class="mt-1 w-1.5 h-1.5 rounded-full bg-border-light shrink-0"></span>
+              <span>En ningún caso la responsabilidad de Fewya frente al usuario superará el importe de la transacción directamente relacionada con el daño reclamado.</span>
+            </li>
+          </ul>
+          <p class="mt-3 text-sm">Nada de lo anterior limita los derechos que la legislación de consumidores y usuarios reconoce a los compradores personas físicas.</p>
+        </section>
+
+        <section>
+          <h2 class="text-lg font-semibold text-text-primary mb-3">12. Suspensión y cancelación de cuentas</h2>
+          <p class="mb-3">Fewya puede suspender o cancelar una cuenta de forma temporal o definitiva en los siguientes supuestos:</p>
+          <ul class="space-y-2 pl-4">
+            <li class="flex gap-3">
+              <span class="mt-1 w-1.5 h-1.5 rounded-full bg-border-light shrink-0"></span>
+              <span>Incumplimiento de estas condiciones de uso.</span>
+            </li>
+            <li class="flex gap-3">
+              <span class="mt-1 w-1.5 h-1.5 rounded-full bg-border-light shrink-0"></span>
+              <span>Actividad fraudulenta o comportamiento que perjudique a otros usuarios.</span>
+            </li>
+            <li class="flex gap-3">
+              <span class="mt-1 w-1.5 h-1.5 rounded-full bg-border-light shrink-0"></span>
+              <span>Publicación de contenido prohibido.</span>
+            </li>
+            <li class="flex gap-3">
+              <span class="mt-1 w-1.5 h-1.5 rounded-full bg-border-light shrink-0"></span>
+              <span>Solicitud del propio usuario.</span>
+            </li>
+          </ul>
+          <p class="mt-3">La cancelación de la cuenta no afectará a las obligaciones ya adquiridas por el usuario, incluyendo los pedidos pendientes de entrega o devolución.</p>
+        </section>
+
+        <section>
+          <h2 class="text-lg font-semibold text-text-primary mb-3">13. Modificaciones de las condiciones</h2>
+          <p>Fewya puede actualizar estas condiciones de uso en cualquier momento. Los cambios serán comunicados mediante un aviso en la plataforma o por correo electrónico con una antelación mínima de <strong class="text-text-primary">15 días</strong> antes de su entrada en vigor. El uso continuado de la plataforma tras la entrada en vigor de los cambios implica la aceptación de las nuevas condiciones.</p>
+        </section>
+
+        <section>
+          <h2 class="text-lg font-semibold text-text-primary mb-3">14. Ley aplicable y jurisdicción</h2>
+          <p class="mb-3">Estas condiciones se rigen por la <strong class="text-text-primary">legislación española</strong>. Para la resolución de cualquier controversia derivada del uso de la plataforma, las partes se someten a los Juzgados y Tribunales de <strong class="text-text-primary">Málaga</strong>, sin perjuicio del fuero que corresponda al consumidor según el artículo 52 de la Ley de Enjuiciamiento Civil cuando actúe como tal.</p>
+          <p class="text-sm">Para cualquier consulta sobre estas condiciones puedes escribirnos a <a href="mailto:legal@fewya.com" class="text-accent hover:underline">legal@fewya.com</a>.</p>
+        </section>
+
+      </div>
+    </main>
+
+  </div>
+</Layout>

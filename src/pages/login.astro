@@ -36,7 +36,10 @@ const loginUrl = `/api/auth/login?redirect_to=${encodeURIComponent(redirectTo)}`
         </a>
 
         <p class="mt-4 text-xs text-text-tertiary text-center leading-relaxed">
-          {strings.loginTermsHint}
+          {strings.loginTermsHint}{' '}
+          <a href="/terms-of-service" class="underline underline-offset-2 hover:text-text-secondary transition-colors">{strings.loginTermsHintTerms}</a>
+          {' '}{strings.loginTermsHintAnd}{' '}
+          <a href="/privacy-policy" class="underline underline-offset-2 hover:text-text-secondary transition-colors">{strings.loginTermsHintPrivacy}</a>.
         </p>
       </div>
 

@@ -55,5 +55,29 @@ if (!user) {
             <SignOutButton />
         </section>
 
+        {/* Legal */}
+        <section class="mb-6">
+            <h2 class="text-[11px] font-semibold uppercase tracking-widest text-text-tertiary mb-3 px-1">
+                {strings.settingsLegalSection}
+            </h2>
+
+            <div class="bg-surface border border-border-light rounded-2xl overflow-hidden">
+                <a
+                    href="/privacy-policy"
+                    class="flex items-center justify-between px-5 py-4 hover:bg-border-light/30 transition-colors border-b border-border-light"
+                >
+                    <span class="text-sm text-text-primary">{strings.settingsPrivacyPolicy}</span>
+                    <Icon name="chevron-right" size={16} class="text-text-tertiary" />
+                </a>
+                <a
+                    href="/terms-of-service"
+                    class="flex items-center justify-between px-5 py-4 hover:bg-border-light/30 transition-colors"
+                >
+                    <span class="text-sm text-text-primary">{strings.settingsTermsOfService}</span>
+                    <Icon name="chevron-right" size={16} class="text-text-tertiary" />
+                </a>
+            </div>
+        </section>
+
     </main>
 </BuyerAppLayout>
