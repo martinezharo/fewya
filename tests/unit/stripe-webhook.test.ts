@@ -7,6 +7,7 @@ const mockStripeInstance = {
 };
 const mockInsert = vi.fn();
 const mockRpc = vi.fn();
+const mockMaybeSingle = vi.fn();
 
 vi.mock('astro:env/server', () => ({
     APP_MODE: 'production',
@@ -28,6 +29,11 @@ vi.mock('../../src/lib/core/supabase-admin', () => ({
         from: (_table: string) => ({
             insert: mockInsert,
             select: (_cols: string) => ({
+                // dedup pre-check: .select('event_id').eq('event_id', id).maybeSingle()
+                eq: (_col: string, _val: unknown) => ({
+                    maybeSingle: mockMaybeSingle,
+                }),
+                // orders lookup: .select(...).neq(...).eq(...)/.in(...)
                 neq: (_col: string, _val: unknown) => ({
                     eq: (_col2: string, _val2: unknown) => Promise.resolve({ data: [] }),
                     in: (_col2: string, _vals: unknown[]) => Promise.resolve({ data: [] }),
@@ -79,8 +85,8 @@ describe('Stripe webhook handler', () => {
             data: { object: { id: 'ch_1', amount_refunded: 1000 } },
         };
         mockConstructEventAsync.mockResolvedValueOnce(fakeEvent);
-        // Deduplication: no conflict = new event
-        mockInsert.mockResolvedValueOnce({ error: null });
+        // Dedup pre-check: not previously processed
+        mockMaybeSingle.mockResolvedValueOnce({ data: null });
 
         const req = new Request('https://fewya.com/api/webhooks/stripe', {
             method: 'POST',
@@ -99,8 +105,8 @@ describe('Stripe webhook handler', () => {
             data: { object: { id: 'ch_dup', amount_refunded: 500 } },
         };
         mockConstructEventAsync.mockResolvedValueOnce(fakeEvent);
-        // Unique constraint violation = already processed
-        mockInsert.mockResolvedValueOnce({ error: { code: '23505', message: 'duplicate key' } });
+        // Dedup pre-check: event already recorded
+        mockMaybeSingle.mockResolvedValueOnce({ data: { event_id: 'evt_duplicate' } });
 
         const req = new Request('https://fewya.com/api/webhooks/stripe', {
             method: 'POST',

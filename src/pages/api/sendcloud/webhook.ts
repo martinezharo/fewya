@@ -93,13 +93,16 @@ export const POST: APIRoute = async ({ request }) => {
 
     const supabase = createSupabaseAdminClient();
 
-    // idempotency — skip already-processed events
+    // Idempotency: skip replays. The event is recorded only AFTER the update
+    // succeeds (below), so a transient failure is retried instead of being lost.
     const eventId = `sendcloud:${parcel.id}:${action ?? ''}:${timestamp ?? ''}`;
-    const { error: insertConflict } = await supabase
+    const { data: alreadyProcessed } = await supabase
         .from('processed_webhook_events')
-        .insert({ event_id: eventId, source: 'sendcloud' });
+        .select('event_id')
+        .eq('event_id', eventId)
+        .maybeSingle();
 
-    if (insertConflict) {
+    if (alreadyProcessed) {
         return jsonResponse({ received: true }, 200);
     }
 
@@ -128,8 +131,10 @@ export const POST: APIRoute = async ({ request }) => {
             p_description: description,
             p_location: '',
             p_event_timestamp: eventTimestamp.toISOString(),
-            p_tracking_number: parcel.tracking_number,
-            p_tracking_url: parcel.tracking_url,
+            // Coerce to null: supabase-js drops `undefined` keys, which would make
+            // the RPC call miss a required parameter and fail the signature match.
+            p_tracking_number: parcel.tracking_number ?? null,
+            p_tracking_url: parcel.tracking_url ?? null,
             p_raw_data: body as Record<string, unknown>,
         });
 
@@ -137,6 +142,11 @@ export const POST: APIRoute = async ({ request }) => {
             console.error(JSON.stringify({ event: 'sendcloud_webhook.tracking_update_failed', error: error.message }));
             return jsonResponse({ error: 'Failed to update tracking' }, 500);
         }
+
+        // Record the event only now that processing succeeded (best-effort).
+        await supabase
+            .from('processed_webhook_events')
+            .insert({ event_id: eventId, source: 'sendcloud' });
 
         return jsonResponse({ success: true }, 200);
     } catch (err) {

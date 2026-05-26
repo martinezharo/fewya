@@ -47,13 +47,16 @@ export const POST: APIRoute = async ({ request }) => {
 
     const adminClient = createSupabaseAdminClient();
 
-    // Idempotency: skip already-processed events (M2)
-    const { error: insertConflict } = await adminClient
+    // Idempotency: skip replays. The event is recorded only AFTER successful
+    // handling (below), so a transient failure is retried by Stripe instead of
+    // being silently dropped.
+    const { data: alreadyProcessed } = await adminClient
         .from('processed_webhook_events')
-        .insert({ event_id: event.id, source: 'stripe' });
+        .select('event_id')
+        .eq('event_id', event.id)
+        .maybeSingle();
 
-    if (insertConflict) {
-        // Unique constraint violation = already processed
+    if (alreadyProcessed) {
         return ok();
     }
 
@@ -69,8 +72,14 @@ export const POST: APIRoute = async ({ request }) => {
         }
     } catch (e) {
         console.error(JSON.stringify({ event: 'stripe_webhook.handler_error', type: event.type, error: e instanceof Error ? e.message : String(e) }));
-        // Return 200 so Stripe doesn't retry — log for manual review
+        // Don't record the event; return 500 so Stripe retries the delivery.
+        return err('handler error', 500);
     }
+
+    // Record the event only now that handling succeeded (best-effort).
+    await adminClient
+        .from('processed_webhook_events')
+        .insert({ event_id: event.id, source: 'stripe' });
 
     return ok();
 };
