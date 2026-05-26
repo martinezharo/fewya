@@ -19,6 +19,7 @@ CREATE TABLE public.orders (
   stripe_checkout_session_id text,
   stripe_payment_intent_id text,
   paid_at timestamp with time zone,
+  shipped_at timestamp with time zone,
   delivered_at timestamp with time zone,
   funds_released_at timestamp with time zone,
   cancellation_reason text,

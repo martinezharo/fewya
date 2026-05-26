@@ -135,12 +135,21 @@ RETURNS public.shipments AS $$
 DECLARE
   updated_shipment public.shipments;
   status_lower text;
+  is_delivered boolean;
+  is_in_transit boolean;
+  is_label_ready boolean;
   is_delivery_failure boolean;
 BEGIN
   INSERT INTO public.shipment_tracking (shipment_id, status, description, location, event_timestamp, raw_data)
   VALUES (p_shipment_id, p_status, p_description, p_location, p_event_timestamp, p_raw_data);
 
-  status_lower := lower(COALESCE(p_status, ''));
+  status_lower := lower(trim(COALESCE(p_status, '')));
+
+  is_delivered :=
+    status_lower IN ('delivered', 'parcel delivered')
+    OR status_lower LIKE '%delivered to recipient%'
+    OR status_lower LIKE '%parcel delivered%';
+
   is_delivery_failure :=
     status_lower IN ('failed', 'returned_to_sender', 'delivery_failed', 'shipment_lost', 'cancelled_upstream')
     OR status_lower LIKE '%returned to sender%'
@@ -149,13 +158,29 @@ BEGIN
     OR status_lower LIKE '%delivery attempt failed%'
     OR status_lower LIKE '%lost%';
 
+  -- Evaluate in-transit AFTER delivered/failed so those win for ambiguous strings.
+  is_in_transit := NOT is_delivered AND NOT is_delivery_failure AND (
+    status_lower IN ('shipped', 'in_transit', 'shipment.tracking.update')
+    OR status_lower LIKE '%en route%'
+    OR status_lower LIKE '%sorted%'
+    OR status_lower LIKE '%at sorting center%'
+    OR status_lower LIKE '%at hub%'
+    OR status_lower LIKE '%out for delivery%'
+    OR status_lower LIKE '%delivery attempted%'
+    OR status_lower LIKE '%picked up%'
+    OR status_lower LIKE '%collected%'
+    OR status_lower LIKE '%awaiting customer pickup%'
+  );
+
+  is_label_ready := status_lower IN ('label_ready', 'ready to send', 'announced', 'no label');
+
   UPDATE public.shipments
   SET
     status = CASE
-      WHEN p_status = 'delivered' THEN 'delivered'::shipment_status
-      WHEN p_status = 'shipped' OR p_status = 'shipment.tracking.update' THEN 'shipped'::shipment_status
-      WHEN p_status = 'label_ready' THEN 'label_ready'::shipment_status
+      WHEN is_delivered THEN 'delivered'::shipment_status
       WHEN is_delivery_failure THEN 'failed'::shipment_status
+      WHEN is_in_transit THEN 'shipped'::shipment_status
+      WHEN is_label_ready THEN 'label_ready'::shipment_status
       ELSE status
     END,
     tracking_number = COALESCE(p_tracking_number, tracking_number),
@@ -164,23 +189,34 @@ BEGIN
   WHERE id = p_shipment_id
   RETURNING * INTO updated_shipment;
 
-  -- When shipment is delivered, update order status and set delivered_at
-  IF p_status = 'delivered' AND updated_shipment.order_id IS NOT NULL THEN
+  -- When shipment is delivered, update order status and set timestamps.
+  -- Also backfill shipped_at if the in-transit event never arrived.
+  IF is_delivered AND updated_shipment.order_id IS NOT NULL THEN
     UPDATE public.orders
     SET
       status = 'delivered',
-      delivered_at = COALESCE(delivered_at, timezone('utc'::text, now()))
+      delivered_at = COALESCE(delivered_at, timezone('utc'::text, now())),
+      shipped_at = COALESCE(shipped_at, timezone('utc'::text, now()))
     WHERE id = updated_shipment.order_id
-      AND status NOT IN ('confirmed', 'incident', 'cancelled');
+      AND status NOT IN ('confirmed', 'incident', 'cancelled', 'refunded');
   END IF;
 
-  -- When carrier reports loss or return-to-sender on a shipped order,
-  -- transition it to delivery_failed so the seller can issue a refund.
+  -- When carrier picks up the parcel, transition order to 'shipped'.
+  IF is_in_transit AND updated_shipment.order_id IS NOT NULL THEN
+    UPDATE public.orders
+    SET
+      status = 'shipped',
+      shipped_at = COALESCE(shipped_at, timezone('utc'::text, now()))
+    WHERE id = updated_shipment.order_id
+      AND status IN ('paid', 'processing');
+  END IF;
+
+  -- Carrier-reported loss or return: transition from processing or shipped.
   IF is_delivery_failure AND updated_shipment.order_id IS NOT NULL THEN
     UPDATE public.orders
     SET status = 'delivery_failed'
     WHERE id = updated_shipment.order_id
-      AND status = 'shipped';
+      AND status IN ('processing', 'shipped');
   END IF;
 
   RETURN updated_shipment;
