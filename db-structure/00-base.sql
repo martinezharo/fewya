@@ -48,6 +48,8 @@ CREATE TABLE public.shops (
   default_shipping_cost numeric(8,2),
   payments_active boolean NOT NULL DEFAULT false,
   seller_details_complete boolean NOT NULL DEFAULT false,
+  -- Internal override: when true, variant price/shipping/margin enforcement is skipped for this shop.
+  allow_loss boolean NOT NULL DEFAULT false,
   CONSTRAINT shops_pkey PRIMARY KEY (id),
   CONSTRAINT shops_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES public.profiles(id)
 );

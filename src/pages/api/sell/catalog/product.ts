@@ -47,7 +47,7 @@ export const POST: APIRoute = async ({ cookies, request }) => {
 
     const { data: shop } = await supabase
         .from('shops')
-        .select('id')
+        .select('id, allow_loss')
         .eq('owner_id', user.id)
         .maybeSingle();
 
@@ -77,7 +77,7 @@ export const POST: APIRoute = async ({ cookies, request }) => {
     }
 
     const willBeActive = body.is_active !== false;
-    if (willBeActive && body.variants && body.variants.length > 0) {
+    if (willBeActive && !shop.allow_loss && body.variants && body.variants.length > 0) {
         const pricing = await enforceVariantPricing(body.variants as PricingCheckVariant[]);
         if (!pricing.ok) {
             return new Response(JSON.stringify({ error: pricing.errors.join('\n') }), { status: 400 });
@@ -208,7 +208,7 @@ export const PATCH: APIRoute = async ({ cookies, request, url }) => {
 
     const { data: shop } = await supabase
         .from('shops')
-        .select('id')
+        .select('id, allow_loss')
         .eq('owner_id', user.id)
         .maybeSingle();
 
@@ -269,7 +269,7 @@ export const PATCH: APIRoute = async ({ cookies, request, url }) => {
     }
 
     const willBeActive = body.is_active === undefined ? existing.is_active : body.is_active;
-    if (willBeActive && body.variants && body.variants.length > 0) {
+    if (willBeActive && !shop.allow_loss && body.variants && body.variants.length > 0) {
         const pricing = await enforceVariantPricing(body.variants as PricingCheckVariant[]);
         if (!pricing.ok) {
             return new Response(JSON.stringify({ error: pricing.errors.join('\n') }), { status: 400 });

@@ -23,6 +23,7 @@ export interface Shop {
     default_shipping_cost: number | null;
     payments_active: boolean;
     seller_details_complete: boolean;
+    allow_loss: boolean;
     status: ShopStatus;
 }
 

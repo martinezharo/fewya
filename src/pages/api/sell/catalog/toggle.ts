@@ -25,7 +25,7 @@ export const PATCH: APIRoute = async ({ cookies, request, url }) => {
 
     const { data: shop } = await supabase
         .from('shops')
-        .select('id')
+        .select('id, allow_loss')
         .eq('owner_id', user.id)
         .maybeSingle();
 
@@ -33,7 +33,7 @@ export const PATCH: APIRoute = async ({ cookies, request, url }) => {
         return new Response(JSON.stringify({ error: strings.apiForbidden }), { status: 403 });
     }
 
-    if (body.is_active === true) {
+    if (body.is_active === true && !shop.allow_loss) {
         const { data: variants } = await supabase
             .from('product_variants')
             .select('variant_name, price, shipping_cost, weight_kg, length_cm, width_cm, height_cm')
