@@ -44,13 +44,33 @@ const hasMultiple = images.length > 1;
 
 <!-- Desktop: main image + thumbnails -->
 <div class="hidden md:block" data-gallery-desktop>
-  <div class="aspect-square rounded-lg overflow-hidden bg-surface cursor-zoom-in">
+  <div class="group relative aspect-square rounded-lg overflow-hidden bg-surface cursor-zoom-in">
     <img
       src={images[0]}
       alt={title}
       class="w-full h-full object-cover"
       data-desktop-main
     />
+    {hasMultiple && (
+      <>
+        <button
+          type="button"
+          class="absolute left-3 top-1/2 -translate-y-1/2 flex items-center justify-center w-10 h-10 rounded-full bg-white/90 dark:bg-black/60 text-text-primary shadow-md backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-white dark:hover:bg-black/80"
+          data-desktop-prev
+          aria-label={strings.productPrevImage}
+        >
+          <Icon name="chevron-left" size={22} />
+        </button>
+        <button
+          type="button"
+          class="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center w-10 h-10 rounded-full bg-white/90 dark:bg-black/60 text-text-primary shadow-md backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-white dark:hover:bg-black/80"
+          data-desktop-next
+          aria-label={strings.productNextImage}
+        >
+          <Icon name="chevron-right" size={22} />
+        </button>
+      </>
+    )}
   </div>
   {hasMultiple && (
     <div class="flex gap-2 mt-3 overflow-x-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
@@ -142,25 +162,41 @@ const hasMultiple = images.length > 1;
     });
   });
 
-  // Desktop thumbnails
+  // Desktop thumbnails + arrows
   document.querySelectorAll<HTMLElement>('[data-gallery-desktop]').forEach(gallery => {
     const main = gallery.querySelector<HTMLImageElement>('[data-desktop-main]');
-    const thumbs = gallery.querySelectorAll<HTMLElement>('[data-thumb]');
+    const thumbs = Array.from(gallery.querySelectorAll<HTMLElement>('[data-thumb]'));
+    const prevBtn = gallery.querySelector<HTMLElement>('[data-desktop-prev]');
+    const nextBtn = gallery.querySelector<HTMLElement>('[data-desktop-next]');
+    let current = 0;
 
-    thumbs.forEach(thumb => {
-      thumb.addEventListener('click', () => {
-        const img = thumb.querySelector('img');
-        if (main && img) {
-          main.src = img.src;
-          main.alt = img.alt;
-          thumbs.forEach(t => {
-            t.classList.remove('border-accent');
-            t.classList.add('border-transparent', 'opacity-60');
-          });
-          thumb.classList.add('border-accent');
-          thumb.classList.remove('border-transparent', 'opacity-60');
-        }
+    function setActive(idx: number) {
+      if (!main || !thumbs.length) return;
+      current = (idx + thumbs.length) % thumbs.length;
+      const img = thumbs[current].querySelector('img');
+      if (img) {
+        main.src = img.src;
+        main.alt = img.alt;
+      }
+      thumbs.forEach((t, i) => {
+        const on = i === current;
+        t.classList.toggle('border-accent', on);
+        t.classList.toggle('border-transparent', !on);
+        t.classList.toggle('opacity-60', !on);
       });
+    }
+
+    thumbs.forEach((thumb, i) => {
+      thumb.addEventListener('click', () => setActive(i));
+    });
+
+    prevBtn?.addEventListener('click', e => {
+      e.stopPropagation();
+      setActive(current - 1);
+    });
+    nextBtn?.addEventListener('click', e => {
+      e.stopPropagation();
+      setActive(current + 1);
     });
 
     main?.addEventListener('click', () => {

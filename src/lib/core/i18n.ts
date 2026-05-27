@@ -75,6 +75,8 @@ export const strings = {
     productClose: 'Cerrar',
     productAnonymous: 'Anónimo',
     productImage: 'Imagen',
+    productPrevImage: 'Imagen anterior',
+    productNextImage: 'Imagen siguiente',
     productQtyDecrease: 'Reducir cantidad',
     productQtyIncrease: 'Aumentar cantidad',
     productContact: 'Contactar',
