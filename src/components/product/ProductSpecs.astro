@@ -9,6 +9,7 @@ interface Props {
 
 const { category, brand, specifications } = Astro.props;
 const hasSpecs = category || brand || Object.keys(specifications).length > 0;
+const categoryLabel = category ? category.charAt(0).toUpperCase() + category.slice(1) : null;
 ---
 
 {hasSpecs && (
@@ -17,7 +18,7 @@ const hasSpecs = category || brand || Object.keys(specifications).length > 0;
       {category && (
         <div class="flex justify-between px-4 py-3">
           <dt class="text-sm text-text-secondary">{strings.productCategory}</dt>
-          <dd class="text-sm font-medium text-text-primary">{category}</dd>
+          <dd class="text-sm font-medium text-text-primary">{categoryLabel}</dd>
         </div>
       )}
       {brand && (
