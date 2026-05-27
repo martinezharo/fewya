@@ -145,6 +145,7 @@ const orders: SellerOrderCardData[] = (ordersData ?? []).map((order: any) => {
 const totalSales = orders.reduce((sum, order) => sum + order.subtotal + order.shipping, 0);
 const totalOrders = orders.length;
 const totalItemsSold = orders.reduce((sum, order) => sum + order.itemsSold, 0);
+const hasPendingOrders = orders.some((order) => order.status === ORDER_STATUS.PENDING);
 const currencyFormatter = new Intl.NumberFormat('es-ES', {
     style: 'currency',
     currency: 'EUR',
@@ -183,23 +184,27 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', {
         </div>
 
         <div class="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <label class="inline-flex cursor-pointer items-center gap-3 select-none">
-                <div class="relative inline-flex h-6 w-11 shrink-0">
-                    <input
-                        id="show-pending-toggle"
-                        type="checkbox"
-                        class="peer sr-only"
-                    />
-                    <span class="absolute inset-0 rounded-full bg-neutral-200 transition-colors peer-checked:bg-accent dark:bg-neutral-700" />
-                    <span class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform peer-checked:translate-x-5" />
-                </div>
-                <span class="text-sm font-medium text-text-primary">
-                    {strings.sellerOrdersFilterShowPending}
-                </span>
-                <span class="hidden text-xs text-text-tertiary sm:inline">
-                    {strings.sellerOrdersFilterShowPendingHint}
-                </span>
-            </label>
+            {hasPendingOrders ? (
+                <label class="inline-flex cursor-pointer items-center gap-3 select-none">
+                    <div class="relative inline-flex h-6 w-11 shrink-0">
+                        <input
+                            id="show-pending-toggle"
+                            type="checkbox"
+                            class="peer sr-only"
+                        />
+                        <span class="absolute inset-0 rounded-full bg-neutral-200 transition-colors peer-checked:bg-accent dark:bg-neutral-700" />
+                        <span class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform peer-checked:translate-x-5" />
+                    </div>
+                    <span class="text-sm font-medium text-text-primary">
+                        {strings.sellerOrdersFilterShowPending}
+                    </span>
+                    <span class="hidden text-xs text-text-tertiary sm:inline">
+                        {strings.sellerOrdersFilterShowPendingHint}
+                    </span>
+                </label>
+            ) : (
+                <span />
+            )}
 
             <div class="flex items-center gap-2">
                 <label for="status-filter" class="text-sm font-medium text-text-secondary">
@@ -251,14 +256,14 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', {
         const list = document.getElementById('orders-list');
         const countLabel = document.getElementById('orders-filter-count');
 
-        if (!toggle || !select || !list || !countLabel) return;
+        if (!select || !list || !countLabel) return;
 
         const cards = Array.from(list.querySelectorAll('[data-order-status]'));
         const total = cards.length;
 
         function applyFilters() {
             const selectedStatus = select.value;
-            const showPending = toggle.checked;
+            const showPending = toggle ? toggle.checked : true;
 
             let visible = 0;
             cards.forEach((card) => {
@@ -278,7 +283,7 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', {
                 : `Mostrando ${visible} de ${total} pedidos`;
         }
 
-        toggle.addEventListener('change', applyFilters);
+        if (toggle) toggle.addEventListener('change', applyFilters);
         select.addEventListener('change', applyFilters);
         applyFilters();
     })();
