@@ -197,7 +197,7 @@ function variantHasShippingOverride(v: VariantData): boolean {
 
                 <div id="image-gallery" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
                     {galleryImages.map((url, i) => (
-                        <div class="image-item relative group rounded-xl overflow-hidden border border-border aspect-square bg-bg" data-url={url}>
+                        <div class="image-item relative group rounded-xl overflow-hidden border border-border aspect-square bg-bg cursor-move" data-url={url}>
                             <img src={url} alt="" class="w-full h-full object-cover" loading="lazy" />
                             {i === 0 && (
                                 <span class="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-md text-[10px] font-medium bg-accent text-bg shadow-sm">Portada</span>
@@ -549,6 +549,7 @@ function variantHasShippingOverride(v: VariantData): boolean {
         initShippingEditor,
     } from '../../lib/ui/shipping-editor';
     import { compressImage, PRODUCT_PRESET } from '../../lib/ui/imageCompress';
+    import Sortable from 'sortablejs';
 
     interface ShippingValues {
         weight: number;
@@ -927,7 +928,7 @@ function variantHasShippingOverride(v: VariantData): boolean {
             imageGallery.innerHTML = '';
             galleryUrls.forEach((url: string, i: number) => {
                 const div = document.createElement('div');
-                div.className = 'image-item relative group rounded-xl overflow-hidden border border-border aspect-square bg-bg';
+                div.className = 'image-item relative group rounded-xl overflow-hidden border border-border aspect-square bg-bg cursor-move';
                 div.dataset.url = url;
                 const coverBadge = i === 0 ? '<span class="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-md text-[10px] font-medium bg-accent text-bg shadow-sm">Portada</span>' : '';
                 div.innerHTML = `<img src="${url}" alt="" class="w-full h-full object-cover" loading="lazy" />${coverBadge}<button type="button" class="image-remove-btn absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/65 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" aria-label="Remove"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>`;
@@ -944,6 +945,23 @@ function variantHasShippingOverride(v: VariantData): boolean {
             if (idx > -1) galleryUrls.splice(idx, 1);
             renderGallery();
             refreshChecks();
+        });
+
+        Sortable.create(imageGallery, {
+            animation: 150,
+            filter: '.image-remove-btn',
+            preventOnFilter: false,
+            ghostClass: 'opacity-40',
+            chosenClass: 'ring-2',
+            onEnd: () => {
+                const urls = Array.from(imageGallery.querySelectorAll<HTMLElement>('.image-item'))
+                    .map((el) => el.dataset.url)
+                    .filter((url): url is string => Boolean(url));
+                galleryUrls.length = 0;
+                galleryUrls.push(...urls);
+                renderGallery();
+                refreshChecks();
+            },
         });
 
         // ---- Variantes ----

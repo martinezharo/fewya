@@ -772,7 +772,7 @@ export const strings = {
     sellerProductSectionBasicTitle: 'Detalles del producto',
     sellerProductSectionBasicSubtitle: 'Cómo aparecerá tu producto en el escaparate.',
     sellerProductSectionImagesTitle: 'Galería',
-    sellerProductSectionImagesSubtitle: 'La primera imagen se usa como portada. Sube fotos cuadradas para mejor encuadre.',
+    sellerProductSectionImagesSubtitle: 'La primera imagen se usa como portada. Arrastra las fotos para reordenarlas.',
     sellerProductSectionVariantsTitle: 'Variantes y stock',
     sellerProductSectionVariantsSubtitle: 'Define precio, inventario y datos de envío para cada combinación.',
     sellerProductSectionSpecsTitle: 'Especificaciones',
