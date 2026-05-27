@@ -78,17 +78,27 @@ export const POST: APIRoute = async ({ request }) => {
 
     const { action, parcel, timestamp } = body;
 
+    // Sendcloud sends `timestamp` in MILLISECONDS (13 digits). Normalize defensively:
+    // values below ~1e12 are seconds and get scaled up. Treating ms as seconds (the
+    // previous `* 1000`) inflated the drift so every real event was rejected as stale.
+    const timestampMs = timestamp !== undefined
+        ? (timestamp < 1e12 ? timestamp * 1000 : timestamp)
+        : undefined;
+
     // reject stale events to mitigate replay attacks
-    if (timestamp !== undefined) {
-        const drift = Math.abs(Date.now() - timestamp * 1000);
+    if (timestampMs !== undefined) {
+        const drift = Math.abs(Date.now() - timestampMs);
         if (drift > MAX_TIMESTAMP_DRIFT_MS) {
             securityLog('security.webhook.stale_timestamp', { source: 'sendcloud', timestamp, drift });
             return jsonResponse({ error: 'Stale event' }, 400);
         }
     }
 
+    // Pings without a parcel (e.g. Sendcloud's "test_webhook" / activation check) must
+    // get a 2xx — returning 400 here makes Sendcloud report "could not connect to the
+    // shop" and refuse to enable status/tracking feedback for the integration.
     if (!parcel?.id) {
-        return jsonResponse({ error: 'parcel.id is required' }, 400);
+        return jsonResponse({ received: true }, 200);
     }
 
     const supabase = createSupabaseAdminClient();
@@ -122,7 +132,7 @@ export const POST: APIRoute = async ({ request }) => {
     // describe the event type, not the state, and won't match the SQL branches.
     const normalizedStatus = parcel.status?.message || action || 'unknown';
     const description = `Sendcloud status: ${normalizedStatus}`;
-    const eventTimestamp = timestamp ? new Date(timestamp * 1000) : new Date();
+    const eventTimestamp = timestampMs ? new Date(timestampMs) : new Date();
 
     try {
         const { error } = await supabase.rpc('update_shipment_tracking', {
