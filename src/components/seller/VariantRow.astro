@@ -1,0 +1,143 @@
+---
+import Icon from '../icons/Icon.astro';
+import { strings } from '../../lib/core/i18n';
+
+interface VariantData {
+    id?: string;
+    variant_name?: string | null;
+    price?: number;
+    stock?: number;
+    is_default?: boolean;
+    variant_image?: string | null;
+    weight_kg?: number | null;
+    length_cm?: number | null;
+    width_cm?: number | null;
+    height_cm?: number | null;
+    shipping_cost?: number | null;
+}
+
+interface Props {
+    variant?: VariantData;
+    hasShippingOverride?: boolean;
+}
+
+const { variant, hasShippingOverride = false } = Astro.props;
+
+const v: VariantData = variant ?? {};
+const variantName = v.variant_name ?? '';
+const price = v.price ?? 0;
+const stock = v.stock ?? 0;
+const isDefault = v.is_default ?? false;
+const variantImage = v.variant_image ?? null;
+const id = v.id ?? '';
+const isNew = v.id ? 'false' : 'true';
+---
+
+<article
+    class="variant-row rounded-xl border border-border bg-bg overflow-hidden"
+    data-variant-id={id}
+    data-is-new={isNew}
+    data-variant-image={variantImage ?? ''}
+>
+    <header class="variant-header flex items-center gap-2.5 px-4 py-3 cursor-pointer hover:bg-border-light/40 transition-colors select-none">
+        <svg class="variant-chevron text-text-tertiary transition-transform duration-200 shrink-0" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>
+        <span class="variant-name-display text-sm font-medium text-text-primary min-w-0 truncate">{variantName || strings.sellerProductVariantPlaceholderName}</span>
+        {isDefault && (
+            <span class="variant-default-pill inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-medium bg-accent text-bg shrink-0">{strings.sellerProductVariantDefault}</span>
+        )}
+        <span class="variant-summary-meta hidden sm:flex items-center gap-1.5 text-xs text-text-secondary tabular-nums shrink-0">
+            <span class="text-text-tertiary">·</span>
+            <span class="variant-price-display">{price ? `${price.toFixed(2)} €` : '—'}</span>
+            <span class="text-text-tertiary">·</span>
+            <span class="variant-stock-display">{`${stock} uds`}</span>
+        </span>
+        <span class="variant-summary-shipping hidden sm:inline ml-auto text-xs text-text-secondary tabular-nums truncate"></span>
+        <span class="variant-summary-warning hidden ml-auto items-center gap-1 text-amber-600 dark:text-amber-400 text-xs font-medium shrink-0">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            {strings.sellerProductVariantSummaryMissing}
+        </span>
+        <button type="button" class="variant-remove-btn flex items-center justify-center w-7 h-7 rounded-lg text-text-tertiary hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors shrink-0" aria-label={strings.sellerProductVariantRemove}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        </button>
+    </header>
+
+    <div class="variant-body hidden border-t border-border px-4 py-4 space-y-5">
+        <!-- Datos básicos -->
+        <div class="grid gap-3 sm:grid-cols-12">
+            <div class="sm:col-span-5">
+                <label class="block text-[11px] font-medium text-text-tertiary mb-1.5">{strings.sellerProductVariantNameLabel}</label>
+                <input
+                    type="text"
+                    class="variant-name-input w-full px-3 py-2 rounded-lg border border-border bg-surface text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition"
+                    placeholder={strings.sellerProductVariantNamePlaceholder}
+                    value={variantName}
+                />
+            </div>
+            <div class="sm:col-span-3">
+                <label class="block text-[11px] font-medium text-text-tertiary mb-1.5">{strings.sellerProductVariantPriceLabel}</label>
+                <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    class="variant-price-input w-full px-3 py-2 rounded-lg border border-border bg-surface text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition tabular-nums"
+                    placeholder={strings.sellerProductVariantPricePlaceholder}
+                    value={price || ''}
+                />
+            </div>
+            <div class="sm:col-span-2">
+                <label class="block text-[11px] font-medium text-text-tertiary mb-1.5">{strings.sellerProductVariantStockLabel}</label>
+                <input
+                    type="number"
+                    min="0"
+                    class="variant-stock-input w-full px-3 py-2 rounded-lg border border-border bg-surface text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition tabular-nums"
+                    placeholder={strings.sellerProductVariantStockPlaceholder}
+                    value={stock || ''}
+                />
+            </div>
+            <div class="sm:col-span-2 flex items-end pb-1">
+                <label class="flex items-center gap-2 text-xs text-text-secondary cursor-pointer select-none">
+                    <input type="checkbox" class="variant-default-checkbox rounded border-border accent-neutral-900 dark:accent-white" checked={isDefault} />
+                    {strings.sellerProductVariantDefault}
+                </label>
+            </div>
+        </div>
+
+        <!-- Imagen + Personalizar envío -->
+        <div class="flex items-center gap-3 pt-3 border-t border-border flex-wrap">
+            <div class="variant-thumb w-11 h-11 rounded-lg border border-border bg-surface overflow-hidden flex items-center justify-center shrink-0">
+                {variantImage ? (
+                    <img src={variantImage} alt="" class="w-full h-full object-cover" />
+                ) : (
+                    <Icon name="image" size={16} class="text-text-tertiary" />
+                )}
+            </div>
+            <button type="button" class="variant-image-btn flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium text-text-secondary border border-border hover:bg-border-light transition-colors">
+                <Icon name="camera" size={12} />
+                {variantImage ? 'Cambiar foto' : 'Subir foto'}
+            </button>
+            <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" class="variant-image-input hidden" />
+            <button type="button" class="variant-customize-shipping-btn ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium text-text-secondary border border-border hover:bg-border-light transition-colors">
+                <Icon name="truck" size={12} />
+                <span class="variant-customize-shipping-label">{hasShippingOverride ? strings.sellerProductVariantEditShipping : strings.sellerProductVariantCustomizeShipping}</span>
+            </button>
+        </div>
+
+        <!-- Override status -->
+        <p class={`variant-shipping-status text-[11px] flex items-center gap-1.5 ${hasShippingOverride ? 'text-accent' : 'text-text-tertiary'}`}>
+            <span class="variant-shipping-status-icon">{hasShippingOverride ? '✦' : '·'}</span>
+            <span class="variant-shipping-status-text">{hasShippingOverride ? strings.sellerProductVariantUsesCustomShipping : strings.sellerProductVariantUsesCommonShipping}</span>
+            {hasShippingOverride && (
+                <button type="button" class="variant-reset-shipping-btn ml-1 text-text-tertiary hover:text-text-primary underline underline-offset-2">{strings.sellerProductVariantResetShipping}</button>
+            )}
+        </p>
+
+        <!-- Per-variant shipping override (hidden inputs, populated via modal) -->
+        <div class="variant-shipping-override hidden" data-shipping-override={hasShippingOverride ? 'true' : 'false'}>
+            <input type="hidden" class="variant-weight-input" value={hasShippingOverride ? (v.weight_kg ?? '') : ''} />
+            <input type="hidden" class="variant-length-input" value={hasShippingOverride ? (v.length_cm ?? '') : ''} />
+            <input type="hidden" class="variant-width-input" value={hasShippingOverride ? (v.width_cm ?? '') : ''} />
+            <input type="hidden" class="variant-height-input" value={hasShippingOverride ? (v.height_cm ?? '') : ''} />
+            <input type="hidden" class="variant-shipping-input" value={hasShippingOverride ? (v.shipping_cost ?? '') : ''} />
+        </div>
+    </div>
+</article>

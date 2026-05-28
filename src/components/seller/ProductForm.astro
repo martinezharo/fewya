@@ -1,6 +1,8 @@
 ---
 import Icon from '../icons/Icon.astro';
 import ShippingEditorPanel from './ShippingEditorPanel.astro';
+import VariantRow from './VariantRow.astro';
+import VariantShippingModal from './VariantShippingModal.astro';
 import { strings, categories } from '../../lib/core/i18n';
 
 interface VariantData {
@@ -55,7 +57,7 @@ const galleryImages: string[] = product?.gallery_images ?? [];
 const isActive = product?.is_active ?? true;
 const specs = product?.specifications ?? {};
 
-const initialVariants = (variants && variants.length > 0) ? variants : [
+const initialVariants: VariantData[] = (variants && variants.length > 0) ? variants : [
     { variant_name: '', price: 0, stock: 0, is_default: true, variant_image: null, weight_kg: shippingDefaults?.weight_kg ?? null, length_cm: shippingDefaults?.length_cm ?? null, width_cm: shippingDefaults?.width_cm ?? null, height_cm: shippingDefaults?.height_cm ?? null, shipping_cost: shippingDefaults?.shipping_cost ?? null }
 ];
 
@@ -246,116 +248,13 @@ function variantHasShippingOverride(v: VariantData): boolean {
 
                 <div id="variants-container" class="space-y-2">
                     {initialVariants.map((v) => (
-                        <article
-                            class="variant-row rounded-xl border border-border bg-bg overflow-hidden"
-                            data-variant-id={v.id ?? ''}
-                            data-is-new={v.id ? 'false' : 'true'}
-                            data-variant-image={v.variant_image ?? ''}
-                        >
-                            <header class="variant-header flex items-center gap-2.5 px-4 py-3 cursor-pointer hover:bg-border-light/40 transition-colors select-none">
-                                <svg class="variant-chevron text-text-tertiary transition-transform duration-200 shrink-0" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>
-                                <span class="variant-name-display text-sm font-medium text-text-primary min-w-0 truncate">{v.variant_name || strings.sellerProductVariantPlaceholderName}</span>
-                                {v.is_default && (
-                                    <span class="variant-default-pill inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-medium bg-accent text-bg shrink-0">{strings.sellerProductVariantDefault}</span>
-                                )}
-                                <span class="variant-summary-meta hidden sm:flex items-center gap-1.5 text-xs text-text-secondary tabular-nums shrink-0">
-                                    <span class="text-text-tertiary">·</span>
-                                    <span class="variant-price-display">{v.price ? `${v.price.toFixed(2)} €` : '—'}</span>
-                                    <span class="text-text-tertiary">·</span>
-                                    <span class="variant-stock-display">{`${v.stock ?? 0} uds`}</span>
-                                </span>
-                                <span class="variant-summary-shipping hidden sm:inline ml-auto text-xs text-text-secondary tabular-nums truncate"></span>
-                                <span class="variant-summary-warning hidden ml-auto items-center gap-1 text-amber-600 dark:text-amber-400 text-xs font-medium shrink-0">
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                                    {strings.sellerProductVariantSummaryMissing}
-                                </span>
-                                <button type="button" class="variant-remove-btn flex items-center justify-center w-7 h-7 rounded-lg text-text-tertiary hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors shrink-0" aria-label={strings.sellerProductVariantRemove}>
-                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                                </button>
-                            </header>
-
-                            <div class="variant-body hidden border-t border-border px-4 py-4 space-y-5">
-                                <!-- Datos básicos -->
-                                <div class="grid gap-3 sm:grid-cols-12">
-                                    <div class="sm:col-span-5">
-                                        <label class="block text-[11px] font-medium text-text-tertiary mb-1.5">{strings.sellerProductVariantNameLabel}</label>
-                                        <input
-                                            type="text"
-                                            class="variant-name-input w-full px-3 py-2 rounded-lg border border-border bg-surface text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition"
-                                            placeholder={strings.sellerProductVariantNamePlaceholder}
-                                            value={v.variant_name}
-                                        />
-                                    </div>
-                                    <div class="sm:col-span-3">
-                                        <label class="block text-[11px] font-medium text-text-tertiary mb-1.5">{strings.sellerProductVariantPriceLabel}</label>
-                                        <input
-                                            type="number"
-                                            step="0.01"
-                                            min="0"
-                                            class="variant-price-input w-full px-3 py-2 rounded-lg border border-border bg-surface text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition tabular-nums"
-                                            placeholder={strings.sellerProductVariantPricePlaceholder}
-                                            value={v.price}
-                                        />
-                                    </div>
-                                    <div class="sm:col-span-2">
-                                        <label class="block text-[11px] font-medium text-text-tertiary mb-1.5">{strings.sellerProductVariantStockLabel}</label>
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            class="variant-stock-input w-full px-3 py-2 rounded-lg border border-border bg-surface text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition tabular-nums"
-                                            placeholder={strings.sellerProductVariantStockPlaceholder}
-                                            value={v.stock}
-                                        />
-                                    </div>
-                                    <div class="sm:col-span-2 flex items-end pb-1">
-                                        <label class="flex items-center gap-2 text-xs text-text-secondary cursor-pointer select-none">
-                                            <input type="checkbox" class="variant-default-checkbox rounded border-border accent-neutral-900 dark:accent-white" checked={v.is_default} />
-                                            {strings.sellerProductVariantDefault}
-                                        </label>
-                                    </div>
-                                </div>
-
-                                <!-- Imagen + Personalizar envío -->
-                                <div class="flex items-center gap-3 pt-3 border-t border-border flex-wrap">
-                                    <div class="variant-thumb w-11 h-11 rounded-lg border border-border bg-surface overflow-hidden flex items-center justify-center shrink-0">
-                                        {v.variant_image ? (
-                                            <img src={v.variant_image} alt="" class="w-full h-full object-cover" />
-                                        ) : (
-                                            <Icon name="image" size={16} class="text-text-tertiary" />
-                                        )}
-                                    </div>
-                                    <button type="button" class="variant-image-btn flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium text-text-secondary border border-border hover:bg-border-light transition-colors">
-                                        <Icon name="camera" size={12} />
-                                        {v.variant_image ? 'Cambiar foto' : 'Subir foto'}
-                                    </button>
-                                    <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" class="variant-image-input hidden" />
-                                    <button type="button" class="variant-customize-shipping-btn ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium text-text-secondary border border-border hover:bg-border-light transition-colors">
-                                        <Icon name="truck" size={12} />
-                                        <span class="variant-customize-shipping-label">{variantHasShippingOverride(v) ? strings.sellerProductVariantEditShipping : strings.sellerProductVariantCustomizeShipping}</span>
-                                    </button>
-                                </div>
-
-                                <!-- Override status -->
-                                <p class={`variant-shipping-status text-[11px] flex items-center gap-1.5 ${variantHasShippingOverride(v) ? 'text-accent' : 'text-text-tertiary'}`}>
-                                    <span class="variant-shipping-status-icon">{variantHasShippingOverride(v) ? '✦' : '·'}</span>
-                                    <span class="variant-shipping-status-text">{variantHasShippingOverride(v) ? strings.sellerProductVariantUsesCustomShipping : strings.sellerProductVariantUsesCommonShipping}</span>
-                                    {variantHasShippingOverride(v) && (
-                                        <button type="button" class="variant-reset-shipping-btn ml-1 text-text-tertiary hover:text-text-primary underline underline-offset-2">{strings.sellerProductVariantResetShipping}</button>
-                                    )}
-                                </p>
-
-                                <!-- Per-variant shipping override (hidden inputs, populated via modal) -->
-                                <div class="variant-shipping-override hidden" data-shipping-override={variantHasShippingOverride(v) ? 'true' : 'false'}>
-                                    <input type="hidden" class="variant-weight-input" value={v.weight_kg ?? ''} />
-                                    <input type="hidden" class="variant-length-input" value={v.length_cm ?? ''} />
-                                    <input type="hidden" class="variant-width-input" value={v.width_cm ?? ''} />
-                                    <input type="hidden" class="variant-height-input" value={v.height_cm ?? ''} />
-                                    <input type="hidden" class="variant-shipping-input" value={v.shipping_cost ?? ''} />
-                                </div>
-                            </div>
-                        </article>
+                        <VariantRow variant={v} hasShippingOverride={variantHasShippingOverride(v)} />
                     ))}
                 </div>
+
+                <template id="variant-row-template">
+                    <VariantRow />
+                </template>
 
                 <button
                     type="button"
@@ -447,95 +346,7 @@ function variantHasShippingOverride(v: VariantData): boolean {
     </div>
 </div>
 
-<!-- Modal: personalizar envío para una variante -->
-<div id="variant-shipping-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4">
-    <div class="bg-surface rounded-2xl border border-border w-full max-w-md shadow-xl max-h-[90vh] overflow-y-auto">
-        <header class="flex items-center justify-between gap-3 px-5 py-4 border-b border-border">
-            <div class="min-w-0">
-                <h3 class="text-base font-semibold text-text-primary">{strings.sellerProductShippingModalTitle}</h3>
-                <p class="text-xs text-text-tertiary mt-0.5 truncate">
-                    <span>{strings.sellerProductShippingModalFor}</span>
-                    <span id="variant-shipping-modal-variant-name" class="font-medium text-text-secondary">—</span>
-                </p>
-            </div>
-            <button type="button" id="variant-shipping-modal-close" class="flex items-center justify-center w-8 h-8 rounded-lg text-text-tertiary hover:text-text-primary hover:bg-border-light transition-colors shrink-0" aria-label={strings.sellerProductShippingModalClose}>
-                <Icon name="x" size={16} />
-            </button>
-        </header>
-
-        <div class="p-5 space-y-5">
-            <!-- Dimensiones -->
-            <div>
-                <label class="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-tertiary block mb-2">{strings.sellerProductVariantSizeWeight}</label>
-                <div class="grid gap-2.5 grid-cols-2 sm:grid-cols-4">
-                    <div>
-                        <label class="block text-[10px] font-medium uppercase tracking-wider text-text-tertiary mb-1">{strings.sellerProductVariantWeightLabel}</label>
-                        <input type="number" id="modal-weight-input" step="0.001" min="0" class="w-full px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition tabular-nums" placeholder={strings.sellerProductVariantWeightPlaceholder} />
-                    </div>
-                    <div>
-                        <label class="block text-[10px] font-medium uppercase tracking-wider text-text-tertiary mb-1">{strings.sellerProductVariantLengthLabel}</label>
-                        <input type="number" id="modal-length-input" step="0.1" min="0" class="w-full px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition tabular-nums" placeholder={strings.sellerProductVariantLengthPlaceholder} />
-                    </div>
-                    <div>
-                        <label class="block text-[10px] font-medium uppercase tracking-wider text-text-tertiary mb-1">{strings.sellerProductVariantWidthLabel}</label>
-                        <input type="number" id="modal-width-input" step="0.1" min="0" class="w-full px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition tabular-nums" placeholder={strings.sellerProductVariantWidthPlaceholder} />
-                    </div>
-                    <div>
-                        <label class="block text-[10px] font-medium uppercase tracking-wider text-text-tertiary mb-1">{strings.sellerProductVariantHeightLabel}</label>
-                        <input type="number" id="modal-height-input" step="0.1" min="0" class="w-full px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition tabular-nums" placeholder={strings.sellerProductVariantHeightPlaceholder} />
-                    </div>
-                </div>
-            </div>
-
-            <!-- Coste -->
-            <div id="modal-shipping-cost" class="pt-4 border-t border-border" data-free="false">
-                <div class="flex items-center justify-between gap-3 mb-3 flex-wrap">
-                    <label class="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-tertiary">{strings.sellerProductVariantBaseShipping}</label>
-                    <label class="flex items-center gap-2 cursor-pointer select-none">
-                        <span class="text-[11px] font-medium text-text-secondary">{strings.sellerProductVariantFreeShipping}</span>
-                        <span class="relative inline-flex shrink-0">
-                            <input type="checkbox" id="modal-free-shipping" class="sr-only peer" />
-                            <span class="block w-9 h-5 bg-border-light rounded-full peer-focus-visible:ring-2 peer-focus-visible:ring-accent peer-checked:bg-accent transition-colors"></span>
-                            <span class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-transform peer-checked:translate-x-4"></span>
-                        </span>
-                    </label>
-                </div>
-                <div id="modal-shipping-input-wrap" class="flex items-center gap-2">
-                    <input type="number" id="modal-shipping-input" step="0.01" min="0" class="flex-1 px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition tabular-nums" placeholder={strings.sellerProductVariantShippingPlaceholder} />
-                    <span class="text-xs text-text-tertiary shrink-0 px-1">€</span>
-                </div>
-                <p id="modal-free-shipping-display" class="text-xs text-text-secondary hidden">{strings.sellerProductVariantFreeShippingActive}</p>
-            </div>
-
-            <!-- Live preview -->
-            <div id="modal-shipping-live" class="shipping-live pt-3 border-t border-border">
-                <button type="button" class="shipping-toggle flex items-center w-full gap-2 text-left text-xs text-text-secondary hover:text-text-primary transition-colors">
-                    <Icon name="truck" size={13} class="text-text-tertiary shrink-0" />
-                    <span class="shipping-summary truncate flex-1 min-w-0">{strings.sellerProductShippingLiveAwaiting}</span>
-                    <span class="shipping-billable hidden text-[10px] font-medium text-text-tertiary tabular-nums shrink-0"></span>
-                    <span class="shipping-quotes-cta hidden items-center gap-1 text-[11px] font-medium text-accent shrink-0">
-                        <span class="shipping-quotes-cta-show">{strings.sellerProductShippingShowQuotes}</span>
-                        <span class="shipping-quotes-cta-hide hidden">{strings.sellerProductShippingHideQuotes}</span>
-                    </span>
-                </button>
-                <div class="shipping-quotes hidden grid gap-2 mt-3"></div>
-                <div class="shipping-loading hidden items-center gap-2 py-1.5 text-[11px] text-text-tertiary mt-1">
-                    <svg class="animate-spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
-                    <span>{strings.sellerProductShippingLiveLoading}</span>
-                </div>
-                <p class="shipping-error hidden text-[11px] text-amber-700 dark:text-amber-400 mt-2"></p>
-            </div>
-        </div>
-
-        <footer class="flex items-center gap-2 px-5 py-4 border-t border-border bg-bg/40 flex-wrap">
-            <button type="button" id="variant-shipping-modal-reset" class="text-xs text-text-tertiary hover:text-text-primary underline underline-offset-2">{strings.sellerProductShippingModalReset}</button>
-            <div class="ml-auto flex items-center gap-2">
-                <button type="button" id="variant-shipping-modal-cancel" class="px-4 py-2 rounded-full text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-border-light transition-colors">{strings.sellerProductShippingModalCancel}</button>
-                <button type="button" id="variant-shipping-modal-apply" class="px-4 py-2 rounded-full text-sm font-medium bg-accent text-bg hover:scale-[1.02] transition-transform">{strings.sellerProductShippingModalApply}</button>
-            </div>
-        </footer>
-    </div>
-</div>
+<VariantShippingModal />
 
 <script>
     import { strings } from '../../lib/core/i18n';
@@ -544,20 +355,12 @@ function variantHasShippingOverride(v: VariantData): boolean {
     import {
         readNum,
         renderPreviewForScope,
-        toggleQuotesVisibility,
         applyShippingDefaults,
         initShippingEditor,
     } from '../../lib/ui/shipping-editor';
+    import { openVariantShippingModal, type ShippingValues } from '../../lib/ui/variant-shipping-modal';
     import { compressImage, PRODUCT_PRESET } from '../../lib/ui/imageCompress';
     import Sortable from 'sortablejs';
-
-    interface ShippingValues {
-        weight: number;
-        length: number;
-        width: number;
-        height: number;
-        shipping: number;
-    }
 
     function valuesEqual(a: number, b: number): boolean {
         const aN = Number.isFinite(a);
@@ -585,6 +388,7 @@ function variantHasShippingOverride(v: VariantData): boolean {
         const imageGallery = document.getElementById('image-gallery') as HTMLDivElement;
         const imageUploadInput = document.getElementById('image-upload-input') as HTMLInputElement;
         const variantsContainer = document.getElementById('variants-container') as HTMLDivElement;
+        const variantTemplate = document.getElementById('variant-row-template') as HTMLTemplateElement | null;
         const addVariantBtn = document.getElementById('add-variant-btn') as HTMLButtonElement;
         const specsContainer = document.getElementById('specs-container') as HTMLDivElement;
         const addSpecBtn = document.getElementById('add-spec-btn') as HTMLButtonElement;
@@ -601,26 +405,6 @@ function variantHasShippingOverride(v: VariantData): boolean {
         const centralUseDefaultsBtn = document.getElementById('central-use-defaults-btn') as HTMLButtonElement | null;
         const centralPanel = document.querySelector<HTMLElement>('.shipping-editor-panel[data-id-prefix="central"]');
 
-        // Modal
-        const modal = document.getElementById('variant-shipping-modal') as HTMLElement;
-        const modalNameEl = document.getElementById('variant-shipping-modal-variant-name') as HTMLElement;
-        const modalWeight = document.getElementById('modal-weight-input') as HTMLInputElement;
-        const modalLength = document.getElementById('modal-length-input') as HTMLInputElement;
-        const modalWidth = document.getElementById('modal-width-input') as HTMLInputElement;
-        const modalHeight = document.getElementById('modal-height-input') as HTMLInputElement;
-        const modalShippingInput = document.getElementById('modal-shipping-input') as HTMLInputElement;
-        const modalFreeShipping = document.getElementById('modal-free-shipping') as HTMLInputElement;
-        const modalShippingCost = document.getElementById('modal-shipping-cost') as HTMLElement;
-        const modalShippingInputWrap = document.getElementById('modal-shipping-input-wrap') as HTMLElement;
-        const modalFreeShippingDisplay = document.getElementById('modal-free-shipping-display') as HTMLElement;
-        const modalShippingLive = document.getElementById('modal-shipping-live') as HTMLElement;
-        const modalCloseBtn = document.getElementById('variant-shipping-modal-close') as HTMLButtonElement;
-        const modalCancelBtn = document.getElementById('variant-shipping-modal-cancel') as HTMLButtonElement;
-        const modalApplyBtn = document.getElementById('variant-shipping-modal-apply') as HTMLButtonElement;
-        const modalResetBtn = document.getElementById('variant-shipping-modal-reset') as HTMLButtonElement;
-
-        let activeModalRow: HTMLElement | null = null;
-
         if (!titleInput || !saveBtn) return;
 
         // ---- Effective shipping helpers ----
@@ -632,16 +416,6 @@ function variantHasShippingOverride(v: VariantData): boolean {
                 width: readNum(centralWidth),
                 height: readNum(centralHeight),
                 shipping: readNum(centralShippingInput),
-            };
-        }
-
-        function readModalValues(): ShippingValues {
-            return {
-                weight: readNum(modalWeight),
-                length: readNum(modalLength),
-                width: readNum(modalWidth),
-                height: readNum(modalHeight),
-                shipping: readNum(modalShippingInput),
             };
         }
 
@@ -692,11 +466,6 @@ function variantHasShippingOverride(v: VariantData): boolean {
         function renderCentralPreview() {
             const v = getCentralValues();
             renderPreviewForScope(centralShippingLive, v.weight, v.length, v.width, v.height);
-        }
-
-        function renderModalPreview() {
-            const v = readModalValues();
-            renderPreviewForScope(modalShippingLive, v.weight, v.length, v.width, v.height);
         }
 
         function updateVariantHeader(row: HTMLElement) {
@@ -966,6 +735,33 @@ function variantHasShippingOverride(v: VariantData): boolean {
 
         // ---- Variantes ----
 
+        function openShippingModalForRow(row: HTMLElement) {
+            const nameInput = row.querySelector('.variant-name-input') as HTMLInputElement | null;
+            const variantName = nameInput?.value.trim() || strings.sellerProductVariantPlaceholderName;
+            const initial = readVariantOverrideValues(row) ?? getCentralValues();
+            openVariantShippingModal({
+                variantName,
+                initialValues: initial,
+                onApply: (values) => {
+                    const c = getCentralValues();
+                    const same = valuesEqual(values.weight, c.weight)
+                        && valuesEqual(values.length, c.length)
+                        && valuesEqual(values.width, c.width)
+                        && valuesEqual(values.height, c.height)
+                        && valuesEqual(values.shipping, c.shipping);
+                    if (same) clearVariantOverride(row);
+                    else setVariantOverride(row, values);
+                    updateVariantHeader(row);
+                    refreshChecks();
+                },
+                onReset: () => {
+                    clearVariantOverride(row);
+                    updateVariantHeader(row);
+                    refreshChecks();
+                },
+            });
+        }
+
         variantsContainer.addEventListener('click', (e: MouseEvent) => {
             const target = e.target as HTMLElement;
 
@@ -982,7 +778,7 @@ function variantHasShippingOverride(v: VariantData): boolean {
             if (customizeBtn) {
                 e.stopPropagation();
                 const row = customizeBtn.closest('.variant-row') as HTMLElement;
-                openShippingModal(row);
+                openShippingModalForRow(row);
                 return;
             }
 
@@ -1094,69 +890,14 @@ function variantHasShippingOverride(v: VariantData): boolean {
         });
 
         addVariantBtn.addEventListener('click', () => {
-            const row = createVariantRow(false);
+            if (!variantTemplate) return;
+            const row = variantTemplate.content.firstElementChild?.cloneNode(true) as HTMLElement | null;
+            if (!row) return;
             variantsContainer.appendChild(row);
             toggleVariantExpansion(row, true);
             row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             refreshChecks();
         });
-
-        function createVariantRow(isDefault: boolean): HTMLElement {
-            const wrap = document.createElement('div');
-            wrap.innerHTML = `
-                <article class="variant-row rounded-xl border border-border bg-bg overflow-hidden" data-variant-id="" data-is-new="true" data-variant-image="">
-                    <header class="variant-header flex items-center gap-2.5 px-4 py-3 cursor-pointer hover:bg-border-light/40 transition-colors select-none">
-                        <svg class="variant-chevron text-text-tertiary transition-transform duration-200 shrink-0" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>
-                        <span class="variant-name-display text-sm font-medium text-text-primary min-w-0 truncate">${strings.sellerProductVariantPlaceholderName}</span>
-                        ${isDefault ? `<span class="variant-default-pill inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-medium bg-accent text-bg shrink-0">${strings.sellerProductVariantDefault}</span>` : ''}
-                        <span class="variant-summary-meta hidden sm:flex items-center gap-1.5 text-xs text-text-secondary tabular-nums shrink-0">
-                            <span class="text-text-tertiary">·</span>
-                            <span class="variant-price-display">—</span>
-                            <span class="text-text-tertiary">·</span>
-                            <span class="variant-stock-display">0 uds</span>
-                        </span>
-                        <span class="variant-summary-shipping hidden sm:inline ml-auto text-xs text-text-secondary tabular-nums truncate"></span>
-                        <span class="variant-summary-warning hidden ml-auto items-center gap-1 text-amber-600 dark:text-amber-400 text-xs font-medium shrink-0">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                            ${strings.sellerProductVariantSummaryMissing}
-                        </span>
-                        <button type="button" class="variant-remove-btn flex items-center justify-center w-7 h-7 rounded-lg text-text-tertiary hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors shrink-0" aria-label="${strings.sellerProductVariantRemove}">
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                        </button>
-                    </header>
-                    <div class="variant-body hidden border-t border-border px-4 py-4 space-y-4">
-                        <div class="grid gap-3 sm:grid-cols-12">
-                            <div class="sm:col-span-5"><label class="block text-[11px] font-medium text-text-tertiary mb-1.5">${strings.sellerProductVariantNameLabel}</label><input type="text" class="variant-name-input w-full px-3 py-2 rounded-lg border border-border bg-surface text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition" placeholder="${strings.sellerProductVariantNamePlaceholder}" /></div>
-                            <div class="sm:col-span-3"><label class="block text-[11px] font-medium text-text-tertiary mb-1.5">${strings.sellerProductVariantPriceLabel}</label><input type="number" step="0.01" min="0" class="variant-price-input w-full px-3 py-2 rounded-lg border border-border bg-surface text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition tabular-nums" placeholder="${strings.sellerProductVariantPricePlaceholder}" /></div>
-                            <div class="sm:col-span-2"><label class="block text-[11px] font-medium text-text-tertiary mb-1.5">${strings.sellerProductVariantStockLabel}</label><input type="number" min="0" class="variant-stock-input w-full px-3 py-2 rounded-lg border border-border bg-surface text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition tabular-nums" placeholder="${strings.sellerProductVariantStockPlaceholder}" /></div>
-                            <div class="sm:col-span-2 flex items-end pb-1"><label class="flex items-center gap-2 text-xs text-text-secondary cursor-pointer select-none"><input type="checkbox" class="variant-default-checkbox rounded border-border accent-neutral-900 dark:accent-white" ${isDefault ? 'checked' : ''} />${strings.sellerProductVariantDefault}</label></div>
-                        </div>
-                        <div class="flex items-center gap-3 pt-3 border-t border-border flex-wrap">
-                            <div class="variant-thumb w-11 h-11 rounded-lg border border-border bg-surface overflow-hidden flex items-center justify-center shrink-0">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="text-text-tertiary"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-                            </div>
-                            <button type="button" class="variant-image-btn flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium text-text-secondary border border-border hover:bg-border-light transition-colors"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>Subir foto</button>
-                            <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" class="variant-image-input hidden" />
-                            <button type="button" class="variant-customize-shipping-btn ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium text-text-secondary border border-border hover:bg-border-light transition-colors">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10 17h4V5H2v12h3"/><path d="M20 17h2v-3.34a4 4 0 0 0-1.17-2.83L19 9h-5v8h1"/><circle cx="7.5" cy="17.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>
-                                <span class="variant-customize-shipping-label">${strings.sellerProductVariantCustomizeShipping}</span>
-                            </button>
-                        </div>
-                        <p class="variant-shipping-status text-[11px] flex items-center gap-1.5 text-text-tertiary">
-                            <span class="variant-shipping-status-icon">·</span>
-                            <span class="variant-shipping-status-text">${strings.sellerProductVariantUsesCommonShipping}</span>
-                        </p>
-                        <div class="variant-shipping-override hidden" data-shipping-override="false">
-                            <input type="hidden" class="variant-weight-input" value="" />
-                            <input type="hidden" class="variant-length-input" value="" />
-                            <input type="hidden" class="variant-width-input" value="" />
-                            <input type="hidden" class="variant-height-input" value="" />
-                            <input type="hidden" class="variant-shipping-input" value="" />
-                        </div>
-                    </div>
-                </article>`;
-            return wrap.firstElementChild as HTMLElement;
-        }
 
         // ---- Specs ----
 
@@ -1171,102 +912,6 @@ function variantHasShippingOverride(v: VariantData): boolean {
             const removeBtn = (e.target as HTMLElement).closest('.spec-remove-btn') as HTMLElement | null;
             if (!removeBtn) return;
             removeBtn.closest('.spec-row')!.remove();
-        });
-
-        // ---- Modal ----
-
-        function openShippingModal(row: HTMLElement) {
-            activeModalRow = row;
-
-            const name = (row.querySelector('.variant-name-input') as HTMLInputElement).value.trim() || strings.sellerProductVariantPlaceholderName;
-            modalNameEl.textContent = name;
-
-            const init = readVariantOverrideValues(row) ?? getCentralValues();
-            modalWeight.value = Number.isFinite(init.weight) ? String(init.weight) : '';
-            modalLength.value = Number.isFinite(init.length) ? String(init.length) : '';
-            modalWidth.value = Number.isFinite(init.width) ? String(init.width) : '';
-            modalHeight.value = Number.isFinite(init.height) ? String(init.height) : '';
-            modalShippingInput.value = Number.isFinite(init.shipping) ? String(init.shipping) : '';
-
-            const isFree = init.shipping === 0;
-            modalFreeShipping.checked = isFree;
-            if (isFree) {
-                modalShippingInputWrap.classList.add('hidden');
-                modalFreeShippingDisplay.classList.remove('hidden');
-                modalShippingCost.dataset.free = 'true';
-            } else {
-                modalShippingInputWrap.classList.remove('hidden');
-                modalFreeShippingDisplay.classList.add('hidden');
-                modalShippingCost.dataset.free = 'false';
-            }
-
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
-            renderModalPreview();
-        }
-
-        function closeShippingModal() {
-            modal.classList.add('hidden');
-            modal.classList.remove('flex');
-            activeModalRow = null;
-        }
-
-        function applyShippingModal() {
-            if (!activeModalRow) return;
-            const row = activeModalRow;
-            const v = readModalValues();
-            const c = getCentralValues();
-            const same = valuesEqual(v.weight, c.weight)
-                && valuesEqual(v.length, c.length)
-                && valuesEqual(v.width, c.width)
-                && valuesEqual(v.height, c.height)
-                && valuesEqual(v.shipping, c.shipping);
-
-            if (same) {
-                clearVariantOverride(row);
-            } else {
-                setVariantOverride(row, v);
-            }
-            updateVariantHeader(row);
-            refreshChecks();
-            closeShippingModal();
-        }
-
-        modalCloseBtn.addEventListener('click', closeShippingModal);
-        modalCancelBtn.addEventListener('click', closeShippingModal);
-        modal.addEventListener('click', (e: MouseEvent) => {
-            if (e.target === modal) closeShippingModal();
-        });
-        modalApplyBtn.addEventListener('click', applyShippingModal);
-        modalResetBtn.addEventListener('click', () => {
-            if (!activeModalRow) return;
-            clearVariantOverride(activeModalRow);
-            updateVariantHeader(activeModalRow);
-            refreshChecks();
-            closeShippingModal();
-        });
-        modalFreeShipping.addEventListener('change', () => {
-            if (modalFreeShipping.checked) {
-                if (modalShippingInput.value !== '0') modalShippingInput.dataset.prevValue = modalShippingInput.value;
-                modalShippingInput.value = '0';
-                modalShippingInputWrap.classList.add('hidden');
-                modalFreeShippingDisplay.classList.remove('hidden');
-                modalShippingCost.dataset.free = 'true';
-            } else {
-                modalShippingInput.value = modalShippingInput.dataset.prevValue ?? '';
-                modalShippingInputWrap.classList.remove('hidden');
-                modalFreeShippingDisplay.classList.add('hidden');
-                modalShippingCost.dataset.free = 'false';
-                modalShippingInput.focus();
-            }
-        });
-        [modalWeight, modalLength, modalWidth, modalHeight].forEach((el) => {
-            el.addEventListener('input', renderModalPreview);
-        });
-        modalShippingLive.addEventListener('click', (e: MouseEvent) => {
-            if ((e.target as HTMLElement).closest('.shipping-toggle')) {
-                toggleQuotesVisibility(modalShippingLive);
-            }
         });
 
         // ---- Save ----
