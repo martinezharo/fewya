@@ -469,6 +469,7 @@ export const strings = {
     incidentCancelDismiss: 'Volver',
     incidentCancelledToast: 'Incidencia cancelada y pedido confirmado',
     incidentCancelError: 'No se pudo cancelar la incidencia',
+    orderPayoutDestinationUnavailable: 'El vendedor no puede recibir pagos en este momento. Inténtalo de nuevo más tarde o contacta con soporte.',
 
     // Seller incident refund
     sellerIncidentRefundBtn: 'Reembolsar pedido',

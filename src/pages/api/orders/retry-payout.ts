@@ -3,10 +3,8 @@ import { createSupabaseAuthClient } from '../../../lib/core/auth';
 import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
 import { strings } from '../../../lib/core/i18n';
 import { getStripeClient } from '../../../lib/payments/stripe';
-import { releaseOrderFunds } from '../../../lib/cart/checkout';
-import { buildPayoutItemsFromJoins, type JoinedOrderItem } from '../../../lib/orders/orderJoins';
-import { getLabelCostByShop } from '../../../lib/orders/shipmentCost';
 import { FUNDS_RELEASE_STATUS, type FundsReleaseStatus } from '../../../lib/orders/orderStatus';
+import { fetchAndReleaseFunds } from '../../../lib/orders/payoutFlow';
 
 function jsonResponse(payload: Record<string, unknown>, status: number) {
     return new Response(JSON.stringify(payload), {
@@ -72,49 +70,16 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         return jsonResponse({ error: strings.apiInternalError }, 400);
     }
 
-    // Fetch order items
-    const { data: orderItems } = await adminClient
-        .from('order_items')
-        .select(`
-            quantity,
-            price_at_purchase,
-            product_variants (
-                shipping_cost,
-                products (
-                    shops (
-                        id,
-                        name,
-                        slug,
-                        shop_payment_accounts (
-                            stripe_account_id
-                        )
-                    )
-                )
-            )
-        `)
-        .eq('order_id', orderId);
-
-    const payoutItems = buildPayoutItemsFromJoins((orderItems ?? []) as JoinedOrderItem[]);
-
     const stripe = getStripeClient();
-    const labelCostByShop = await getLabelCostByShop(adminClient, typedOrder.id);
-    const releaseResult = await releaseOrderFunds({
+    const releaseResult = await fetchAndReleaseFunds({
+        adminClient,
         stripe,
-        orderId: typedOrder.id,
-        publicId: typedOrder.public_id,
-        paymentIntentId: typedOrder.stripe_payment_intent_id!,
-        items: payoutItems,
-        labelCostByShop,
+        order: {
+            id: typedOrder.id,
+            public_id: typedOrder.public_id,
+            stripe_payment_intent_id: typedOrder.stripe_payment_intent_id,
+        },
     });
-
-    // Record payout outcome
-    await adminClient
-        .from('orders')
-        .update({
-            funds_release_status: releaseResult.success ? FUNDS_RELEASE_STATUS.RELEASED : FUNDS_RELEASE_STATUS.FAILED,
-            funds_release_last_error: releaseResult.success ? null : (releaseResult.error ?? null),
-        })
-        .eq('id', orderId);
 
     if (!releaseResult.success) {
         return jsonResponse({ error: strings.apiInternalError }, 500);

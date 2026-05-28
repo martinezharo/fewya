@@ -51,6 +51,8 @@ CREATE INDEX idx_orders_buyer_id ON public.orders(buyer_id);
 CREATE INDEX idx_orders_buyer_status ON public.orders(buyer_id, status);
 CREATE INDEX idx_orders_delivered_pending_release ON public.orders(delivered_at)
     WHERE status = 'delivered' AND funds_released_at IS NULL;
+CREATE INDEX idx_orders_funds_release_failed ON public.orders(id)
+    WHERE funds_release_status = 'failed';
 CREATE INDEX idx_orders_buyer_not_hidden ON public.orders(buyer_id, created_at DESC)
     WHERE buyer_hidden_at IS NULL;
 

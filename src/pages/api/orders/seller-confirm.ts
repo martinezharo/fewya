@@ -3,12 +3,11 @@ import { createSupabaseAuthClient } from '../../../lib/core/auth';
 import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
 import { strings } from '../../../lib/core/i18n';
 import { getStripeClient } from '../../../lib/payments/stripe';
-import { releaseOrderFunds } from '../../../lib/cart/checkout';
 import { createAutoReviewsForOrder } from '../../../lib/orders/autoReview';
-import { buildPayoutItemsFromJoins, pickOne, type JoinedOrderItem } from '../../../lib/orders/orderJoins';
+import { pickOne } from '../../../lib/orders/orderJoins';
 import { FUND_HOLD_MS } from '../../../lib/orders/timing';
-import { getLabelCostByShop } from '../../../lib/orders/shipmentCost';
-import { ORDER_STATUS, FUNDS_RELEASE_STATUS } from '../../../lib/orders/orderStatus';
+import { ORDER_STATUS } from '../../../lib/orders/orderStatus';
+import { fetchAndReleaseFunds } from '../../../lib/orders/payoutFlow';
 
 function jsonResponse(payload: Record<string, unknown>, status: number) {
     return new Response(JSON.stringify(payload), {
@@ -93,48 +92,12 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     }
 
     // 3. Release funds to seller via Stripe
-    const { data: orderItems } = await adminClient
-        .from('order_items')
-        .select(`
-            quantity,
-            price_at_purchase,
-            product_variants (
-                shipping_cost,
-                products (
-                    shops (
-                        id,
-                        name,
-                        slug,
-                        shop_payment_accounts (
-                            stripe_account_id
-                        )
-                    )
-                )
-            )
-        `)
-        .eq('order_id', orderId);
-
-    const payoutItems = buildPayoutItemsFromJoins((orderItems ?? []) as JoinedOrderItem[]);
-
     const stripe = getStripeClient();
-    const labelCostByShop = await getLabelCostByShop(adminClient, order.id);
-    const releaseResult = await releaseOrderFunds({
+    const releaseResult = await fetchAndReleaseFunds({
+        adminClient,
         stripe,
-        orderId: order.id,
-        publicId: order.public_id,
-        paymentIntentId: order.stripe_payment_intent_id,
-        items: payoutItems,
-        labelCostByShop,
+        order: { id: order.id, public_id: order.public_id, stripe_payment_intent_id: order.stripe_payment_intent_id },
     });
-
-    // C3: record payout outcome for monitoring and retry
-    await adminClient
-        .from('orders')
-        .update({
-            funds_release_status: releaseResult.success ? FUNDS_RELEASE_STATUS.RELEASED : FUNDS_RELEASE_STATUS.FAILED,
-            funds_release_last_error: releaseResult.success ? null : (releaseResult.error ?? null),
-        })
-        .eq('id', orderId);
 
     if (!releaseResult.success) {
         console.error(JSON.stringify({
