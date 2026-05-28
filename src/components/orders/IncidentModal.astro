@@ -1,0 +1,249 @@
+---
+import Icon from '../icons/Icon.astro';
+import { strings } from '../../lib/core/i18n';
+
+interface Props {
+    orderId: string;
+    sellerEmail?: string | null;
+}
+
+const { orderId, sellerEmail } = Astro.props;
+---
+
+<div class="incident-modal hidden fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4" data-order-id={orderId}>
+    <div class="w-full max-w-lg rounded-t-2xl sm:rounded-2xl border border-border bg-surface p-5 shadow-xl max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-base font-semibold text-text-primary">{strings.orderReportIncident}</h3>
+            <button type="button" class="close-incident-modal-btn p-1.5 rounded-lg hover:bg-border-light transition-colors text-text-secondary">
+                <Icon name="x" size={18} />
+            </button>
+        </div>
+
+        <div class="p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 mb-4">
+            <p class="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
+                {strings.incidentReturnPolicyNotice}{' '}
+                {sellerEmail ? (
+                    <a href={`mailto:${sellerEmail}`} class="font-semibold underline hover:no-underline text-amber-900 dark:text-amber-200">
+                        {sellerEmail}
+                    </a>
+                ) : (
+                    <span class="font-semibold">el vendedor</span>
+                )}
+                {strings.incidentReturnPolicyNoticeSuffix}
+            </p>
+        </div>
+
+        <div class="flex flex-col gap-4">
+            <div>
+                <label class="block text-sm font-medium text-text-primary mb-1.5">
+                    {strings.incidentDescriptionLabel}
+                </label>
+                <textarea
+                    class="incident-desc-input w-full rounded-xl border border-border bg-bg px-3 py-2.5 text-sm text-text-primary shadow-sm outline-none ring-accent focus:ring-2 transition-shadow resize-none"
+                    rows="4"
+                    placeholder={strings.incidentDescriptionPlaceholder}
+                ></textarea>
+                <p class="incident-desc-error hidden mt-1.5 text-xs text-red-600">{strings.incidentDescriptionError}</p>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-text-primary mb-1.5">
+                    {strings.incidentPhotosLabel}
+                </label>
+                <p class="text-xs text-text-secondary mb-2">{strings.incidentPhotosHint}</p>
+                <div class="flex flex-wrap gap-2 mb-2">
+                    <span class="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 text-[11px] font-medium">
+                        <Icon name="tag" size={10} />
+                        {strings.incidentPhotoTypeShippingLabel}
+                    </span>
+                    <span class="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 text-[11px] font-medium">
+                        <Icon name="package" size={10} />
+                        {strings.incidentPhotoTypePackagingLabel}
+                    </span>
+                    <span class="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300 text-[11px] font-medium">
+                        <Icon name="alert-circle" size={10} />
+                        {strings.incidentPhotoTypeDefectLabel}
+                    </span>
+                </div>
+
+                <label class="flex items-center justify-center gap-2 w-full rounded-xl border-2 border-dashed border-border bg-bg px-4 py-6 cursor-pointer hover:bg-border-light/50 transition-colors">
+                    <Icon name="image" size={20} class="text-text-tertiary" />
+                    <span class="text-sm text-text-secondary">Seleccionar imágenes</span>
+                    <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple class="incident-file-input hidden" />
+                </label>
+
+                <p class="incident-photos-error hidden mt-1.5 text-xs text-red-600">{strings.incidentMinPhotosError}</p>
+
+                <div class="incident-photo-preview grid grid-cols-4 gap-2 mt-3"></div>
+            </div>
+
+            <div class="flex gap-2 justify-end pt-2">
+                <button type="button" class="close-incident-modal-btn px-3 py-1.5 text-sm font-medium text-text-secondary hover:text-text-primary transition-colors">
+                    {strings.incidentCancel}
+                </button>
+                <button type="button" class="submit-incident-btn px-3 py-1.5 text-sm font-semibold rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                    {strings.incidentSubmit}
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    import { strings } from '../../lib/core/i18n';
+    import { toast } from '../../lib/ui/toast';
+    import { setBusy } from '../../lib/ui/busy';
+    import { runSubmit, SubmitError } from '../../lib/ui/submit';
+    import { compressImage, INCIDENT_PRESET } from '../../lib/ui/imageCompress';
+
+    function setupPhotoUpload(modal: HTMLElement) {
+        if (modal.dataset.incidentWired === '1') return;
+        modal.dataset.incidentWired = '1';
+
+        const fileInput = modal.querySelector('.incident-file-input') as HTMLInputElement | null;
+        const previewContainer = modal.querySelector('.incident-photo-preview') as HTMLElement | null;
+        const descInput = modal.querySelector('.incident-desc-input') as HTMLTextAreaElement | null;
+        const descError = modal.querySelector('.incident-desc-error') as HTMLElement | null;
+        const photosError = modal.querySelector('.incident-photos-error') as HTMLElement | null;
+        const submitBtn = modal.querySelector('.submit-incident-btn') as HTMLButtonElement | null;
+        const orderId = modal.dataset.orderId;
+
+        if (!fileInput || !previewContainer || !descInput || !submitBtn || !orderId) return;
+
+        const uploadedPhotos: string[] = [];
+
+        function renderPreviews() {
+            if (!previewContainer) return;
+            previewContainer.innerHTML = '';
+            uploadedPhotos.forEach((url, index) => {
+                const div = document.createElement('div');
+                div.className = 'relative aspect-square rounded-xl overflow-hidden border border-border-light bg-border-light';
+                div.innerHTML = `
+                    <img src="${url}" alt="" class="w-full h-full object-cover" />
+                    <button type="button" data-index="${index}" class="remove-photo-btn absolute top-1 right-1 p-1 rounded-md bg-black/60 text-white hover:bg-black/80 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                    </button>
+                `;
+                previewContainer.appendChild(div);
+            });
+
+            previewContainer.querySelectorAll('.remove-photo-btn').forEach((btn) => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const idx = parseInt((btn as HTMLElement).dataset.index || '0', 10);
+                    uploadedPhotos.splice(idx, 1);
+                    renderPreviews();
+                });
+            });
+        }
+
+        fileInput.addEventListener('change', async () => {
+            const files = Array.from(fileInput.files || []);
+            if (files.length === 0) return;
+
+            const remainingSlots = 20 - uploadedPhotos.length;
+            const toUpload = files.slice(0, remainingSlots);
+
+            if (toUpload.length < files.length) toast.error(strings.incidentMaxPhotosError);
+
+            setBusy(submitBtn!, true, { label: strings.incidentUploading });
+
+            for (const file of toUpload) {
+                const compressed = await compressImage(file, INCIDENT_PRESET);
+                const formData = new FormData();
+                formData.append('file', compressed);
+                formData.append('orderId', orderId!);
+                try {
+                    const res = await fetch('/api/orders/incident-upload', { method: 'POST', body: formData });
+                    const data = await res.json() as { url?: string; error?: string };
+                    if (data.url) uploadedPhotos.push(data.url);
+                    else console.error('Upload error', data.error);
+                } catch (err) {
+                    console.error('Upload failed', err);
+                }
+            }
+
+            setBusy(submitBtn!, false);
+            fileInput.value = '';
+            renderPreviews();
+        });
+
+        submitBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const description = descInput.value || '';
+            const nonSpaceLength = description.replace(/\s/g, '').length;
+            let hasError = false;
+
+            if (nonSpaceLength < 50) {
+                descError?.classList.remove('hidden');
+                descInput.focus();
+                hasError = true;
+            } else {
+                descError?.classList.add('hidden');
+            }
+
+            if (uploadedPhotos.length < 3) {
+                photosError?.classList.remove('hidden');
+                hasError = true;
+            } else {
+                photosError?.classList.add('hidden');
+            }
+
+            if (hasError) return;
+
+            const incidentResult = await runSubmit({
+                button: submitBtn,
+                busyLabel: strings.incidentSubmitting,
+                action: async () => {
+                    const res = await fetch('/api/orders/report-incident', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ orderId, description, photos: uploadedPhotos }),
+                    });
+                    const data = await res.json() as { success?: boolean; error?: string };
+                    if (!data.success) throw new SubmitError(data.error || strings.orderReportIncidentError);
+                    return data;
+                },
+                successMsg: strings.incidentReportedToast,
+            });
+            if (incidentResult.ok) {
+                window.setTimeout(() => window.location.reload(), 800);
+            }
+        });
+
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.classList.add('hidden');
+                document.body.style.overflow = '';
+            }
+        });
+
+        modal.querySelectorAll<HTMLButtonElement>('.close-incident-modal-btn').forEach((btn) => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                modal.classList.add('hidden');
+                document.body.style.overflow = '';
+            });
+        });
+    }
+
+    if (!(window as unknown as { __incidentModalOpenBound?: boolean }).__incidentModalOpenBound) {
+        (window as unknown as { __incidentModalOpenBound?: boolean }).__incidentModalOpenBound = true;
+        document.addEventListener('click', (e) => {
+            const target = e.target as HTMLElement;
+            if (!target || !(target instanceof Element)) return;
+            const openBtn = target.closest<HTMLElement>('.open-incident-modal-btn');
+            if (!openBtn) return;
+            e.preventDefault();
+            const orderId = openBtn.dataset.orderId;
+            if (!orderId) return;
+            const modal = document.querySelector<HTMLElement>(`.incident-modal[data-order-id="${orderId}"]`);
+            if (!modal) return;
+            setupPhotoUpload(modal);
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        });
+    }
+</script>

@@ -1,0 +1,111 @@
+---
+import Icon from '../icons/Icon.astro';
+import { strings } from '../../lib/core/i18n';
+
+interface Props {
+    orderId: string;
+}
+
+const { orderId } = Astro.props;
+---
+
+<div class="cancel-incident-modal hidden fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4" data-order-id={orderId}>
+    <div class="w-full max-w-md rounded-t-2xl sm:rounded-2xl border border-border bg-surface p-5 shadow-xl">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-base font-semibold text-text-primary">{strings.incidentCancelModalTitle}</h3>
+            <button type="button" class="close-cancel-incident-modal-btn p-1.5 rounded-lg hover:bg-border-light transition-colors text-text-secondary">
+                <Icon name="x" size={18} />
+            </button>
+        </div>
+        <div class="p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 mb-5">
+            <p class="text-sm text-amber-800 dark:text-amber-300 leading-relaxed">
+                {strings.incidentCancelModalWarning}
+            </p>
+        </div>
+        <div class="flex gap-2 justify-end">
+            <button type="button" class="close-cancel-incident-modal-btn px-3 py-1.5 text-sm font-medium text-text-secondary hover:text-text-primary transition-colors">
+                {strings.incidentCancelDismiss}
+            </button>
+            <button type="button" class="confirm-cancel-incident-btn px-3 py-1.5 text-sm font-semibold rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" data-order-id={orderId}>
+                {strings.incidentCancelConfirm}
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    import { strings } from '../../lib/core/i18n';
+    import { runSubmit, SubmitError } from '../../lib/ui/submit';
+
+    function wireModal(modal: HTMLElement) {
+        if (modal.dataset.cancelIncidentWired === '1') return;
+        modal.dataset.cancelIncidentWired = '1';
+
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.classList.add('hidden');
+                document.body.style.overflow = '';
+            }
+        });
+
+        modal.querySelectorAll<HTMLButtonElement>('.close-cancel-incident-modal-btn').forEach((btn) => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                modal.classList.add('hidden');
+                document.body.style.overflow = '';
+            });
+        });
+
+        const confirmBtn = modal.querySelector<HTMLButtonElement>('.confirm-cancel-incident-btn');
+        confirmBtn?.addEventListener('click', async (e) => {
+            e.preventDefault();
+            const orderId = confirmBtn.dataset.orderId;
+            if (!orderId) return;
+
+            const result = await runSubmit({
+                button: confirmBtn,
+                action: async () => {
+                    const res = await fetch('/api/orders/cancel-incident', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ orderId }),
+                    });
+                    const data = await res.json() as { success?: boolean; error?: string };
+                    if (!data.success) throw new SubmitError(data.error || strings.incidentCancelError);
+                    return data;
+                },
+                successMsg: strings.incidentCancelledToast,
+            });
+            if (result.ok) {
+                document.body.style.overflow = '';
+                window.setTimeout(() => window.location.reload(), 800);
+            }
+        });
+    }
+
+    function wireAll() {
+        document.querySelectorAll<HTMLElement>('.cancel-incident-modal').forEach(wireModal);
+    }
+
+    if (!(window as unknown as { __cancelIncidentModalOpenBound?: boolean }).__cancelIncidentModalOpenBound) {
+        (window as unknown as { __cancelIncidentModalOpenBound?: boolean }).__cancelIncidentModalOpenBound = true;
+        document.addEventListener('click', (e) => {
+            const target = e.target as HTMLElement;
+            if (!target || !(target instanceof Element)) return;
+            const openBtn = target.closest<HTMLElement>('.open-cancel-incident-modal-btn');
+            if (!openBtn) return;
+            e.preventDefault();
+            const orderId = openBtn.dataset.orderId;
+            if (!orderId) return;
+            const modal = document.querySelector<HTMLElement>(`.cancel-incident-modal[data-order-id="${orderId}"]`);
+            if (!modal) return;
+            wireModal(modal);
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        });
+    }
+
+    document.addEventListener('astro:page-load', wireAll);
+    if (document.readyState !== 'loading') wireAll();
+    else document.addEventListener('DOMContentLoaded', wireAll);
+</script>
