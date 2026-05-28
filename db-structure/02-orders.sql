@@ -377,11 +377,11 @@ BEGIN
     funds_released_at = timezone('utc'::text, now())
   WHERE id = p_order_id
     AND buyer_id = p_actor_id
-    AND status = 'delivered'
+    AND status IN ('delivered', 'incident')
   RETURNING * INTO updated_order;
 
   IF updated_order.id IS NULL THEN
-    RAISE EXCEPTION 'Order not found or not in delivered status';
+    RAISE EXCEPTION 'Order not found or not in delivered or incident status';
   END IF;
 
   RETURN updated_order;
