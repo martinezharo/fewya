@@ -1,0 +1,44 @@
+---
+import BuyerAppLayout from "../layouts/BuyerAppLayout.astro";
+import Icon from "../components/icons/Icon.astro";
+import { strings } from "../lib/core/i18n";
+---
+
+<BuyerAppLayout title={strings.supportPageTitle}>
+    <main class="w-full max-w-2xl mx-auto px-4 md:px-10 pt-6 pb-24 md:pb-16 min-h-[50vh]">
+
+        <header class="mb-10">
+            <h1 class="text-xl md:text-2xl font-bold text-text-primary mb-2">
+                {strings.supportHeading}
+            </h1>
+            <p class="text-[15px] text-text-secondary">
+                {strings.supportSubtitle}
+            </p>
+        </header>
+
+        <section class="space-y-8 text-[15px] leading-relaxed text-text-secondary">
+
+            <p>{strings.supportIntro}</p>
+
+            {/* Tarjeta de contacto por email */}
+            <div class="bg-surface border border-border-light rounded-2xl p-6 flex flex-col items-center text-center shadow-sm">
+                <div class="w-12 h-12 rounded-full bg-border-light/60 flex items-center justify-center text-text-primary mb-4">
+                    <Icon name="mail" size={22} strokeWidth={2} />
+                </div>
+                <p class="text-sm text-text-tertiary mb-1">
+                    {strings.supportEmailLabel}
+                </p>
+                <a
+                    href={`mailto:${strings.supportEmail}`}
+                    class="text-lg font-semibold text-accent hover:underline"
+                >
+                    {strings.supportEmail}
+                </a>
+                <p class="text-xs text-text-tertiary mt-4">
+                    {strings.supportResponseNote}
+                </p>
+            </div>
+
+        </section>
+    </main>
+</BuyerAppLayout>

@@ -193,7 +193,17 @@ export const strings = {
     meMyOrders: 'Mis pedidos',
     meMyData: 'Mis datos',
     meSettings: 'Ajustes',
+    meSupport: 'Soporte',
     meItemsCount: '{count}',
+
+    // Support
+    supportPageTitle: 'Soporte — Fewya',
+    supportHeading: 'Soporte',
+    supportSubtitle: '¿Necesitas ayuda? Estamos aquí para ti.',
+    supportIntro: 'Si tienes cualquier problema, duda o incidencia con tu cuenta, tus pedidos o tus pagos, ponte en contacto con nuestro equipo y te ayudaremos lo antes posible.',
+    supportEmailLabel: 'Escríbenos a',
+    supportResponseNote: 'Normalmente respondemos en un plazo de 24-48 horas laborables.',
+    supportEmail: 'hola@fewya.com',
 
     // Me / Mis datos
     meDataPageTitle: 'Mis datos',
