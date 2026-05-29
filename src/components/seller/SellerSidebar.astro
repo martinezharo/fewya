@@ -279,6 +279,9 @@ function isActive(href: string) {
 </style>
 
 <script>
+    import { toast } from '../../lib/ui/toast';
+    import { strings } from '../../lib/core/i18n';
+
     declare global {
         interface Window {
             openSellerSidebar: () => void;
@@ -353,31 +356,45 @@ function isActive(href: string) {
         const stripeNavSpinner = document.getElementById('stripe-nav-spinner');
         const stripeNavBadge = document.getElementById('stripe-nav-badge');
         if (stripeNavBtn) {
+            const resetStripeBtn = () => {
+                stripeNavBtn.removeAttribute('disabled');
+                if (stripeNavLabel) stripeNavLabel.textContent = strings.sellerNavStripe;
+                if (stripeNavSpinner) stripeNavSpinner.classList.add('hidden');
+                if (stripeNavBadge) stripeNavBadge.classList.remove('hidden');
+            };
+
             stripeNavBtn.addEventListener('click', async () => {
                 const status = stripeNavBtn.dataset.stripeStatus;
 
-                if (status === 'ready') {
-                    stripeNavBtn.setAttribute('disabled', 'true');
-                    if (stripeNavLabel) stripeNavLabel.textContent = 'Abriendo…';
-                    if (stripeNavSpinner) stripeNavSpinner.classList.remove('hidden');
-                    if (stripeNavBadge) stripeNavBadge.classList.add('hidden');
-                    try {
-                        const res = await fetch('/api/sell/stripe/connect', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ action: 'dashboard' })
-                        });
-                        const data = await res.json().catch(() => ({})) as { url?: string; error?: string };
-                        if (data.url) {
-                            window.location.href = data.url;
-                        } else {
-                            window.location.href = '/sell/onboarding';
-                        }
-                    } catch {
-                        window.location.href = '/sell/onboarding';
-                    }
-                } else {
+                // Account not connected yet → send to onboarding to finish setup.
+                if (status !== 'ready') {
                     window.location.href = '/sell/onboarding';
+                    return;
+                }
+
+                stripeNavBtn.setAttribute('disabled', 'true');
+                if (stripeNavLabel) stripeNavLabel.textContent = strings.sellerNavStripeOpening;
+                if (stripeNavSpinner) stripeNavSpinner.classList.remove('hidden');
+                if (stripeNavBadge) stripeNavBadge.classList.add('hidden');
+
+                try {
+                    const res = await fetch('/api/sell/stripe/connect', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action: 'dashboard' })
+                    });
+                    const data = await res.json().catch(() => ({})) as { url?: string; error?: string };
+
+                    if (res.ok && data.url) {
+                        window.location.href = data.url;
+                        return;
+                    }
+
+                    toast.error(data.error || strings.sellerOnboardingStripeError);
+                    resetStripeBtn();
+                } catch {
+                    toast.error(strings.sellerOnboardingStripeError);
+                    resetStripeBtn();
                 }
             });
         }

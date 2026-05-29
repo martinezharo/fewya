@@ -408,6 +408,7 @@ export const strings = {
     sellerNavDetailsIncomplete: 'Incompleto',
     sellerNavStripe: 'Cobros',
     sellerNavStripeWarning: 'Sin conectar',
+    sellerNavStripeOpening: 'Abriendo…',
     sellerSidebarLabel: 'Menú del vendedor',
     sellerSidebarCollapseLabel: 'Contraer menú',
     sellerSidebarExpandLabel: 'Expandir menú',
