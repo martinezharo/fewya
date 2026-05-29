@@ -110,7 +110,7 @@ export function getConfig(): SendcloudConfig {
         senderPostalCode: envVar('SENDCLOUD_SENDER_POSTAL_CODE') || '28001',
         senderCountry: envVar('SENDCLOUD_SENDER_COUNTRY') || 'ES',
         senderPhone: envVar('SENDCLOUD_SENDER_PHONE') || '+34600000000',
-        senderEmail: envVar('SENDCLOUD_SENDER_EMAIL') || 'envios@fewya.com',
+        senderEmail: envVar('SENDCLOUD_SENDER_EMAIL') || 'hola@fewya.com',
     };
 }
 
