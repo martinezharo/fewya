@@ -54,52 +54,63 @@ const sanitizedWhatsapp = whatsapp?.replace(/[^0-9]/g, '');
 )}
 
 <script>
-  document.querySelectorAll('[data-contact-fab]').forEach(fab => {
-    const toggle = fab.querySelector('[data-contact-toggle]');
+  function setContactFabOpen(fab: Element, open: boolean) {
     const options = fab.querySelector('[data-contact-options]');
     const iconOpen = fab.querySelector('[data-fab-icon-open]');
     const iconClose = fab.querySelector('[data-fab-icon-close]');
-    let open = false;
 
-    toggle?.addEventListener('click', () => {
-      open = !open;
-      if (options) {
-        options.classList.toggle('opacity-0', !open);
-        options.classList.toggle('scale-90', !open);
-        options.classList.toggle('pointer-events-none', !open);
-        options.classList.toggle('opacity-100', open);
-        options.classList.toggle('scale-100', open);
-      }
-      
-      if (iconOpen && iconClose) {
-        iconOpen.classList.toggle('opacity-100', !open);
-        iconOpen.classList.toggle('scale-100', !open);
-        iconOpen.classList.toggle('rotate-0', !open);
-        iconOpen.classList.toggle('opacity-0', open);
-        iconOpen.classList.toggle('scale-50', open);
-        iconOpen.classList.toggle('rotate-180', open);
+    if (options) {
+      options.classList.toggle('opacity-0', !open);
+      options.classList.toggle('scale-90', !open);
+      options.classList.toggle('pointer-events-none', !open);
+      options.classList.toggle('opacity-100', open);
+      options.classList.toggle('scale-100', open);
+    }
 
-        iconClose.classList.toggle('opacity-0', !open);
-        iconClose.classList.toggle('scale-50', !open);
-        iconClose.classList.toggle('-rotate-180', !open);
-        iconClose.classList.toggle('opacity-100', open);
-        iconClose.classList.toggle('scale-100', open);
-        iconClose.classList.toggle('rotate-0', open);
-      }
+    if (iconOpen && iconClose) {
+      iconOpen.classList.toggle('opacity-100', !open);
+      iconOpen.classList.toggle('scale-100', !open);
+      iconOpen.classList.toggle('rotate-0', !open);
+      iconOpen.classList.toggle('opacity-0', open);
+      iconOpen.classList.toggle('scale-50', open);
+      iconOpen.classList.toggle('rotate-180', open);
+
+      iconClose.classList.toggle('opacity-0', !open);
+      iconClose.classList.toggle('scale-50', !open);
+      iconClose.classList.toggle('-rotate-180', !open);
+      iconClose.classList.toggle('opacity-100', open);
+      iconClose.classList.toggle('scale-100', open);
+      iconClose.classList.toggle('rotate-0', open);
+    }
+
+    fab.setAttribute('data-open', open ? 'true' : 'false');
+  }
+
+  function initContactFabs() {
+    document.querySelectorAll('[data-contact-fab]').forEach(fab => {
+      if (fab.getAttribute('data-contact-bound') === 'true') return;
+      fab.setAttribute('data-contact-bound', 'true');
+
+      const toggle = fab.querySelector('[data-contact-toggle]');
+      toggle?.addEventListener('click', () => {
+        setContactFabOpen(fab, fab.getAttribute('data-open') !== 'true');
+      });
     });
+  }
 
-    document.addEventListener('click', (e) => {
-      if (open && !fab.contains(e.target as Node)) {
-        open = false;
-        options?.classList.add('opacity-0', 'scale-90', 'pointer-events-none');
-        options?.classList.remove('opacity-100', 'scale-100');
-        
-        iconOpen?.classList.add('opacity-100', 'rotate-0', 'scale-100');
-        iconOpen?.classList.remove('opacity-0', 'rotate-180', 'scale-50');
-
-        iconClose?.classList.add('opacity-0', '-rotate-180', 'scale-50');
-        iconClose?.classList.remove('opacity-100', 'rotate-0', 'scale-100');
+  // Close any open FAB when clicking outside. Registered once for the page session.
+  document.addEventListener('click', (e) => {
+    document.querySelectorAll('[data-contact-fab][data-open="true"]').forEach(fab => {
+      if (!fab.contains(e.target as Node)) {
+        setContactFabOpen(fab, false);
       }
     });
   });
+
+  document.addEventListener('astro:page-load', initContactFabs);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initContactFabs);
+  } else {
+    initContactFabs();
+  }
 </script>
