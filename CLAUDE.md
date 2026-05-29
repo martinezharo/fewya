@@ -99,6 +99,7 @@ These are thin vanilla-TS helpers used inside `<script>` blocks in Astro compone
 - **DB changes:** Update the relevant file in `db-structure/` **and** apply the migration directly to Supabase using the `mcp__supabase__apply_migration` MCP tool. If the MCP tool is unavailable or fails, fall back to writing the SQL in `.migrations/<YYYY-MM-DD-description>.sql` for manual execution.
 - **Unused vars:** Prefix with `_` to suppress the ESLint error.
 - **Types:** Shared domain types (`Shop`, `Product`, `ProductVariant`, `Review`) live in `lib/core/types.ts`.
+- **Git:** NEVER make commits, push, or anything else that alters the Git history unless you explicitly ask. If you ask for a commit, follow Git best practices by dividing by responsibility / category / functionality and avoiding monolithic commits. Always write the message in English.
 
 ## Environment variables
 
