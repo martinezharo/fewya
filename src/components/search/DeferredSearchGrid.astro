@@ -3,69 +3,41 @@ import ProductGrid from "../ProductGrid.astro";
 import { supabase } from "../../lib/core/supabase";
 import { createSupabaseAuthClient } from "../../lib/core/auth";
 import { enrichProductsWithRatings } from "../../lib/products/productUtils";
-import { parseSearchParams } from "../../lib/products/search";
+import type { SearchParams } from "../../lib/products/search";
 import { getMergedWishlistIds } from "../../lib/wishlist/wishlist";
 import { strings } from "../../lib/core/i18n";
 import type { Product } from "../../lib/core/types";
-import { SHOP_STATUS } from "../../lib/core/shopStatus";
 
-const url = new URL(Astro.request.url);
-const params = parseSearchParams(url);
-
-// Explicit columns — excludes internal/admin fields while keeping all that
-// ProductCard and isProductComplete need (description + variant dimensions required for the filter)
-let query = supabase
-    .from("products")
-    .select("id, slug, title, description, gallery_images, is_active, created_at, category, brand, shop:shops(id, slug, name, accent_color, payments_active, seller_details_complete, status), variants:product_variants(id, price, stock, shipping_cost, is_default, variant_name, weight_kg, length_cm, width_cm, height_cm)")
-    .eq("is_active", true)
-    .eq("shop.status", SHOP_STATUS.ACTIVE);
-
-if (params.q) {
-    query = query.or(`title.ilike.%${params.q}%,description.ilike.%${params.q}%`);
+interface Props {
+    params: SearchParams;
 }
+
+// params come from the page as a prop: inside a server island Astro.request.url
+// points at the island endpoint, so it does NOT carry the original ?q=... query.
+const { params } = Astro.props;
+
+// maxPrice >= 500 means "no upper limit" (the filter UI tops out at 500).
+const maxPrice = params.maxPrice !== null && params.maxPrice < 500 ? params.maxPrice : null;
 
 const authClient = createSupabaseAuthClient(Astro.cookies, Astro.request);
 
-// Products and auth in parallel
+// Relevance-ranked search: text matching, shop visibility, price/stock filtering,
+// ordering and pagination all happen DB-side in the search_products RPC.
 const [dataResult, authResult] = await Promise.all([
-    query,
+    supabase.rpc("search_products", {
+        p_query: params.q,
+        p_min_price: params.minPrice,
+        p_max_price: maxPrice,
+        p_show_oos: params.showOos,
+        p_sort: params.sort,
+        p_dir: params.dir,
+        p_limit: 80,
+        p_offset: 0,
+    }),
     authClient.auth.getUser(),
 ]);
 
-let products: Product[] = (dataResult.data ?? []).filter((p: any) => p.shop?.status === SHOP_STATUS.ACTIVE && p.shop?.payments_active && p.shop?.seller_details_complete) as Product[];
-
-products = products.filter(product => {
-    const defaultVariant = product.variants?.find(v => v.is_default) || product.variants?.[0];
-    const price = defaultVariant?.price ?? 0;
-
-    if (params.minPrice !== null && price < params.minPrice) return false;
-    if (params.maxPrice !== null && params.maxPrice < 500 && price > params.maxPrice) return false;
-
-    if (!params.showOos) {
-        const hasStock = product.variants?.some(v => (v.stock ?? 0) > 0);
-        if (!hasStock) return false;
-    }
-
-    return true;
-});
-
-products.sort((a, b) => {
-    const pA = a.variants?.find(v => v.is_default)?.price ?? a.variants?.[0]?.price ?? 0;
-    const pB = b.variants?.find(v => v.is_default)?.price ?? b.variants?.[0]?.price ?? 0;
-    const d1 = params.dir === 'asc' ? 1 : -1;
-
-    switch (params.sort) {
-        case 'price':
-            return (pA - pB) * d1;
-        case 'alpha':
-            return a.title.localeCompare(b.title) * d1;
-        case 'date':
-            return (new Date(a.created_at).getTime() - new Date(b.created_at).getTime()) * d1;
-        case 'relevance':
-        default:
-            return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-    }
-});
+const products: Product[] = (dataResult.data ?? []) as Product[];
 
 // Ratings enrichment and wishlist lookup in parallel
 const [, wishedProductIds] = await Promise.all([

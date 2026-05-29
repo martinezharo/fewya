@@ -17,7 +17,7 @@ const currentUrl = url.pathname + url.search;
     <SearchToolbar slot="afterHeader" params={params} />
 
     <main class="min-h-[50vh]">
-        <DeferredSearchGrid server:defer>
+        <DeferredSearchGrid server:defer params={params}>
             <SkeletonProductGrid count={8} slot="fallback" />
         </DeferredSearchGrid>
     </main>
