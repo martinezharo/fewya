@@ -27,6 +27,7 @@ import { strings } from '../../lib/core/i18n';
 </header>
 
 <script>
+  function initProductHeader() {
   const header = document.querySelector<HTMLElement>('[data-product-header]');
   const gallery = document.querySelector('[data-gallery]');
 
@@ -61,4 +62,12 @@ import { strings } from '../../lib/core/i18n';
       }
     } catch { /* user cancelled */ }
   });
+  }
+
+  document.addEventListener('astro:page-load', initProductHeader);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initProductHeader);
+  } else {
+    initProductHeader();
+  }
 </script>

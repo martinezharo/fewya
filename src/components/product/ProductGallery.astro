@@ -101,13 +101,8 @@ const hasMultiple = images.length > 1;
 </div>
 
 <script>
-  const fs = document.querySelector<HTMLElement>('[data-fullscreen]');
-  const fsImg = document.querySelector<HTMLImageElement>('[data-fullscreen-img]');
-
-  if (fs) {
-    // Move fullscreen overlay to body to avoid stacking context issues
-    document.body.appendChild(fs);
-  }
+  let fs: HTMLElement | null = null;
+  let fsImg: HTMLImageElement | null = null;
 
   function openFullscreen(src: string) {
     if (fs && fsImg) {
@@ -122,8 +117,20 @@ const hasMultiple = images.length > 1;
     if (fs) {
       fs.classList.add('hidden');
       fs.classList.remove('flex');
-      document.body.style.overflow = '';
     }
+    document.body.style.overflow = '';
+  }
+
+  function initGallery() {
+  // Clear any scroll lock left over from a previous page
+  document.body.style.overflow = '';
+
+  fs = document.querySelector<HTMLElement>('[data-fullscreen]');
+  fsImg = document.querySelector<HTMLImageElement>('[data-fullscreen-img]');
+
+  if (fs) {
+    // Move fullscreen overlay to body to avoid stacking context issues
+    document.body.appendChild(fs);
   }
 
   // Mobile carousel
@@ -204,28 +211,43 @@ const hasMultiple = images.length > 1;
     });
   });
 
-  // Close fullscreen
+  // Close fullscreen (element-scoped, rebound on each navigation)
   document.querySelector('[data-fullscreen-close]')?.addEventListener('click', closeFullscreen);
   fs?.addEventListener('click', e => { if (e.target === fs) closeFullscreen(); });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeFullscreen(); });
+  }
 
-  // Listen for variant image changes
-  document.addEventListener('variant:change', ((e: CustomEvent<{ image: string }>) => {
-    const { image } = e.detail;
-    if (!image) return;
+  // Document-level listeners: register once for the page session so they survive
+  // (and don't accumulate across) client-side navigations.
+  if (!(window as unknown as { __galleryDocBound?: boolean }).__galleryDocBound) {
+    (window as unknown as { __galleryDocBound?: boolean }).__galleryDocBound = true;
 
-    // Mobile: update first image and scroll to it
-    const mobileScroll = document.querySelector<HTMLElement>('[data-gallery-scroll]');
-    const firstMobileImg = mobileScroll?.querySelector<HTMLImageElement>('[data-gallery-img]');
-    if (firstMobileImg) {
-      firstMobileImg.src = image;
-      mobileScroll?.scrollTo({ left: 0, behavior: 'smooth' });
-    }
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeFullscreen(); });
 
-    // Desktop: update main image
-    const desktopMain = document.querySelector<HTMLImageElement>('[data-desktop-main]');
-    if (desktopMain) {
-      desktopMain.src = image;
-    }
-  }) as EventListener);
+    // Listen for variant image changes
+    document.addEventListener('variant:change', ((e: CustomEvent<{ image: string }>) => {
+      const { image } = e.detail;
+      if (!image) return;
+
+      // Mobile: update first image and scroll to it
+      const mobileScroll = document.querySelector<HTMLElement>('[data-gallery-scroll]');
+      const firstMobileImg = mobileScroll?.querySelector<HTMLImageElement>('[data-gallery-img]');
+      if (firstMobileImg) {
+        firstMobileImg.src = image;
+        mobileScroll?.scrollTo({ left: 0, behavior: 'smooth' });
+      }
+
+      // Desktop: update main image
+      const desktopMain = document.querySelector<HTMLImageElement>('[data-desktop-main]');
+      if (desktopMain) {
+        desktopMain.src = image;
+      }
+    }) as EventListener);
+  }
+
+  document.addEventListener('astro:page-load', initGallery);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initGallery);
+  } else {
+    initGallery();
+  }
 </script>

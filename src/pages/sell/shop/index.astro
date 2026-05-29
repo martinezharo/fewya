@@ -166,7 +166,9 @@ const bannerImg = shop.banner_img || '';
         error?: string;
     };
 
-    const form = document.getElementById('edit-shop-form') as HTMLFormElement;
+  function initShopForm() {
+    const form = document.getElementById('edit-shop-form') as HTMLFormElement | null;
+    if (!form) return;
     const submitBtn = document.getElementById('submit-btn') as HTMLButtonElement;
     const submitText = document.getElementById('submit-text');
     const submitSpinner = document.getElementById('submit-spinner');
@@ -367,4 +369,12 @@ const bannerImg = shop.banner_img || '';
             }
         });
     });
+  }
+
+  document.addEventListener('astro:page-load', initShopForm);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initShopForm);
+  } else {
+    initShopForm();
+  }
 </script>

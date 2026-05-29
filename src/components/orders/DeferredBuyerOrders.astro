@@ -203,8 +203,8 @@ if (user) {
     </div>
 )}
 
-<script is:inline>
-    (async function () {
+<script>
+    async function autoConfirmDelivered() {
         const hasDelivered = document.querySelector('[data-order-status="delivered"]');
         if (!hasDelivered) return;
         try {
@@ -213,16 +213,16 @@ if (user) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({}),
             });
-            const data = await res.json();
-            if (data.autoConfirmed > 0) {
+            const data = await res.json() as { autoConfirmed?: number };
+            if ((data.autoConfirmed ?? 0) > 0) {
                 window.location.reload();
             }
         } catch {
             // Silent fail
         }
-    })();
+    }
 
-    (function () {
+    function expandOrderFromHash() {
         const hash = window.location.hash;
         if (!hash || !hash.startsWith('#order-')) return;
         const orderId = decodeURIComponent(hash.slice('#order-'.length));
@@ -232,7 +232,7 @@ if (user) {
         const toggleBtn = article.querySelector('.order-toggle-btn');
         if (toggleBtn && toggleBtn.getAttribute('aria-expanded') !== 'true') {
             const details = article.querySelector('.order-details');
-            const icon = toggleBtn.querySelector('.toggle-icon');
+            const icon = toggleBtn.querySelector<HTMLElement>('.toggle-icon');
             if (details) details.classList.remove('hidden');
             if (icon) icon.style.transform = 'rotate(180deg)';
             toggleBtn.setAttribute('aria-expanded', 'true');
@@ -240,5 +240,17 @@ if (user) {
         requestAnimationFrame(() => {
             article.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
-    })();
+    }
+
+    function initBuyerOrders() {
+        autoConfirmDelivered();
+        expandOrderFromHash();
+    }
+
+    document.addEventListener('astro:page-load', initBuyerOrders);
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initBuyerOrders);
+    } else {
+        initBuyerOrders();
+    }
 </script>

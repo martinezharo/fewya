@@ -307,6 +307,7 @@ const isSpain = currentCountry === 'ES';
     import { validateProfileForm, type ProfileFormData } from '../../lib/core/validation';
     import { runSubmit } from '../../lib/ui/submit';
 
+  function initSellerProfileForm() {
     const form = document.getElementById('seller-profile-form') as HTMLFormElement | null;
     if (form) {
         const btn = document.getElementById('save-btn') as HTMLButtonElement;
@@ -464,4 +465,12 @@ const isSpain = currentCountry === 'ES';
             });
         });
     }
+  }
+
+  document.addEventListener('astro:page-load', initSellerProfileForm);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initSellerProfileForm);
+  } else {
+    initSellerProfileForm();
+  }
 </script>

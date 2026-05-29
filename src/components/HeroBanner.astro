@@ -185,36 +185,28 @@ const { isLoggedIn = false } = Astro.props;
   import { toast } from '../lib/ui/toast';
   import { strings } from '../lib/core/i18n';
 
-  (function () {
-    const w = window as unknown as { __fewyaInstallInit?: boolean };
-    if (w.__fewyaInstallInit) return;
-    w.__fewyaInstallInit = true;
+  let deferredPrompt: any = null;
+  let modal: HTMLElement | null = null;
+  const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+  const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
 
-    let deferredPrompt: any = null;
-    const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
-    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+  function openModal() {
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+  }
 
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      deferredPrompt = e;
-    });
+  function closeModal() {
+    if (!modal) return;
+    modal.classList.add('hidden');
+    document.body.style.overflow = '';
+  }
 
+  function initHeroInstall() {
     const installBtn = document.querySelector('.install-app-btn');
-    const modal = document.getElementById('ios-install-modal');
+    modal = document.getElementById('ios-install-modal');
     const modalClosers = document.querySelectorAll('[data-ios-modal-close]');
     const backdrop = document.querySelector('[data-ios-modal-backdrop]');
-
-    function openModal() {
-      if (!modal) return;
-      modal.classList.remove('hidden');
-      document.body.style.overflow = 'hidden';
-    }
-
-    function closeModal() {
-      if (!modal) return;
-      modal.classList.add('hidden');
-      document.body.style.overflow = '';
-    }
 
     installBtn?.addEventListener('click', async () => {
       if (deferredPrompt) {
@@ -233,12 +225,6 @@ const { isLoggedIn = false } = Astro.props;
     modalClosers.forEach((btn) => btn.addEventListener('click', closeModal));
     backdrop?.addEventListener('click', closeModal);
 
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && modal && !modal.classList.contains('hidden')) {
-        closeModal();
-      }
-    });
-
     // Hide mobile hero in standalone (installed app) when user is logged in
     if (window.matchMedia('(display-mode: standalone)').matches) {
       const hero = document.querySelector('.mobile-hero');
@@ -247,5 +233,28 @@ const { isLoggedIn = false } = Astro.props;
         (hero as HTMLElement).style.display = 'none';
       }
     }
-  })();
+  }
+
+  // Window/document-level listeners: register once for the page session.
+  if (!(window as unknown as { __heroInstallBound?: boolean }).__heroInstallBound) {
+    (window as unknown as { __heroInstallBound?: boolean }).__heroInstallBound = true;
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && modal && !modal.classList.contains('hidden')) {
+        closeModal();
+      }
+    });
+  }
+
+  document.addEventListener('astro:page-load', initHeroInstall);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initHeroInstall);
+  } else {
+    initHeroInstall();
+  }
 </script>

@@ -249,20 +249,20 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', {
     </section>
 )}
 
-<script is:inline>
-    (function () {
-        const toggle = document.getElementById('show-pending-toggle');
-        const select = document.getElementById('status-filter');
+<script>
+    function initSellerOrdersFilter() {
+        const toggle = document.getElementById('show-pending-toggle') as HTMLInputElement | null;
+        const select = document.getElementById('status-filter') as HTMLSelectElement | null;
         const list = document.getElementById('orders-list');
         const countLabel = document.getElementById('orders-filter-count');
 
         if (!select || !list || !countLabel) return;
 
-        const cards = Array.from(list.querySelectorAll('[data-order-status]'));
+        const cards = Array.from(list.querySelectorAll<HTMLElement>('[data-order-status]'));
         const total = cards.length;
 
         function applyFilters() {
-            const selectedStatus = select.value;
+            const selectedStatus = select!.value;
             const showPending = toggle ? toggle.checked : true;
 
             let visible = 0;
@@ -278,7 +278,7 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', {
                 if (shouldShow) visible++;
             });
 
-            countLabel.textContent = visible === total
+            countLabel!.textContent = visible === total
                 ? `Mostrando ${total} pedidos`
                 : `Mostrando ${visible} de ${total} pedidos`;
         }
@@ -286,6 +286,12 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', {
         if (toggle) toggle.addEventListener('change', applyFilters);
         select.addEventListener('change', applyFilters);
         applyFilters();
-    })();
+    }
 
+    document.addEventListener('astro:page-load', initSellerOrdersFilter);
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initSellerOrdersFilter);
+    } else {
+        initSellerOrdersFilter();
+    }
 </script>

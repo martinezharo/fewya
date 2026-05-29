@@ -66,6 +66,7 @@ const { variants, defaultImage } = Astro.props;
 <script>
   import { strings } from '../../lib/core/i18n';
 
+  function initVariantSelector() {
   // Detect overflow and add scroll animation
   document.querySelectorAll<HTMLElement>('[data-variant-name]').forEach(name => {
     const container = name.parentElement;
@@ -134,4 +135,12 @@ const { variants, defaultImage } = Astro.props;
       }
     });
   });
+  }
+
+  document.addEventListener('astro:page-load', initVariantSelector);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initVariantSelector);
+  } else {
+    initVariantSelector();
+  }
 </script>

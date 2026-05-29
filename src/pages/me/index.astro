@@ -257,6 +257,7 @@ const recentPurchases = purchaseGroups.slice(0, 5);
 </style>
 
 <script>
+  function initPurchasesSlider() {
     // Lógica para permitir el drag en desktop simulando móvil
     const slider = document.getElementById('purchases-slider');
     let isDown = false;
@@ -309,4 +310,12 @@ const recentPurchases = purchaseGroups.slice(0, 5);
             });
         });
     }
+  }
+
+  document.addEventListener('astro:page-load', initPurchasesSlider);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initPurchasesSlider);
+  } else {
+    initPurchasesSlider();
+  }
 </script>
