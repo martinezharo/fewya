@@ -46,13 +46,17 @@ const avgRating = visibleReviews.length > 0
               class="w-8 h-8 rounded-full object-cover flex-none bg-surface p-1 border border-border-light"
               loading="lazy"
             />
-          ) : (
+          ) : review.profile?.avatar_url ? (
             <img
-              src={review.profile?.avatar_url ?? '/placeholder-avatar.svg'}
-              alt=""
+              src={review.profile.avatar_url}
+              alt={review.profile.full_name ?? strings.productAnonymous}
               class="w-8 h-8 rounded-full object-cover flex-none"
               loading="lazy"
             />
+          ) : (
+            <div class="w-8 h-8 rounded-full flex-none bg-surface flex items-center justify-center text-text-tertiary">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            </div>
           )}
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2 mb-0.5">
