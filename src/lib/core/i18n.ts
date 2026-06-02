@@ -885,6 +885,71 @@ export const strings = {
     settingsSavedToast: 'Ajustes guardados',
     profileSavedToast: 'Datos guardados',
 
+    // Seller Landing (/sell)
+    sellerLandingMetaTitle: 'Vende en Fewya — Tu tienda online en minutos',
+    sellerLandingMetaDescription: 'Abre tu tienda profesional con tu marca y empieza a vender en minutos. 0% de comisiones por tiempo limitado.',
+    sellerLandingBadge: 'Para vendedores',
+    sellerLandingHeroTitle: 'Tu tienda, online y vendiendo en minutos.',
+    sellerLandingHeroSubtitle: 'Monta una tienda profesional con tu propia marca, tan fácil como publicar un anuncio. Sin tarifas para empezar y con el trato que mereces como vendedor.',
+    sellerLandingHeroReassurance: '0% de comisiones por tiempo limitado.',
+    sellerLandingCtaLogin: 'Iniciar sesión con Google',
+    sellerLandingCtaSetup: 'Configurar mi tienda',
+
+    // Hero storefront preview (decorative)
+    sellerLandingPreviewBrand: 'Tu Marca',
+    sellerLandingPreviewUrl: 'fewya.app/tu-marca',
+    sellerLandingPreviewProduct1: 'Tu producto',
+    sellerLandingPreviewProduct2: 'Otro producto',
+    sellerLandingPreviewInStock: 'En stock',
+
+    // Section: keep 100%
+    sellerLandingMoneyKicker: 'Sin comisiones',
+    sellerLandingMoneyAmount: '0%',
+    sellerLandingMoneyTitle: 'Quédate con el 100% de lo que vendes.',
+    sellerLandingMoneyBody: 'Por tiempo limitado no cobramos comisiones por venta. Lo que ganas es tuyo, íntegro. Cuando empecemos a aplicar tarifas, lo sabrás con antelación y sin sorpresas.',
+
+    // Section: your brand
+    sellerLandingBrandKicker: 'Tu marca',
+    sellerLandingBrandTitle: 'Una tienda con tu marca, no un anuncio más.',
+    sellerLandingBrandBody: 'En otros sitios eres un anuncio entre miles. Aquí tienes un escaparate profesional que es tuyo, con tu identidad de principio a fin.',
+    sellerLandingBrandLogoTitle: 'Tu logo',
+    sellerLandingBrandLogoBody: 'Sube tu logotipo y dale cara a tu tienda.',
+    sellerLandingBrandBannerTitle: 'Tu portada',
+    sellerLandingBrandBannerBody: 'Una imagen de cabecera que da la bienvenida a tus clientes.',
+    sellerLandingBrandUrlTitle: 'Tu dirección',
+    sellerLandingBrandUrlBody: 'Una URL propia para compartir tu tienda donde quieras.',
+    sellerLandingBrandColorTitle: 'Tu color',
+    sellerLandingBrandColorBody: 'Elige el color de marca que viste toda tu tienda.',
+    sellerLandingBrandSpecsTitle: 'Fichas a tu medida',
+    sellerLandingBrandSpecsBody: 'Añade las características de cada producto en sus propios campos.',
+
+    // Section: selling without hassle
+    sellerLandingEaseKicker: 'Sin complicaciones',
+    sellerLandingEaseTitle: 'Vender sin complicaciones.',
+    sellerLandingEaseBody: 'Todo lo pesado, resuelto. Tú te centras en tus productos; del resto nos ocupamos nosotros.',
+    sellerLandingEaseVariantsTitle: 'Variantes y stock',
+    sellerLandingEaseVariantsBody: 'Define variantes y existencias una vez. Tus clientes compran la cantidad y la combinación que quieran, sin listas manuales para cada uno.',
+    sellerLandingEaseShippingTitle: 'Envíos en un botón',
+    sellerLandingEaseShippingBody: 'Genera la etiqueta de cada pedido con un clic y deja el paquete en tu punto InPost o Correos. Sin papeleo.',
+    sellerLandingEaseInfoTitle: 'Información clara del producto',
+    sellerLandingEaseInfoBody: 'La ficha muestra disponibilidad, características y envío. Se acabaron los mensajes de «¿está disponible?» o «¿haces envíos?».',
+    sellerLandingEaseClaimsTitle: 'Reclamaciones y devoluciones',
+    sellerLandingEaseClaimsBody: 'Gestiona incidencias y reembolsos desde un mismo sitio, de forma ordenada y sin líos.',
+
+    // Section: how it works
+    sellerLandingStepsKicker: 'Cómo funciona',
+    sellerLandingStepsTitle: 'Empieza en tres pasos.',
+    sellerLandingStep1Title: 'Inicia sesión',
+    sellerLandingStep1Body: 'Entra con tu cuenta de Google. Sin formularios largos.',
+    sellerLandingStep2Title: 'Personaliza tu tienda',
+    sellerLandingStep2Body: 'Pon tu logo, tu portada, tu color y tu dirección.',
+    sellerLandingStep3Title: 'Sube tus productos',
+    sellerLandingStep3Body: 'Publica tu catálogo y empieza a vender.',
+
+    // Final CTA
+    sellerLandingFinalTitle: 'Abre tu tienda hoy.',
+    sellerLandingFinalBody: 'Crea tu escaparate profesional y empieza a vender en minutos, sin comisiones por tiempo limitado.',
+
     // Categories
     categoryRopa: 'Ropa',
     categoryAccesorios: 'Accesorios',
