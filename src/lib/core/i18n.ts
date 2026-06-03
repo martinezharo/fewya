@@ -892,7 +892,7 @@ export const strings = {
     sellerLandingHeroTitle: 'Tu tienda, online y vendiendo en minutos.',
     sellerLandingHeroSubtitle: 'Monta una tienda profesional con tu propia marca, tan fácil como publicar un anuncio. Sin tarifas para empezar y con el trato que mereces como vendedor.',
     sellerLandingHeroReassurance: '0% de comisiones por tiempo limitado.',
-    sellerLandingCtaLogin: 'Iniciar sesión con Google',
+    sellerLandingCtaLogin: 'Iniciar sesión',
     sellerLandingCtaSetup: 'Configurar mi tienda',
 
     // Hero storefront preview (decorative)
