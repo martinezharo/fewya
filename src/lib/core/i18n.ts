@@ -896,10 +896,10 @@ export const strings = {
     sellerLandingCtaSetup: 'Configurar mi tienda',
 
     // Hero storefront preview (decorative)
-    sellerLandingPreviewBrand: 'Tu Marca',
-    sellerLandingPreviewUrl: 'fewya.app/tu-marca',
-    sellerLandingPreviewProduct1: 'Tu producto',
-    sellerLandingPreviewProduct2: 'Otro producto',
+    sellerLandingPreviewBrand: 'Sonora',
+    sellerLandingPreviewUrl: 'fewya.com/sonora',
+    sellerLandingPreviewProduct1: 'Auriculares Inhalámbricos',
+    sellerLandingPreviewProduct2: 'Earbuds Pro',
     sellerLandingPreviewInStock: 'En stock',
 
     // Section: keep 100%

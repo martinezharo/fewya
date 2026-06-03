@@ -67,6 +67,11 @@ const steps = [
     { title: strings.sellerLandingStep2Title, body: strings.sellerLandingStep2Body },
     { title: strings.sellerLandingStep3Title, body: strings.sellerLandingStep3Body },
 ] as const;
+
+const previewProducts = [
+    { name: strings.sellerLandingPreviewProduct1, price: '€89,90', image: '/seller-landing/headphones.webp' },
+    { name: strings.sellerLandingPreviewProduct2, price: '€59,90', image: '/seller-landing/earbuds.webp' },
+] as const;
 ---
 
 <Layout title={strings.sellerLandingMetaTitle} description={strings.sellerLandingMetaDescription}>
@@ -132,7 +137,7 @@ const steps = [
                         <div class="px-5 -mt-7">
                             <div class="flex items-end gap-3">
                                 <span class="w-14 h-14 rounded-2xl bg-surface border border-border-light shadow-sm flex items-center justify-center">
-                                    <Logo class="w-7 h-7 text-accent" />
+                                    <Icon name="headphones" size={28} class="text-accent" />
                                 </span>
                                 <div class="pb-1">
                                     <p class="text-[15px] font-bold text-text-primary leading-tight">{strings.sellerLandingPreviewBrand}</p>
@@ -146,15 +151,20 @@ const steps = [
                         </div>
                         <!-- Product tiles -->
                         <div class="grid grid-cols-2 gap-3 p-5 pt-4">
-                            {[strings.sellerLandingPreviewProduct1, strings.sellerLandingPreviewProduct2].map((name) => (
+                            {previewProducts.map((product) => (
                                 <div class="bg-bg rounded-lg border border-border/60 overflow-hidden">
-                                    <div class="aspect-square bg-gradient-to-br from-border-light/70 to-border-light/30 flex items-center justify-center">
-                                        <Icon name="image" size={22} class="text-text-tertiary" />
+                                    <div class="aspect-square overflow-hidden">
+                                        <img
+                                            src={product.image}
+                                            alt={product.name}
+                                            loading="lazy"
+                                            class="w-full h-full object-cover"
+                                        />
                                     </div>
                                     <div class="p-2.5">
-                                        <p class="text-xs font-medium text-text-primary truncate">{name}</p>
+                                        <p class="text-xs font-medium text-text-primary truncate">{product.name}</p>
                                         <div class="mt-1 flex items-center justify-between">
-                                            <span class="text-[13px] font-bold text-text-primary">€24,90</span>
+                                            <span class="text-[13px] font-bold text-text-primary">{product.price}</span>
                                             <span class="inline-flex items-center gap-1 text-[10px] font-semibold text-secondary">
                                                 <span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
                                                 {strings.sellerLandingPreviewInStock}
