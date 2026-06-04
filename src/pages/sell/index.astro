@@ -130,11 +130,19 @@ const previewProducts = [
 
                 <!-- Faux storefront preview (decorative) -->
                 <div class="relative" aria-hidden="true">
-                    <div class="bg-surface border border-border-light rounded-2xl shadow-sm overflow-hidden">
+                    <div class="bg-surface border border-border-light rounded-2xl shadow-[0_12px_40px_rgba(0,0,0,0.08)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.4)] overflow-hidden">
                         <!-- Banner -->
-                        <div class="h-24 md:h-28 bg-gradient-to-br from-accent/25 to-secondary/20"></div>
+                        <div class="relative h-28 md:h-32 overflow-hidden bg-bg">
+                            <img
+                                src="/seller-landing/banner.webp"
+                                alt=""
+                                loading="lazy"
+                                decoding="async"
+                                class="w-full h-full object-cover"
+                            />
+                        </div>
                         <!-- Brand row -->
-                        <div class="px-5 -mt-7">
+                        <div class="relative z-10 px-5 -mt-4">
                             <div class="flex items-end gap-3">
                                 <span class="w-14 h-14 rounded-2xl bg-surface border border-border-light shadow-sm flex items-center justify-center">
                                     <Icon name="headphones" size={28} class="text-accent" />
