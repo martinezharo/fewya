@@ -38,7 +38,7 @@ const reviewAvg = product.review_avg ?? 0;
                     <img
                         src={imageUrl}
                         alt={product.title}
-                        class="w-full h-full object-cover opacity-0 transition-opacity duration-300 group-hover:scale-[1.03]"
+                        class="w-full h-full object-cover opacity-0 transition duration-300 ease-out group-hover:scale-[1.03]"
                         width="400"
                         height="400"
                         loading={priority ? undefined : "lazy"}
@@ -120,7 +120,7 @@ const reviewAvg = product.review_avg ?? 0;
             <img
                 src={imageUrl}
                 alt={product.title}
-                class="w-full h-full object-cover opacity-0 transition-opacity duration-300 ease-out group-hover:scale-[1.06]"
+                class="w-full h-full object-cover opacity-0 transition duration-500 ease-out group-hover:scale-[1.06]"
                 width="400"
                 height="400"
                 loading={priority ? undefined : "lazy"}
