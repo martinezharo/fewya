@@ -29,6 +29,12 @@ export default defineConfig({
       CRON_SECRET: envField.string({ context: 'server', access: 'secret', optional: true }),
       SENDCLOUD_API_KEY: envField.string({ context: 'server', access: 'secret', optional: true }),
       SENDCLOUD_API_SECRET: envField.string({ context: 'server', access: 'secret', optional: true }),
+      APP_BASE_URL: envField.string({ context: 'server', access: 'public', default: 'https://fewya.com', optional: true }),
+      RESEND_API_KEY: envField.string({ context: 'server', access: 'secret', optional: true }),
+      RESEND_FROM: envField.string({ context: 'server', access: 'public', default: 'Fewya <no-reply@fewya.com>', optional: true }),
+      VAPID_PUBLIC_KEY: envField.string({ context: 'server', access: 'public', optional: true }),
+      VAPID_PRIVATE_KEY: envField.string({ context: 'server', access: 'secret', optional: true }),
+      VAPID_SUBJECT: envField.string({ context: 'server', access: 'public', default: 'mailto:no-reply@fewya.com', optional: true }),
     }
   },
   vite: {
@@ -83,6 +89,9 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,ico,png,svg}'],
         navigateFallback: null,
+        // Push + notificationclick handlers live in a static script that Workbox
+        // imports into the generated service worker (keeps generateSW strategy).
+        importScripts: ['/sw-push.js'],
         runtimeCaching: [
           {
             urlPattern: ({ request }) => request.mode === 'navigate',
