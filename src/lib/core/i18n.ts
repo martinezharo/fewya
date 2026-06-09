@@ -962,6 +962,79 @@ export const strings = {
     categoryLibros: 'Libros',
     categoryArtesania: 'Artesanía',
     categoryOtros: 'Otros',
+
+    // ── Notifications ───────────────────────────────────────────
+    // Push opt-in UI
+    notifPromptTitle: 'Activa las notificaciones',
+    notifPromptBody: 'Recibe avisos de tus pedidos y ventas al instante.',
+    notifPromptEnable: 'Activar',
+    notifPromptDismiss: 'Ahora no',
+    notifSettingsSection: 'Notificaciones',
+    notifSettingsTitle: 'Notificaciones push',
+    notifSettingsHelp: 'Recibe avisos de pedidos y envíos en este dispositivo.',
+    notifSettingsEnable: 'Activar notificaciones',
+    notifSettingsDisable: 'Desactivar notificaciones',
+    notifSettingsEnabled: 'Notificaciones activadas',
+    notifSettingsUnsupported: 'Tu navegador no admite notificaciones push.',
+    notifSettingsBlocked: 'Has bloqueado las notificaciones. Actívalas en los ajustes del navegador.',
+    notifToastEnabled: 'Notificaciones activadas',
+    notifToastDisabled: 'Notificaciones desactivadas',
+    notifToastError: 'No se pudieron activar las notificaciones',
+
+    // Shared email chrome
+    emailFooter: 'Fewya — Marketplace de pequeños negocios',
+    emailViewOrderCta: 'Ver pedido',
+
+    // Buyer: ready to send (label bought)
+    notifBuyerReadyToSendPushTitle: 'Tu pedido está en camino',
+    notifBuyerReadyToSendPushBody: 'El vendedor de {shop} ha preparado el envío de tu pedido {order}.',
+    notifBuyerReadyToSendSubject: 'Tu pedido {order} se ha enviado',
+    notifBuyerReadyToSendHeading: 'Tu pedido está en camino',
+    notifBuyerReadyToSendText: 'El vendedor de {shop} ha comprado la etiqueta de envío de tu pedido {order}. Pronto lo tendrás en tus manos.',
+    notifTrackCta: 'Seguir el envío',
+
+    // Buyer: ready to pick up
+    notifBuyerPickupReadyPushTitle: 'Tu paquete te espera',
+    notifBuyerPickupReadyPushBody: 'Tu pedido {order} ya está listo para recoger en {point}.',
+    notifBuyerPickupReadySubject: 'Tu pedido {order} está listo para recoger',
+    notifBuyerPickupReadyHeading: 'Listo para recoger',
+    notifBuyerPickupReadyText: 'Tu pedido {order} ya está disponible en el punto de recogida {point}. Acércate a recogerlo cuando quieras.',
+
+    // Buyer: pickup reminder
+    notifBuyerPickupReminderPushTitle: 'No olvides recoger tu paquete',
+    notifBuyerPickupReminderPushBody: 'Tu pedido {order} sigue esperándote en {point}.',
+    notifBuyerPickupReminderSubject: 'Recuerda recoger tu pedido {order}',
+    notifBuyerPickupReminderHeading: 'Tu paquete sigue esperándote',
+    notifBuyerPickupReminderText: 'Tu pedido {order} lleva varios días en el punto de recogida {point}. Recógelo pronto para no perderlo.',
+
+    // Buyer: out for delivery
+    notifBuyerOutForDeliveryPushTitle: 'Tu pedido sale a entrega hoy',
+    notifBuyerOutForDeliveryPushBody: 'Tu pedido {order} está en reparto y llegará pronto.',
+    notifBuyerOutForDeliverySubject: 'Tu pedido {order} está en reparto',
+    notifBuyerOutForDeliveryHeading: 'En reparto',
+    notifBuyerOutForDeliveryText: 'Tu pedido {order} ha salido a entrega y debería llegar hoy. Sigue su estado en tiempo real.',
+
+    // Seller: new sale
+    notifSellerNewSalePushTitle: '¡Nueva venta! 🎉',
+    notifSellerNewSalePushBody: 'Has recibido el pedido {order}. Prepáralo y compra la etiqueta de envío.',
+    notifSellerNewSaleSubject: 'Nueva venta: pedido {order}',
+    notifSellerNewSaleHeading: '¡Tienes una nueva venta!',
+    notifSellerNewSaleText: 'Acabas de recibir el pedido {order}. Prepáralo y compra la etiqueta de envío para enviarlo cuanto antes.',
+    notifManageOrderCta: 'Gestionar pedido',
+
+    // Seller: label reminder (no label after 3 calendar days)
+    notifSellerLabelReminderPushTitle: 'Pedido pendiente de envío',
+    notifSellerLabelReminderPushBody: 'Aún no has comprado la etiqueta del pedido {order}.',
+    notifSellerLabelReminderSubject: 'Compra la etiqueta del pedido {order}',
+    notifSellerLabelReminderHeading: 'Tienes un pedido pendiente',
+    notifSellerLabelReminderText: 'Han pasado 3 días desde la venta del pedido {order} y todavía no has comprado la etiqueta de envío. Recuerda que, si no lo envías en un plazo de 5 días laborables desde la venta, el pedido se cancelará automáticamente.',
+
+    // Seller: ship reminder (label bought but not shipped after 3 working days)
+    notifSellerShipReminderPushTitle: 'Recuerda enviar tu pedido',
+    notifSellerShipReminderPushBody: 'El pedido {order} aún no se ha entregado al transportista.',
+    notifSellerShipReminderSubject: 'Envía el pedido {order}',
+    notifSellerShipReminderHeading: 'Tu pedido sigue sin enviarse',
+    notifSellerShipReminderText: 'Han pasado 3 días laborables desde la venta del pedido {order} y todavía no consta como entregado al transportista. Recuerda que, si no lo envías en un plazo de 5 días laborables desde la venta, el pedido se cancelará automáticamente.',
 } as const;
 
 export const categories = [
