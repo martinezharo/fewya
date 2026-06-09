@@ -10,6 +10,22 @@ import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
 import { isDevelopment } from '../../../lib/core/env';
 import { runMockShipment } from '../../../lib/shipping/mockShipment';
 import { DELIVERY_TYPE } from '../../../lib/orders/orderStatus';
+import { notify } from '../../../lib/notifications/dispatch';
+import { NOTIFICATION_TYPE } from '../../../lib/notifications/types';
+
+/** Fire-and-await the buyer "ready to send" notice; never let it fail the request. */
+async function notifyBuyerReadyToSend(orderId: string, trackingUrl?: string | null) {
+    try {
+        await notify({
+            type: NOTIFICATION_TYPE.BUYER_READY_TO_SEND,
+            orderId,
+            recipient: 'buyer',
+            dataOverride: trackingUrl ? { trackingUrl } : undefined,
+        });
+    } catch (e) {
+        console.error(JSON.stringify({ event: 'shipment.notify_failed', orderId, error: e instanceof Error ? e.message : String(e) }));
+    }
+}
 
 function jsonResponse(payload: Record<string, unknown>, status: number) {
     return new Response(JSON.stringify(payload), {
@@ -64,6 +80,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         if (!result.success) {
             return jsonResponse({ error: result.error }, result.status);
         }
+        await notifyBuyerReadyToSend(orderId, result.trackingUrl);
         return jsonResponse({
             success: true,
             shipmentId: result.shipmentId,
@@ -245,6 +262,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         }
 
         await adminClient.rpc('mark_order_processing', { p_actor_id: user.id, p_order_id: orderId });
+
+        await notifyBuyerReadyToSend(orderId, result.trackingUrl);
 
         return jsonResponse({
             success: true,

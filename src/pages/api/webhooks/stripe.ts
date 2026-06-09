@@ -4,6 +4,8 @@ import { getStripeClient } from '../../../lib/payments/stripe';
 import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
 import { securityLog } from '../../../lib/core/security-log';
 import { PAYMENT_STATUS } from '../../../lib/orders/orderStatus';
+import { notify } from '../../../lib/notifications/dispatch';
+import { NOTIFICATION_TYPE } from '../../../lib/notifications/types';
 
 function ok(): Response {
     return new Response(JSON.stringify({ received: true }), {
@@ -122,9 +124,13 @@ async function handlePaymentConfirmed(
 
     // Group by session and buyer — mark_order_paid takes (buyer_id, session_id)
     const sessionGroups = new Map<string, string>(); // sessionId → buyerId
+    const orderIdsBySession = new Map<string, string[]>(); // sessionId → order ids
     for (const o of orders) {
         if (o.stripe_checkout_session_id && o.buyer_id) {
             sessionGroups.set(o.stripe_checkout_session_id, o.buyer_id);
+            const list = orderIdsBySession.get(o.stripe_checkout_session_id) ?? [];
+            list.push(o.id);
+            orderIdsBySession.set(o.stripe_checkout_session_id, list);
         }
     }
 
@@ -138,6 +144,22 @@ async function handlePaymentConfirmed(
 
         if (error) {
             console.error(JSON.stringify({ event: 'stripe_webhook.mark_paid_failed', sessionId: sid, error: error.message }));
+            continue;
+        }
+
+        // Notify each shop's seller of the new (paid) sale. Idempotent via
+        // notification_log; failures here must not fail the webhook.
+        for (const orderId of orderIdsBySession.get(sid) ?? []) {
+            try {
+                await notify({
+                    type: NOTIFICATION_TYPE.SELLER_NEW_SALE,
+                    orderId,
+                    recipient: 'seller',
+                    client: adminClient,
+                });
+            } catch (e) {
+                console.error(JSON.stringify({ event: 'stripe_webhook.notify_failed', orderId, error: e instanceof Error ? e.message : String(e) }));
+            }
         }
     }
 }

@@ -1,6 +1,7 @@
 import astroServer from '@astrojs/cloudflare/entrypoints/server';
 import { syncAllTracking } from './lib/shipping/syncTracking';
 import { runAutoConfirm } from './lib/orders/autoConfirm';
+import { runNotificationScan } from './lib/notifications/scan';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const entry: any = {
@@ -11,7 +12,14 @@ const entry: any = {
     // request never leaves the isolate), which silently broke the cron before.
     async scheduled(_controller: ScheduledController, _env: Record<string, string>, ctx: ExecutionContext) {
         const run = async () => {
-            const results = await Promise.allSettled([syncAllTracking(), runAutoConfirm()]);
+            // Sync tracking first so shipment_tracking holds the latest carrier
+            // statuses before the notification scan reads them; auto-confirm is
+            // independent and can run alongside.
+            const trackingThenNotify = (async () => {
+                await syncAllTracking();
+                await runNotificationScan();
+            })();
+            const results = await Promise.allSettled([trackingThenNotify, runAutoConfirm()]);
             for (const r of results) {
                 if (r.status === 'rejected') {
                     console.error(JSON.stringify({
