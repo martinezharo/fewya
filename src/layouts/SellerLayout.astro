@@ -1,6 +1,7 @@
 ---
 import Layout from './Layout.astro';
 import SellerSidebar from '../components/seller/SellerSidebar.astro';
+import PushPrompt from '../components/notifications/PushPrompt.astro';
 import Icon from '../components/icons/Icon.astro';
 import { strings } from '../lib/core/i18n';
 import { createSupabaseAuthClient } from '../lib/core/auth';
@@ -145,6 +146,7 @@ if (shopId) {
             </main>
         </div>
     </div>
+    <PushPrompt />
 </Layout>
 
 <script>

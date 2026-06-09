@@ -1,0 +1,102 @@
+---
+import { strings } from '../../lib/core/i18n';
+
+// Dismissible soft prompt for enabling PWA push. Renders only for logged-in
+// users; the client script further hides it unless push is supported, the
+// permission is still 'default', and the user hasn't dismissed it before.
+---
+
+<div
+    id="push-prompt"
+    hidden
+    class="fixed inset-x-3 bottom-20 z-40 mx-auto hidden max-w-md rounded-2xl border border-gray-200 bg-white/95 p-4 shadow-lg backdrop-blur md:bottom-6 dark:border-white/10 dark:bg-neutral-900/95"
+    role="dialog"
+    aria-live="polite"
+    aria-label={strings.notifPromptTitle}
+>
+    <div class="flex items-start gap-3">
+        <div class="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-50 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5">
+                <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+                <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+            </svg>
+        </div>
+        <div class="min-w-0 flex-1">
+            <p class="text-sm font-semibold text-gray-900 dark:text-white">{strings.notifPromptTitle}</p>
+            <p class="mt-0.5 text-sm text-gray-500 dark:text-neutral-400">{strings.notifPromptBody}</p>
+            <div class="mt-3 flex items-center gap-2">
+                <button
+                    type="button"
+                    id="push-prompt-enable"
+                    class="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:opacity-60"
+                >
+                    {strings.notifPromptEnable}
+                </button>
+                <button
+                    type="button"
+                    id="push-prompt-dismiss"
+                    class="rounded-lg px-3 py-1.5 text-sm font-medium text-gray-500 transition hover:bg-gray-100 dark:text-neutral-400 dark:hover:bg-white/5"
+                >
+                    {strings.notifPromptDismiss}
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    import { isPushSupported, currentState, subscribe } from '../../lib/ui/push-subscribe';
+    import { toast } from '../../lib/ui/toast';
+    import { strings } from '../../lib/core/i18n';
+
+    const DISMISS_KEY = 'fewya-push-prompt-dismissed';
+
+    async function init() {
+        const el = document.getElementById('push-prompt');
+        if (!el) return;
+        if (!isPushSupported()) return;
+        if (localStorage.getItem(DISMISS_KEY) === '1') return;
+        const state = await currentState();
+        if (state !== 'default') return; // already granted/denied/subscribed
+
+        el.hidden = false;
+        el.classList.remove('hidden');
+
+        const enableBtn = document.getElementById('push-prompt-enable') as HTMLButtonElement | null;
+        const dismissBtn = document.getElementById('push-prompt-dismiss');
+
+        const hide = () => {
+            el.hidden = true;
+            el.classList.add('hidden');
+        };
+
+        enableBtn?.addEventListener('click', async () => {
+            enableBtn.disabled = true;
+            try {
+                const ok = await subscribe();
+                if (ok) {
+                    toast.success(strings.notifToastEnabled);
+                    localStorage.setItem(DISMISS_KEY, '1');
+                    hide();
+                } else {
+                    toast.error(strings.notifToastError);
+                    enableBtn.disabled = false;
+                }
+            } catch {
+                toast.error(strings.notifToastError);
+                enableBtn.disabled = false;
+            }
+        });
+
+        dismissBtn?.addEventListener('click', () => {
+            localStorage.setItem(DISMISS_KEY, '1');
+            hide();
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+</script>

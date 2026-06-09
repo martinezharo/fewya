@@ -3,6 +3,7 @@ import Header from '../components/Header.astro';
 import BottomNav from '../components/BottomNav.astro';
 import { getBuyerShellState } from '../lib/ui/buyerShell';
 import Layout from './Layout.astro';
+import PushPrompt from '../components/notifications/PushPrompt.astro';
 
 interface Props {
     title?: string;
@@ -10,7 +11,7 @@ interface Props {
 }
 
 const { title, description } = Astro.props;
-const { wishlistCount, profileIncomplete } = await getBuyerShellState(Astro.cookies, Astro.request);
+const { isLoggedIn, wishlistCount, profileIncomplete } = await getBuyerShellState(Astro.cookies, Astro.request);
 const currentPath = Astro.url.pathname;
 ---
 
@@ -20,4 +21,5 @@ const currentPath = Astro.url.pathname;
     <slot name="afterHeader" />
     <slot />
     <BottomNav currentPath={currentPath} wishlistCount={wishlistCount} profileIncomplete={profileIncomplete} />
+    {isLoggedIn && <PushPrompt />}
 </Layout>

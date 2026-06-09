@@ -3,6 +3,7 @@ import BuyerAppLayout from "../../layouts/BuyerAppLayout.astro";
 import Icon from "../../components/icons/Icon.astro";
 import ThemeSelector from "../../components/settings/ThemeSelector.astro";
 import SignOutButton from "../../components/settings/SignOutButton.astro";
+import NotificationsToggle from "../../components/settings/NotificationsToggle.astro";
 import { strings } from "../../lib/core/i18n";
 import { createSupabaseAuthClient } from "../../lib/core/auth";
 
@@ -44,6 +45,15 @@ if (!user) {
 
                 <ThemeSelector />
             </div>
+        </section>
+
+        {/* Notificaciones */}
+        <section class="mb-6">
+            <h2 class="text-[11px] font-semibold uppercase tracking-widest text-text-tertiary mb-3 px-1">
+                {strings.notifSettingsSection}
+            </h2>
+
+            <NotificationsToggle />
         </section>
 
         {/* Cuenta */}
