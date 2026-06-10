@@ -3,7 +3,7 @@ import { defineConfig, envField } from 'astro/config';
 
 import tailwindcss from '@tailwindcss/vite';
 import cloudflare from '@astrojs/cloudflare';
-import { VitePWA } from 'vite-plugin-pwa';
+import AstroPWA from '@vite-pwa/astro';
 
 // https://astro.build/config
 export default defineConfig({
@@ -37,11 +37,12 @@ export default defineConfig({
       VAPID_SUBJECT: envField.string({ context: 'server', access: 'public', default: 'mailto:no-reply@fewya.com', optional: true }),
     }
   },
-  vite: {
-    plugins: [
-      tailwindcss(),
-      VitePWA({
-        injectRegister: false,
+  // PWA must be an Astro integration (not a raw vite plugin): with the plugin in
+  // vite.plugins, Astro's multi-phase build never runs the generateSW step and
+  // the built site ships without sw.js, breaking offline caching and web push.
+  integrations: [
+    AstroPWA({
+      injectRegister: false,
       registerType: 'autoUpdate',
       manifestFilename: 'manifest.webmanifest',
       devOptions: {
@@ -121,8 +122,10 @@ export default defineConfig({
             },
           },
         ],
-      }
-      })
-    ]
-  }
+      },
+    }),
+  ],
+  vite: {
+    plugins: [tailwindcss()],
+  },
 });
