@@ -26,7 +26,12 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
 
 async function getRegistration(): Promise<ServiceWorkerRegistration | null> {
     if (!isPushSupported()) return null;
-    return (await navigator.serviceWorker.getRegistration()) ?? (await navigator.serviceWorker.ready);
+    const existing = await navigator.serviceWorker.getRegistration();
+    if (existing) return existing;
+    // serviceWorker.ready never settles when no SW is registered — bound the
+    // wait so callers fail visibly instead of hanging the UI forever.
+    const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000));
+    return Promise.race([navigator.serviceWorker.ready, timeout]);
 }
 
 /** Current permission + subscription state, for rendering the toggle/prompt. */
