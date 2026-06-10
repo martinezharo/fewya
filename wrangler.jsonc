@@ -18,7 +18,10 @@
 	},
 	"vars": {
 		"APP_MODE": "production",
-		"WORKER_BASE_URL": "https://fewya.com"
+		"WORKER_BASE_URL": "https://fewya.com",
+		// astro:env vars with access:'public' are resolved at BUILD time from this file
+		// (runtime secrets won't work for them) — the push public key must live here.
+		"VAPID_PUBLIC_KEY": "BNm6TUaJ9ehIHedtrIIp41Pp5oyHdLgKDRlFTAadOck2fovY4oRlrEP4O7KKKYysQFJFXHkk3ecHX10GSuXtzcY"
 	},
 	// A7: Rate limiting for auth endpoints — consumed by middleware.ts via env.RATE_LIMITER_AUTH.
 	// namespace_id is an arbitrary string unique within this Worker; no dashboard setup needed.
