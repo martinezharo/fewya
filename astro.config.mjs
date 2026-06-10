@@ -32,7 +32,10 @@ export default defineConfig({
       APP_BASE_URL: envField.string({ context: 'server', access: 'public', default: 'https://fewya.com', optional: true }),
       RESEND_API_KEY: envField.string({ context: 'server', access: 'secret', optional: true }),
       RESEND_FROM: envField.string({ context: 'server', access: 'public', default: 'Fewya <no-reply@fewya.com>', optional: true }),
-      VAPID_PUBLIC_KEY: envField.string({ context: 'server', access: 'public', optional: true }),
+      // access:'secret' (runtime lookup) on purpose: 'public' vars are inlined at build
+      // time from the BUILD machine's env, so CI builds (no .env) would bake in null.
+      // The value itself is not sensitive; it's served to browsers via an endpoint.
+      VAPID_PUBLIC_KEY: envField.string({ context: 'server', access: 'secret', optional: true }),
       VAPID_PRIVATE_KEY: envField.string({ context: 'server', access: 'secret', optional: true }),
       VAPID_SUBJECT: envField.string({ context: 'server', access: 'public', default: 'mailto:no-reply@fewya.com', optional: true }),
     }
