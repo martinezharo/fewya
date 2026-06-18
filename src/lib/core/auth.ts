@@ -145,7 +145,7 @@ export async function exchangeAuthCodeForSession(cookies: AstroCookies, request:
     }
 
     if (!role && data.session?.user && isNewlyRegisteredUser(data.session.user)) {
-        return '/me/details';
+        return '/me/details?welcome=1';
     }
 
     return redirectTo;

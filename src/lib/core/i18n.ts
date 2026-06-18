@@ -229,6 +229,7 @@ export const strings = {
     meDataCheckoutNoticeSubtitle: 'Guarda tu nombre y tu dirección de envío para volver al carrito y terminar la compra.',
     meDataIncompleteNoticeTitle: 'Perfil incompleto',
     meDataIncompleteNoticeSubtitle: 'Necesitamos tu nombre, teléfono y dirección de envío para que puedas realizar compras.',
+    meDataEmailOptInLabel: 'Acepto recibir notificaciones de Fewya por correo, incluidas las promocionales.',
 
     // Form validation errors
     validationRequired: 'Este campo es obligatorio',

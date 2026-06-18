@@ -34,6 +34,7 @@ type ProfileUpdateBody = {
     address_city?: unknown;
     address_province?: unknown;
     address_country?: unknown;
+    email_marketing_opt_in?: unknown;
 };
 
 function validateStringField(value: unknown, field: string): string | Response {
@@ -70,9 +71,10 @@ export const POST: APIRoute = async ({ cookies, request }) => {
         address_city,
         address_province,
         address_country,
+        email_marketing_opt_in,
     } = body ?? {};
 
-    const updates: Record<string, string | null> = {};
+    const updates: Record<string, string | boolean | null> = {};
 
     const stringFields: Array<[string, unknown]> = [
         ['first_name', first_name],
@@ -119,6 +121,13 @@ export const POST: APIRoute = async ({ cookies, request }) => {
             if (result instanceof Response) return result;
             updates.avatar_url = result || null;
         }
+    }
+
+    if (email_marketing_opt_in !== undefined) {
+        if (typeof email_marketing_opt_in !== 'boolean') {
+            return new Response(JSON.stringify({ error: 'invalid_email_marketing_opt_in' }), { status: 400 });
+        }
+        updates.email_marketing_opt_in = email_marketing_opt_in;
     }
 
     if (Object.keys(updates).length === 0) {

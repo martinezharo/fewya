@@ -16,15 +16,22 @@ if (!user) {
 
 const { data: profile } = await supabase
     .from('profiles')
-    .select('first_name, last_name, email, avatar_url, phone, phone_prefix, address_street, address_number, address_floor, address_postal_code, address_city, address_province, address_country')
+    .select('first_name, last_name, email, avatar_url, phone, phone_prefix, address_street, address_number, address_floor, address_postal_code, address_city, address_province, address_country, email_marketing_opt_in')
     .eq('id', user.id)
     .single();
 
 const returnTo = Astro.url.searchParams.get('return_to');
 const fromCheckout = Astro.url.searchParams.get('checkout') === '1' && returnTo === '/cart';
 
+// First visit right after the initial sign-in: skip the "incomplete profile" warning
+// and the back arrow — the user hasn't had a chance to fill anything in yet.
+const isWelcome = Astro.url.searchParams.get('welcome') === '1';
+
 const profileCheck = isProfileComplete(profile ?? {});
 const profileIncomplete = !profileCheck.complete;
+
+// Show the email opt-in checkbox until the user has accepted it.
+const showEmailOptIn = !profile?.email_marketing_opt_in;
 
 const allCountries = getAllCountries();
 const currentCountry = profile?.address_country || 'ES';
@@ -37,15 +44,17 @@ const isSpain = currentCountry === 'ES';
 
         {/* Back button + title */}
         <div class="flex items-center gap-3 mb-8">
-            <a href="/me" class="w-9 h-9 rounded-full flex items-center justify-center hover:bg-border-light transition-colors -ml-1 text-text-secondary hover:text-text-primary">
-                <Icon name="arrow-left" size={20} />
-            </a>
+            {!isWelcome && (
+                <a href="/me" class="w-9 h-9 rounded-full flex items-center justify-center hover:bg-border-light transition-colors -ml-1 text-text-secondary hover:text-text-primary">
+                    <Icon name="arrow-left" size={20} />
+                </a>
+            )}
             <h1 class="text-xl md:text-2xl font-bold text-text-primary">
                 {strings.meDataPageTitle}
             </h1>
         </div>
 
-        {profileIncomplete && (
+        {profileIncomplete && !isWelcome && (
             <div class="mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-4 text-red-800 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300">
                 <div class="flex items-start gap-3">
                     <span class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white mt-0.5">!</span>
@@ -343,6 +352,21 @@ const isSpain = currentCountry === 'ES';
                 <p id="address_province_error" class="hidden text-[12px] text-red-500"></p>
             </div>
 
+            {/* Email marketing opt-in — shown until accepted, then removed */}
+            {showEmailOptIn && (
+                <label id="email-optin-row" for="email_marketing_opt_in" class="flex items-start gap-3 cursor-pointer select-none rounded-xl border border-border bg-surface px-4 py-3.5">
+                    <input
+                        id="email_marketing_opt_in"
+                        name="email_marketing_opt_in"
+                        type="checkbox"
+                        class="mt-0.5 h-4 w-4 shrink-0 rounded border-border text-accent focus:ring-accent cursor-pointer"
+                    />
+                    <span class="text-[13px] leading-snug text-text-secondary">
+                        {strings.meDataEmailOptInLabel}
+                    </span>
+                </label>
+            )}
+
             {/* Submit */}
             <button
                 type="submit"
@@ -465,6 +489,11 @@ const isSpain = currentCountry === 'ES';
     }
 
     countrySelect.addEventListener('change', updateProvinceField);
+
+    // Email marketing opt-in: persisted together with the form on "Guardar cambios".
+    // The row stays visible until the user leaves/refreshes the page (it's only
+    // re-rendered when they haven't accepted yet), so it never vanishes mid-edit.
+    const emailOptInCheckbox = document.getElementById('email_marketing_opt_in') as HTMLInputElement | null;
 
     // Avatar upload
     const avatarInput = document.getElementById('avatar-input') as HTMLInputElement | null;
@@ -645,13 +674,18 @@ const isSpain = currentCountry === 'ES';
             return;
         }
 
+        const payload: ProfileFormData & { email_marketing_opt_in?: boolean } = { ...data };
+        if (emailOptInCheckbox?.checked) {
+            payload.email_marketing_opt_in = true;
+        }
+
         const result = await runSubmit({
             button: btn,
             busyLabel: strings.meDataSaving,
             action: () => fetch('/api/profile/update', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data),
+                body: JSON.stringify(payload),
             }),
             successMsg: fromCheckout ? strings.meDataSaveAndReturnSuccess : strings.profileSavedToast,
             errorFallback: strings.meDataSaveError,

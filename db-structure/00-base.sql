@@ -21,6 +21,7 @@ CREATE TABLE public.profiles (
   phone text,
   phone_prefix text DEFAULT '+34',
   is_seller boolean DEFAULT false,
+  email_marketing_opt_in boolean NOT NULL DEFAULT false,
   created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
   CONSTRAINT profiles_pkey PRIMARY KEY (id),
   CONSTRAINT profiles_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id)
