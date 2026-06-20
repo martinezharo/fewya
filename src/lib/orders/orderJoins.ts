@@ -14,6 +14,7 @@ export interface JoinedShop {
     is_active?: boolean | null;
     owner_id?: string | null;
     seller_details_complete?: boolean | null;
+    shipping_carriers?: string[] | null;
     shop_payment_accounts?: JoinedPaymentAccount | JoinedPaymentAccount[] | null;
 }
 

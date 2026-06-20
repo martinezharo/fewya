@@ -1,6 +1,7 @@
 import type { OrderStatus, PaymentStatus, FundsReleaseStatus, DeliveryType } from '../orders/orderStatus';
 import type { ShipmentStatus } from '../shipping/shipmentStatus';
 import type { ShopStatus } from './shopStatus';
+import type { ShippingPlatform } from '../shipping/shippingPlatform';
 
 export interface Shop {
     id: string;
@@ -25,6 +26,7 @@ export interface Shop {
     seller_details_complete: boolean;
     allow_loss: boolean;
     status: ShopStatus;
+    shipping_carriers: ShippingPlatform[];
 }
 
 export interface Product {

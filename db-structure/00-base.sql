@@ -51,8 +51,14 @@ CREATE TABLE public.shops (
   seller_details_complete boolean NOT NULL DEFAULT false,
   -- Internal override: when true, variant price/shipping/margin enforcement is skipped for this shop.
   allow_loss boolean NOT NULL DEFAULT false,
+  -- Shipping platforms (carrier brands) the shop ships with. At least one required.
+  shipping_carriers text[] NOT NULL DEFAULT ARRAY['inpost', 'correos']::text[],
   CONSTRAINT shops_pkey PRIMARY KEY (id),
-  CONSTRAINT shops_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES public.profiles(id)
+  CONSTRAINT shops_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES public.profiles(id),
+  CONSTRAINT shops_shipping_carriers_valid CHECK (
+    array_length(shipping_carriers, 1) >= 1
+    AND shipping_carriers <@ ARRAY['inpost', 'correos']::text[]
+  )
 );
 
 CREATE TABLE public.shop_payment_accounts (
