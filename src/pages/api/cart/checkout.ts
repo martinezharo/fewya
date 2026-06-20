@@ -14,6 +14,7 @@ import { isProfileComplete } from '../../../lib/core/validation';
 import { resolvePhonePrefix } from '../../../lib/core/phone';
 import { pickOne, type JoinedProduct, type JoinedShop, type JoinedVariant, type JoinedPaymentAccount } from '../../../lib/orders/orderJoins';
 import { DELIVERY_TYPE, type DeliveryType } from '../../../lib/orders/orderStatus';
+import { normalizeShippingPlatforms, platformForDelivery, type ShippingPlatform } from '../../../lib/shipping/shippingPlatform';
 
 interface CheckoutItemPayload {
     variantId: string;
@@ -187,6 +188,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
                     slug,
                     is_active,
                     seller_details_complete,
+                    shipping_carriers,
                     shop_payment_accounts (
                         stripe_account_id,
                         charges_enabled,
@@ -211,6 +213,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         (variantRows ?? []).map((variant) => [variant.id as string, variant as unknown as CheckoutVariantRow])
     );
     const resolvedItems: CheckoutResolvedItem[] = [];
+    const shopPlatforms = new Map<string, ShippingPlatform[]>();
 
     for (const item of normalizedItems) {
         const variant = variantMap.get(item.variantId);
@@ -273,6 +276,10 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             return jsonResponse({ error: strings.apiCheckoutSellerNotReady }, 400);
         }
 
+        if (!shopPlatforms.has(shop.id)) {
+            shopPlatforms.set(shop.id, normalizeShippingPlatforms(shop.shipping_carriers));
+        }
+
         resolvedItems.push({
             productId: product.id,
             productTitle: product.title,
@@ -288,6 +295,26 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             shopSlug: shop.slug,
             stripeAccountId: paymentAccount.stripe_account_id,
         });
+    }
+
+    // Enforce the seller's enabled shipping platforms: the chosen delivery
+    // method must be supported by every shop in the cart.
+    const deliveryPlatform = platformForDelivery(
+        body.delivery?.type || DELIVERY_TYPE.HOME,
+        body.delivery?.pickupPointCarrier,
+    );
+    if (deliveryPlatform) {
+        for (const [shopId, platforms] of shopPlatforms) {
+            if (!platforms.includes(deliveryPlatform)) {
+                console.error(JSON.stringify({
+                    event: 'checkout.carrier_unavailable',
+                    shopId,
+                    deliveryPlatform,
+                    enabled: platforms,
+                }));
+                return jsonResponse({ error: strings.apiCheckoutCarrierUnavailable }, 400);
+            }
+        }
     }
 
     const checkoutGroupId = `ORD-${Date.now()}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;

@@ -28,8 +28,16 @@ export const GET: APIRoute = async ({ url, request, cookies }) => {
         return jsonResponse({ error: 'Address required' }, 400);
     }
 
+    // Optional carrier filter (comma-separated sendcloud carrier codes). Falls
+    // back to all supported carriers when absent or empty.
+    const carriersParam = (url.searchParams.get('carriers') || '')
+        .split(',')
+        .map((c) => c.trim().toLowerCase())
+        .filter((c) => c === 'correos' || c === 'inpost');
+    const carriers = carriersParam.length > 0 ? carriersParam : ['correos', 'inpost'];
+
     try {
-        const points = await getServicePoints(address, country, ['correos', 'inpost']);
+        const points = await getServicePoints(address, country, carriers);
         return jsonResponse({ points }, 200);
     } catch (err) {
         console.error('Sendcloud service points error:', err);

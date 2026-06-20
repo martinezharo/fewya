@@ -82,6 +82,7 @@ const isLoggedIn = !!user;
       <div id="delivery-modal-content" class="flex-1 overflow-y-auto p-5">
         <!-- Step 1: Delivery type selection -->
         <div id="delivery-step-type" class="flex flex-col gap-3">
+          <p id="delivery-no-options" class="hidden text-sm text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-xl px-4 py-3">{strings.deliveryNoOptions}</p>
           <button type="button" id="delivery-option-home" class="flex items-start gap-4 p-4 rounded-xl border-2 border-border-light hover:border-accent/50 transition-all text-left bg-surface">
             <div class="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center shrink-0">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-accent"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
@@ -94,6 +95,7 @@ const isLoggedIn = !!user;
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
             </div>
           </button>
+          <p id="delivery-home-hint" class="hidden text-xs text-text-tertiary px-1 -mt-1"></p>
 
           <button type="button" id="delivery-option-pickup" class="flex items-start gap-4 p-4 rounded-xl border-2 border-border-light hover:border-accent/50 transition-all text-left bg-surface">
             <div class="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center shrink-0">
@@ -107,6 +109,7 @@ const isLoggedIn = !!user;
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
             </div>
           </button>
+          <p id="delivery-pickup-hint" class="hidden text-xs text-text-tertiary px-1 -mt-1"></p>
         </div>
 
         <!-- Step 2: Pickup point search & selection -->
@@ -222,6 +225,11 @@ const isLoggedIn = !!user;
   let isCheckingOut = false;
 
   // Delivery modal state
+  let deliveryOptions: {
+    homeAvailable: boolean;
+    pickupAvailable: boolean;
+    pickupCarriers: string[];
+  } | null = null;
   let selectedDeliveryType: DeliveryType | null = null;
   let selectedPickupPoint: {
     id: string;
@@ -389,6 +397,9 @@ const isLoggedIn = !!user;
   let stepPickup: HTMLElement | null = null;
   let optionHome: HTMLElement | null = null;
   let optionPickup: HTMLElement | null = null;
+  let optionHomeHint: HTMLElement | null = null;
+  let optionPickupHint: HTMLElement | null = null;
+  let noOptionsEl: HTMLElement | null = null;
   let btnClose: HTMLElement | null = null;
   let btnContinue: HTMLButtonElement | null = null;
   let btnBack: HTMLElement | null = null;
@@ -457,6 +468,63 @@ const isLoggedIn = !!user;
     }
   }
 
+  function distinctShopCount(): number {
+    return new Set(cart.get().map((i) => i.shopId)).size;
+  }
+
+  // Disable delivery methods the cart's shop(s) don't support and explain why.
+  function applyDeliveryAvailability() {
+    const opts = deliveryOptions ?? { homeAvailable: true, pickupAvailable: true, pickupCarriers: ['correos', 'inpost'] };
+    const multi = distinctShopCount() > 1;
+
+    const setOption = (btn: HTMLElement | null, hint: HTMLElement | null, available: boolean, msgSingle: string, msgMulti: string) => {
+      if (!btn) return;
+      btn.dataset.disabled = available ? 'false' : 'true';
+      btn.classList.toggle('opacity-50', !available);
+      btn.classList.toggle('pointer-events-none', !available);
+      btn.setAttribute('aria-disabled', available ? 'false' : 'true');
+      if (hint) {
+        hint.textContent = available ? '' : (multi ? msgMulti : msgSingle);
+        hint.classList.toggle('hidden', available);
+      }
+    };
+
+    setOption(optionHome, optionHomeHint, opts.homeAvailable, strings.deliveryHomeUnavailable, strings.deliveryHomeUnavailableMulti);
+    setOption(optionPickup, optionPickupHint, opts.pickupAvailable, strings.deliveryPickupUnavailable, strings.deliveryPickupUnavailableMulti);
+
+    const noneAvailable = !opts.homeAvailable && !opts.pickupAvailable;
+    noOptionsEl?.classList.toggle('hidden', !noneAvailable);
+  }
+
+  async function loadDeliveryOptions() {
+    const items = cart.get();
+    if (items.length === 0) {
+      deliveryOptions = null;
+      return;
+    }
+    try {
+      const res = await fetch('/api/cart/delivery-options', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ variantIds: items.map((i) => i.variantId) }),
+      });
+      if (res.ok) {
+        const data = await res.json() as { homeAvailable?: boolean; pickupAvailable?: boolean; pickupCarriers?: string[] };
+        deliveryOptions = {
+          homeAvailable: data.homeAvailable !== false,
+          pickupAvailable: data.pickupAvailable !== false,
+          pickupCarriers: Array.isArray(data.pickupCarriers) && data.pickupCarriers.length ? data.pickupCarriers : ['correos', 'inpost'],
+        };
+      } else {
+        deliveryOptions = null;
+      }
+    } catch {
+      // On failure, leave everything enabled — the checkout API still guards it.
+      deliveryOptions = null;
+    }
+    applyDeliveryAvailability();
+  }
+
   function openDeliveryModal() {
     selectedDeliveryType = null;
     selectedPickupPoint = null;
@@ -471,6 +539,8 @@ const isLoggedIn = !!user;
       searchStatus.classList.add('hidden');
       searchStatus.textContent = '';
     }
+    applyDeliveryAvailability();
+    void loadDeliveryOptions();
     deliveryModal?.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
   }
@@ -505,6 +575,10 @@ const isLoggedIn = !!user;
   }
 
   function selectDeliveryType(type: DeliveryType) {
+    // Ignore taps on a method this cart's shop(s) don't support.
+    if (type === DELIVERY_TYPE.HOME && optionHome?.dataset.disabled === 'true') return;
+    if (type === DELIVERY_TYPE.PICKUP_POINT && optionPickup?.dataset.disabled === 'true') return;
+
     selectedDeliveryType = type;
     selectedPickupPoint = null;
     updateDeliveryUI();
@@ -560,7 +634,10 @@ const isLoggedIn = !!user;
     setSearchButtonLoading(true);
 
     try {
-      const res = await fetch(`/api/sendcloud/service-points?address=${encodeURIComponent(address)}&country=ES`);
+      const carriersParam = deliveryOptions?.pickupCarriers?.length
+        ? `&carriers=${encodeURIComponent(deliveryOptions.pickupCarriers.join(','))}`
+        : '';
+      const res = await fetch(`/api/sendcloud/service-points?address=${encodeURIComponent(address)}&country=ES${carriersParam}`);
       const data = await res.json() as any;
 
       if (!res.ok || !data.points) {
@@ -800,6 +877,9 @@ const isLoggedIn = !!user;
     stepPickup = document.getElementById('delivery-step-pickup');
     optionHome = document.getElementById('delivery-option-home');
     optionPickup = document.getElementById('delivery-option-pickup');
+    optionHomeHint = document.getElementById('delivery-home-hint');
+    optionPickupHint = document.getElementById('delivery-pickup-hint');
+    noOptionsEl = document.getElementById('delivery-no-options');
     btnClose = document.getElementById('delivery-modal-close');
     btnContinue = document.getElementById('delivery-continue-btn') as HTMLButtonElement | null;
     btnBack = document.getElementById('delivery-back-to-type');

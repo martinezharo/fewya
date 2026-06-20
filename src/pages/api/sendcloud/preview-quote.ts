@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { getShippingQuotes, getConfig, type SendcloudShippingQuote } from '../../../lib/shipping/sendcloud';
 import { categorize, CARRIER_META, type CarrierKey } from '../../../lib/shipping/carrierKey';
+import { carrierKeyToPlatform, normalizeShippingPlatforms } from '../../../lib/shipping/shippingPlatform';
 
 export type { CarrierKey };
 
@@ -28,6 +29,14 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     const authClient = createSupabaseAuthClient(cookies, request);
     const { data: { user } } = await authClient.auth.getUser();
     if (!user) return jsonResponse({ error: 'Unauthorized' }, 401);
+
+    // Only preview platforms this seller actually ships with.
+    const { data: shopRow } = await authClient
+        .from('shops')
+        .select('shipping_carriers')
+        .eq('owner_id', user.id)
+        .maybeSingle();
+    const enabledPlatforms = normalizeShippingPlatforms(shopRow?.shipping_carriers);
 
     let body: {
         weight_kg: number;
@@ -92,7 +101,9 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     }
 
     const order: CarrierKey[] = ['inpost', 'correos_home', 'correos_pickup'];
-    const estimates: CarrierEstimate[] = order.map((key) => {
+    const estimates: CarrierEstimate[] = order
+        .filter((key) => enabledPlatforms.includes(carrierKeyToPlatform(key)))
+        .map((key) => {
         const q = buckets[key];
         return {
             key,
