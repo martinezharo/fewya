@@ -607,13 +607,30 @@ export async function getServicePoints(
         }));
     }
 
+    // Keep only points whose carrier maps to one of the requested platforms.
+    // Sendcloud's own carrier filter can be bypassed (see the fallback below),
+    // and we never want to surface a carrier the seller hasn't enabled — those
+    // would otherwise be rejected later at checkout. An empty `carriers` list
+    // means "no restriction".
+    const allowed = carriers.map((c) => c.toLowerCase());
+    function filterByCarrier(points: SendcloudServicePoint[]): SendcloudServicePoint[] {
+        if (allowed.length === 0) return points;
+        return points.filter((sp) => {
+            const code = (sp.carrier || '').toLowerCase();
+            const platform = code.includes('inpost') ? 'inpost' : 'correos';
+            return allowed.includes(platform);
+        });
+    }
+
     try {
-        return await doRequest(carriers);
+        return filterByCarrier(await doRequest(carriers));
     } catch (err) {
         const msg = err instanceof Error ? err.message : '';
-        // If some carriers aren't activated, retry without carrier filter to show all available ones
+        // If some carriers aren't activated, retry without carrier filter and
+        // drop the disallowed carriers ourselves, rather than showing points
+        // the seller can't actually ship with.
         if (msg.includes('haven\'t been activated')) {
-            return await doRequest([]);
+            return filterByCarrier(await doRequest([]));
         }
         throw err;
     }
