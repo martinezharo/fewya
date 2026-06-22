@@ -20,8 +20,18 @@ const { data: profile } = await supabase
     .eq('id', user.id)
     .single();
 
+// Reaching onboarding while logged in IS the act of becoming a seller. A buyer
+// arriving here (is_seller=false) is promoted in place instead of being bounced
+// back to /sell, which made the "Configurar mi tienda" CTA appear to do nothing.
 if (!profile?.is_seller) {
-    return Astro.redirect('/sell');
+    const { error: promoteError } = await supabase
+        .from('profiles')
+        .update({ is_seller: true })
+        .eq('id', user.id);
+
+    if (promoteError) {
+        return Astro.redirect('/sell');
+    }
 }
 
 const stripeReturnParam = Astro.url.searchParams.get('stripe');
