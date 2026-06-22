@@ -391,6 +391,10 @@ const isSpain = currentCountry === 'ES';
   function initProfileForm() {
     const form = document.getElementById('profile-form') as HTMLFormElement | null;
     if (!form) return;
+    // Guard against double-initialization: `astro:page-load` fires on the initial
+    // navigation too, so without this the submit listener (and its toast) is bound twice.
+    if (form.dataset.initialized === '1') return;
+    form.dataset.initialized = '1';
     const btn = document.getElementById('save-btn') as HTMLButtonElement;
     const countrySelect = document.getElementById('address_country') as unknown as HTMLSelectElement;
     const provinceContainer = document.getElementById('province-container') as unknown as HTMLDivElement;
