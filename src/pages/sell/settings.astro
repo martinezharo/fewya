@@ -2,12 +2,10 @@
 import SellerLayout from '../../layouts/SellerLayout.astro';
 import ThemeSelector from '../../components/settings/ThemeSelector.astro';
 import SignOutButton from '../../components/settings/SignOutButton.astro';
-import ShippingEditorPanel from '../../components/seller/ShippingEditorPanel.astro';
 import NotificationsToggle from '../../components/settings/NotificationsToggle.astro';
 import Icon from '../../components/icons/Icon.astro';
 import { strings } from '../../lib/core/i18n';
 import { createSupabaseAuthClient } from '../../lib/core/auth';
-import { normalizeShippingPlatforms } from '../../lib/shipping/shippingPlatform';
 
 const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
 const { data: sessionData } = await supabase.auth.getSession();
@@ -25,20 +23,11 @@ if (!profile?.is_seller) return Astro.redirect('/sell');
 
 const { data: shop } = await supabase
     .from('shops')
-    .select('id, name, slug, default_weight_kg, default_length_cm, default_width_cm, default_height_cm, default_shipping_cost, shipping_carriers')
+    .select('id, name, slug')
     .eq('owner_id', user.id)
     .maybeSingle();
 
 if (!shop) return Astro.redirect('/sell/onboarding');
-
-const defaults = {
-    weight_kg: shop.default_weight_kg ?? null,
-    length_cm: shop.default_length_cm ?? null,
-    width_cm: shop.default_width_cm ?? null,
-    height_cm: shop.default_height_cm ?? null,
-    shipping_cost: shop.default_shipping_cost ?? null,
-    carriers: normalizeShippingPlatforms(shop.shipping_carriers),
-};
 ---
 
 <SellerLayout title={strings.sellerSettingsPageTitle} shopSlug={shop.slug} shopId={shop.id}>
@@ -49,66 +38,6 @@ const defaults = {
         </div>
 
         <div class="rounded-3xl border border-border bg-surface shadow-sm divide-y divide-border">
-
-            <!-- Envío por defecto -->
-            <section class="p-6 md:p-8 space-y-6">
-                <div>
-                    <div class="flex items-center gap-2 text-[13px] font-bold uppercase tracking-wider text-text-primary mb-1">
-                        <Icon name="truck" size={15} class="text-text-tertiary" />
-                        <span>{strings.sellerSettingsShippingSection}</span>
-                    </div>
-                    <p class="text-sm text-text-secondary pl-[23px]">{strings.sellerSettingsShippingSubtitle}</p>
-                </div>
-
-                <ShippingEditorPanel
-                    idPrefix="settings"
-                    weight={defaults.weight_kg}
-                    length={defaults.length_cm}
-                    width={defaults.width_cm}
-                    height={defaults.height_cm}
-                    shippingCost={defaults.shipping_cost}
-                />
-
-                <!-- Plataformas de envío -->
-                <div class="pt-6 border-t border-border space-y-4" id="carriers-group">
-                    <div>
-                        <p class="text-sm font-semibold text-text-primary">{strings.sellerSettingsCarriersSection}</p>
-                        <p class="mt-1 text-sm text-text-secondary">{strings.sellerSettingsCarriersSubtitle}</p>
-                    </div>
-
-                    <div class="space-y-2.5">
-                        <label class="flex items-center justify-between gap-4 p-4 rounded-2xl border border-border bg-bg cursor-pointer">
-                            <div class="min-w-0">
-                                <p class="text-sm font-medium text-text-primary">{strings.sellerSettingsCarrierInpostLabel}</p>
-                                <p class="text-xs text-text-secondary">{strings.sellerSettingsCarrierInpostDesc}</p>
-                            </div>
-                            <input type="checkbox" data-carrier="inpost" class="peer sr-only" checked={defaults.carriers.includes('inpost')} />
-                            <span class="relative shrink-0 w-11 h-6 rounded-full bg-border-light peer-checked:bg-accent transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:w-5 after:h-5 after:rounded-full after:bg-white after:shadow-sm after:transition-transform peer-checked:after:translate-x-5"></span>
-                        </label>
-
-                        <label class="flex items-center justify-between gap-4 p-4 rounded-2xl border border-border bg-bg cursor-pointer">
-                            <div class="min-w-0">
-                                <p class="text-sm font-medium text-text-primary">{strings.sellerSettingsCarrierCorreosLabel}</p>
-                                <p class="text-xs text-text-secondary">{strings.sellerSettingsCarrierCorreosDesc}</p>
-                            </div>
-                            <input type="checkbox" data-carrier="correos" class="peer sr-only" checked={defaults.carriers.includes('correos')} />
-                            <span class="relative shrink-0 w-11 h-6 rounded-full bg-border-light peer-checked:bg-accent transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:w-5 after:h-5 after:rounded-full after:bg-white after:shadow-sm after:transition-transform peer-checked:after:translate-x-5"></span>
-                        </label>
-                    </div>
-
-                    <p id="carriers-error" class="hidden text-xs font-medium text-red-500">{strings.sellerSettingsCarriersAtLeastOne}</p>
-                </div>
-
-                <div class="flex items-center justify-end pt-2">
-                    <button
-                        type="button"
-                        id="save-shipping-btn"
-                        class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-accent text-bg font-medium text-sm hover:bg-accent-hover active:scale-[0.98] transition-all"
-                    >
-                        <span data-busy-label>{strings.sellerSettingsSave}</span>
-                    </button>
-                </div>
-            </section>
 
             <!-- Apariencia -->
             <section class="p-6 md:p-8 space-y-6">
@@ -173,78 +102,18 @@ const defaults = {
 <script>
     import { strings } from '../../lib/core/i18n';
     import { runSubmit } from '../../lib/ui/submit';
-    import { initShippingEditor } from '../../lib/ui/shipping-editor';
 
     function initSettingsPage() {
-        const panel = document.querySelector<HTMLElement>('.shipping-editor-panel');
-        const saveBtn = document.getElementById('save-shipping-btn') as HTMLButtonElement | null;
-
-        if (!panel || !saveBtn || saveBtn.dataset.bound === 'true') return;
-
-        initShippingEditor(panel);
-
-        // Shipping platform toggles: keep at least one active.
-        const carrierInputs = Array.from(document.querySelectorAll<HTMLInputElement>('#carriers-group [data-carrier]'));
-        const carriersError = document.getElementById('carriers-error');
-
-        const readCarriers = () => carrierInputs.filter((i) => i.checked).map((i) => i.dataset.carrier as string);
-
-        carrierInputs.forEach((input) => {
-            input.addEventListener('change', () => {
-                if (readCarriers().length === 0) {
-                    // Block deselecting the last platform.
-                    input.checked = true;
-                    carriersError?.classList.remove('hidden');
-                } else {
-                    carriersError?.classList.add('hidden');
-                }
-            });
-        });
-
-        saveBtn.dataset.bound = 'true';
-        saveBtn.addEventListener('click', async () => {
-            const weightInput = panel.querySelector<HTMLInputElement>('[data-field="weight"]');
-            const lengthInput = panel.querySelector<HTMLInputElement>('[data-field="length"]');
-            const widthInput = panel.querySelector<HTMLInputElement>('[data-field="width"]');
-            const heightInput = panel.querySelector<HTMLInputElement>('[data-field="height"]');
-            const shippingInput = panel.querySelector<HTMLInputElement>('[data-field="shipping-cost"]');
-
-            const carriers = readCarriers();
-            if (carriers.length === 0) {
-                carriersError?.classList.remove('hidden');
-                return;
-            }
-            carriersError?.classList.add('hidden');
-
-            const payload = {
-                default_weight_kg: weightInput?.value === '' ? null : parseFloat(weightInput?.value ?? ''),
-                default_length_cm: lengthInput?.value === '' ? null : parseFloat(lengthInput?.value ?? ''),
-                default_width_cm: widthInput?.value === '' ? null : parseFloat(widthInput?.value ?? ''),
-                default_height_cm: heightInput?.value === '' ? null : parseFloat(heightInput?.value ?? ''),
-                default_shipping_cost: shippingInput?.value === '' ? null : parseFloat(shippingInput?.value ?? ''),
-                shipping_carriers: carriers,
-            };
-
-            await runSubmit({
-                button: saveBtn,
-                busyLabel: strings.sellerSettingsSaving,
-                action: () => fetch('/api/sell/settings/shipping', {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload),
-                }),
-                successMsg: strings.settingsSavedToast,
-                errorFallback: strings.sellerSettingsSaveError,
-            });
-        });
-
         const deleteBtn = document.getElementById('delete-shop-btn') as HTMLButtonElement | null;
+        if (!deleteBtn || deleteBtn.dataset.bound === 'true') return;
+        deleteBtn.dataset.bound = 'true';
+
         const dialog = document.getElementById('delete-dialog') as HTMLDivElement | null;
         const dialogText = document.getElementById('delete-dialog-text') as HTMLParagraphElement | null;
         const cancelBtn = document.getElementById('delete-cancel-btn') as HTMLButtonElement | null;
         const confirmBtn = document.getElementById('delete-confirm-btn') as HTMLButtonElement | null;
 
-        deleteBtn?.addEventListener('click', () => {
+        deleteBtn.addEventListener('click', () => {
             if (dialogText) dialogText.textContent = strings.sellerSettingsDeleteShopConfirm;
             dialog?.classList.remove('hidden');
             dialog?.classList.add('flex');

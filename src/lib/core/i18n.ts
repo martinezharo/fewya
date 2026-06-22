@@ -419,6 +419,11 @@ export const strings = {
     sellerSettingsDeleteShopSuccess: 'Tienda desactivada correctamente',
     sellerSettingsDeleteShopError: 'Error al desactivar la tienda',
 
+    // Seller Shipping
+    sellerShippingPageTitle: 'Envíos — Fewya Seller',
+    sellerShippingTitle: 'Envíos',
+    sellerShippingSubtitle: 'Define los valores de envío por defecto y las plataformas con las que trabajas.',
+
     // Seller sidebar / nav
     sellerNavDashboard: 'Inicio',
     sellerNavOrders: 'Pedidos',
@@ -426,6 +431,7 @@ export const strings = {
     sellerNavShop: 'Tienda',
     sellerNavReviews: 'Reseñas',
     sellerNavClaims: 'Reclamaciones',
+    sellerNavShipping: 'Envíos',
     sellerNavSettings: 'Configuración',
     sellerNavDetails: 'Mis datos',
     sellerNavDetailsIncomplete: 'Incompleto',

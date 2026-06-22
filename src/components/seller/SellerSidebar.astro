@@ -149,6 +149,38 @@ function isActive(href: string) {
                     <span class="sidebar-tooltip" role="tooltip" aria-hidden="true">{strings.sellerNavStripe}</span>
                 </button>
             </li>
+            <li>
+                <a
+                    href={sellerDetailsNavItem.href}
+                    class:list={[
+                        'sidebar-link relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent',
+                        isActive(sellerDetailsNavItem.href)
+                            ? 'bg-accent text-bg'
+                            : sellerDetailsIncomplete
+                                ? 'text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/10'
+                                : 'text-text-secondary hover:text-text-primary hover:bg-border-light',
+                    ]}
+                    aria-current={isActive(sellerDetailsNavItem.href) ? 'page' : undefined}
+                >
+                    <span class="relative shrink-0">
+                        <Icon name={sellerDetailsNavItem.icon} size={20} />
+                        {sellerDetailsIncomplete && !isActive(sellerDetailsNavItem.href) && (
+                            <span class="absolute -top-0.5 -right-0.5 flex h-2 w-2">
+                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                                <span class="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                            </span>
+                        )}
+                    </span>
+                    <span class="sidebar-label truncate">{sellerDetailsNavItem.label}</span>
+                    {sellerDetailsIncomplete && (
+                        <span class:list={[
+                            'sidebar-label ml-auto text-[10px] font-semibold uppercase tracking-wider',
+                            isActive(sellerDetailsNavItem.href) ? 'text-bg/80' : 'text-amber-500 dark:text-amber-400',
+                        ]}>{strings.sellerNavDetailsIncomplete}</span>
+                    )}
+                    <span class="sidebar-tooltip" role="tooltip" aria-hidden="true">{sellerDetailsNavItem.label}</span>
+                </a>
+            </li>
         </ul>
     </nav>
 
@@ -166,36 +198,6 @@ function isActive(href: string) {
                 <span class="sidebar-tooltip" role="tooltip" aria-hidden="true">{strings.sellerSidebarViewShop}</span>
             </a>
         )}
-        <a
-            href={sellerDetailsNavItem.href}
-            class:list={[
-                'sidebar-link relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent',
-                isActive(sellerDetailsNavItem.href)
-                    ? 'bg-accent text-bg'
-                    : sellerDetailsIncomplete
-                        ? 'text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/10'
-                        : 'text-text-secondary hover:text-text-primary hover:bg-border-light',
-            ]}
-            aria-current={isActive(sellerDetailsNavItem.href) ? 'page' : undefined}
-        >
-            <span class="relative shrink-0">
-                <Icon name={sellerDetailsNavItem.icon} size={20} />
-                {sellerDetailsIncomplete && !isActive(sellerDetailsNavItem.href) && (
-                    <span class="absolute -top-0.5 -right-0.5 flex h-2 w-2">
-                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                        <span class="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
-                    </span>
-                )}
-            </span>
-            <span class="sidebar-label truncate">{sellerDetailsNavItem.label}</span>
-            {sellerDetailsIncomplete && (
-                <span class:list={[
-                    'sidebar-label ml-auto text-[10px] font-semibold uppercase tracking-wider',
-                    isActive(sellerDetailsNavItem.href) ? 'text-bg/80' : 'text-amber-500 dark:text-amber-400',
-                ]}>{strings.sellerNavDetailsIncomplete}</span>
-            )}
-            <span class="sidebar-tooltip" role="tooltip" aria-hidden="true">{sellerDetailsNavItem.label}</span>
-        </a>
         <a
             href={sellerFooterNavItem.href}
             class:list={[
