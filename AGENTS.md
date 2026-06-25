@@ -1,51 +1,169 @@
-# Always keep these rules and concepts in mind:
+# Fewya — Agent Instructions
 
-## Coding Standards
+## Project
 
-- Keep code as efficient as possible: code with fewer errors is the one that isn't written. You should seek the smartest and most scalable way to do everything I tell you.
-- Modularize and componentize whenever possible, create separate files for components and functions that are prone to being reused or are simply complex enough to warrant a separate file.
-- Make the code scalable.
-- Always explain in chat what you've done and don't hesitate to suggest improvements or report bad practices or errors you find.
-- Don't hardcode text, create files with variables to facilitate future changes or translations.
-- Page routes must always be in English.
-- When you make changes to the database structure, update db-structure and apply the migration directly to Supabase using the `mcp__supabase__apply_migration` MCP tool. If the MCP tool is unavailable or fails, fall back to writing the SQL in `.migrations/<YYYY-MM-DD-description>.sql` for manual execution.
-- NEVER make commits, push, or anything else that alters the Git history unless I explicitly ask you to.
-- If I ask you to make a commit, follow Git best practices by dividing by responsibility / category / functionality and avoiding monolithic commits. Always write the message in English.
+Fewya is a marketplace PWA for small businesses. The buyer experience is a mobile-first PWA (think native app, not a website); the seller dashboard is desktop-first. Both share the same codebase.
 
-## Fewya
+### Vision
 
-### Product
-- It will be a Mobile First PWA in the shopping section, act more like you're developing a native mobile app than a website.
-- The seller section will focus on providing a good desktop experience.
-- Buyer and seller sections separated at the user level but sharing the necessary code to increase efficiency.
+- A marketplace where small businesses can sell professionally — easier than running their own site, less commoditised than Amazon.
+- The buyer purchases directly with confidence: clear product info, variants, no need to chat.
+- "Amazon dehumanises the seller. Wallapop over-humanises the transaction."
+- Buy from the seller, not the platform.
+- Goal: Democratise eCommerce. Focused on new products, not second-hand.
+- The buyer pays for what they see: products + shipping. Commissions and insurance are the seller's responsibility.
+- Sellers get management freedom (like Shopify) and full control over their own policies.
 
-### Concept Ideas
-- A marketplace where small businesses can sell in a more professional way than Wallapop or Vinted, but just as easy to use without the complications of their own website or selling on Amazon.
-- The buyer can purchase directly with confidence without chatting, with clear information and variants in a click.
-- "Amazon dehumanizes the seller. Wallapop over-humanizes the transaction."
-- Buy from the seller, not the platform. This must be clear.
-- Goal: Democratize eCommerce.
-- Focused on new products, not second-hand.
-- The buyer pays for what they see: products and shipping. Commissions and insurance are the seller's responsibility.
-- Give sellers more management freedom (like Shopify) and let them manage everything as they see fit in terms of policies.
+---
 
-### Design
-The marketplace design must be extremely professional and ultramodern. It must have a minimalist and modern aesthetic on par with Notion, OpenAI, Revolut, or Apple.
-Always create versions for light mode and dark mode.
+## Design
+
+**Standard:** Ultramodern minimalist — on par with Notion, OpenAI, Revolut, Apple.
+
+- Always implement light **and** dark mode (`dark:` Tailwind prefix).
+- The buyer section must feel like a native mobile app, not a website.
+- The seller section prioritises a good desktop experience.
+
+---
 
 ## Stack
 
-### Core
-- **Framework:** Astro (SSR enabled for Cloudflare/Supabase).
-- **Language:** TypeScript.
-- **Styling:** Tailwind CSS
+| Layer | Choice |
+|---|---|
+| Framework | Astro (SSR, Cloudflare Workers adapter) |
+| Language | TypeScript |
+| Styling | Tailwind CSS |
+| Deployment | Cloudflare Workers |
+| Database | Supabase (PostgreSQL) |
+| Auth | Supabase Auth — Google OAuth only (initial) |
+| Package manager | Bun |
+| Linter | ESLint + `eslint-plugin-astro` |
+| PWA | `vite-plugin-pwa` |
 
-### Infrastructure and Backend
-- **Deployment:** Cloudflare Workers.
-- **Database:** Supabase (PostgreSQL).
-- **Authentication:** Supabase Auth (Initially Google only).
+---
 
-### Development Tools
-- **Package Manager:** Bun.
-- **Linter:** ESLint with `eslint-plugin-astro`.
-- **PWA:** `vite-plugin-pwa` for offline functionality and installation.
+## Commands
+
+```bash
+bun run dev              # Dev server with hot reload
+bun run build            # typegen + astro check + bundle → dist/
+bun run preview          # Run built Worker locally via wrangler
+
+bun run test             # Run all tests once
+bun run test:watch       # Watch mode
+bun run test:changed     # Only tests affected by changed files
+bun run test:coverage    # v8 coverage report
+vitest run tests/unit/checkout.test.ts  # Run a single test file
+
+bun run lint             # ESLint on .ts/.astro
+bun run lint:fix         # Auto-fix
+bun run check            # astro check (type check .astro + TS)
+bun run typegen          # Regenerate Cloudflare Worker types from wrangler.jsonc
+```
+
+**Pre-commit:** lint-staged runs ESLint + related tests on staged files.
+**Pre-push:** full `bun run check` + `bun run test`.
+After editing hook config in `package.json`, run `bunx simple-git-hooks` to reinstall.
+
+---
+
+## Architecture
+
+### Routing & layouts
+
+All pages are SSR (`output: 'server'`, Cloudflare Workers adapter). Two layout branches:
+
+- **`BuyerAppLayout`** — Header + BottomNav → `/`, `/search`, `/me/*`, `/cart/*`, `/wishlist`, `/:shopSlug/*`
+- **`SellerLayout`** — Sidebar → `/sell/*`
+
+Fetch data in Astro frontmatter with `createSupabaseAuthClient(Astro.cookies, Astro.request)`, then pass it as props to components.
+
+### Auth flow
+
+1. `/api/auth/login` → Google OAuth via Supabase; sets `fewya-auth-redirect` + `fewya-auth-role` cookies.
+2. Supabase redirects to `/api/auth/callback?code=...`.
+3. `middleware.ts` intercepts every GET with a pending auth state, calls `exchangeAuthCodeForSession()`, then redirects.
+4. New buyers (account created within 60s of first sign-in) → `/me/details` for profile completion.
+
+Use `createSupabaseAuthClient()` (per-request, respects RLS) for user-scoped ops. Use `supabase-admin.ts` (service role key, bypasses RLS) only for privileged server ops (order state transitions, payouts).
+
+### Deferred component pattern
+
+Components prefixed `Deferred*` (e.g., `DeferredHomeGrid`, `DeferredBuyerOrders`) render a skeleton on the server, then fetch and hydrate data client-side via a `<script>` block. Use this pattern for data-heavy sections that would otherwise block page render.
+
+### Cart & checkout
+
+- Cart items are grouped by shop. Shipping cost per shop = **max** shipping cost across items in that shop (not sum).
+- One Stripe Checkout Session is created **per shop**, each going directly to the seller's Stripe Connect account.
+- `buildShopPayouts()` in `lib/cart/checkout.ts` handles this aggregation.
+- Currency: always EUR. Use `toMinorUnits()` / `fromMinorUnits()` for Stripe (cents).
+- Payout release via `releaseOrderFunds()` uses `transfer_group` keyed to the order's public ID for idempotency.
+
+### Product validation — two tiers
+
+- **`validateProductCompleteness()`** — full check (title, description, category, slug, photos, valid variant with price/stock/dimensions/shipping). Used for listing readiness.
+- **`validateCheckoutReadiness()`** — narrow check (active, has title, variant price > 0, stock ≥ quantity, shipping_cost ≥ 0). Used in the checkout API; does not fetch description/category/dimensions.
+
+### Order state machine
+
+```
+pending → paid → processing → shipped → delivered → confirmed
+                                              ↓
+                                          incident → (resolved) → confirmed
+                               cancelled (from pending/paid)
+```
+
+Status labels are Spanish strings from `i18n.ts`. The full enum is in `lib/orders/orderStatus.ts`.
+
+### Wishlist
+
+Anonymous users: localStorage (`wishlist-local.ts`). On login: localStorage items merge into DB (`wishlist.ts`). Toggle endpoint: `POST /api/wishlist/toggle`.
+
+### Client-side UI utilities (`lib/ui/`)
+
+Thin vanilla-TS helpers used inside `<script>` blocks in Astro components:
+
+| File | Purpose |
+|---|---|
+| `toast.ts` | Show transient feedback messages |
+| `busy.ts` | Disable/enable form elements during async ops |
+| `submit.ts` | Form submission with loading state |
+| `live-status.ts` | Poll or update status indicators in-place |
+| `progress-bar.ts` | Top-of-page navigation progress indicator |
+| `nav.ts` / `seller-nav.ts` | Active nav item detection |
+
+---
+
+## Code Standards
+
+- **Efficiency:** Less code = fewer bugs. Always choose the smartest, most scalable solution.
+- **Modularity:** Separate files for components and functions that are reusable or complex enough to warrant it.
+- **i18n:** All user-facing strings go in `lib/core/i18n.ts` (Spanish). Never hardcode UI text.
+- **Page routes:** English only (e.g., `/sell/catalog`, `/me/orders`).
+- **Types:** Shared domain types (`Shop`, `Product`, `ProductVariant`, `Review`) live in `lib/core/types.ts`.
+- **Unused vars:** Prefix with `_` to suppress ESLint errors.
+- **DB changes:** Update the relevant file in `db-structure/` **and** always write the SQL in `.migrations/<YYYY-MM-DD-description>.sql`. Then apply it to Supabase using `mcp__supabase__apply_migration` and report in chat whether it succeeded or failed.
+- **Git:** NEVER commit, push, or alter git history unless explicitly asked. When asked to commit, follow Git best practices (atomic commits per responsibility/category). Always write commit messages in English.
+- **Always explain** in chat what you've done and suggest improvements or flag bad practices you find.
+
+---
+
+## Environment Variables
+
+**Build-time** (`.env` or CI):
+- `SUPABASE_URL`, `SUPABASE_KEY` — public Supabase credentials
+
+**Runtime secrets** (`wrangler secret put <NAME>`):
+- `SUPABASE_SECRET_KEY` — service role key (`sb_secret_...` format)
+- `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`
+- `SENDCLOUD_API_KEY`, `SENDCLOUD_API_SECRET`, `SENDCLOUD_WEBHOOK_SECRET`
+
+Sendcloud sender address/contact are plain `vars` in `wrangler.jsonc` (not secrets).
+
+---
+
+## Testing
+
+- Unit tests only cover `lib/` utilities. Pages, layouts, and components are excluded from coverage.
+- `astro:env/server` is aliased to `tests/mocks/astro-env-server.ts` in `vitest.config.ts` — import this mock's exports when testing code that reads env vars.
+- Mock Supabase/Stripe inline; no snapshot tests; prefer explicit assertions.
