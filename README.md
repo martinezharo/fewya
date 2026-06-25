@@ -10,7 +10,7 @@
 [![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-F48120?logo=cloudflare&logoColor=white)](https://workers.cloudflare.com)
 [![Supabase](https://img.shields.io/badge/Supabase-Database-3FCF8E?logo=supabase&logoColor=white)](https://supabase.com)
 [![Stripe](https://img.shields.io/badge/Stripe-Connect-635BFF?logo=stripe&logoColor=white)](https://stripe.com)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](#license)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](#license)
 
 </div>
 
