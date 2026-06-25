@@ -1,0 +1,148 @@
+GNU AFFERO GENERAL PUBLIC LICENSE
+Version 3, 19 November 2007
+
+Copyright (C) 2026 Oliver Martinez Haro
+
+Copyright (C) 2007 Free Software Foundation, Inc. <https://fsf.org/>
+Everyone is permitted to copy and distribute verbatim copies
+of this license document, but changing it is not allowed.
+
+Preamble
+
+The GNU Affero General Public License is a free, copyleft license for
+software and other kinds of works, specifically designed to ensure
+cooperation with the community in the case of network server software.
+
+For designers, developers, and anyone who values free software, the
+AGPL provides a strong copyleft that ensures all users of a networked
+service have access to the source code. For the full legal text, see
+<https://www.gnu.org/licenses/agpl-3.0.html>.
+
+Additional Definitions.
+
+As used herein, "this License" refers to version 3 of the GNU Affero
+General Public License, and the "GNU GPL" refers to version 3 of the
+GNU General Public License.
+
+"The Library" refers to a covered work governed by this License,
+other than an Application or a Combined Work as defined below.
+
+An "Application" is any work that makes use of an interface provided
+by the Library, but which is not otherwise based on the Library.
+Defining a subclass of a class defined by the Library is deemed a mode
+of using an interface provided by the Library.
+
+A "Combined Work" is a work produced by combining or linking an
+Application with the Library. The particular version of the Library
+with which the Combined Work was made is also called the "Linked
+Version".
+
+The "Corresponding Source" for a work in the form of source code
+means all the source code needed to generate, install, and (for an
+executable work) run the object code and to modify the work, including
+scripts to control those activities. However, it does not include
+the work's System Libraries, or general-purpose tools or generally
+available free programs which are used unmodified in performing those
+activities but which are not part of the work. For example,
+Corresponding Source includes interface definition files associated
+with source files for the work, and the source code for shared
+libraries and dynamically linked subprograms that the work is
+specifically designed to require, such as by intimate data communication
+or control flow between those subprograms and other parts of the work.
+
+The Corresponding Source need not include anything that users can
+regenerate automatically from other parts of the Corresponding Source.
+
+The Corresponding Source for a work in source code form means that
+the source code for all modified versions of the work, plus the source
+code for any works that the work depends on, and that are included in
+the work, such as scripts to control those activities, and all the
+source code needed to generate, install, and (for an executable work)
+run the object code and to modify the work, including scripts to
+control those activities. For example, Corresponding Source includes
+interface definition files, source code for shared libraries and
+dynamically linked subprograms that the work is specifically designed
+to require, such as by intimate data communication or control flow
+between those subprograms and other parts of the work.
+
+For the complete license text, see:
+<https://www.gnu.org/licenses/agpl-3.0.txt>
+
+TERMS AND CONDITIONS FOR COPYING, DISTRIBUTION AND MODIFICATION
+
+0. Definitions.
+
+"This License" refers to version 3 of the GNU Affero General Public
+License.
+
+"Copyright" also means copyright-like laws that apply to other kinds
+of works, such as semiconductor masks.
+
+"The Program" refers to any copyrightable work licensed under this
+License. Each licensee is addressed as "you". "Licensees" and
+"recipients" may be individuals or organizations.
+
+To "modify" a work means to copy from or adapt all or part of the work
+in a fashion requiring copyright permission, other than the making of an
+exact copy. The resulting work is called a "modified version" of the
+earlier work or a work "based on" the earlier work.
+
+A "covered work" means either the unmodified Program or a work based
+on the Program.
+
+To "propagate" a work means to do anything with it that, without
+permission, would make you directly or secondarily liable for
+infringement under applicable copyright law, except executing it on a
+computer or modifying a private copy. Propagation includes copying,
+distribution (with or without modification), making available to the
+public, and in some countries other activities as well.
+
+To "convey" a work means any kind of propagation that enables other
+parties to make or receive copies. Mere interaction with a user through
+a computer network, with no transfer of a copy, is not conveying.
+
+An interactive user interface displays "Appropriate Legal Notices"
+to the extent that it provides a convenient and prominent view that
+(a) displays the appropriate copyright notices, and (b) provides the
+user with a clear understanding of the license terms for the work.
+
+For the complete terms, see:
+<https://www.gnu.org/licenses/agpl-3.0.txt>
+
+How to Apply These Terms to Your New Programs
+
+If you develop a new program, and you want it to be of the greatest
+possible use to the public, the best way to achieve this is to make it
+free software which everyone can redistribute and change under these terms.
+
+To do so, attach the following notices to the program. It is safest
+to attach them to the start of each source file to most effectively
+state the exclusion of warranty; and each file should have at least
+the "copyright" line and a pointer to where the full notice is found.
+
+    <one line to give the program's name and a brief idea of what it does.>
+    Copyright (C) <year>  <name of author>
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as published
+    by the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+Also add information on how to contact you by electronic and paper mail.
+
+If the software does interactively read commands when it is started,
+you should make it output a brief notice including the copyright
+notice and a statement that there is no warranty (or saying that you
+provide a warranty) and that users may redistribute it under these
+conditions.
+
+For more information on this, and how to apply and follow the AGPL, see
+<https://www.gnu.org/licenses/>.
