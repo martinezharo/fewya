@@ -1,0 +1,14 @@
+{
+    "permissions": {
+      "allow": [
+        "Bash(bun run *)",
+        "Bash(grep *)",
+        "Bash(vitest run *)",
+        "Bash(git check-ignore *)",
+        "Bash(curl:*)",
+        "WebFetch(domain:support.sendcloud.com)",
+        "WebFetch(domain:api.sendcloud.dev)",
+        "WebFetch(domain:sendcloud.dev)"
+      ]
+    }
+  }
