@@ -36,7 +36,5 @@ pnpm-debug.log*
 # wrangler
 .wrangler/
 
-#agents
-.agents/
-.claude/
+#supabase
 .migrations/
