@@ -1,18 +1,19 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import { strings } from '../lib/core/i18n';
+const { t } = Astro.locals;
+
 ---
 
-<Layout title={strings.termsOfServicePageTitle} noindex>
+<Layout title={t.termsOfServicePageTitle} noindex>
   <div class="min-h-dvh bg-bg">
 
     <header class="border-b border-border sticky top-0 bg-bg/95 backdrop-blur-sm z-10">
       <div class="max-w-3xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
         <a href="/" class="text-lg font-bold text-text-primary font-[Jost] hover:text-accent transition-colors">
-          {strings.logoText}
+          {t.logoText}
         </a>
         <a href="/" class="text-sm text-text-secondary hover:text-text-primary transition-colors">
-          {strings.loginBackToHome}
+          {t.loginBackToHome}
         </a>
       </div>
     </header>

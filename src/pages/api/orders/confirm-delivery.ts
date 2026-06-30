@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro';
 import { createSupabaseAuthClient } from '../../../lib/core/auth';
 import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
-import { strings } from '../../../lib/core/i18n';
+
 import { getStripeClient } from '../../../lib/payments/stripe';
 import { validatePayoutDestinations } from '../../../lib/payments/payoutValidation';
 import { createAutoReviewsForOrder } from '../../../lib/orders/autoReview';
@@ -14,26 +14,27 @@ function jsonResponse(payload: Record<string, unknown>, status: number) {
     });
 }
 
-export const POST: APIRoute = async ({ request, cookies }) => {
+export const POST: APIRoute = async ({ locals, request, cookies  }) => {
+    const { t } = locals;
     const authClient = createSupabaseAuthClient(cookies, request);
     const {
         data: { user },
     } = await authClient.auth.getUser();
 
     if (!user) {
-        return jsonResponse({ error: strings.apiUnauthorized }, 401);
+        return jsonResponse({ error: t.apiUnauthorized }, 401);
     }
 
     let body: { orderId?: string };
     try {
         body = await request.json();
     } catch {
-        return jsonResponse({ error: strings.apiInvalidBody }, 400);
+        return jsonResponse({ error: t.apiInvalidBody }, 400);
     }
 
     const orderId = body.orderId;
     if (!orderId) {
-        return jsonResponse({ error: strings.apiInvalidBody }, 400);
+        return jsonResponse({ error: t.apiInvalidBody }, 400);
     }
 
     const adminClient = createSupabaseAdminClient();
@@ -48,7 +49,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             orderId,
             error: fetched.error,
         }));
-        return jsonResponse({ error: strings.apiCheckoutConfirmationError }, 500);
+        return jsonResponse({ error: t.apiCheckoutConfirmationError }, 500);
     }
 
     const destErrors = await validatePayoutDestinations(stripe, fetched.items);
@@ -58,7 +59,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             orderId,
             errors: destErrors,
         }));
-        return jsonResponse({ error: strings.orderPayoutDestinationUnavailable }, 400);
+        return jsonResponse({ error: t.orderPayoutDestinationUnavailable }, 400);
     }
 
     // 1. Confirm delivery in DB
@@ -69,12 +70,12 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     if (confirmError) {
         console.error('confirm_order_delivery failed', confirmError);
-        return jsonResponse({ error: strings.apiCheckoutConfirmationError }, 400);
+        return jsonResponse({ error: t.apiCheckoutConfirmationError }, 400);
     }
 
     const order = Array.isArray(confirmedOrder) ? confirmedOrder[0] : confirmedOrder;
     if (!order?.id) {
-        return jsonResponse({ error: strings.apiCheckoutConfirmationError }, 400);
+        return jsonResponse({ error: t.apiCheckoutConfirmationError }, 400);
     }
 
     // 2. Release funds to sellers (and persist outcome on the order)
@@ -94,7 +95,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     }
 
     // Create auto-reviews for products in this order (silent — non-critical)
-    await createAutoReviewsForOrder(order.id);
+    await createAutoReviewsForOrder(order.id, t);
 
     return jsonResponse({ success: true, orderId: order.id, publicId: order.public_id }, 200);
 };

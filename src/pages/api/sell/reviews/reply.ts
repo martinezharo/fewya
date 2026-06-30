@@ -1,7 +1,6 @@
 import type { APIRoute } from 'astro';
 import { createSupabaseAuthClient } from '../../../../lib/core/auth';
 import { createSupabaseAdminClient } from '../../../../lib/core/supabase-admin';
-import { strings } from '../../../../lib/core/i18n';
 
 function jsonResponse(payload: Record<string, unknown>, status: number) {
     return new Response(JSON.stringify(payload), {
@@ -10,26 +9,27 @@ function jsonResponse(payload: Record<string, unknown>, status: number) {
     });
 }
 
-export const POST: APIRoute = async ({ request, cookies }) => {
+export const POST: APIRoute = async ({ locals, request, cookies  }) => {
+    const { t } = locals;
     const authClient = createSupabaseAuthClient(cookies, request);
     const {
         data: { user },
     } = await authClient.auth.getUser();
 
     if (!user) {
-        return jsonResponse({ error: strings.apiUnauthorized }, 401);
+        return jsonResponse({ error: t.apiUnauthorized }, 401);
     }
 
     let body: { reviewId?: string; reply?: string };
     try {
         body = await request.json();
     } catch {
-        return jsonResponse({ error: strings.apiInvalidBody }, 400);
+        return jsonResponse({ error: t.apiInvalidBody }, 400);
     }
 
     const { reviewId, reply } = body;
     if (!reviewId || typeof reply !== 'string') {
-        return jsonResponse({ error: strings.apiInvalidBody }, 400);
+        return jsonResponse({ error: t.apiInvalidBody }, 400);
     }
 
     const adminClient = createSupabaseAdminClient();
@@ -42,14 +42,14 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         .maybeSingle();
 
     if (reviewError || !review) {
-        return jsonResponse({ error: strings.apiForbidden }, 403);
+        return jsonResponse({ error: t.apiForbidden }, 403);
     }
 
     const product = Array.isArray(review.products) ? review.products[0] : review.products;
     const shopId = (product as any)?.shop_id;
 
     if (!shopId) {
-        return jsonResponse({ error: strings.apiForbidden }, 403);
+        return jsonResponse({ error: t.apiForbidden }, 403);
     }
 
     const { data: shop } = await adminClient
@@ -60,7 +60,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         .maybeSingle();
 
     if (!shop) {
-        return jsonResponse({ error: strings.apiForbidden }, 403);
+        return jsonResponse({ error: t.apiForbidden }, 403);
     }
 
     const trimmedReply = reply.trim();
@@ -74,7 +74,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     if (updateError) {
         console.error('seller reply update error', updateError);
-        return jsonResponse({ error: strings.sellerReviewsReplyError }, 500);
+        return jsonResponse({ error: t.sellerReviewsReplyError }, 500);
     }
 
     return jsonResponse({ success: true }, 200);

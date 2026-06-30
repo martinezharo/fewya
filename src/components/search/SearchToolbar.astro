@@ -1,7 +1,8 @@
 ---
 import Icon from "../icons/Icon.astro";
-import { strings } from "../../lib/core/i18n";
+
 import type { SearchParams } from "../../lib/products/search";
+const { t } = Astro.locals;
 
 interface Props {
     params: SearchParams;
@@ -15,12 +16,12 @@ if (params.maxPrice !== null) filterCount++;
 if (params.showOos) filterCount++;
 
 const sortLabels: Record<string, string> = {
-    relevance: strings.searchSortRelevance,
-    alpha: strings.searchSortAlpha,
-    price: strings.searchSortPrice,
-    date: strings.searchSortDate,
+    relevance: t.searchSortRelevance,
+    alpha: t.searchSortAlpha,
+    price: t.searchSortPrice,
+    date: t.searchSortDate,
 };
-const sortLabel = sortLabels[params.sort] || strings.searchSortRelevance;
+const sortLabel = sortLabels[params.sort] || t.searchSortRelevance;
 ---
 
 <div class="sticky top-[60px] md:top-[68px] z-40 bg-bg border-b border-border-light">
@@ -31,7 +32,7 @@ const sortLabel = sortLabels[params.sort] || strings.searchSortRelevance;
             onclick="document.getElementById('filter-modal')?.showModal()"
         >
             <Icon name="sliders" size={16} />
-            <span>{strings.searchFilters}</span>
+            <span>{t.searchFilters}</span>
             {filterCount > 0 && (
                 <span class="flex items-center justify-center bg-text-primary text-bg text-[10px] font-bold rounded-full w-4 h-4 ml-1">
                     {filterCount}

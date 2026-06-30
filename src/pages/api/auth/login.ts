@@ -1,8 +1,8 @@
 import type { APIRoute } from 'astro';
 import { createSupabaseAuthClient, normalizeAuthRedirectPath, storePendingAuthFlowState } from '../../../lib/core/auth';
-import { strings } from '../../../lib/core/i18n';
 
-export const GET: APIRoute = async ({ cookies, request, redirect, url }) => {
+export const GET: APIRoute = async ({ locals, cookies, request, redirect, url  }) => {
+    const { t } = locals;
     const supabase = createSupabaseAuthClient(cookies, request);
     const redirectTo = normalizeAuthRedirectPath(url.searchParams.get('redirect_to'));
     const role = url.searchParams.get('role');
@@ -19,7 +19,7 @@ export const GET: APIRoute = async ({ cookies, request, redirect, url }) => {
     });
 
     if (error || !data.url) {
-        return new Response(strings.authGoogleLoginError, { status: 500 });
+        return new Response(t.authGoogleLoginError, { status: 500 });
     }
 
     return redirect(data.url);

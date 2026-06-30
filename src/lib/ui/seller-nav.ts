@@ -1,22 +1,28 @@
-import { strings } from '../core/i18n';
+import type { Strings } from '../core/i18n';
 
-export const sellerNavItems = [
-    { href: '/sell/orders', label: strings.sellerNavOrders, icon: 'package' as const },
-    { href: '/sell/catalog', label: strings.sellerNavCatalog, icon: 'grid' as const },
-    { href: '/sell/reviews', label: strings.sellerNavReviews, icon: 'star' as const },
-    { href: '/sell/claims', label: strings.sellerNavClaims, icon: 'alert-circle' as const },
-    { href: '/sell/shop', label: strings.sellerNavShop, icon: 'store' as const },
-    { href: '/sell/shipping', label: strings.sellerNavShipping, icon: 'truck' as const },
-] satisfies { href: string; label: string; icon: string }[];
+export function getSellerNavItems(t: Strings) {
+    return [
+        { href: '/sell/orders', label: t.sellerNavOrders, icon: 'package' as const },
+        { href: '/sell/catalog', label: t.sellerNavCatalog, icon: 'grid' as const },
+        { href: '/sell/reviews', label: t.sellerNavReviews, icon: 'star' as const },
+        { href: '/sell/claims', label: t.sellerNavClaims, icon: 'alert-circle' as const },
+        { href: '/sell/shop', label: t.sellerNavShop, icon: 'store' as const },
+        { href: '/sell/shipping', label: t.sellerNavShipping, icon: 'truck' as const },
+    ] satisfies { href: string; label: string; icon: string }[];
+}
 
-export const sellerDetailsNavItem = {
-    href: '/sell/details',
-    label: strings.sellerNavDetails,
-    icon: 'user' as const,
-} satisfies { href: string; label: string; icon: string };
+export function getSellerDetailsNavItem(t: Strings) {
+    return {
+        href: '/sell/details',
+        label: t.sellerNavDetails,
+        icon: 'user' as const,
+    } satisfies { href: string; label: string; icon: string };
+}
 
-export const sellerFooterNavItem = {
-    href: '/sell/settings',
-    label: strings.sellerNavSettings,
-    icon: 'settings' as const,
-} satisfies { href: string; label: string; icon: string };
+export function getSellerFooterNavItem(t: Strings) {
+    return {
+        href: '/sell/settings',
+        label: t.sellerNavSettings,
+        icon: 'settings' as const,
+    } satisfies { href: string; label: string; icon: string };
+}

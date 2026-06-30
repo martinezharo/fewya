@@ -8,6 +8,7 @@ import {
     MIN_VARIANT_PRICE_EUR,
     MIN_LISTING_MARGIN_EUR,
 } from '../../src/lib/products/productValidation';
+import { es } from '../../src/lib/core/i18n/strings.es';
 
 describe('validateProductCompleteness', () => {
     it('devuelve completo para producto válido con variantes', () => {
@@ -111,17 +112,17 @@ describe('validateProductCompleteness', () => {
 
 describe('formatShippingDisplay', () => {
     it('devuelve cadena vacía para coste nulo', () => {
-        expect(formatShippingDisplay(null)).toBe('');
-        expect(formatShippingDisplay(undefined)).toBe('');
+        expect(formatShippingDisplay(es, null)).toBe('');
+        expect(formatShippingDisplay(es, undefined)).toBe('');
     });
 
     it('muestra envío gratis para coste 0', () => {
-        expect(formatShippingDisplay(0)).toBe('Envío gratis');
+        expect(formatShippingDisplay(es, 0)).toBe('Envío gratis');
     });
 
     it('formatea coste con coma decimal', () => {
-        expect(formatShippingDisplay(3.5)).toBe('+3,50€ envío');
-        expect(formatShippingDisplay(10)).toBe('+10,00€ envío');
+        expect(formatShippingDisplay(es, 3.5)).toBe('+3,50€ envío');
+        expect(formatShippingDisplay(es, 10)).toBe('+10,00€ envío');
     });
 });
 

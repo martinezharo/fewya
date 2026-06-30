@@ -6,14 +6,14 @@ import SearchToolbar from "../../components/search/SearchToolbar.astro";
 import SortModal from "../../components/search/SortModal.astro";
 import FilterModal from "../../components/search/FilterModal.astro";
 import { parseSearchParams } from "../../lib/products/search";
-import { strings } from "../../lib/core/i18n";
+const { t } = Astro.locals;
 
 const url = new URL(Astro.request.url);
 const params = parseSearchParams(url);
 const currentUrl = url.pathname + url.search;
 ---
 
-<BuyerAppLayout title={`${strings.searchPageTitlePrefix}: ${params.q} | ${strings.siteTitle}`}>
+<BuyerAppLayout title={`${t.searchPageTitlePrefix}: ${params.q} | ${t.siteTitle}`}>
     <SearchToolbar slot="afterHeader" params={params} />
 
     <main class="min-h-[50vh]">

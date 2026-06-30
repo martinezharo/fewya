@@ -1,4 +1,4 @@
-import { strings } from '../core/i18n';
+import { es as fallbackEs, type Strings } from '../core/i18n';
 import { getAppBaseUrl } from '../core/env';
 import { NOTIFICATION_TYPE, type NotificationType, type NotificationData } from './types';
 
@@ -42,6 +42,7 @@ interface EmailShellParams {
     primaryCtaUrl: string;
     secondaryCtaLabel?: string;
     secondaryCtaUrl?: string | null;
+    footer: string;
 }
 
 /**
@@ -56,6 +57,7 @@ function emailShell({
     primaryCtaUrl,
     secondaryCtaLabel,
     secondaryCtaUrl,
+    footer,
 }: EmailShellParams): string {
     const secondary =
         secondaryCtaLabel && secondaryCtaUrl
@@ -81,7 +83,7 @@ function emailShell({
           ${secondary}
         </td></tr>
       </table>
-      <p style="margin:20px 0 0;font-size:12px;color:#9ca3af;">${escapeHtml(strings.emailFooter)}</p>
+      <p style="margin:20px 0 0;font-size:12px;color:#9ca3af;">${escapeHtml(footer)}</p>
     </td></tr>
   </table>
 </body>
@@ -90,119 +92,128 @@ function emailShell({
 
 /**
  * Builds the email + push content for a notification type. Pure function (no I/O)
- * so it is unit-testable. All copy comes from i18n.
+ * so it is unit-testable. Email/push localisation is intentionally deferred —
+ * every caller passes the Spanish strings object for now. When user-locale-aware
+ * notifications are needed, plumb the recipient's preferred locale in here.
  */
-export function buildNotification(type: NotificationType, data: NotificationData): BuiltNotification {
+export function buildNotification(type: NotificationType, data: NotificationData, t: Strings = fallbackEs): BuiltNotification {
     const order = data.orderPublicId;
-    const shop = data.shopName ?? 'la tienda';
-    const point = data.pickupPointName ?? 'el punto de recogida';
+    const shop = data.shopName ?? (t === fallbackEs ? 'la tienda' : 'the shop');
+    const point = data.pickupPointName ?? (t === fallbackEs ? 'el punto de recogida' : 'the pickup point');
     const vars = { order, shop, point };
 
     switch (type) {
         case NOTIFICATION_TYPE.BUYER_READY_TO_SEND: {
             const url = data.trackingUrl || buyerOrderUrl(order);
             return {
-                emailSubject: interpolate(strings.notifBuyerReadyToSendSubject, vars),
+                emailSubject: interpolate(t.notifBuyerReadyToSendSubject, vars),
                 emailHtml: emailShell({
-                    heading: strings.notifBuyerReadyToSendHeading,
-                    body: interpolate(strings.notifBuyerReadyToSendText, vars),
-                    primaryCtaLabel: data.trackingUrl ? strings.notifTrackCta : strings.emailViewOrderCta,
+                    heading: t.notifBuyerReadyToSendHeading,
+                    body: interpolate(t.notifBuyerReadyToSendText, vars),
+                    primaryCtaLabel: data.trackingUrl ? t.notifTrackCta : t.emailViewOrderCta,
                     primaryCtaUrl: url,
-                    secondaryCtaLabel: data.trackingUrl ? strings.emailViewOrderCta : undefined,
+                    secondaryCtaLabel: data.trackingUrl ? t.emailViewOrderCta : undefined,
                     secondaryCtaUrl: data.trackingUrl ? buyerOrderUrl(order) : undefined,
+                    footer: t.emailFooter,
                 }),
-                pushTitle: strings.notifBuyerReadyToSendPushTitle,
-                pushBody: interpolate(strings.notifBuyerReadyToSendPushBody, vars),
+                pushTitle: t.notifBuyerReadyToSendPushTitle,
+                pushBody: interpolate(t.notifBuyerReadyToSendPushBody, vars),
                 url,
             };
         }
         case NOTIFICATION_TYPE.BUYER_PICKUP_READY: {
             const url = data.trackingUrl || buyerOrderUrl(order);
             return {
-                emailSubject: interpolate(strings.notifBuyerPickupReadySubject, vars),
+                emailSubject: interpolate(t.notifBuyerPickupReadySubject, vars),
                 emailHtml: emailShell({
-                    heading: strings.notifBuyerPickupReadyHeading,
-                    body: interpolate(strings.notifBuyerPickupReadyText, vars),
-                    primaryCtaLabel: strings.emailViewOrderCta,
+                    heading: t.notifBuyerPickupReadyHeading,
+                    body: interpolate(t.notifBuyerPickupReadyText, vars),
+                    primaryCtaLabel: t.emailViewOrderCta,
                     primaryCtaUrl: buyerOrderUrl(order),
+                    footer: t.emailFooter,
                 }),
-                pushTitle: strings.notifBuyerPickupReadyPushTitle,
-                pushBody: interpolate(strings.notifBuyerPickupReadyPushBody, vars),
+                pushTitle: t.notifBuyerPickupReadyPushTitle,
+                pushBody: interpolate(t.notifBuyerPickupReadyPushBody, vars),
                 url,
             };
         }
         case NOTIFICATION_TYPE.BUYER_PICKUP_REMINDER: {
             const url = data.trackingUrl || buyerOrderUrl(order);
             return {
-                emailSubject: interpolate(strings.notifBuyerPickupReminderSubject, vars),
+                emailSubject: interpolate(t.notifBuyerPickupReminderSubject, vars),
                 emailHtml: emailShell({
-                    heading: strings.notifBuyerPickupReminderHeading,
-                    body: interpolate(strings.notifBuyerPickupReminderText, vars),
-                    primaryCtaLabel: strings.emailViewOrderCta,
+                    heading: t.notifBuyerPickupReminderHeading,
+                    body: interpolate(t.notifBuyerPickupReminderText, vars),
+                    primaryCtaLabel: t.emailViewOrderCta,
                     primaryCtaUrl: buyerOrderUrl(order),
+                    footer: t.emailFooter,
                 }),
-                pushTitle: strings.notifBuyerPickupReminderPushTitle,
-                pushBody: interpolate(strings.notifBuyerPickupReminderPushBody, vars),
+                pushTitle: t.notifBuyerPickupReminderPushTitle,
+                pushBody: interpolate(t.notifBuyerPickupReminderPushBody, vars),
                 url,
             };
         }
         case NOTIFICATION_TYPE.BUYER_OUT_FOR_DELIVERY: {
             const url = data.trackingUrl || buyerOrderUrl(order);
             return {
-                emailSubject: interpolate(strings.notifBuyerOutForDeliverySubject, vars),
+                emailSubject: interpolate(t.notifBuyerOutForDeliverySubject, vars),
                 emailHtml: emailShell({
-                    heading: strings.notifBuyerOutForDeliveryHeading,
-                    body: interpolate(strings.notifBuyerOutForDeliveryText, vars),
-                    primaryCtaLabel: data.trackingUrl ? strings.notifTrackCta : strings.emailViewOrderCta,
+                    heading: t.notifBuyerOutForDeliveryHeading,
+                    body: interpolate(t.notifBuyerOutForDeliveryText, vars),
+                    primaryCtaLabel: data.trackingUrl ? t.notifTrackCta : t.emailViewOrderCta,
                     primaryCtaUrl: url,
+                    footer: t.emailFooter,
                 }),
-                pushTitle: strings.notifBuyerOutForDeliveryPushTitle,
-                pushBody: interpolate(strings.notifBuyerOutForDeliveryPushBody, vars),
+                pushTitle: t.notifBuyerOutForDeliveryPushTitle,
+                pushBody: interpolate(t.notifBuyerOutForDeliveryPushBody, vars),
                 url,
             };
         }
         case NOTIFICATION_TYPE.SELLER_NEW_SALE: {
             const url = sellerOrderUrl(order);
             return {
-                emailSubject: interpolate(strings.notifSellerNewSaleSubject, vars),
+                emailSubject: interpolate(t.notifSellerNewSaleSubject, vars),
                 emailHtml: emailShell({
-                    heading: strings.notifSellerNewSaleHeading,
-                    body: interpolate(strings.notifSellerNewSaleText, vars),
-                    primaryCtaLabel: strings.notifManageOrderCta,
+                    heading: t.notifSellerNewSaleHeading,
+                    body: interpolate(t.notifSellerNewSaleText, vars),
+                    primaryCtaLabel: t.notifManageOrderCta,
                     primaryCtaUrl: url,
+                    footer: t.emailFooter,
                 }),
-                pushTitle: strings.notifSellerNewSalePushTitle,
-                pushBody: interpolate(strings.notifSellerNewSalePushBody, vars),
+                pushTitle: t.notifSellerNewSalePushTitle,
+                pushBody: interpolate(t.notifSellerNewSalePushBody, vars),
                 url,
             };
         }
         case NOTIFICATION_TYPE.SELLER_LABEL_REMINDER: {
             const url = sellerOrderUrl(order);
             return {
-                emailSubject: interpolate(strings.notifSellerLabelReminderSubject, vars),
+                emailSubject: interpolate(t.notifSellerLabelReminderSubject, vars),
                 emailHtml: emailShell({
-                    heading: strings.notifSellerLabelReminderHeading,
-                    body: interpolate(strings.notifSellerLabelReminderText, vars),
-                    primaryCtaLabel: strings.notifManageOrderCta,
+                    heading: t.notifSellerLabelReminderHeading,
+                    body: interpolate(t.notifSellerLabelReminderText, vars),
+                    primaryCtaLabel: t.notifManageOrderCta,
                     primaryCtaUrl: url,
+                    footer: t.emailFooter,
                 }),
-                pushTitle: strings.notifSellerLabelReminderPushTitle,
-                pushBody: interpolate(strings.notifSellerLabelReminderPushBody, vars),
+                pushTitle: t.notifSellerLabelReminderPushTitle,
+                pushBody: interpolate(t.notifSellerLabelReminderPushBody, vars),
                 url,
             };
         }
         case NOTIFICATION_TYPE.SELLER_SHIP_REMINDER: {
             const url = sellerOrderUrl(order);
             return {
-                emailSubject: interpolate(strings.notifSellerShipReminderSubject, vars),
+                emailSubject: interpolate(t.notifSellerShipReminderSubject, vars),
                 emailHtml: emailShell({
-                    heading: strings.notifSellerShipReminderHeading,
-                    body: interpolate(strings.notifSellerShipReminderText, vars),
-                    primaryCtaLabel: strings.notifManageOrderCta,
+                    heading: t.notifSellerShipReminderHeading,
+                    body: interpolate(t.notifSellerShipReminderText, vars),
+                    primaryCtaLabel: t.notifManageOrderCta,
                     primaryCtaUrl: url,
+                    footer: t.emailFooter,
                 }),
-                pushTitle: strings.notifSellerShipReminderPushTitle,
-                pushBody: interpolate(strings.notifSellerShipReminderPushBody, vars),
+                pushTitle: t.notifSellerShipReminderPushTitle,
+                pushBody: interpolate(t.notifSellerShipReminderPushBody, vars),
                 url,
             };
         }

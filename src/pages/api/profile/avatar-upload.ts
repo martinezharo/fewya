@@ -1,15 +1,16 @@
 import type { APIRoute } from 'astro';
 import { createSupabaseAuthClient } from '../../../lib/core/auth';
-import { strings } from '../../../lib/core/i18n';
+
 import { detectImageMimeType, ALLOWED_IMAGE_TYPES } from '../../../lib/core/file-validation';
 import { securityLog } from '../../../lib/core/security-log';
 
-export const POST: APIRoute = async ({ cookies, request }) => {
+export const POST: APIRoute = async ({ locals, cookies, request  }) => {
+    const { t } = locals;
     const supabase = createSupabaseAuthClient(cookies, request);
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
-        return new Response(JSON.stringify({ error: strings.apiUnauthorized }), { status: 401 });
+        return new Response(JSON.stringify({ error: t.apiUnauthorized }), { status: 401 });
     }
 
     const formData = await request.formData();
@@ -23,7 +24,7 @@ export const POST: APIRoute = async ({ cookies, request }) => {
     const detectedType = await detectImageMimeType(file);
     if (!detectedType || !ALLOWED_IMAGE_TYPES.includes(detectedType)) {
         securityLog('security.upload.invalid_magic_bytes', { userId: user.id, context: 'avatar' });
-        return new Response(JSON.stringify({ error: strings.apiFileInvalid }), { status: 400 });
+        return new Response(JSON.stringify({ error: t.apiFileInvalid }), { status: 400 });
     }
 
     if (file.size > 2 * 1024 * 1024) {
@@ -51,7 +52,7 @@ export const POST: APIRoute = async ({ cookies, request }) => {
 
     if (uploadError) {
         console.error(JSON.stringify({ event: 'avatar_upload.failed', error: uploadError.message }));
-        return new Response(JSON.stringify({ error: strings.apiInternalError }), { status: 500 });
+        return new Response(JSON.stringify({ error: t.apiInternalError }), { status: 500 });
     }
 
     const { data: urlData } = supabase.storage
@@ -61,12 +62,13 @@ export const POST: APIRoute = async ({ cookies, request }) => {
     return new Response(JSON.stringify({ url: urlData.publicUrl, path }), { status: 200 });
 };
 
-export const DELETE: APIRoute = async ({ cookies, request, url }) => {
+export const DELETE: APIRoute = async ({ locals, cookies, request, url  }) => {
+    const { t } = locals;
     const supabase = createSupabaseAuthClient(cookies, request);
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
-        return new Response(JSON.stringify({ error: strings.apiUnauthorized }), { status: 401 });
+        return new Response(JSON.stringify({ error: t.apiUnauthorized }), { status: 401 });
     }
 
     const path = url.searchParams.get('path');
@@ -76,11 +78,11 @@ export const DELETE: APIRoute = async ({ cookies, request, url }) => {
 
     const segments = path.split('/');
     if (segments.length < 3 || segments[0] !== 'avatars') {
-        return new Response(JSON.stringify({ error: strings.apiPathForbidden }), { status: 403 });
+        return new Response(JSON.stringify({ error: t.apiPathForbidden }), { status: 403 });
     }
 
     if (segments[1] !== user.id) {
-        return new Response(JSON.stringify({ error: strings.apiPathForbidden }), { status: 403 });
+        return new Response(JSON.stringify({ error: t.apiPathForbidden }), { status: 403 });
     }
 
     const { error } = await supabase.storage
@@ -89,7 +91,7 @@ export const DELETE: APIRoute = async ({ cookies, request, url }) => {
 
     if (error) {
         console.error(JSON.stringify({ event: 'avatar_delete.failed', error: error.message }));
-        return new Response(JSON.stringify({ error: strings.apiInternalError }), { status: 500 });
+        return new Response(JSON.stringify({ error: t.apiInternalError }), { status: 500 });
     }
 
     return new Response(JSON.stringify({ ok: true }), { status: 200 });

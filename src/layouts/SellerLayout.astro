@@ -3,7 +3,6 @@ import Layout from './Layout.astro';
 import SellerSidebar from '../components/seller/SellerSidebar.astro';
 import PushPrompt from '../components/notifications/PushPrompt.astro';
 import Icon from '../components/icons/Icon.astro';
-import { strings } from '../lib/core/i18n';
 import { createSupabaseAuthClient } from '../lib/core/auth';
 import { validateProductCompleteness } from '../lib/products/productValidation';
 import { isProfileComplete } from '../lib/core/validation';
@@ -16,6 +15,7 @@ interface Props {
     shopId?: string;
 }
 
+const { t } = Astro.locals;
 const { title, description, shopSlug, shopId } = Astro.props;
 const currentPath = Astro.url.pathname;
 
@@ -107,14 +107,14 @@ if (shopId) {
                 <button
                     id="seller-mobile-menu-toggle"
                     class="flex items-center justify-center w-9 h-9 -ml-1.5 rounded-lg text-text-secondary hover:text-text-primary hover:bg-border-light transition-colors"
-                    aria-label={strings.sellerSidebarOpenLabel}
+                    aria-label={t.sellerSidebarOpenLabel}
                     aria-expanded="false"
                     aria-controls="seller-sidebar"
                 >
                     <Icon name="menu" size={20} />
                 </button>
                 <a href="/sell" class="ml-2 font-semibold text-sm text-text-primary tracking-tight">
-                    {strings.sellerBrandName}
+                    {t.sellerBrandName}
                 </a>
             </header>
 
@@ -122,9 +122,9 @@ if (shopId) {
             {stripeStatus !== 'ready' && (
                 <div class="flex items-center gap-3 px-4 py-2.5 bg-amber-50 border-b border-amber-200 dark:bg-amber-950/40 dark:border-amber-800 shrink-0">
                     <svg class="shrink-0 text-amber-600 dark:text-amber-400" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
-                    <p class="flex-1 text-[13px] text-amber-800 dark:text-amber-200">{strings.sellerStripeWarningBanner}</p>
+                    <p class="flex-1 text-[13px] text-amber-800 dark:text-amber-200">{t.sellerStripeWarningBanner}</p>
                     <a href="/sell/onboarding" class="shrink-0 text-[13px] font-medium text-amber-700 dark:text-amber-300 underline underline-offset-2 hover:text-amber-900 dark:hover:text-amber-100 transition-colors">
-                        {strings.sellerStripeWarningCta}
+                        {t.sellerStripeWarningCta}
                     </a>
                 </div>
             )}
@@ -133,9 +133,9 @@ if (shopId) {
             {stripeStatus === 'ready' && sellerDetailsIncomplete && currentPath !== '/sell/details' && (
                 <div class="flex items-center gap-3 px-4 py-2.5 bg-amber-50 border-b border-amber-200 dark:bg-amber-950/40 dark:border-amber-800 shrink-0">
                     <svg class="shrink-0 text-amber-600 dark:text-amber-400" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
-                    <p class="flex-1 text-[13px] text-amber-800 dark:text-amber-200">{strings.sellerDetailsWarningBanner}</p>
+                    <p class="flex-1 text-[13px] text-amber-800 dark:text-amber-200">{t.sellerDetailsWarningBanner}</p>
                     <a href="/sell/details" class="shrink-0 text-[13px] font-medium text-amber-700 dark:text-amber-300 underline underline-offset-2 hover:text-amber-900 dark:hover:text-amber-100 transition-colors">
-                        {strings.sellerDetailsWarningCta}
+                        {t.sellerDetailsWarningCta}
                     </a>
                 </div>
             )}

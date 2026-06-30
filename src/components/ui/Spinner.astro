@@ -1,5 +1,5 @@
 ---
-import { strings } from "../../lib/core/i18n";
+const { t } = Astro.locals;
 
 interface Props {
     size?: "sm" | "md" | "lg";
@@ -8,7 +8,7 @@ interface Props {
     inline?: boolean;
 }
 
-const { size = "md", label = strings.spinnerLabel, class: className = "", inline = false } = Astro.props;
+const { size = "md", label = t.spinnerLabel, class: className = "", inline = false } = Astro.props;
 
 const dimensions: Record<string, string> = {
     sm: "w-4 h-4 border-2",

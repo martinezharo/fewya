@@ -4,6 +4,7 @@ import { parseCookieHeader } from '@supabase/ssr';
 import { exchangeAuthCodeForSession } from './lib/core/auth';
 import { securityLog } from './lib/core/security-log';
 import { checkRateLimit, rateLimitResponse, type RateLimitBinding } from './lib/core/rate-limit';
+import { getT, resolveLocale } from './lib/core/i18n';
 
 const PRIVATE_PREFIXES = ['/me', '/sell', '/cart', '/profile', '/wishlist', '/api'];
 const PUBLIC_MAX_AGE = 60;
@@ -37,6 +38,15 @@ const CSP = [
 export const onRequest = defineMiddleware(async (context, next) => {
     const { method } = context.request;
     const { pathname } = context.url;
+
+    // Resolve the active locale (cookie override > Accept-Language > default)
+    // and expose it on Astro.locals so every page/component can pull strings.
+    const locale = resolveLocale({
+        cookies: context.cookies,
+        request: context.request,
+    });
+    context.locals.locale = locale;
+    context.locals.t = getT(locale);
 
     // Auth code exchange — only for GET requests (except the callback itself)
     if (method === 'GET' && pathname !== '/api/auth/callback') {

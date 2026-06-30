@@ -1,26 +1,27 @@
 import type { APIRoute } from 'astro';
 import { createSupabaseAuthClient } from '../../../../lib/core/auth';
-import { strings } from '../../../../lib/core/i18n';
+
 import { enforceVariantPricing, type PricingCheckVariant } from '../../../../lib/products/pricingEnforcement';
 
-export const PATCH: APIRoute = async ({ cookies, request, url }) => {
+export const PATCH: APIRoute = async ({ locals, cookies, request, url  }) => {
+    const { t } = locals;
     const supabase = createSupabaseAuthClient(cookies, request);
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
-        return new Response(JSON.stringify({ error: strings.apiUnauthorized }), { status: 401 });
+        return new Response(JSON.stringify({ error: t.apiUnauthorized }), { status: 401 });
     }
 
     const productId = url.searchParams.get('id');
     if (!productId) {
-        return new Response(JSON.stringify({ error: strings.apiInvalidBody }), { status: 400 });
+        return new Response(JSON.stringify({ error: t.apiInvalidBody }), { status: 400 });
     }
 
     let body: { is_active: boolean };
     try {
         body = await request.json();
     } catch {
-        return new Response(JSON.stringify({ error: strings.apiInvalidBody }), { status: 400 });
+        return new Response(JSON.stringify({ error: t.apiInvalidBody }), { status: 400 });
     }
 
     const { data: shop } = await supabase
@@ -30,7 +31,7 @@ export const PATCH: APIRoute = async ({ cookies, request, url }) => {
         .maybeSingle();
 
     if (!shop) {
-        return new Response(JSON.stringify({ error: strings.apiForbidden }), { status: 403 });
+        return new Response(JSON.stringify({ error: t.apiForbidden }), { status: 403 });
     }
 
     if (body.is_active === true && !shop.allow_loss) {
@@ -39,7 +40,7 @@ export const PATCH: APIRoute = async ({ cookies, request, url }) => {
             .select('variant_name, price, shipping_cost, weight_kg, length_cm, width_cm, height_cm')
             .eq('product_id', productId);
 
-        const pricing = await enforceVariantPricing((variants ?? []) as PricingCheckVariant[]);
+        const pricing = await enforceVariantPricing(t, (variants ?? []) as PricingCheckVariant[]);
         if (!pricing.ok) {
             return new Response(JSON.stringify({ error: pricing.errors.join('\n') }), { status: 400 });
         }
@@ -58,7 +59,7 @@ export const PATCH: APIRoute = async ({ cookies, request, url }) => {
     }
 
     if (!product) {
-        return new Response(JSON.stringify({ error: strings.apiForbidden }), { status: 403 });
+        return new Response(JSON.stringify({ error: t.apiForbidden }), { status: 403 });
     }
 
     return new Response(JSON.stringify({ product }), { status: 200 });

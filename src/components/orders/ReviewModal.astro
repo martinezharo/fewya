@@ -1,6 +1,6 @@
 ---
 import Icon from '../icons/Icon.astro';
-import { strings } from '../../lib/core/i18n';
+const { t } = Astro.locals;
 
 interface ReviewModalItem {
     productTitle: string;
@@ -29,7 +29,7 @@ const hasAnyReview = items.some(item => item.productId && reviews?.[item.product
     <div class="w-full max-w-md rounded-t-2xl sm:rounded-2xl border border-border bg-surface p-5 shadow-xl">
         <div class="flex items-center justify-between mb-4">
             <h3 class="text-base font-semibold text-text-primary">
-                {hasAnyReview ? strings.reviewModalTitleEdit : strings.reviewModalTitleAdd}
+                {hasAnyReview ? t.reviewModalTitleEdit : t.reviewModalTitleAdd}
             </h3>
             <button type="button" class="close-review-modal-btn p-1.5 rounded-lg hover:bg-border-light transition-colors text-text-secondary">
                 <Icon name="x" size={18} />
@@ -56,7 +56,7 @@ const hasAnyReview = items.some(item => item.productId && reviews?.[item.product
 
                         <div class="mb-4">
                             <label class="block text-sm font-medium text-text-primary mb-2">
-                                {strings.reviewRatingLabel}
+                                {t.reviewRatingLabel}
                             </label>
                             <div class="review-stars flex gap-1" data-rating={existing?.rating ?? 0}>
                                 {[1, 2, 3, 4, 5].map((star) => (
@@ -72,17 +72,17 @@ const hasAnyReview = items.some(item => item.productId && reviews?.[item.product
                                     </button>
                                 ))}
                             </div>
-                            <p class="review-rating-error hidden mt-1.5 text-xs text-red-600">{strings.reviewRatingRequired}</p>
+                            <p class="review-rating-error hidden mt-1.5 text-xs text-red-600">{t.reviewRatingRequired}</p>
                         </div>
 
                         <div>
                             <label class="block text-sm font-medium text-text-primary mb-1.5">
-                                {strings.reviewCommentLabel}
+                                {t.reviewCommentLabel}
                             </label>
                             <textarea
                                 class="review-comment-input w-full rounded-xl border border-border bg-bg px-3 py-2.5 text-sm text-text-primary shadow-sm outline-none ring-accent focus:ring-2 transition-shadow resize-none"
                                 rows="3"
-                                placeholder={strings.reviewCommentPlaceholder}
+                                placeholder={t.reviewCommentPlaceholder}
                             >{existing?.comment ?? ''}</textarea>
                         </div>
                     </div>
@@ -113,18 +113,19 @@ const hasAnyReview = items.some(item => item.productId && reviews?.[item.product
 
         <div class="flex gap-2 justify-end pt-4 mt-2 border-t border-border-light">
             <button type="button" class="close-review-modal-btn px-3 py-1.5 text-sm font-medium text-text-secondary hover:text-text-primary transition-colors">
-                {strings.incidentCancel}
+                {t.incidentCancel}
             </button>
             <button type="button" class="submit-review-btn px-3 py-1.5 text-sm font-semibold rounded-lg bg-accent text-bg hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                {strings.reviewSubmit}
+                {t.reviewSubmit}
             </button>
         </div>
     </div>
 </div>
 
 <script>
-    import { strings } from '../../lib/core/i18n';
+    import { getClientT } from '../../lib/core/i18n';
     import { runSubmit, SubmitError } from '../../lib/ui/submit';
+const t = getClientT();
 
     function activeSlideIndex(modal: HTMLElement): number {
         const slides = modal.querySelectorAll<HTMLElement>('.review-slide');
@@ -139,7 +140,7 @@ const hasAnyReview = items.some(item => item.productId && reviews?.[item.product
         const counter = modal.querySelector<HTMLElement>('.review-counter');
         if (prevBtn) prevBtn.disabled = next === 0;
         if (nextBtn) nextBtn.disabled = next === slides.length - 1;
-        if (counter) counter.textContent = `${strings.reviewCounter}`.replace('{current}', String(next + 1)).replace('{total}', String(slides.length));
+        if (counter) counter.textContent = `${t.reviewCounter}`.replace('{current}', String(next + 1)).replace('{total}', String(slides.length));
     }
 
     function wireModal(modal: HTMLElement) {
@@ -224,7 +225,7 @@ const hasAnyReview = items.some(item => item.productId && reviews?.[item.product
 
             const reviewResult = await runSubmit({
                 button: submitBtn,
-                busyLabel: strings.reviewSubmitting,
+                busyLabel: t.reviewSubmitting,
                 action: async () => {
                     const res = await fetch('/api/reviews/submit-batch', {
                         method: 'POST',
@@ -232,10 +233,10 @@ const hasAnyReview = items.some(item => item.productId && reviews?.[item.product
                         body: JSON.stringify({ reviews }),
                     });
                     const data = await res.json() as { success?: boolean; error?: string };
-                    if (!data.success) throw new SubmitError(data.error || strings.reviewSubmitError);
+                    if (!data.success) throw new SubmitError(data.error || t.reviewSubmitError);
                     return data;
                 },
-                successMsg: strings.reviewSubmitSuccess,
+                successMsg: t.reviewSubmitSuccess,
             });
             if (reviewResult.ok) {
                 modal.classList.add('hidden');

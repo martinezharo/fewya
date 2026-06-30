@@ -1,20 +1,20 @@
 import type { APIRoute } from 'astro';
 import { createSupabaseAuthClient } from '../../../../lib/core/auth';
-import { strings } from '../../../../lib/core/i18n';
 
-export const PATCH: APIRoute = async ({ cookies, request }) => {
+export const PATCH: APIRoute = async ({ locals, cookies, request  }) => {
+    const { t } = locals;
     const supabase = createSupabaseAuthClient(cookies, request);
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
-        return new Response(JSON.stringify({ error: strings.apiUnauthorized }), { status: 401 });
+        return new Response(JSON.stringify({ error: t.apiUnauthorized }), { status: 401 });
     }
 
     let body: Record<string, unknown>;
     try {
         body = await request.json();
     } catch {
-        return new Response(JSON.stringify({ error: strings.apiInvalidBody }), { status: 400 });
+        return new Response(JSON.stringify({ error: t.apiInvalidBody }), { status: 400 });
     }
 
     const allowedFields = ['profile_img', 'banner_img'];
@@ -27,7 +27,7 @@ export const PATCH: APIRoute = async ({ cookies, request }) => {
     }
 
     if (Object.keys(updates).length === 0) {
-        return new Response(JSON.stringify({ error: strings.apiInvalidBody }), { status: 400 });
+        return new Response(JSON.stringify({ error: t.apiInvalidBody }), { status: 400 });
     }
 
     const { error } = await supabase

@@ -2,9 +2,10 @@
 import Icon from "../icons/Icon.astro";
 import OrderCard from "./OrderCard.astro";
 import type { OrderCardData, OrderItem } from "./OrderCard.astro";
-import { strings } from "../../lib/core/i18n";
+
 import { createSupabaseAuthClient } from "../../lib/core/auth";
 import { ORDER_STATUS } from "../../lib/orders/orderStatus";
+const { t } = Astro.locals;
 
 const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
 const { data: { user } } = await supabase.auth.getUser();
@@ -103,7 +104,7 @@ if (user) {
             const imageUrl = variant.variant_image || product.gallery_images?.[0] || "";
 
             return {
-                productTitle: product.title ?? strings.fallbackProductName,
+                productTitle: product.title ?? t.fallbackProductName,
                 imageUrl,
                 productSlug: product.slug,
                 shopSlug: shop.slug,
@@ -189,16 +190,16 @@ if (user) {
             <Icon name="shopping-cart" size={26} />
         </div>
         <h2 class="text-[18px] font-semibold text-text-primary mb-2">
-            {strings.ordersEmpty}
+            {t.ordersEmpty}
         </h2>
         <p class="text-[14px] text-text-secondary mb-6 max-w-xs">
-            {strings.ordersEmptySub}
+            {t.ordersEmptySub}
         </p>
         <a
             href="/"
             class="inline-flex items-center px-6 py-2.5 bg-accent text-bg text-sm font-semibold rounded-lg transition-colors hover:bg-accent-hover"
         >
-            {strings.ordersExploreCta}
+            {t.ordersExploreCta}
         </a>
     </div>
 )}

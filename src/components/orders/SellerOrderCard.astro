@@ -1,7 +1,7 @@
 ---
 import Icon from '../icons/Icon.astro';
 import RefundOrderModal from './RefundOrderModal.astro';
-import { strings } from '../../lib/core/i18n';
+
 import { isDevelopment } from '../../lib/core/env';
 import {
     normalizeOrderStatus,
@@ -14,6 +14,7 @@ import {
     formatShippingCell,
 } from '../../lib/orders/orderCardModel';
 import { ORDER_STATUS, type DeliveryType } from '../../lib/orders/orderStatus';
+const { t } = Astro.locals;
 
 export interface SellerOrderItem {
     productTitle: string;
@@ -64,10 +65,10 @@ const { order } = Astro.props;
 
 const normalizedStatus = normalizeOrderStatus(order.status);
 const { canSellerConfirm, isRecentlyDelivered } = getSellerDeliveryFlags(normalizedStatus, order.deliveredAt);
-const statusLabel = getStatusLabel(normalizedStatus);
+const statusLabel = getStatusLabel(t, normalizedStatus);
 const statusColor = getStatusBadgeClass(normalizedStatus);
 const dateFormatted = formatOrderDate(order.createdAt);
-const customerName = order.shippingFullName || order.buyerEmail || strings.profileAnonymous;
+const customerName = order.shippingFullName || order.buyerEmail || t.profileAnonymous;
 const { showRefunded, refundedAmountFormatted, shippingRetainedFormatted } = getRefundedAmounts(
     normalizedStatus,
     order.refundedAmount,
@@ -83,12 +84,12 @@ const { showRefunded, refundedAmountFormatted, shippingRetainedFormatted } = get
                     {statusLabel}
                 </span>
                 {(normalizedStatus === ORDER_STATUS.PAID || normalizedStatus === ORDER_STATUS.PROCESSING || normalizedStatus === ORDER_STATUS.SHIPPED || normalizedStatus === ORDER_STATUS.DELIVERED) && (
-                    <span class="funds-badge relative shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 cursor-help" data-tooltip={strings.orderFundsHeldTooltip}>
+                    <span class="funds-badge relative shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 cursor-help" data-tooltip={t.orderFundsHeldTooltip}>
                         <Icon name="info" size={9} class="mr-1" />
-                        {strings.orderFundsHeld}
+                        {t.orderFundsHeld}
                         <span class="tooltip absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden z-50 pointer-events-none">
                             <span class="block w-max max-w-[220px] rounded-lg border border-border bg-surface px-3 py-2 text-center text-[11px] font-medium leading-relaxed text-text-primary shadow-lg dark:bg-neutral-800 dark:border-neutral-700">
-                                {strings.orderFundsHeldTooltip}
+                                {t.orderFundsHeldTooltip}
                             </span>
                             <span class="absolute left-1/2 top-full -translate-x-1/2 -mt-px border-4 border-transparent border-t-border dark:border-t-neutral-700"></span>
                         </span>
@@ -97,31 +98,31 @@ const { showRefunded, refundedAmountFormatted, shippingRetainedFormatted } = get
                 {normalizedStatus === ORDER_STATUS.CONFIRMED && (
                     <span class="shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
                         <Icon name="check" size={9} class="mr-1" />
-                        {strings.orderFundsReleased}
+                        {t.orderFundsReleased}
                     </span>
                 )}
                 {normalizedStatus === ORDER_STATUS.INCIDENT && (
                     <span class="shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800">
                         <Icon name="alert-circle" size={9} class="mr-1" />
-                        {strings.orderIncidentReported}
+                        {t.orderIncidentReported}
                     </span>
                 )}
                 {normalizedStatus === ORDER_STATUS.DELIVERY_FAILED && (
                     <span class="shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400 border border-rose-200 dark:border-rose-800">
                         <Icon name="alert-circle" size={9} class="mr-1" />
-                        {strings.deliveryFailedSellerTitle}
+                        {t.deliveryFailedSellerTitle}
                     </span>
                 )}
                 {showRefunded && (
                     <span class="shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 border border-orange-200 dark:border-orange-800">
                         <Icon name="credit-card" size={9} class="mr-1" />
-                        {strings.orderRefundedBadge}
+                        {t.orderRefundedBadge}
                     </span>
                 )}
                 {normalizedStatus === ORDER_STATUS.CANCELLED && order.cancellationReason && (
                     <span class="shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800">
                         <Icon name="message-circle" size={9} class="mr-1" />
-                        {strings.orderCancellationReason}
+                        {t.orderCancellationReason}
                     </span>
                 )}
                 <order-id-popover class="relative inline-flex min-w-0 max-w-full" data-id={order.publicId}>
@@ -150,7 +151,7 @@ const { showRefunded, refundedAmountFormatted, shippingRetainedFormatted } = get
                 {formatEur(order.subtotal + order.shipping)}
             </p>
             <p class="mt-1.5 text-xs font-medium text-text-tertiary tabular-nums">
-                {order.itemsSold} {order.itemsSold === 1 ? strings.ordersItemsSingular : strings.ordersItemsPlural}
+                {order.itemsSold} {order.itemsSold === 1 ? t.ordersItemsSingular : t.ordersItemsPlural}
             </p>
         </div>
     </div>
@@ -161,7 +162,7 @@ const { showRefunded, refundedAmountFormatted, shippingRetainedFormatted } = get
         <section>
             <div class="flex items-center gap-2 text-[13px] font-bold uppercase tracking-wider text-text-primary mb-5">
                 <Icon name="package" size={16} class="text-text-tertiary" />
-                <span>{strings.sellerOrdersProductsLabel}</span>
+                <span>{t.sellerOrdersProductsLabel}</span>
             </div>
 
             <div class="flex flex-col gap-5">
@@ -214,27 +215,27 @@ const { showRefunded, refundedAmountFormatted, shippingRetainedFormatted } = get
 
             <div class="mt-2 pt-4 border-t border-border-light space-y-2">
                 <div class="flex items-center justify-between text-sm">
-                    <span class="text-text-secondary">{strings.sellerPayoutProducts}</span>
+                    <span class="text-text-secondary">{t.sellerPayoutProducts}</span>
                     <span class="font-medium text-text-primary tabular-nums">
                         {formatEur(order.subtotal)}
                     </span>
                 </div>
                 <div class="flex items-center justify-between text-sm">
-                    <span class="text-text-secondary">{strings.sellerPayoutShippingCharged}</span>
+                    <span class="text-text-secondary">{t.sellerPayoutShippingCharged}</span>
                     <span class="font-medium text-text-primary tabular-nums">
-                        {formatShippingCell(order.shipping)}
+                        {formatShippingCell(t, order.shipping)}
                     </span>
                 </div>
                 {order.labelCost != null && order.labelCost > 0 && (
                     <div class="flex items-center justify-between text-sm">
-                        <span class="text-text-secondary">{strings.sellerPayoutLabelCost}</span>
+                        <span class="text-text-secondary">{t.sellerPayoutLabelCost}</span>
                         <span class="font-medium text-rose-600 dark:text-rose-400 tabular-nums">
                             −{formatEur(order.labelCost)}
                         </span>
                     </div>
                 )}
                 <div class="flex items-center justify-between text-sm pt-2 mt-1 border-t border-border-light">
-                    <span class="font-semibold text-text-primary">{strings.sellerPayoutNet}</span>
+                    <span class="font-semibold text-text-primary">{t.sellerPayoutNet}</span>
                     <span class="text-base font-bold text-text-primary tabular-nums">
                         {formatEur(order.subtotal + order.shipping - (order.labelCost ?? 0))}
                     </span>
@@ -245,7 +246,7 @@ const { showRefunded, refundedAmountFormatted, shippingRetainedFormatted } = get
         <section>
             <div class="flex items-center gap-2 text-[13px] font-bold uppercase tracking-wider text-text-primary mb-5">
                 <Icon name="user" size={16} class="text-text-tertiary" />
-                <span>{strings.sellerOrdersCustomerLabel}</span>
+                <span>{t.sellerOrdersCustomerLabel}</span>
             </div>
 
             <ul class="flex flex-col gap-4 text-[14px]">
@@ -272,19 +273,19 @@ const { showRefunded, refundedAmountFormatted, shippingRetainedFormatted } = get
             <div class="mt-6 pt-5 border-t border-border">
                 <div class="flex items-center gap-2 text-[13px] font-bold uppercase tracking-wider text-text-primary mb-4">
                     <Icon name="settings" size={16} class="text-text-tertiary" />
-                    <span>{strings.sellerOrderManage}</span>
+                    <span>{t.sellerOrderManage}</span>
                 </div>
 
                 {order.hasShipment ? (
                     <div class="flex flex-col gap-3">
                         {order.carrierName && (
                             <p class="text-sm text-text-secondary">
-                                <span class="font-medium text-text-primary">{strings.shippingCarrier}:</span> {order.carrierName}
+                                <span class="font-medium text-text-primary">{t.shippingCarrier}:</span> {order.carrierName}
                             </p>
                         )}
                         {order.trackingNumber && (
                             <p class="text-sm text-text-secondary">
-                                <span class="font-medium text-text-primary">{strings.shippingTrackingNumber}:</span>{' '}
+                                <span class="font-medium text-text-primary">{t.shippingTrackingNumber}:</span>{' '}
                                 <span class="font-mono">{order.trackingNumber}</span>
                             </p>
                         )}
@@ -297,7 +298,7 @@ const { showRefunded, refundedAmountFormatted, shippingRetainedFormatted } = get
                                     class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-400 hover:bg-purple-200 dark:hover:bg-purple-900/60 transition-colors"
                                 >
                                     <Icon name="external-link" size={12} />
-                                    {strings.shippingTrackPackage}
+                                    {t.shippingTrackPackage}
                                 </a>
                             )}
                             {order.labelUrl && (
@@ -308,7 +309,7 @@ const { showRefunded, refundedAmountFormatted, shippingRetainedFormatted } = get
                                     class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/60 transition-colors"
                                 >
                                     <Icon name="file-text" size={12} />
-                                    {strings.shippingViewLabel}
+                                    {t.shippingViewLabel}
                                 </a>
                             )}
                         </div>
@@ -316,7 +317,7 @@ const { showRefunded, refundedAmountFormatted, shippingRetainedFormatted } = get
                 ) : (normalizedStatus === ORDER_STATUS.PAID || normalizedStatus === ORDER_STATUS.PROCESSING) ? (
                     <div class="flex flex-col gap-3">
                         {isDevelopment && (
-                            <p class="text-sm text-text-secondary">{strings.sellerOrderMockLabelHint}</p>
+                            <p class="text-sm text-text-secondary">{t.sellerOrderMockLabelHint}</p>
                         )}
                         <div class="flex flex-wrap gap-2">
                             <button
@@ -325,7 +326,7 @@ const { showRefunded, refundedAmountFormatted, shippingRetainedFormatted } = get
                                 data-order-id={order.orderId}
                             >
                                 <Icon name="truck" size={12} />
-                                {strings.sellerOrderCreateLabel}
+                                {t.sellerOrderCreateLabel}
                             </button>
                             <button
                                 type="button"
@@ -333,53 +334,53 @@ const { showRefunded, refundedAmountFormatted, shippingRetainedFormatted } = get
                                 data-order-id={order.orderId}
                             >
                                 <Icon name="x" size={12} />
-                                {strings.sellerOrderCancelOrder}
+                                {t.sellerOrderCancelOrder}
                             </button>
                         </div>
                     </div>
                 ) : normalizedStatus === ORDER_STATUS.INCIDENT ? (
                     <div class="flex flex-col gap-3">
-                        <p class="text-sm text-text-secondary">{strings.sellerIncidentNoticeForSeller}</p>
+                        <p class="text-sm text-text-secondary">{t.sellerIncidentNoticeForSeller}</p>
                         <a
                             href="/sell/claims"
                             class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/60 transition-colors self-start"
                         >
                             <Icon name="alert-circle" size={12} />
-                            {strings.incidentViewDetails}
+                            {t.incidentViewDetails}
                         </a>
                     </div>
                 ) : (
-                    <p class="text-sm text-text-secondary">{strings.sellerOrderNoActions}</p>
+                    <p class="text-sm text-text-secondary">{t.sellerOrderNoActions}</p>
                 )}
 
                 {canSellerConfirm && (
                     <div class="mt-4 pt-4 border-t border-border-light flex flex-col gap-3">
-                        <p class="text-sm text-text-secondary">{strings.sellerOrderConfirmDeliveryHint}</p>
+                        <p class="text-sm text-text-secondary">{t.sellerOrderConfirmDeliveryHint}</p>
                         <button
                             type="button"
                             class="seller-confirm-btn self-start inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-xl bg-emerald-500 text-white hover:bg-emerald-600 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                             data-order-id={order.orderId}
                         >
                             <Icon name="check" size={13} />
-                            {strings.sellerOrderConfirmDelivery}
+                            {t.sellerOrderConfirmDelivery}
                         </button>
                     </div>
                 )}
                 {isRecentlyDelivered && (
                     <div class="mt-4 pt-4 border-t border-border-light">
-                        <p class="text-sm text-text-secondary">{strings.sellerOrderDeliveredWaiting}</p>
+                        <p class="text-sm text-text-secondary">{t.sellerOrderDeliveredWaiting}</p>
                     </div>
                 )}
                 {normalizedStatus === ORDER_STATUS.DELIVERY_FAILED && (
                     <div class="mt-4 pt-4 border-t border-border-light flex flex-col gap-3">
-                        <p class="text-sm text-text-secondary">{strings.deliveryFailedSellerNotice}</p>
+                        <p class="text-sm text-text-secondary">{t.deliveryFailedSellerNotice}</p>
                         <button
                             type="button"
                             class="open-refund-modal-btn self-end inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-xl bg-red-600 text-white hover:bg-red-700 active:scale-95 transition-all"
                             data-order-id={order.orderId}
                         >
                             <Icon name="credit-card" size={13} />
-                            {strings.sellerIncidentRefundBtn}
+                            {t.sellerIncidentRefundBtn}
                         </button>
                     </div>
                 )}
@@ -390,7 +391,7 @@ const { showRefunded, refundedAmountFormatted, shippingRetainedFormatted } = get
     {normalizedStatus === ORDER_STATUS.CANCELLED && order.cancellationReason && (
         <div class="p-4 rounded-2xl bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800">
             <p class="text-[11px] font-semibold uppercase tracking-wider text-red-700 dark:text-red-400 mb-1">
-                {strings.orderCancellationReason}
+                {t.orderCancellationReason}
             </p>
             <p class="text-sm text-red-800 dark:text-red-300 leading-relaxed">{order.cancellationReason}</p>
         </div>
@@ -400,26 +401,26 @@ const { showRefunded, refundedAmountFormatted, shippingRetainedFormatted } = get
         <div class="p-4 rounded-2xl bg-orange-50 dark:bg-orange-900/20 border border-orange-100 dark:border-orange-800">
             <div class="flex items-start justify-between gap-3 mb-2">
                 <p class="text-[11px] font-semibold uppercase tracking-wider text-orange-700 dark:text-orange-400">
-                    {strings.orderRefundedSellerTitle}
+                    {t.orderRefundedSellerTitle}
                 </p>
                 <span class="shrink-0 text-base font-bold text-orange-700 dark:text-orange-300 tabular-nums">
                     {refundedAmountFormatted}
                 </span>
             </div>
             <p class="text-sm text-orange-800 dark:text-orange-300 leading-relaxed">
-                {strings.orderRefundedSellerNotice}
+                {t.orderRefundedSellerNotice}
             </p>
             <dl class="mt-3 grid grid-cols-2 gap-2 text-[12px] tabular-nums">
                 <div class="flex flex-col rounded-lg bg-orange-100/60 dark:bg-orange-900/30 px-3 py-2">
                     <dt class="text-[10px] font-semibold uppercase tracking-wider text-orange-700/80 dark:text-orange-400/80">
-                        {strings.orderRefundedAmountLabel}
+                        {t.orderRefundedAmountLabel}
                     </dt>
                     <dd class="mt-0.5 font-bold text-orange-800 dark:text-orange-200">{refundedAmountFormatted}</dd>
                 </div>
                 {shippingRetainedFormatted && (
                     <div class="flex flex-col rounded-lg bg-emerald-100/60 dark:bg-emerald-900/30 px-3 py-2">
                         <dt class="text-[10px] font-semibold uppercase tracking-wider text-emerald-700/80 dark:text-emerald-400/80">
-                            {strings.orderRefundedRetainedLabel}
+                            {t.orderRefundedRetainedLabel}
                         </dt>
                         <dd class="mt-0.5 font-bold text-emerald-800 dark:text-emerald-200">{shippingRetainedFormatted}</dd>
                     </div>
@@ -435,35 +436,35 @@ const { showRefunded, refundedAmountFormatted, shippingRetainedFormatted } = get
             shippingAmount={order.shipping}
             endpoint="/api/orders/resolve-delivery-failure"
             allowPartial={false}
-            successMsg={strings.deliveryFailedRefundSuccess}
-            errorMsg={strings.deliveryFailedRefundError}
+            successMsg={t.deliveryFailedRefundSuccess}
+            errorMsg={t.deliveryFailedRefundError}
         />
     )}
 
     {/* Cancel Modal */}
     <div class="cancel-modal hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" data-order-id={order.orderId}>
         <div class="w-full max-w-sm rounded-2xl border border-border bg-surface p-5 shadow-xl">
-            <h3 class="text-base font-semibold text-text-primary">{strings.sellerOrderCancelOrder}</h3>
-            <p class="mt-1 text-sm text-text-secondary">{strings.sellerOrderCancelConfirm}</p>
+            <h3 class="text-base font-semibold text-text-primary">{t.sellerOrderCancelOrder}</h3>
+            <p class="mt-1 text-sm text-text-secondary">{t.sellerOrderCancelConfirm}</p>
             <div class="mt-4">
                 <label for={`cancel-reason-${order.orderId}`} class="block text-sm font-medium text-text-primary mb-1.5">
-                    {strings.sellerOrderCancelReasonLabel}
+                    {t.sellerOrderCancelReasonLabel}
                 </label>
                 <textarea
                     id={`cancel-reason-${order.orderId}`}
                     class="cancel-reason-input w-full rounded-xl border border-border bg-bg px-3 py-2 text-sm text-text-primary shadow-sm outline-none ring-accent focus:ring-2 transition-shadow resize-none"
                     rows="3"
-                    placeholder={strings.sellerOrderCancelReasonPlaceholder}
+                    placeholder={t.sellerOrderCancelReasonPlaceholder}
                     maxlength="500"
                 ></textarea>
-                <p class="cancel-reason-error hidden mt-1.5 text-xs text-red-600">{strings.sellerOrderCancelReasonRequired}</p>
+                <p class="cancel-reason-error hidden mt-1.5 text-xs text-red-600">{t.sellerOrderCancelReasonRequired}</p>
             </div>
             <div class="mt-5 flex gap-2 justify-end">
                 <button type="button" class="close-cancel-modal-btn px-3 py-1.5 text-sm font-medium text-text-secondary hover:text-text-primary transition-colors">
-                    {strings.productClose}
+                    {t.productClose}
                 </button>
                 <button type="button" class="confirm-cancel-btn px-3 py-1.5 text-sm font-semibold rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors" data-order-id={order.orderId}>
-                    {strings.sellerOrderCancelOrder}
+                    {t.sellerOrderCancelOrder}
                 </button>
             </div>
         </div>
@@ -473,51 +474,51 @@ const { showRefunded, refundedAmountFormatted, shippingRetainedFormatted } = get
     {(normalizedStatus === ORDER_STATUS.PAID || normalizedStatus === ORDER_STATUS.PROCESSING) && (
         <div class="label-cost-modal hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" data-order-id={order.orderId}>
             <div class="w-full max-w-md rounded-2xl border border-border bg-surface p-5 shadow-xl">
-                <h3 class="text-base font-semibold text-text-primary">{strings.sellerLabelCostModalTitle}</h3>
+                <h3 class="text-base font-semibold text-text-primary">{t.sellerLabelCostModalTitle}</h3>
 
                 <div class="label-cost-loading mt-5 flex items-center gap-3 text-sm text-text-secondary">
                     <span class="inline-block h-4 w-4 rounded-full border-2 border-border border-t-accent animate-spin" aria-hidden="true" />
-                    <span class="label-cost-loading-text">{strings.sellerLabelCostLoading}</span>
+                    <span class="label-cost-loading-text">{t.sellerLabelCostLoading}</span>
                 </div>
 
                 <div class="label-cost-error hidden mt-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-3 py-2.5 text-sm text-red-700 dark:text-red-300">
-                    <span class="label-cost-error-msg">{strings.sellerLabelCostError}</span>
+                    <span class="label-cost-error-msg">{t.sellerLabelCostError}</span>
                 </div>
 
                 <div class="label-cost-ready hidden mt-4 flex flex-col gap-3">
                     <div class="rounded-xl border border-border bg-bg px-3 py-2.5">
-                        <p class="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">{strings.sellerLabelCostCarrierLine}</p>
+                        <p class="text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">{t.sellerLabelCostCarrierLine}</p>
                         <p class="mt-1 text-sm font-semibold text-text-primary label-cost-carrier" />
                         <p class="mt-0.5 text-xs text-text-tertiary label-cost-service" />
                         <p class="hidden mt-1.5 text-xs text-text-secondary label-cost-pickup-line">
-                            <span class="font-medium">{strings.sellerLabelCostPickupPointLine}:</span> <span class="label-cost-pickup-name" />
+                            <span class="font-medium">{t.sellerLabelCostPickupPointLine}:</span> <span class="label-cost-pickup-name" />
                         </p>
                     </div>
 
                     <dl class="rounded-xl border border-border bg-surface divide-y divide-border text-sm">
                         <div class="flex items-center justify-between gap-3 px-3 py-2">
-                            <dt class="text-text-secondary">{strings.sellerLabelCostGrossLabel}</dt>
+                            <dt class="text-text-secondary">{t.sellerLabelCostGrossLabel}</dt>
                             <dd class="font-medium text-text-primary tabular-nums label-cost-gross" />
                         </div>
                         <div class="flex items-center justify-between gap-3 px-3 py-2">
-                            <dt class="text-text-secondary">{strings.sellerLabelCostSubsidyLabel}</dt>
+                            <dt class="text-text-secondary">{t.sellerLabelCostSubsidyLabel}</dt>
                             <dd class="font-medium text-emerald-600 dark:text-emerald-400 tabular-nums label-cost-subsidy" />
                         </div>
                         <div class="flex items-center justify-between gap-3 px-3 py-2.5 bg-bg">
-                            <dt class="font-semibold text-text-primary">{strings.sellerLabelCostNetLabel}</dt>
+                            <dt class="font-semibold text-text-primary">{t.sellerLabelCostNetLabel}</dt>
                             <dd class="text-base font-bold text-text-primary tabular-nums label-cost-net" />
                         </div>
                     </dl>
 
                     <p class="text-xs text-text-tertiary label-cost-buyer-paid" />
                     {isDevelopment && (
-                        <p class="text-xs text-text-tertiary">{strings.sellerOrderMockLabelHint}</p>
+                        <p class="text-xs text-text-tertiary">{t.sellerOrderMockLabelHint}</p>
                     )}
                 </div>
 
                 <div class="mt-5 flex gap-2 justify-end">
                     <button type="button" class="close-label-modal-btn px-3 py-1.5 text-sm font-medium text-text-secondary hover:text-text-primary transition-colors">
-                        {strings.sellerLabelCostCancel}
+                        {t.sellerLabelCostCancel}
                     </button>
                     <button
                         type="button"
@@ -526,7 +527,7 @@ const { showRefunded, refundedAmountFormatted, shippingRetainedFormatted } = get
                         disabled
                     >
                         <Icon name="truck" size={13} />
-                        {strings.sellerLabelCostConfirm}
+                        {t.sellerLabelCostConfirm}
                     </button>
                 </div>
             </div>
@@ -535,8 +536,9 @@ const { showRefunded, refundedAmountFormatted, shippingRetainedFormatted } = get
 </article>
 
 <script>
-    import { strings } from '../../lib/core/i18n';
+    import { getClientT } from '../../lib/core/i18n';
     import { runSubmit, SubmitError } from '../../lib/ui/submit';
+const t = getClientT();
 
     class OrderIdPopover extends HTMLElement {
         constructor() {
@@ -654,7 +656,7 @@ const { showRefunded, refundedAmountFormatted, shippingRetainedFormatted } = get
         setText(
             '.label-cost-buyer-paid',
             data.buyerPaidShipping != null
-                ? strings.sellerLabelCostBuyerPaid.replace('{amount}', formatEur(data.buyerPaidShipping))
+                ? t.sellerLabelCostBuyerPaid.replace('{amount}', formatEur(data.buyerPaidShipping))
                 : '',
         );
 
@@ -728,18 +730,18 @@ const { showRefunded, refundedAmountFormatted, shippingRetainedFormatted } = get
                     const res = await fetch(`/api/sendcloud/order-label-cost?orderId=${encodeURIComponent(orderId)}`);
                     const data = await res.json() as LabelCostResponse;
                     if (!res.ok) {
-                        showLabelModalError(modal, data.error || strings.sellerLabelCostError);
+                        showLabelModalError(modal, data.error || t.sellerLabelCostError);
                         return;
                     }
                     if (data.unavailable) {
-                        showLabelModalError(modal, data.error || strings.sellerLabelCostUnavailable);
+                        showLabelModalError(modal, data.error || t.sellerLabelCostUnavailable);
                         return;
                     }
                     fillLabelModal(modal, data);
                     setLabelModalState(modal, 'ready');
                 } catch (err) {
                     console.error('label-cost fetch failed', err);
-                    showLabelModalError(modal, strings.sellerLabelCostError);
+                    showLabelModalError(modal, t.sellerLabelCostError);
                 }
                 return;
             }
@@ -769,7 +771,7 @@ const { showRefunded, refundedAmountFormatted, shippingRetainedFormatted } = get
 
                 const result = await runSubmit({
                     button: confirmLabelBtn,
-                    busyLabel: strings.shippingCreatingShipment,
+                    busyLabel: t.shippingCreatingShipment,
                     action: async () => {
                         const res = await fetch('/api/sendcloud/shipment', {
                             method: 'POST',
@@ -777,14 +779,14 @@ const { showRefunded, refundedAmountFormatted, shippingRetainedFormatted } = get
                             body: JSON.stringify({ orderId, labelCost, shippingOptionCode }),
                         });
                         const data = await res.json() as { success?: boolean; error?: string };
-                        if (!data.success) throw new SubmitError(data.error || strings.sellerOrderLabelError);
+                        if (!data.success) throw new SubmitError(data.error || t.sellerOrderLabelError);
                         return data;
                     },
-                    successMsg: strings.labelGeneratedToast,
+                    successMsg: t.labelGeneratedToast,
                 });
                 if (result.ok && modal) {
                     const loadingText = modal.querySelector<HTMLElement>('.label-cost-loading-text');
-                    if (loadingText) loadingText.textContent = strings.sellerLabelCostRefreshing;
+                    if (loadingText) loadingText.textContent = t.sellerLabelCostRefreshing;
                     setLabelModalState(modal, 'loading');
                     window.location.reload();
                 }
@@ -840,10 +842,10 @@ const { showRefunded, refundedAmountFormatted, shippingRetainedFormatted } = get
                             body: JSON.stringify({ orderId }),
                         });
                         const data = await res.json() as { success?: boolean; error?: string };
-                        if (!data.success) throw new SubmitError(data.error || strings.sellerOrderConfirmDeliveryError);
+                        if (!data.success) throw new SubmitError(data.error || t.sellerOrderConfirmDeliveryError);
                         return data;
                     },
-                    successMsg: strings.sellerOrderConfirmDeliverySuccess,
+                    successMsg: t.sellerOrderConfirmDeliverySuccess,
                 });
                 if (result.ok) {
                     window.setTimeout(() => window.location.reload(), 800);
@@ -880,10 +882,10 @@ const { showRefunded, refundedAmountFormatted, shippingRetainedFormatted } = get
                             body: JSON.stringify({ orderId, cancellationReason: reason }),
                         });
                         const data = await res.json() as { success?: boolean; error?: string };
-                        if (!data.success) throw new SubmitError(data.error || strings.sellerOrderRefundError);
+                        if (!data.success) throw new SubmitError(data.error || t.sellerOrderRefundError);
                         return data;
                     },
-                    successMsg: strings.sellerOrderRefundSuccess,
+                    successMsg: t.sellerOrderRefundSuccess,
                 });
                 if (result.ok) {
                     window.setTimeout(() => window.location.reload(), 800);

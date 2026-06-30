@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro';
 import { createSupabaseAuthClient } from '../../../../lib/core/auth';
 import { createSupabaseAdminClient } from '../../../../lib/core/supabase-admin';
-import { strings } from '../../../../lib/core/i18n';
+
 import { getStripeClient } from '../../../../lib/payments/stripe';
 import { ORDER_STATUS, PAYMENT_STATUS } from '../../../../lib/orders/orderStatus';
 
@@ -12,10 +12,11 @@ function jsonResponse(payload: Record<string, unknown>, status: number) {
     });
 }
 
-export const GET: APIRoute = async ({ url, request, cookies }) => {
+export const GET: APIRoute = async ({ locals, url, request, cookies  }) => {
+    const { t } = locals;
     const sessionId = url.searchParams.get('session_id');
     if (!sessionId) {
-        return jsonResponse({ error: strings.apiInvalidBody }, 400);
+        return jsonResponse({ error: t.apiInvalidBody }, 400);
     }
 
     const authClient = createSupabaseAuthClient(cookies, request);
@@ -24,7 +25,7 @@ export const GET: APIRoute = async ({ url, request, cookies }) => {
     } = await authClient.auth.getUser();
 
     if (!user) {
-        return jsonResponse({ error: strings.apiUnauthorized }, 401);
+        return jsonResponse({ error: t.apiUnauthorized }, 401);
     }
 
     const { data: orders, error: orderLookupError } = await authClient
@@ -35,11 +36,11 @@ export const GET: APIRoute = async ({ url, request, cookies }) => {
 
     if (orderLookupError) {
         console.error('checkout confirmation order lookup failed', orderLookupError);
-        return jsonResponse({ error: strings.apiCheckoutConfirmationError }, 500);
+        return jsonResponse({ error: t.apiCheckoutConfirmationError }, 500);
     }
 
     if (!orders || orders.length === 0) {
-        return jsonResponse({ error: strings.apiCheckoutConfirmationError }, 404);
+        return jsonResponse({ error: t.apiCheckoutConfirmationError }, 404);
     }
 
     const allPaid = orders.every((o) => o.payment_status === PAYMENT_STATUS.PAID || o.status === ORDER_STATUS.PAID);
@@ -53,7 +54,7 @@ export const GET: APIRoute = async ({ url, request, cookies }) => {
         const session = await stripe.checkout.sessions.retrieve(sessionId);
 
         if (session.payment_status !== 'paid') {
-            return jsonResponse({ error: strings.apiCheckoutSessionPending }, 409);
+            return jsonResponse({ error: t.apiCheckoutSessionPending }, 409);
         }
 
         const paymentIntentId = typeof session.payment_intent === 'string'
@@ -61,7 +62,7 @@ export const GET: APIRoute = async ({ url, request, cookies }) => {
             : session.payment_intent?.id;
 
         if (!paymentIntentId) {
-            return jsonResponse({ error: strings.apiCheckoutConfirmationError }, 500);
+            return jsonResponse({ error: t.apiCheckoutConfirmationError }, 500);
         }
 
         // Mark ALL orders sharing this session as paid.
@@ -77,15 +78,15 @@ export const GET: APIRoute = async ({ url, request, cookies }) => {
 
         if (markPaidError) {
             console.error('checkout confirmation order update failed', markPaidError);
-            return jsonResponse({ error: strings.apiCheckoutConfirmationError }, 500);
+            return jsonResponse({ error: t.apiCheckoutConfirmationError }, 500);
         }
 
         return jsonResponse({ success: true, orders }, 200);
     } catch (error) {
         console.error('checkout confirmation failed', error);
 
-        const message = error instanceof Error ? error.message : strings.apiCheckoutConfirmationError;
-        const normalizedMessage = message === strings.authMissingStripeEnv ? message : strings.apiCheckoutConfirmationError;
+        const message = error instanceof Error ? error.message : t.apiCheckoutConfirmationError;
+        const normalizedMessage = message === t.authMissingStripeEnv ? message : t.apiCheckoutConfirmationError;
         return jsonResponse({ error: normalizedMessage }, 500);
     }
 };

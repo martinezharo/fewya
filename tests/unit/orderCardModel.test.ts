@@ -10,7 +10,7 @@ import {
     formatShippingCell,
 } from '../../src/lib/orders/orderCardModel';
 import { FUND_HOLD_MS } from '../../src/lib/orders/timing';
-import { strings } from '../../src/lib/core/i18n';
+import { es } from '../../src/lib/core/i18n/strings.es';
 
 describe('normalizeOrderStatus', () => {
     it('lowercases y permite estados válidos', () => {
@@ -30,7 +30,7 @@ describe('getStatusBadgeClass / getStatusLabel', () => {
         const statuses = ['pending', 'paid', 'processing', 'shipped', 'delivered', 'confirmed', 'incident', 'cancelled', 'refunded'] as const;
         for (const s of statuses) {
             expect(getStatusBadgeClass(s)).toBeTruthy();
-            expect(getStatusLabel(s)).toBeTruthy();
+            expect(getStatusLabel(es, s)).toBeTruthy();
         }
     });
 });
@@ -99,10 +99,10 @@ describe('getRefundedAmounts', () => {
 
 describe('formatShippingCell', () => {
     it('devuelve "Gratis" cuando es 0', () => {
-        expect(formatShippingCell(0)).toBe(strings.freeLabel);
+        expect(formatShippingCell(es, 0)).toBe(es.freeLabel);
     });
 
     it('formatea importes cuando es > 0', () => {
-        expect(formatShippingCell(3.5)).toContain('3,50');
+        expect(formatShippingCell(es, 3.5)).toContain('3,50');
     });
 });

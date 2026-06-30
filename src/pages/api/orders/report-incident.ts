@@ -1,7 +1,6 @@
 import type { APIRoute } from 'astro';
 import { createSupabaseAuthClient } from '../../../lib/core/auth';
 import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
-import { strings } from '../../../lib/core/i18n';
 
 function jsonResponse(payload: Record<string, unknown>, status: number) {
     return new Response(JSON.stringify(payload), {
@@ -10,21 +9,22 @@ function jsonResponse(payload: Record<string, unknown>, status: number) {
     });
 }
 
-export const POST: APIRoute = async ({ request, cookies }) => {
+export const POST: APIRoute = async ({ locals, request, cookies  }) => {
+    const { t } = locals;
     const authClient = createSupabaseAuthClient(cookies, request);
     const {
         data: { user },
     } = await authClient.auth.getUser();
 
     if (!user) {
-        return jsonResponse({ error: strings.apiUnauthorized }, 401);
+        return jsonResponse({ error: t.apiUnauthorized }, 401);
     }
 
     let body: { orderId?: string; description?: string; photos?: string[] };
     try {
         body = await request.json();
     } catch {
-        return jsonResponse({ error: strings.apiInvalidBody }, 400);
+        return jsonResponse({ error: t.apiInvalidBody }, 400);
     }
 
     const orderId = body.orderId;
@@ -32,7 +32,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     const photos = body.photos;
 
     if (!orderId || !description || !Array.isArray(photos)) {
-        return jsonResponse({ error: strings.apiInvalidBody }, 400);
+        return jsonResponse({ error: t.apiInvalidBody }, 400);
     }
 
     // Client-side validation is helpful but we enforce server-side too

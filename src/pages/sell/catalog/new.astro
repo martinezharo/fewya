@@ -2,7 +2,7 @@
 import SellerLayout from '../../../layouts/SellerLayout.astro';
 import ProductForm from '../../../components/seller/ProductForm.astro';
 import { createSupabaseAuthClient } from '../../../lib/core/auth';
-import { strings } from '../../../lib/core/i18n';
+const { t } = Astro.locals;
 
 const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
 const { data: sessionData } = await supabase.auth.getSession();
@@ -35,7 +35,7 @@ const shippingDefaults = {
 };
 ---
 
-<SellerLayout title={`${strings.sellerProductNewTitle} — Fewya Seller`} shopSlug={shop.slug} shopId={shop.id}>
+<SellerLayout title={`${t.sellerProductNewTitle} — Fewya Seller`} shopSlug={shop.slug} shopId={shop.id}>
     <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-10 py-4 lg:py-8">
         <ProductForm mode="create" shopId={shop.slug} shippingDefaults={shippingDefaults} />
     </div>

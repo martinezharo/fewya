@@ -3,7 +3,7 @@ import Layout from '../../layouts/Layout.astro';
 import Logo from '../../components/Logo.astro';
 import Icon from '../../components/icons/Icon.astro';
 import { createSupabaseAuthClient } from '../../lib/core/auth';
-import { strings } from '../../lib/core/i18n';
+const { t } = Astro.locals;
 
 const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
 const { data: sessionData } = await supabase.auth.getSession();
@@ -43,38 +43,38 @@ const ctaHref = isLoggedIn
     ? '/sell/onboarding'
     : '/api/auth/login?role=seller&redirect_to=/sell';
 const ctaLabel = isLoggedIn
-    ? strings.sellerLandingCtaSetup
-    : strings.sellerLandingCtaLogin;
+    ? t.sellerLandingCtaSetup
+    : t.sellerLandingCtaLogin;
 const showGoogleIcon = !isLoggedIn;
 
 const brandFeatures = [
-    { icon: 'image', title: strings.sellerLandingBrandLogoTitle, body: strings.sellerLandingBrandLogoBody },
-    { icon: 'store', title: strings.sellerLandingBrandBannerTitle, body: strings.sellerLandingBrandBannerBody },
-    { icon: 'external-link', title: strings.sellerLandingBrandUrlTitle, body: strings.sellerLandingBrandUrlBody },
-    { icon: 'sliders', title: strings.sellerLandingBrandColorTitle, body: strings.sellerLandingBrandColorBody },
-    { icon: 'file-text', title: strings.sellerLandingBrandSpecsTitle, body: strings.sellerLandingBrandSpecsBody },
+    { icon: 'image', title: t.sellerLandingBrandLogoTitle, body: t.sellerLandingBrandLogoBody },
+    { icon: 'store', title: t.sellerLandingBrandBannerTitle, body: t.sellerLandingBrandBannerBody },
+    { icon: 'external-link', title: t.sellerLandingBrandUrlTitle, body: t.sellerLandingBrandUrlBody },
+    { icon: 'sliders', title: t.sellerLandingBrandColorTitle, body: t.sellerLandingBrandColorBody },
+    { icon: 'file-text', title: t.sellerLandingBrandSpecsTitle, body: t.sellerLandingBrandSpecsBody },
 ] as const;
 
 const easeFeatures = [
-    { icon: 'package', title: strings.sellerLandingEaseVariantsTitle, body: strings.sellerLandingEaseVariantsBody },
-    { icon: 'truck', title: strings.sellerLandingEaseShippingTitle, body: strings.sellerLandingEaseShippingBody },
-    { icon: 'info', title: strings.sellerLandingEaseInfoTitle, body: strings.sellerLandingEaseInfoBody },
-    { icon: 'alert-circle', title: strings.sellerLandingEaseClaimsTitle, body: strings.sellerLandingEaseClaimsBody },
+    { icon: 'package', title: t.sellerLandingEaseVariantsTitle, body: t.sellerLandingEaseVariantsBody },
+    { icon: 'truck', title: t.sellerLandingEaseShippingTitle, body: t.sellerLandingEaseShippingBody },
+    { icon: 'info', title: t.sellerLandingEaseInfoTitle, body: t.sellerLandingEaseInfoBody },
+    { icon: 'alert-circle', title: t.sellerLandingEaseClaimsTitle, body: t.sellerLandingEaseClaimsBody },
 ] as const;
 
 const steps = [
-    { title: strings.sellerLandingStep1Title, body: strings.sellerLandingStep1Body },
-    { title: strings.sellerLandingStep2Title, body: strings.sellerLandingStep2Body },
-    { title: strings.sellerLandingStep3Title, body: strings.sellerLandingStep3Body },
+    { title: t.sellerLandingStep1Title, body: t.sellerLandingStep1Body },
+    { title: t.sellerLandingStep2Title, body: t.sellerLandingStep2Body },
+    { title: t.sellerLandingStep3Title, body: t.sellerLandingStep3Body },
 ] as const;
 
 const previewProducts = [
-    { name: strings.sellerLandingPreviewProduct1, price: '€89,90', image: '/seller-landing/headphones.webp' },
-    { name: strings.sellerLandingPreviewProduct2, price: '€59,90', image: '/seller-landing/earbuds.webp' },
+    { name: t.sellerLandingPreviewProduct1, price: '€89,90', image: '/seller-landing/headphones.webp' },
+    { name: t.sellerLandingPreviewProduct2, price: '€59,90', image: '/seller-landing/earbuds.webp' },
 ] as const;
 ---
 
-<Layout title={strings.sellerLandingMetaTitle} description={strings.sellerLandingMetaDescription}>
+<Layout title={t.sellerLandingMetaTitle} description={t.sellerLandingMetaDescription}>
     <div class="min-h-dvh">
         <!-- Top bar -->
         <header class="max-w-[1100px] mx-auto px-4 md:px-10 pt-6">
@@ -83,7 +83,7 @@ const previewProducts = [
                 class="inline-flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary transition-colors"
             >
                 <Icon name="arrow-left" size={16} />
-                {strings.navBackToBuyers}
+                {t.navBackToBuyers}
             </a>
         </header>
 
@@ -96,14 +96,14 @@ const previewProducts = [
                         <span class="w-9 h-9 rounded-2xl bg-accent/10 flex items-center justify-center shrink-0">
                             <Logo class="w-5 h-5 text-accent" />
                         </span>
-                        <span class="text-sm font-semibold text-text-secondary">{strings.sellerLandingBadge}</span>
+                        <span class="text-sm font-semibold text-text-secondary">{t.sellerLandingBadge}</span>
                     </div>
 
                     <h1 class="text-4xl md:text-5xl font-bold tracking-[-0.5px] leading-[1.08] text-text-primary">
-                        {strings.sellerLandingHeroTitle}
+                        {t.sellerLandingHeroTitle}
                     </h1>
                     <p class="mt-5 text-[17px] md:text-lg leading-[1.55] text-text-secondary max-w-xl">
-                        {strings.sellerLandingHeroSubtitle}
+                        {t.sellerLandingHeroSubtitle}
                     </p>
 
                     <div class="mt-8 flex flex-col sm:flex-row sm:items-center gap-3.5">
@@ -123,7 +123,7 @@ const previewProducts = [
                         </a>
                         <span class="inline-flex items-center gap-2 text-sm font-medium text-text-secondary">
                             <Icon name="check" size={16} class="text-secondary" />
-                            {strings.sellerLandingHeroReassurance}
+                            {t.sellerLandingHeroReassurance}
                         </span>
                     </div>
                 </div>
@@ -148,8 +148,8 @@ const previewProducts = [
                                     <Icon name="headphones" size={28} class="text-accent" />
                                 </span>
                                 <div class="pb-1">
-                                    <p class="text-[15px] font-bold text-text-primary leading-tight">{strings.sellerLandingPreviewBrand}</p>
-                                    <p class="text-xs text-text-tertiary">{strings.sellerLandingPreviewUrl}</p>
+                                    <p class="text-[15px] font-bold text-text-primary leading-tight">{t.sellerLandingPreviewBrand}</p>
+                                    <p class="text-xs text-text-tertiary">{t.sellerLandingPreviewUrl}</p>
                                 </div>
                                 <span class="ml-auto pb-1.5 flex items-center gap-1.5">
                                     <span class="w-3 h-3 rounded-full bg-accent"></span>
@@ -175,7 +175,7 @@ const previewProducts = [
                                             <span class="text-[13px] font-bold text-text-primary">{product.price}</span>
                                             <span class="inline-flex items-center gap-1 text-[10px] font-semibold text-secondary">
                                                 <span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
-                                                {strings.sellerLandingPreviewInStock}
+                                                {t.sellerLandingPreviewInStock}
                                             </span>
                                         </div>
                                     </div>
@@ -192,12 +192,12 @@ const previewProducts = [
             <div class="rounded-2xl bg-surface border border-border-light shadow-sm px-6 py-10 md:px-12 md:py-14">
                 <div class="grid items-center gap-8 md:grid-cols-[auto_1fr] md:gap-12">
                     <div class="flex items-baseline gap-2">
-                        <span class="text-7xl md:text-8xl font-bold tracking-[-2px] text-secondary leading-none">{strings.sellerLandingMoneyAmount}</span>
+                        <span class="text-7xl md:text-8xl font-bold tracking-[-2px] text-secondary leading-none">{t.sellerLandingMoneyAmount}</span>
                     </div>
                     <div>
-                        <p class="text-sm font-semibold text-secondary uppercase tracking-wide mb-2">{strings.sellerLandingMoneyKicker}</p>
-                        <h2 class="text-2xl md:text-3xl font-bold tracking-[-0.4px] text-text-primary">{strings.sellerLandingMoneyTitle}</h2>
-                        <p class="mt-3 text-[16px] leading-[1.6] text-text-secondary max-w-2xl">{strings.sellerLandingMoneyBody}</p>
+                        <p class="text-sm font-semibold text-secondary uppercase tracking-wide mb-2">{t.sellerLandingMoneyKicker}</p>
+                        <h2 class="text-2xl md:text-3xl font-bold tracking-[-0.4px] text-text-primary">{t.sellerLandingMoneyTitle}</h2>
+                        <p class="mt-3 text-[16px] leading-[1.6] text-text-secondary max-w-2xl">{t.sellerLandingMoneyBody}</p>
                     </div>
                 </div>
             </div>
@@ -206,9 +206,9 @@ const previewProducts = [
         <!-- Your brand -->
         <section class="max-w-[1100px] mx-auto px-4 md:px-10 pb-16 md:pb-24">
             <div class="max-w-2xl mb-10">
-                <p class="text-sm font-semibold text-accent uppercase tracking-wide mb-2">{strings.sellerLandingBrandKicker}</p>
-                <h2 class="text-2xl md:text-4xl font-bold tracking-[-0.5px] leading-[1.12] text-text-primary">{strings.sellerLandingBrandTitle}</h2>
-                <p class="mt-4 text-[16px] md:text-[17px] leading-[1.6] text-text-secondary">{strings.sellerLandingBrandBody}</p>
+                <p class="text-sm font-semibold text-accent uppercase tracking-wide mb-2">{t.sellerLandingBrandKicker}</p>
+                <h2 class="text-2xl md:text-4xl font-bold tracking-[-0.5px] leading-[1.12] text-text-primary">{t.sellerLandingBrandTitle}</h2>
+                <p class="mt-4 text-[16px] md:text-[17px] leading-[1.6] text-text-secondary">{t.sellerLandingBrandBody}</p>
             </div>
             <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {brandFeatures.map((f) => (
@@ -226,9 +226,9 @@ const previewProducts = [
         <!-- Selling without hassle -->
         <section class="max-w-[1100px] mx-auto px-4 md:px-10 pb-16 md:pb-24">
             <div class="max-w-2xl mb-10">
-                <p class="text-sm font-semibold text-accent uppercase tracking-wide mb-2">{strings.sellerLandingEaseKicker}</p>
-                <h2 class="text-2xl md:text-4xl font-bold tracking-[-0.5px] leading-[1.12] text-text-primary">{strings.sellerLandingEaseTitle}</h2>
-                <p class="mt-4 text-[16px] md:text-[17px] leading-[1.6] text-text-secondary">{strings.sellerLandingEaseBody}</p>
+                <p class="text-sm font-semibold text-accent uppercase tracking-wide mb-2">{t.sellerLandingEaseKicker}</p>
+                <h2 class="text-2xl md:text-4xl font-bold tracking-[-0.5px] leading-[1.12] text-text-primary">{t.sellerLandingEaseTitle}</h2>
+                <p class="mt-4 text-[16px] md:text-[17px] leading-[1.6] text-text-secondary">{t.sellerLandingEaseBody}</p>
             </div>
             <div class="grid gap-4 sm:grid-cols-2">
                 {easeFeatures.map((f) => (
@@ -248,8 +248,8 @@ const previewProducts = [
         <!-- How it works -->
         <section class="max-w-[1100px] mx-auto px-4 md:px-10 pb-16 md:pb-24">
             <div class="max-w-2xl mb-10">
-                <p class="text-sm font-semibold text-accent uppercase tracking-wide mb-2">{strings.sellerLandingStepsKicker}</p>
-                <h2 class="text-2xl md:text-4xl font-bold tracking-[-0.5px] leading-[1.12] text-text-primary">{strings.sellerLandingStepsTitle}</h2>
+                <p class="text-sm font-semibold text-accent uppercase tracking-wide mb-2">{t.sellerLandingStepsKicker}</p>
+                <h2 class="text-2xl md:text-4xl font-bold tracking-[-0.5px] leading-[1.12] text-text-primary">{t.sellerLandingStepsTitle}</h2>
             </div>
             <div class="grid gap-4 md:grid-cols-3">
                 {steps.map((s, i) => (
@@ -265,8 +265,8 @@ const previewProducts = [
         <!-- Final CTA -->
         <section class="max-w-[1100px] mx-auto px-4 md:px-10 pb-20 md:pb-28">
             <div class="rounded-2xl bg-gradient-to-br from-accent/10 to-secondary/10 border border-border-light px-6 py-12 md:px-12 md:py-16 text-center">
-                <h2 class="text-2xl md:text-4xl font-bold tracking-[-0.5px] text-text-primary">{strings.sellerLandingFinalTitle}</h2>
-                <p class="mt-3 text-[16px] md:text-[17px] leading-[1.6] text-text-secondary max-w-xl mx-auto">{strings.sellerLandingFinalBody}</p>
+                <h2 class="text-2xl md:text-4xl font-bold tracking-[-0.5px] text-text-primary">{t.sellerLandingFinalTitle}</h2>
+                <p class="mt-3 text-[16px] md:text-[17px] leading-[1.6] text-text-secondary max-w-xl mx-auto">{t.sellerLandingFinalBody}</p>
                 <div class="mt-8 flex flex-col items-center gap-3">
                     <a
                         href={ctaHref}
@@ -284,7 +284,7 @@ const previewProducts = [
                     </a>
                     <span class="inline-flex items-center gap-2 text-sm font-medium text-text-secondary">
                         <Icon name="check" size={16} class="text-secondary" />
-                        {strings.sellerLandingHeroReassurance}
+                        {t.sellerLandingHeroReassurance}
                     </span>
                 </div>
             </div>

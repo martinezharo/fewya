@@ -1,4 +1,4 @@
-import { strings } from '../core/i18n';
+import { getClientT } from '../core/i18n';
 
 export type ToastKind = 'success' | 'error' | 'info';
 
@@ -60,7 +60,7 @@ function render(kind: ToastKind, message: string, opts: ToastOptions = {}): stri
     const dismissBtn = document.createElement('button');
     dismissBtn.type = 'button';
     dismissBtn.setAttribute('data-toast-dismiss', '');
-    dismissBtn.setAttribute('aria-label', strings.toastDismiss);
+    dismissBtn.setAttribute('aria-label', getClientT().toastDismiss);
     dismissBtn.textContent = '×';
     li.appendChild(dismissBtn);
 

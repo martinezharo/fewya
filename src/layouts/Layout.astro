@@ -1,6 +1,5 @@
 ---
 import '../styles/global.css';
-import { strings } from '../lib/core/i18n';
 import { ClientRouter } from 'astro:transitions';
 import { SUPABASE_URL } from 'astro:env/server';
 
@@ -13,9 +12,11 @@ interface Props {
   canonical?: string;
 }
 
+const { t, locale } = Astro.locals;
+
 const {
-  title = strings.siteTitle,
-  description = strings.siteDescription,
+  title = t.siteTitle,
+  description = t.siteDescription,
   image,
   ogType = 'website',
   noindex = false,
@@ -26,10 +27,11 @@ const supabaseHost = typeof SUPABASE_URL === 'string' ? new URL(SUPABASE_URL).ho
 const siteUrl = Astro.site?.toString() ?? `${Astro.url.protocol}//${Astro.url.host}`;
 const canonicalUrl = canonical ?? new URL(Astro.url.pathname, siteUrl).toString();
 const ogImage = image ?? new URL('/og-image.svg', siteUrl).toString();
+const ogLocale = locale === 'es' ? 'es_ES' : 'en_US';
 ---
 
 <!doctype html>
-<html lang="es" class="antialiased no-transitions">
+<html lang={locale} class="antialiased no-transitions">
   <head>
     <!-- Theme init: apply before paint to avoid flash -->
     <script is:inline>
@@ -84,13 +86,14 @@ const ogImage = image ?? new URL('/og-image.svg', siteUrl).toString();
     {noindex && <meta name="robots" content="noindex, nofollow" />}
 
     <!-- Open Graph -->
-    <meta property="og:site_name" content={strings.logoText} />
+    <meta property="og:site_name" content={t.logoText} />
     <meta property="og:type" content={ogType} />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonicalUrl} />
     <meta property="og:image" content={ogImage} />
-    <meta property="og:locale" content="es_ES" />
+    <meta property="og:locale" content={ogLocale} />
+    <meta property="og:locale:alternate" content={ogLocale === 'es_ES' ? 'en_US' : 'es_ES'} />
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
@@ -110,6 +113,13 @@ const ogImage = image ?? new URL('/og-image.svg', siteUrl).toString();
     </noscript>
   </head>
   <body class="font-sans bg-bg text-text-primary min-h-dvh">
+    <script is:inline define:vars={{ locale, t }}>
+      // Expose the active locale and strings to client-side modules so toasts,
+      // form handlers, and other vanilla-TS code can use the right language
+      // even after an SPA swap (Astro re-runs this script on every navigation).
+      window.__fewyaLocale__ = locale;
+      window.__fewyaT__ = t;
+    </script>
     <slot />
     <script>
       setTimeout(() => { import('../lib/wishlist/wishlist-client'); }, 0);

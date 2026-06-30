@@ -1,8 +1,9 @@
 ---
 import Icon from "../icons/Icon.astro";
-import { strings } from "../../lib/core/i18n";
+
 import type { SearchParams } from "../../lib/products/search";
 import { buildSearchUrl } from "../../lib/products/search";
+const { t } = Astro.locals;
 
 interface Props {
     params: SearchParams;
@@ -12,17 +13,17 @@ interface Props {
 const { params, currentUrl } = Astro.props;
 
 const options = [
-    { value: 'relevance', label: strings.searchSortRelevance },
-    { value: 'alpha', label: strings.searchSortAlpha },
-    { value: 'price', label: strings.searchSortPrice },
-    { value: 'date', label: strings.searchSortDate },
+    { value: 'relevance', label: t.searchSortRelevance },
+    { value: 'alpha', label: t.searchSortAlpha },
+    { value: 'price', label: t.searchSortPrice },
+    { value: 'date', label: t.searchSortDate },
 ] as const;
 
 ---
 
 <dialog id="sort-modal" class="m-0 max-w-none w-full max-h-[85vh] h-auto top-auto bottom-0 mt-auto bg-surface rounded-t-[20px] shadow-[0_-8px_30px_rgba(0,0,0,0.12)] border-0 md:max-w-[400px] md:right-0 md:left-auto md:top-auto md:bottom-auto md:rounded-xl md:m-4 backdrop:bg-bg/60 backdrop:backdrop-blur-sm open:flex flex-col slide-up md:fade-in pointer-events-auto">
     <div class="flex items-center justify-between p-4 pb-3">
-        <h2 class="text-[18px] font-bold text-text-primary m-0 tracking-[-0.3px]">{strings.searchSort}</h2>
+        <h2 class="text-[18px] font-bold text-text-primary m-0 tracking-[-0.3px]">{t.searchSort}</h2>
         <button type="button" class="w-8 h-8 flex items-center justify-center border-none bg-transparent rounded-full cursor-pointer text-text-secondary hover:bg-border-light transition-colors" onclick="document.getElementById('sort-modal')?.close()">
             <Icon name="x" size={20} />
         </button>

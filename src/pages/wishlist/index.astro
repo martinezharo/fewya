@@ -7,8 +7,9 @@ import { supabase } from "../../lib/core/supabase";
 import { enrichProductsWithRatings } from "../../lib/products/productUtils";
 import { isProductComplete } from "../../lib/products/productValidation";
 import { getWishlistIdsFromCookie } from "../../lib/wishlist/wishlist";
-import { strings } from "../../lib/core/i18n";
+
 import type { Product } from "../../lib/core/types";
+const { t } = Astro.locals;
 
 const authClient = createSupabaseAuthClient(Astro.cookies, Astro.request);
 const { data: { user } } = await authClient.auth.getUser();
@@ -45,11 +46,11 @@ if (orderedIds.length > 0) {
 }
 ---
 
-<BuyerAppLayout title={strings.wishlistPageTitle}>
+<BuyerAppLayout title={t.wishlistPageTitle}>
 
     <main class="min-h-[50vh]">
         <div class="px-4 md:px-10 md:max-w-[1400px] md:mx-auto pt-6 pb-4">
-            <h1 class="text-xl md:text-2xl font-bold text-text-primary">{strings.navWishlist}</h1>
+            <h1 class="text-xl md:text-2xl font-bold text-text-primary">{t.navWishlist}</h1>
         </div>
 
         {products.length > 0 ? (
@@ -60,14 +61,14 @@ if (orderedIds.length > 0) {
                     <Icon name="heart" size={24} />
                 </div>
                 <h2 class="text-[18px] font-semibold text-text-primary mb-2">
-                    {strings.wishlistEmpty}
+                    {t.wishlistEmpty}
                 </h2>
-                <p class="text-[14px] text-text-secondary mb-6">{strings.wishlistEmptySub}</p>
+                <p class="text-[14px] text-text-secondary mb-6">{t.wishlistEmptySub}</p>
                 <a
                     href="/"
                     class="inline-flex items-center px-6 py-2.5 bg-accent text-bg text-sm font-semibold rounded-lg transition-colors hover:bg-accent-hover"
                 >
-                    {strings.wishlistExploreCta}
+                    {t.wishlistExploreCta}
                 </a>
             </div>
         )}

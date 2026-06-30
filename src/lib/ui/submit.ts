@@ -1,4 +1,4 @@
-import { strings } from '../core/i18n';
+import { getClientT } from '../core/i18n';
 import { setBusy } from './busy';
 import { toast } from './toast';
 import { progress } from './progress-bar';
@@ -44,12 +44,13 @@ async function defaultParseError(res: Response): Promise<string | null> {
 export async function runSubmit<T = unknown>(
     opts: RunSubmitOptions<T>
 ): Promise<RunSubmitResult<T>> {
+    const t = getClientT();
     const {
         button,
         action,
-        busyLabel = strings.loadingGeneric,
+        busyLabel = t.loadingGeneric,
         successMsg,
-        errorFallback = strings.toastErrorGeneric,
+        errorFallback = t.toastErrorGeneric,
         silentSuccess = false,
         parseError = defaultParseError,
     } = opts;
@@ -75,7 +76,7 @@ export async function runSubmit<T = unknown>(
         progress.done();
         return { ok: true, value: result, error: null };
     } catch (err) {
-        const msg = err instanceof SubmitError ? err.message : strings.toastErrorNetwork;
+        const msg = err instanceof SubmitError ? err.message : t.toastErrorNetwork;
         toast.error(msg);
         progress.fail();
         return { ok: false, value: null, error: msg };

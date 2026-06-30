@@ -1,7 +1,8 @@
 ---
 import Icon from "./icons/Icon.astro";
-import { navItems } from "../lib/ui/nav";
-import { strings } from "../lib/core/i18n";
+import { getNavItems } from "../lib/ui/nav";
+const { t } = Astro.locals;
+const navItems = getNavItems(t);
 
 interface Props {
     currentPath?: string;
@@ -16,7 +17,7 @@ const {
 } = Astro.props;
 ---
 
-<nav class="fixed bottom-0 left-0 right-0 z-50 flex justify-around items-center bg-surface border-t border-border-light py-2 pb-[calc(11px+env(safe-area-inset-bottom,0px))] md:hidden" aria-label={strings.navMobileAria}>
+<nav class="fixed bottom-0 left-0 right-0 z-50 flex justify-around items-center bg-surface border-t border-border-light py-2 pb-[calc(11px+env(safe-area-inset-bottom,0px))] md:hidden" aria-label={t.navMobileAria}>
     {navItems.map(({ href, label, icon, badgeType }) => {
         const isActive = href === '/' ? currentPath === '/' : currentPath.startsWith(href);
         const isWishlistBadge = badgeType === 'wishlist';

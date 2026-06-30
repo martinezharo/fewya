@@ -1,6 +1,6 @@
 ---
 import Icon from '../icons/Icon.astro';
-import { strings } from '../../lib/core/i18n';
+const { t } = Astro.locals;
 
 interface Props {
   email: string | null;
@@ -22,7 +22,7 @@ const sanitizedWhatsapp = whatsapp?.replace(/[^0-9]/g, '');
         <a
           href={`mailto:${email}`}
           class="w-12 h-12 flex items-center justify-center rounded-full bg-surface shadow-lg border border-border-light text-text-primary transition-colors hover:bg-bg-secondary"
-          aria-label={strings.productContactEmail}
+          aria-label={t.productContactEmail}
         >
           <Icon name="mail" size={20} />
         </a>
@@ -33,7 +33,7 @@ const sanitizedWhatsapp = whatsapp?.replace(/[^0-9]/g, '');
           target="_blank"
           rel="noopener noreferrer"
           class="w-12 h-12 flex items-center justify-center rounded-full bg-[#25D366] shadow-lg text-white transition-colors hover:bg-[#20bd5a]"
-          aria-label={strings.productContactWhatsapp}
+          aria-label={t.productContactWhatsapp}
         >
           <Icon name="whatsapp" size={24} />
         </a>
@@ -44,7 +44,7 @@ const sanitizedWhatsapp = whatsapp?.replace(/[^0-9]/g, '');
     <button
       type="button"
       class="relative w-14 h-14 rounded-full bg-secondary text-bg shadow-lg flex items-center justify-center transition-all duration-300 hover:bg-secondary-hover active:scale-95 group"
-      aria-label={strings.productContact}
+      aria-label={t.productContact}
       data-contact-toggle
     >
       <Icon name="message-circle" size={26} class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 transition-all duration-300 opacity-100 rotate-0 scale-100" data-fab-icon-open />

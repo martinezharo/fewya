@@ -1,6 +1,5 @@
 import type { APIRoute } from 'astro';
 import { createSupabaseAuthClient } from '../../../lib/core/auth';
-import { strings } from '../../../lib/core/i18n';
 
 // A4: field length limits to prevent storage DoS and stored-XSS from oversized values
 const FIELD_LIMITS: Record<string, number> = {
@@ -49,12 +48,13 @@ function validateStringField(value: unknown, field: string): string | Response {
     return trimmed;
 }
 
-export const POST: APIRoute = async ({ cookies, request }) => {
+export const POST: APIRoute = async ({ locals, cookies, request  }) => {
+    const { t } = locals;
     const authClient = createSupabaseAuthClient(cookies, request);
     const { data: { user } } = await authClient.auth.getUser();
 
     if (!user) {
-        return new Response(JSON.stringify({ error: strings.apiUnauthorized }), { status: 401 });
+        return new Response(JSON.stringify({ error: t.apiUnauthorized }), { status: 401 });
     }
 
     const body = await request.json() as ProfileUpdateBody;
@@ -142,7 +142,7 @@ export const POST: APIRoute = async ({ cookies, request }) => {
     if (error) {
         // M3: don't expose DB error details
         console.error(JSON.stringify({ event: 'profile_update.failed', error: error.message }));
-        return new Response(JSON.stringify({ error: strings.apiInternalError }), { status: 500 });
+        return new Response(JSON.stringify({ error: t.apiInternalError }), { status: 500 });
     }
 
     return new Response(JSON.stringify({ ok: true }), { status: 200 });

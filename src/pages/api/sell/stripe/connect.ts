@@ -1,7 +1,6 @@
 import type { APIRoute } from 'astro';
 import { createSupabaseAuthClient, normalizeAuthRedirectPath } from '../../../../lib/core/auth';
 import { createSupabaseAdminClient } from '../../../../lib/core/supabase-admin';
-import { strings } from '../../../../lib/core/i18n';
 import {
     buildAbsoluteUrl,
     DEFAULT_STRIPE_ACCOUNT_COUNTRY,
@@ -24,14 +23,15 @@ function one<T>(value: T | T[] | null | undefined): T | null {
     return value ?? null;
 }
 
-export const POST: APIRoute = async ({ request, cookies }) => {
+export const POST: APIRoute = async ({ locals, request, cookies  }) => {
+    const { t } = locals;
     const authClient = createSupabaseAuthClient(cookies, request);
     const {
         data: { user },
     } = await authClient.auth.getUser();
 
     if (!user) {
-        return jsonResponse({ error: strings.apiUnauthorized }, 401);
+        return jsonResponse({ error: t.apiUnauthorized }, 401);
     }
 
     const { data: profile } = await authClient
@@ -41,7 +41,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         .single();
 
     if (!profile?.is_seller) {
-        return jsonResponse({ error: strings.apiForbidden }, 403);
+        return jsonResponse({ error: t.apiForbidden }, 403);
     }
 
     const { data: shop, error: shopError } = await authClient
@@ -63,11 +63,11 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     if (shopError) {
         console.error('stripe connect shop lookup failed', shopError);
-        return jsonResponse({ error: strings.apiStripeConnectError }, 500);
+        return jsonResponse({ error: t.apiStripeConnectError }, 500);
     }
 
     if (!shop) {
-        return jsonResponse({ error: strings.apiShopNotFound }, 404);
+        return jsonResponse({ error: t.apiShopNotFound }, 404);
     }
 
     let action = 'onboarding';
@@ -123,12 +123,12 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
         if (syncError) {
             console.error('stripe account sync failed', syncError);
-            return jsonResponse({ error: strings.apiStripeConnectError }, 500);
+            return jsonResponse({ error: t.apiStripeConnectError }, 500);
         }
 
         if (action === 'dashboard') {
             if (!accountStatus.isReady) {
-                return jsonResponse({ error: strings.apiStripeDashboardUnavailable }, 409);
+                return jsonResponse({ error: t.apiStripeDashboardUnavailable }, 409);
             }
 
             const loginLink = await stripe.accounts.createLoginLink(stripeAccountId);
@@ -147,8 +147,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     } catch (error) {
         console.error('stripe connect flow failed', error);
 
-        const message = error instanceof Error ? error.message : strings.apiStripeConnectError;
-        const normalizedMessage = message === strings.authMissingStripeEnv ? message : strings.apiStripeConnectError;
+        const message = error instanceof Error ? error.message : t.apiStripeConnectError;
+        const normalizedMessage = message === t.authMissingStripeEnv ? message : t.apiStripeConnectError;
         return jsonResponse({ error: normalizedMessage }, 500);
     }
 };

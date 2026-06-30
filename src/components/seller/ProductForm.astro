@@ -3,8 +3,9 @@ import Icon from '../icons/Icon.astro';
 import ShippingEditorPanel from './ShippingEditorPanel.astro';
 import VariantRow from './VariantRow.astro';
 import VariantShippingModal from './VariantShippingModal.astro';
-import { strings, categories } from '../../lib/core/i18n';
-
+import { getCategories } from '../../lib/core/i18n';
+const { t } = Astro.locals;
+const categories = getCategories(t);
 interface VariantData {
     id?: string;
     variant_name: string | null;
@@ -99,16 +100,16 @@ function variantHasShippingOverride(v: VariantData): boolean {
             <a
                 href="/sell/catalog"
                 class="inline-flex items-center justify-center w-9 h-9 rounded-full text-text-secondary hover:text-text-primary hover:bg-border-light transition-colors no-underline shrink-0"
-                aria-label={strings.sellerProductBackToCatalog}
+                aria-label={t.sellerProductBackToCatalog}
             >
                 <Icon name="arrow-left" size={18} />
             </a>
             <div class="min-w-0 flex-1">
                 <p id="header-product-title" class="text-sm font-medium text-text-primary truncate">
-                    {title || (isEdit ? strings.sellerProductEditTitle : strings.sellerProductNewTitle)}
+                    {title || (isEdit ? t.sellerProductEditTitle : t.sellerProductNewTitle)}
                 </p>
                 <p id="header-summary" class="text-[11px] mt-0.5 font-medium text-amber-600 dark:text-amber-400">
-                    {strings.sellerProductHeaderSummaryPendingSingle}
+                    {t.sellerProductHeaderSummaryPendingSingle}
                 </p>
             </div>
             <button
@@ -116,7 +117,7 @@ function variantHasShippingOverride(v: VariantData): boolean {
                 id="save-product-btn"
                 class="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-accent text-bg font-medium text-sm hover:scale-[1.02] active:scale-[0.99] transition-transform shadow-sm shrink-0"
             >
-                <span data-busy-label>{strings.sellerProductSave}</span>
+                <span data-busy-label>{t.sellerProductSave}</span>
                 <Icon name="arrow-up-right" size={14} />
             </button>
         </div>
@@ -127,11 +128,11 @@ function variantHasShippingOverride(v: VariantData): boolean {
 
             <!-- Producto -->
             <section class="space-y-5">
-                <h2 class="text-lg font-medium text-text-primary border-b border-border pb-2">{strings.sellerProductSectionBasicTitle}</h2>
+                <h2 class="text-lg font-medium text-text-primary border-b border-border pb-2">{t.sellerProductSectionBasicTitle}</h2>
                 <div class="space-y-5">
                     <div>
                         <label for="product-title" class="block text-sm font-medium text-text-secondary mb-2">
-                            {strings.sellerProductTitleLabel} <span class="text-red-500">*</span>
+                            {t.sellerProductTitleLabel} <span class="text-red-500">*</span>
                         </label>
                         <input
                             type="text"
@@ -139,42 +140,42 @@ function variantHasShippingOverride(v: VariantData): boolean {
                             required
                             value={title}
                             class="w-full px-4 py-3 rounded-xl border border-border bg-transparent text-text-primary focus:ring-2 focus:ring-accent outline-none transition"
-                            placeholder={strings.sellerProductTitlePlaceholder}
+                            placeholder={t.sellerProductTitlePlaceholder}
                         />
                     </div>
                     <div>
-                        <label for="product-description" class="block text-sm font-medium text-text-secondary mb-2">{strings.sellerProductDescriptionLabel}</label>
+                        <label for="product-description" class="block text-sm font-medium text-text-secondary mb-2">{t.sellerProductDescriptionLabel}</label>
                         <textarea
                             id="product-description"
                             rows="4"
                             class="w-full px-4 py-3 rounded-xl border border-border bg-transparent text-text-primary focus:ring-2 focus:ring-accent outline-none transition resize-none"
-                            placeholder={strings.sellerProductDescriptionPlaceholder}
+                            placeholder={t.sellerProductDescriptionPlaceholder}
                         >{description}</textarea>
                     </div>
                     <div class="grid gap-5 sm:grid-cols-2">
                         <div>
                             <label for="product-category" class="block text-sm font-medium text-text-secondary mb-2">
-                                {strings.sellerProductCategoryLabel} <span class="text-red-500">*</span>
+                                {t.sellerProductCategoryLabel} <span class="text-red-500">*</span>
                             </label>
                             <select
                                 id="product-category"
                                 required
                                 class="w-full px-4 py-3 rounded-xl border border-border bg-surface text-text-primary focus:ring-2 focus:ring-accent outline-none transition appearance-none [color-scheme:light] dark:[color-scheme:dark]"
                             >
-                                <option value="" disabled selected={category === ''} class="bg-surface text-text-tertiary">{strings.sellerProductCategoryPlaceholder}</option>
+                                <option value="" disabled selected={category === ''} class="bg-surface text-text-tertiary">{t.sellerProductCategoryPlaceholder}</option>
                                 {categories.map(cat => (
                                     <option value={cat.value} selected={category === cat.value} class="bg-surface text-text-primary">{cat.label}</option>
                                 ))}
                             </select>
                         </div>
                         <div>
-                            <label for="product-brand" class="block text-sm font-medium text-text-secondary mb-2">{strings.sellerProductBrandLabel}</label>
+                            <label for="product-brand" class="block text-sm font-medium text-text-secondary mb-2">{t.sellerProductBrandLabel}</label>
                             <input
                                 type="text"
                                 id="product-brand"
                                 value={brand}
                                 class="w-full px-4 py-3 rounded-xl border border-border bg-transparent text-text-primary focus:ring-2 focus:ring-accent outline-none transition"
-                                placeholder={strings.sellerProductBrandPlaceholder}
+                                placeholder={t.sellerProductBrandPlaceholder}
                             />
                         </div>
                     </div>
@@ -184,8 +185,8 @@ function variantHasShippingOverride(v: VariantData): boolean {
             <!-- Fotos -->
             <section class="space-y-5">
                 <div>
-                    <h2 class="text-lg font-medium text-text-primary border-b border-border pb-2">{strings.sellerProductSectionImagesTitle}</h2>
-                    <p class="mt-1.5 text-xs text-text-tertiary">{strings.sellerProductSectionImagesSubtitle}</p>
+                    <h2 class="text-lg font-medium text-text-primary border-b border-border pb-2">{t.sellerProductSectionImagesTitle}</h2>
+                    <p class="mt-1.5 text-xs text-text-tertiary">{t.sellerProductSectionImagesSubtitle}</p>
                 </div>
 
                 <div
@@ -193,7 +194,7 @@ function variantHasShippingOverride(v: VariantData): boolean {
                     class="relative flex flex-col items-center justify-center gap-1.5 px-6 py-7 border-2 border-dashed border-border rounded-2xl bg-bg cursor-pointer hover:border-accent hover:bg-border-light/50 transition-colors"
                 >
                     <Icon name="upload-cloud" size={24} class="text-text-tertiary" />
-                    <p class="text-sm text-text-secondary">{strings.sellerProductImagesDragDrop}</p>
+                    <p class="text-sm text-text-secondary">{t.sellerProductImagesDragDrop}</p>
                     <input type="file" id="image-upload-input" multiple accept="image/jpeg,image/png,image/webp,image/gif" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
                 </div>
 
@@ -207,7 +208,7 @@ function variantHasShippingOverride(v: VariantData): boolean {
                             <button
                                 type="button"
                                 class="image-remove-btn absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/65 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                                aria-label={strings.sellerProductImageRemove}
+                                aria-label={t.sellerProductImageRemove}
                             >
                                 <Icon name="x" size={14} />
                             </button>
@@ -220,12 +221,12 @@ function variantHasShippingOverride(v: VariantData): boolean {
             <section class="space-y-5" id="central-shipping-section">
                 <div class="flex items-start justify-between gap-3 flex-wrap border-b border-border pb-3">
                     <div>
-                        <h2 class="text-lg font-medium text-text-primary">{strings.sellerProductCentralShippingTitle}</h2>
-                        <p class="mt-1 text-xs text-text-tertiary">{strings.sellerProductCentralShippingSubtitle}</p>
+                        <h2 class="text-lg font-medium text-text-primary">{t.sellerProductCentralShippingTitle}</h2>
+                        <p class="mt-1 text-xs text-text-tertiary">{t.sellerProductCentralShippingSubtitle}</p>
                     </div>
                     <button type="button" id="central-use-defaults-btn" class="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-text-secondary border border-border hover:bg-border-light hover:text-text-primary transition-colors">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
-                        {strings.sellerProductCentralUseDefaults}
+                        {t.sellerProductCentralUseDefaults}
                     </button>
                 </div>
 
@@ -242,8 +243,8 @@ function variantHasShippingOverride(v: VariantData): boolean {
             <!-- Variantes -->
             <section class="space-y-5">
                 <div>
-                    <h2 class="text-lg font-medium text-text-primary border-b border-border pb-2">{strings.sellerProductSectionVariantsTitle}</h2>
-                    <p class="mt-1.5 text-xs text-text-tertiary">{strings.sellerProductSectionVariantsSubtitle}</p>
+                    <h2 class="text-lg font-medium text-text-primary border-b border-border pb-2">{t.sellerProductSectionVariantsTitle}</h2>
+                    <p class="mt-1.5 text-xs text-text-tertiary">{t.sellerProductSectionVariantsSubtitle}</p>
                 </div>
 
                 <div id="variants-container" class="space-y-2">
@@ -262,7 +263,7 @@ function variantHasShippingOverride(v: VariantData): boolean {
                     class="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-border text-sm text-text-secondary hover:text-text-primary hover:border-accent transition-colors"
                 >
                     <Icon name="plus" size={16} />
-                    {strings.sellerProductAddVariant}
+                    {t.sellerProductAddVariant}
                 </button>
             </section>
 
@@ -270,14 +271,14 @@ function variantHasShippingOverride(v: VariantData): boolean {
             <details class="group">
                 <summary class="flex items-center gap-2 cursor-pointer list-none border-b border-border pb-2 [&::-webkit-details-marker]:hidden">
                     <svg class="text-text-tertiary transition-transform duration-200 group-open:rotate-90 shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>
-                    <h2 class="text-lg font-medium text-text-primary">{strings.sellerProductAdvancedSection}</h2>
-                    <span class="hidden sm:inline text-xs text-text-tertiary ml-2 truncate font-normal">{strings.sellerProductAdvancedHint}</span>
+                    <h2 class="text-lg font-medium text-text-primary">{t.sellerProductAdvancedSection}</h2>
+                    <span class="hidden sm:inline text-xs text-text-tertiary ml-2 truncate font-normal">{t.sellerProductAdvancedHint}</span>
                 </summary>
 
                 <div class="space-y-6 pt-5">
                     <!-- Slug -->
                     <div>
-                        <label for="product-slug" class="block text-sm font-medium text-text-secondary mb-2">{strings.sellerProductSlugLabel}</label>
+                        <label for="product-slug" class="block text-sm font-medium text-text-secondary mb-2">{t.sellerProductSlugLabel}</label>
                         <div class="flex items-stretch rounded-xl border border-border bg-transparent focus-within:ring-2 focus-within:ring-accent transition overflow-hidden">
                             <span class="flex items-center pl-4 pr-1 text-text-tertiary whitespace-nowrap select-none text-sm">{shopId}/</span>
                             <input
@@ -285,21 +286,21 @@ function variantHasShippingOverride(v: VariantData): boolean {
                                 id="product-slug"
                                 value={slug}
                                 class="w-full px-2 py-3 bg-transparent text-text-primary outline-none text-sm"
-                                placeholder={strings.sellerProductSlugPlaceholder}
+                                placeholder={t.sellerProductSlugPlaceholder}
                             />
                         </div>
-                        <p class="text-[11px] text-text-tertiary mt-1.5">{strings.sellerProductSlugNote}</p>
+                        <p class="text-[11px] text-text-tertiary mt-1.5">{t.sellerProductSlugNote}</p>
                     </div>
 
                     <!-- Especificaciones -->
                     <div>
-                        <label class="block text-sm font-medium text-text-secondary mb-2">{strings.sellerProductSpecsLabel}</label>
+                        <label class="block text-sm font-medium text-text-secondary mb-2">{t.sellerProductSpecsLabel}</label>
                         <div id="specs-container" class="space-y-2">
                             {Object.entries(specs).map(([key, value]) => (
                                 <div class="spec-row flex items-center gap-2">
-                                    <input type="text" class="spec-key-input flex-1 min-w-0 px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition" placeholder={strings.sellerProductSpecsKeyPlaceholder} value={key} />
-                                    <input type="text" class="spec-value-input flex-1 min-w-0 px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition" placeholder={strings.sellerProductSpecsValuePlaceholder} value={String(value)} />
-                                    <button type="button" class="spec-remove-btn flex items-center justify-center w-8 h-8 rounded-lg text-text-tertiary hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors shrink-0" aria-label={strings.sellerCatalogDelete}>
+                                    <input type="text" class="spec-key-input flex-1 min-w-0 px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition" placeholder={t.sellerProductSpecsKeyPlaceholder} value={key} />
+                                    <input type="text" class="spec-value-input flex-1 min-w-0 px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition" placeholder={t.sellerProductSpecsValuePlaceholder} value={String(value)} />
+                                    <button type="button" class="spec-remove-btn flex items-center justify-center w-8 h-8 rounded-lg text-text-tertiary hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors shrink-0" aria-label={t.sellerCatalogDelete}>
                                         <Icon name="x" size={14} />
                                     </button>
                                 </div>
@@ -311,7 +312,7 @@ function variantHasShippingOverride(v: VariantData): boolean {
                             class="mt-3 flex items-center gap-2 px-3 py-1.5 rounded-lg border border-dashed border-border text-xs text-text-secondary hover:text-text-primary hover:border-accent transition-colors"
                         >
                             <Icon name="plus" size={14} />
-                            {strings.sellerProductAddSpec}
+                            {t.sellerProductAddSpec}
                         </button>
                     </div>
 
@@ -319,9 +320,9 @@ function variantHasShippingOverride(v: VariantData): boolean {
                     <div class="flex items-center justify-between gap-3 pt-2">
                         <div>
                             <label for="product-active" class="text-sm font-medium text-text-primary cursor-pointer select-none">
-                                {strings.sellerProductActiveInline}
+                                {t.sellerProductActiveInline}
                             </label>
-                            <p class="text-[11px] text-text-tertiary mt-0.5">{strings.sellerProductActiveNote}</p>
+                            <p class="text-[11px] text-text-tertiary mt-0.5">{t.sellerProductActiveNote}</p>
                         </div>
                         <label class="relative inline-flex items-center cursor-pointer shrink-0">
                             <input type="checkbox" id="product-active" class="sr-only peer" checked={isActive} />
@@ -337,11 +338,11 @@ function variantHasShippingOverride(v: VariantData): boolean {
 <!-- Modal: sin valores por defecto configurados -->
 <div id="no-defaults-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 backdrop-blur-sm p-4">
     <div class="bg-surface rounded-2xl border border-border p-6 max-w-sm w-full shadow-xl">
-        <p class="text-sm font-medium text-text-primary">{strings.sellerProductShippingNoDefaultsTitle}</p>
-        <p class="mt-2 text-sm text-text-secondary">{strings.sellerProductShippingNoDefaultsBody}</p>
+        <p class="text-sm font-medium text-text-primary">{t.sellerProductShippingNoDefaultsTitle}</p>
+        <p class="mt-2 text-sm text-text-secondary">{t.sellerProductShippingNoDefaultsBody}</p>
         <div class="mt-5 flex justify-end gap-3">
-            <button type="button" id="no-defaults-cancel-btn" class="px-4 py-2 rounded-xl text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-border-light transition-colors">{strings.sellerOnboardingPrev}</button>
-            <a href="/sell/settings" id="no-defaults-go-btn" class="px-4 py-2 rounded-xl text-sm font-medium bg-accent text-bg hover:bg-accent-hover transition-colors">{strings.sellerProductShippingGoToSettings}</a>
+            <button type="button" id="no-defaults-cancel-btn" class="px-4 py-2 rounded-xl text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-border-light transition-colors">{t.sellerOnboardingPrev}</button>
+            <a href="/sell/settings" id="no-defaults-go-btn" class="px-4 py-2 rounded-xl text-sm font-medium bg-accent text-bg hover:bg-accent-hover transition-colors">{t.sellerProductShippingGoToSettings}</a>
         </div>
     </div>
 </div>
@@ -349,7 +350,7 @@ function variantHasShippingOverride(v: VariantData): boolean {
 <VariantShippingModal />
 
 <script>
-    import { strings } from '../../lib/core/i18n';
+    import { getClientT } from '../../lib/core/i18n';
     import { toast } from '../../lib/ui/toast';
     import { runSubmit, SubmitError } from '../../lib/ui/submit';
     import {
@@ -361,6 +362,7 @@ function variantHasShippingOverride(v: VariantData): boolean {
     import { openVariantShippingModal, type ShippingValues } from '../../lib/ui/variant-shipping-modal';
     import { compressImage, PRODUCT_PRESET } from '../../lib/ui/imageCompress';
     import Sortable from 'sortablejs';
+const t = getClientT();
 
     function valuesEqual(a: number, b: number): boolean {
         const aN = Number.isFinite(a);
@@ -478,9 +480,9 @@ function variantHasShippingOverride(v: VariantData): boolean {
             const summaryWarning = row.querySelector('.variant-summary-warning') as HTMLElement | null;
             const summaryMeta = row.querySelector('.variant-summary-meta') as HTMLElement | null;
 
-            if (nameEl) nameEl.textContent = basic.name.trim() || strings.sellerProductVariantPlaceholderName;
+            if (nameEl) nameEl.textContent = basic.name.trim() || t.sellerProductVariantPlaceholderName;
             if (priceEl) priceEl.textContent = basic.price > 0 ? `${basic.price.toFixed(2)} €` : '—';
-            if (stockEl) stockEl.textContent = strings.sellerProductVariantSummaryStock.replace('{count}', String(basic.stock));
+            if (stockEl) stockEl.textContent = t.sellerProductVariantSummaryStock.replace('{count}', String(basic.stock));
 
             const complete = isVariantComplete(row);
             if (complete) {
@@ -492,8 +494,8 @@ function variantHasShippingOverride(v: VariantData): boolean {
                     summaryShipping.classList.remove('hidden');
                     const prefix = isVariantOverride(row) ? '✦ ' : '';
                     summaryShipping.textContent = eff.shipping === 0
-                        ? prefix + strings.sellerProductVariantSummaryFree
-                        : prefix + strings.sellerProductVariantSummaryShipping.replace('{price}', `${eff.shipping.toFixed(2)} €`);
+                        ? prefix + t.sellerProductVariantSummaryFree
+                        : prefix + t.sellerProductVariantSummaryShipping.replace('{price}', `${eff.shipping.toFixed(2)} €`);
                 }
                 if (summaryMeta) summaryMeta.classList.remove('hidden');
             } else {
@@ -540,8 +542,8 @@ function variantHasShippingOverride(v: VariantData): boolean {
             const status = row.querySelector('.variant-shipping-status') as HTMLElement | null;
 
             if (statusIcon) statusIcon.textContent = isOv ? '✦' : '·';
-            if (statusText) statusText.textContent = isOv ? strings.sellerProductVariantUsesCustomShipping : strings.sellerProductVariantUsesCommonShipping;
-            if (customizeLabel) customizeLabel.textContent = isOv ? strings.sellerProductVariantEditShipping : strings.sellerProductVariantCustomizeShipping;
+            if (statusText) statusText.textContent = isOv ? t.sellerProductVariantUsesCustomShipping : t.sellerProductVariantUsesCommonShipping;
+            if (customizeLabel) customizeLabel.textContent = isOv ? t.sellerProductVariantEditShipping : t.sellerProductVariantCustomizeShipping;
             if (status) {
                 status.classList.toggle('text-accent', isOv);
                 status.classList.toggle('text-text-tertiary', !isOv);
@@ -552,7 +554,7 @@ function variantHasShippingOverride(v: VariantData): boolean {
                 const btn = document.createElement('button');
                 btn.type = 'button';
                 btn.className = 'variant-reset-shipping-btn ml-1 text-text-tertiary hover:text-text-primary underline underline-offset-2';
-                btn.textContent = strings.sellerProductVariantResetShipping;
+                btn.textContent = t.sellerProductVariantResetShipping;
                 status.appendChild(btn);
             } else if (!isOv && existingReset) {
                 existingReset.remove();
@@ -607,13 +609,13 @@ function variantHasShippingOverride(v: VariantData): boolean {
 
             if (headerSummary) {
                 if (pending === 0) {
-                    headerSummary.textContent = strings.sellerProductHeaderSummaryReady;
+                    headerSummary.textContent = t.sellerProductHeaderSummaryReady;
                     headerSummary.className = 'text-[11px] mt-0.5 font-medium text-green-700 dark:text-green-400';
                 } else if (pending === 1) {
-                    headerSummary.textContent = strings.sellerProductHeaderSummaryPendingSingle;
+                    headerSummary.textContent = t.sellerProductHeaderSummaryPendingSingle;
                     headerSummary.className = 'text-[11px] mt-0.5 font-medium text-amber-600 dark:text-amber-400';
                 } else {
-                    headerSummary.textContent = strings.sellerProductHeaderSummaryPendingPlural.replace('{count}', String(pending));
+                    headerSummary.textContent = t.sellerProductHeaderSummaryPendingPlural.replace('{count}', String(pending));
                     headerSummary.className = 'text-[11px] mt-0.5 font-medium text-amber-600 dark:text-amber-400';
                 }
             }
@@ -623,7 +625,7 @@ function variantHasShippingOverride(v: VariantData): boolean {
 
         const refreshHeaderTitle = () => {
             if (headerTitle) {
-                headerTitle.textContent = titleInput.value.trim() || (mode === 'edit' ? strings.sellerProductEditTitle : strings.sellerProductNewTitle);
+                headerTitle.textContent = titleInput.value.trim() || (mode === 'edit' ? t.sellerProductEditTitle : t.sellerProductNewTitle);
             }
         };
 
@@ -684,10 +686,10 @@ function variantHasShippingOverride(v: VariantData): boolean {
                 try {
                     const res = await fetch('/api/sell/catalog/upload', { method: 'POST', body: formData });
                     const data: { error?: string; url?: string } = await res.json();
-                    if (!res.ok) { toast.error(data.error || strings.incidentUploadError); continue; }
+                    if (!res.ok) { toast.error(data.error || t.incidentUploadError); continue; }
                     galleryUrls.push(data.url!);
                     renderGallery();
-                } catch { toast.error(strings.incidentUploadError); }
+                } catch { toast.error(t.incidentUploadError); }
             }
             imageUploadInput.value = '';
             refreshChecks();
@@ -737,7 +739,7 @@ function variantHasShippingOverride(v: VariantData): boolean {
 
         function openShippingModalForRow(row: HTMLElement) {
             const nameInput = row.querySelector('.variant-name-input') as HTMLInputElement | null;
-            const variantName = nameInput?.value.trim() || strings.sellerProductVariantPlaceholderName;
+            const variantName = nameInput?.value.trim() || t.sellerProductVariantPlaceholderName;
             const initial = readVariantOverrideValues(row) ?? getCentralValues();
             openVariantShippingModal({
                 variantName,
@@ -796,7 +798,7 @@ function variantHasShippingOverride(v: VariantData): boolean {
             if (removeBtn) {
                 e.stopPropagation();
                 if (variantsContainer.querySelectorAll('.variant-row').length <= 1) {
-                    toast.error(strings.sellerProductNoVariantsError);
+                    toast.error(t.sellerProductNoVariantsError);
                     return;
                 }
                 const row = removeBtn.closest('.variant-row') as HTMLElement;
@@ -837,7 +839,7 @@ function variantHasShippingOverride(v: VariantData): boolean {
 
                 btn.disabled = true;
                 const originalLabel = btn.innerHTML;
-                btn.innerHTML = `<span>${strings.sellerProductImageUploading}</span>`;
+                btn.innerHTML = `<span>${t.sellerProductImageUploading}</span>`;
 
                 const compressed = await compressImage(target.files[0], PRODUCT_PRESET);
                 const formData = new FormData();
@@ -850,11 +852,11 @@ function variantHasShippingOverride(v: VariantData): boolean {
                         thumb.innerHTML = `<img src="${data.url}" alt="" class="w-full h-full object-cover" />`;
                         btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>Cambiar foto`;
                     } else {
-                        toast.error(data.error || strings.incidentUploadError);
+                        toast.error(data.error || t.incidentUploadError);
                         btn.innerHTML = originalLabel;
                     }
                 } catch {
-                    toast.error(strings.incidentUploadError);
+                    toast.error(t.incidentUploadError);
                     btn.innerHTML = originalLabel;
                 } finally {
                     btn.disabled = false;
@@ -877,7 +879,7 @@ function variantHasShippingOverride(v: VariantData): boolean {
                             if (nameDisplay) {
                                 const span = document.createElement('span');
                                 span.className = 'variant-default-pill inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-medium bg-accent text-bg shrink-0';
-                                span.textContent = strings.sellerProductVariantDefault;
+                                span.textContent = t.sellerProductVariantDefault;
                                 nameDisplay.insertAdjacentElement('afterend', span);
                             }
                         } else if (!checked && pill) {
@@ -904,7 +906,7 @@ function variantHasShippingOverride(v: VariantData): boolean {
         addSpecBtn.addEventListener('click', () => {
             const div = document.createElement('div');
             div.className = 'spec-row flex items-center gap-2';
-            div.innerHTML = `<input type="text" class="spec-key-input flex-1 min-w-0 px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition" placeholder="${strings.sellerProductSpecsKeyPlaceholder}" /><input type="text" class="spec-value-input flex-1 min-w-0 px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition" placeholder="${strings.sellerProductSpecsValuePlaceholder}" /><button type="button" class="spec-remove-btn flex items-center justify-center w-8 h-8 rounded-lg text-text-tertiary hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors shrink-0"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>`;
+            div.innerHTML = `<input type="text" class="spec-key-input flex-1 min-w-0 px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition" placeholder="${t.sellerProductSpecsKeyPlaceholder}" /><input type="text" class="spec-value-input flex-1 min-w-0 px-3 py-2 rounded-lg border border-border bg-transparent text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition" placeholder="${t.sellerProductSpecsValuePlaceholder}" /><button type="button" class="spec-remove-btn flex items-center justify-center w-8 h-8 rounded-lg text-text-tertiary hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors shrink-0"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>`;
             specsContainer.appendChild(div);
         });
 
@@ -924,8 +926,8 @@ function variantHasShippingOverride(v: VariantData): boolean {
             const brand = brandInput.value.trim();
             const is_active = activeCheckbox.checked;
 
-            if (!title) { toast.error(strings.sellerProductTitleRequired); return; }
-            if (!category) { toast.error(strings.sellerProductCategoryRequired); return; }
+            if (!title) { toast.error(t.sellerProductTitleRequired); return; }
+            if (!category) { toast.error(t.sellerProductCategoryRequired); return; }
 
             const variants = Array.from(variantsContainer.querySelectorAll('.variant-row')).map((row: Element) => {
                 const el = row as HTMLElement;
@@ -945,14 +947,14 @@ function variantHasShippingOverride(v: VariantData): boolean {
                 };
             });
 
-            if (variants.length === 0) { toast.error(strings.sellerProductNoVariantsError); return; }
+            if (variants.length === 0) { toast.error(t.sellerProductNoVariantsError); return; }
 
             const missingFields: string[] = [];
-            if (!title) missingFields.push(strings.sellerProductMissingName);
-            if (!description) missingFields.push(strings.sellerProductMissingDescription);
-            if (!category) missingFields.push(strings.sellerProductMissingCategory);
-            if (!slug) missingFields.push(strings.sellerProductMissingSlug);
-            if (galleryUrls.length === 0) missingFields.push(strings.sellerProductMissingPhotos);
+            if (!title) missingFields.push(t.sellerProductMissingName);
+            if (!description) missingFields.push(t.sellerProductMissingDescription);
+            if (!category) missingFields.push(t.sellerProductMissingCategory);
+            if (!slug) missingFields.push(t.sellerProductMissingSlug);
+            if (galleryUrls.length === 0) missingFields.push(t.sellerProductMissingPhotos);
 
             const allVariantsComplete = variants.every((v: any) =>
                 v.price > 0 && v.stock >= 0 &&
@@ -962,10 +964,10 @@ function variantHasShippingOverride(v: VariantData): boolean {
                 v.height_cm != null && v.height_cm > 0 &&
                 v.shipping_cost != null && v.shipping_cost >= 0
             );
-            if (!allVariantsComplete) missingFields.push(strings.sellerProductMissingVariantData);
+            if (!allVariantsComplete) missingFields.push(t.sellerProductMissingVariantData);
 
             if (missingFields.length > 0) {
-                toast.error(strings.sellerProductIncompleteError.replace('{fields}', missingFields.join(', ')));
+                toast.error(t.sellerProductIncompleteError.replace('{fields}', missingFields.join(', ')));
                 const variantRows = Array.from(variantsContainer.querySelectorAll('.variant-row')) as HTMLElement[];
                 const firstIncomplete = variantRows.find((row) => !isVariantComplete(row));
                 if (firstIncomplete) toggleVariantExpansion(firstIncomplete, true);
@@ -975,8 +977,8 @@ function variantHasShippingOverride(v: VariantData): boolean {
             if (is_active) {
                 const underpriced = variants.find((v: any) => (v.price ?? 0) < 1);
                 if (underpriced) {
-                    const variantName = underpriced.variant_name?.trim() || strings.sellerProductPricingVariantFallbackName;
-                    toast.error(strings.sellerProductPricingPriceBelowMin.replace('{variant}', variantName));
+                    const variantName = underpriced.variant_name?.trim() || t.sellerProductPricingVariantFallbackName;
+                    toast.error(t.sellerProductPricingPriceBelowMin.replace('{variant}', variantName));
                     return;
                 }
             }
@@ -1010,7 +1012,7 @@ function variantHasShippingOverride(v: VariantData): boolean {
 
             const result = await runSubmit({
                 button: saveBtn,
-                busyLabel: strings.sellerProductSaving,
+                busyLabel: t.sellerProductSaving,
                 action: async () => {
                     const res = await fetch(url, {
                         method,
@@ -1018,10 +1020,10 @@ function variantHasShippingOverride(v: VariantData): boolean {
                         body: JSON.stringify(payload),
                     });
                     const data: { product?: { id: string }; error?: string } = await res.json();
-                    if (!res.ok) throw new SubmitError(data.error || strings.sellerProductSaveError);
+                    if (!res.ok) throw new SubmitError(data.error || t.sellerProductSaveError);
                     return data;
                 },
-                successMsg: strings.productSavedToast,
+                successMsg: t.productSavedToast,
             });
 
             if (result.ok) {

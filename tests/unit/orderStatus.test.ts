@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { ORDER_STATUSES, orderStatusLabels } from '../../src/lib/orders/orderStatus';
+import { ORDER_STATUSES, getOrderStatusLabels } from '../../src/lib/orders/orderStatus';
+import { es } from '../../src/lib/core/i18n/strings.es';
+import { en } from '../../src/lib/core/i18n/strings.en';
 
 describe('ORDER_STATUSES', () => {
     it('contiene todos los estados esperados', () => {
@@ -13,17 +15,23 @@ describe('ORDER_STATUSES', () => {
 });
 
 describe('orderStatusLabels', () => {
-    it('tiene una etiqueta para cada estado', () => {
-        for (const status of ORDER_STATUSES) {
-            expect(orderStatusLabels[status]).toBeDefined();
-            expect(typeof orderStatusLabels[status]).toBe('string');
-            expect(orderStatusLabels[status].length).toBeGreaterThan(0);
+    it('tiene una etiqueta para cada estado (es + en)', () => {
+        for (const strings of [es, en]) {
+            const labels = getOrderStatusLabels(strings);
+            for (const status of ORDER_STATUSES) {
+                expect(labels[status]).toBeDefined();
+                expect(typeof labels[status]).toBe('string');
+                expect(labels[status].length).toBeGreaterThan(0);
+            }
         }
     });
 
-    it('las etiquetas no están vacías', () => {
-        for (const status of ORDER_STATUSES) {
-            expect(orderStatusLabels[status]).not.toBe('');
+    it('las etiquetas no están vacías (es + en)', () => {
+        for (const strings of [es, en]) {
+            const labels = getOrderStatusLabels(strings);
+            for (const status of ORDER_STATUSES) {
+                expect(labels[status]).not.toBe('');
+            }
         }
     });
 });

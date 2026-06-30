@@ -1,4 +1,6 @@
-export const strings = {
+import type { Strings } from './types';
+
+export const es: Strings = {
     // Meta / SEO
     siteTitle: 'Fewya — Marketplace de pequeños negocios',
     siteDescription: 'Descubre productos nuevos y únicos de vendedores independientes. Compra directamente, sin intermediarios.',
@@ -387,6 +389,11 @@ export const strings = {
     settingsLegalSection: 'Legal',
     settingsPrivacyPolicy: 'Política de privacidad',
     settingsTermsOfService: 'Condiciones de uso',
+
+    // Settings — language
+    settingsLanguageSection: 'Idioma',
+    settingsLanguageLabel: 'Idioma de la interfaz',
+    settingsLanguageHint: 'Detección automática según el idioma de tu navegador.',
 
     // Legal Pages
     privacyPolicyPageTitle: 'Política de privacidad — Fewya',
@@ -904,6 +911,7 @@ export const strings = {
     shopSavedToast: 'Tienda actualizada',
     settingsSavedToast: 'Ajustes guardados',
     profileSavedToast: 'Datos guardados',
+    languageSavedToast: 'Idioma actualizado',
 
     // Seller Landing (/sell)
     sellerLandingMetaTitle: 'Vende en Fewya — Tu tienda online en minutos',
@@ -1055,23 +1063,4 @@ export const strings = {
     notifSellerShipReminderSubject: 'Envía el pedido {order}',
     notifSellerShipReminderHeading: 'Tu pedido sigue sin enviarse',
     notifSellerShipReminderText: 'Han pasado 3 días laborables desde la venta del pedido {order} y todavía no consta como entregado al transportista. Recuerda que, si no lo envías en un plazo de 5 días laborables desde la venta, el pedido se cancelará automáticamente.',
-} as const;
-
-export const categories = [
-    { value: 'ropa', label: strings.categoryRopa },
-    { value: 'accesorios', label: strings.categoryAccesorios },
-    { value: 'hogar', label: strings.categoryHogar },
-    { value: 'tecnologia', label: strings.categoryTecnologia },
-    { value: 'deportes', label: strings.categoryDeportes },
-    { value: 'belleza', label: strings.categoryBelleza },
-    { value: 'alimentos', label: strings.categoryAlimentos },
-    { value: 'juguetes', label: strings.categoryJuguetes },
-    { value: 'libros', label: strings.categoryLibros },
-    { value: 'artesania', label: strings.categoryArtesania },
-    { value: 'otros', label: strings.categoryOtros },
-] as const;
-
-export function getCategoryLabel(value: string): string {
-    const cat = categories.find(c => c.value === value);
-    return cat ? cat.label : value;
-}
+};

@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro';
 import { createSupabaseAuthClient } from '../../../lib/core/auth';
 import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
-import { strings } from '../../../lib/core/i18n';
+
 import { ORDER_STATUS } from '../../../lib/orders/orderStatus';
 
 function jsonResponse(payload: Record<string, unknown>, status: number) {
@@ -11,24 +11,25 @@ function jsonResponse(payload: Record<string, unknown>, status: number) {
     });
 }
 
-export const POST: APIRoute = async ({ request, cookies }) => {
+export const POST: APIRoute = async ({ locals, request, cookies  }) => {
+    const { t } = locals;
     const authClient = createSupabaseAuthClient(cookies, request);
     const { data: { user } } = await authClient.auth.getUser();
 
     if (!user) {
-        return jsonResponse({ error: strings.apiUnauthorized }, 401);
+        return jsonResponse({ error: t.apiUnauthorized }, 401);
     }
 
     let body: { orderId?: string };
     try {
         body = await request.json();
     } catch {
-        return jsonResponse({ error: strings.apiInvalidBody }, 400);
+        return jsonResponse({ error: t.apiInvalidBody }, 400);
     }
 
     const { orderId } = body;
     if (!orderId) {
-        return jsonResponse({ error: strings.apiInvalidBody }, 400);
+        return jsonResponse({ error: t.apiInvalidBody }, 400);
     }
 
     const admin = createSupabaseAdminClient();
@@ -41,11 +42,11 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         .single();
 
     if (!order) {
-        return jsonResponse({ error: strings.apiUnauthorized }, 403);
+        return jsonResponse({ error: t.apiUnauthorized }, 403);
     }
 
     if (order.status !== ORDER_STATUS.PENDING) {
-        return jsonResponse({ error: strings.orderHideNotAllowed }, 400);
+        return jsonResponse({ error: t.orderHideNotAllowed }, 400);
     }
 
     const { error } = await admin
@@ -57,7 +58,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     if (error) {
         console.error('hide order failed', error);
-        return jsonResponse({ error: strings.orderHideError }, 500);
+        return jsonResponse({ error: t.orderHideError }, 500);
     }
 
     return jsonResponse({ success: true }, 200);

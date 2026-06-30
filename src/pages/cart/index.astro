@@ -2,25 +2,26 @@
 import BuyerAppLayout from '../../layouts/BuyerAppLayout.astro';
 import Icon from '../../components/icons/Icon.astro';
 import Spinner from '../../components/ui/Spinner.astro';
-import { strings } from '../../lib/core/i18n';
+
 import { createSupabaseAuthClient } from '../../lib/core/auth';
+const { t } = Astro.locals;
 
 const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
 const { data: { user } } = await supabase.auth.getUser();
 const isLoggedIn = !!user;
 ---
 
-<BuyerAppLayout title={strings.cartPageTitle}>
+<BuyerAppLayout title={t.cartPageTitle}>
 
   <main class="min-h-[60dvh] pb-36 md:pb-16" data-is-logged-in={isLoggedIn ? 'true' : 'false'}>
     <div class="max-w-[960px] mx-auto px-4 md:px-10 py-4 md:py-8">
       <!-- Empty state -->
       <div id="cart-empty" class="hidden flex-col items-center justify-center gap-4 pt-20 text-center">
         <Icon name="shopping-cart" size={48} class="text-text-tertiary" />
-        <h2 class="text-lg font-semibold text-text-primary">{strings.cartEmpty}</h2>
-        <p class="text-sm text-text-secondary">{strings.cartEmptySub}</p>
+        <h2 class="text-lg font-semibold text-text-primary">{t.cartEmpty}</h2>
+        <p class="text-sm text-text-secondary">{t.cartEmptySub}</p>
         <a href="/" class="mt-2 px-6 py-2.5 bg-accent text-bg text-sm font-semibold rounded-lg no-underline hover:bg-accent-hover transition-colors">
-          {strings.cartExploreCta}
+          {t.cartExploreCta}
         </a>
       </div>
 
@@ -28,7 +29,7 @@ const isLoggedIn = !!user;
       <div id="cart-content" class="hidden">
         <!-- Desktop header -->
         <div class="hidden md:flex items-center justify-between mb-6">
-          <h1 class="text-xl font-bold text-text-primary">{strings.navCart}</h1>
+          <h1 class="text-xl font-bold text-text-primary">{t.navCart}</h1>
         </div>
 
         <!-- Shop groups container -->
@@ -37,7 +38,7 @@ const isLoggedIn = !!user;
         <!-- Desktop checkout bar -->
         <div class="hidden md:flex items-center justify-end gap-6 mt-8 pt-6 border-t border-border-light">
           <div class="flex items-center gap-2">
-            <span class="text-sm text-text-secondary">{strings.cartTotal}:</span>
+            <span class="text-sm text-text-secondary">{t.cartTotal}:</span>
             <span id="cart-total-desktop" class="text-xl font-bold text-text-primary"></span>
           </div>
           <button
@@ -45,7 +46,7 @@ const isLoggedIn = !!user;
             id="checkout-btn-desktop"
             class="px-8 py-3 bg-accent text-bg font-semibold text-sm rounded-lg transition-colors hover:bg-accent-hover active:scale-[0.98]"
           >
-            {strings.cartCheckout}
+            {t.cartCheckout}
           </button>
         </div>
       </div>
@@ -61,7 +62,7 @@ const isLoggedIn = !!user;
         id="checkout-btn-mobile"
         class="flex-1 py-3 bg-accent text-bg font-semibold text-sm rounded-lg transition-colors hover:bg-accent-hover active:scale-[0.98]"
       >
-        {strings.cartCheckout}
+        {t.cartCheckout}
       </button>
       <span id="cart-total-mobile" class="text-lg font-bold text-text-primary shrink-0"></span>
     </div>
@@ -72,8 +73,8 @@ const isLoggedIn = !!user;
     <div class="bg-surface w-full md:w-[520px] md:rounded-2xl rounded-t-2xl max-h-[90dvh] flex flex-col shadow-2xl pb-[env(safe-area-inset-bottom,0px)] md:pb-0">
       <!-- Header -->
       <div class="flex items-center justify-between px-5 py-4 border-b border-border-light shrink-0">
-        <h2 id="delivery-modal-title" class="text-lg font-bold text-text-primary">{strings.deliveryTitle}</h2>
-        <button type="button" id="delivery-modal-close" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-border-light transition-colors" aria-label={strings.deliveryClose}>
+        <h2 id="delivery-modal-title" class="text-lg font-bold text-text-primary">{t.deliveryTitle}</h2>
+        <button type="button" id="delivery-modal-close" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-border-light transition-colors" aria-label={t.deliveryClose}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
         </button>
       </div>
@@ -82,14 +83,14 @@ const isLoggedIn = !!user;
       <div id="delivery-modal-content" class="flex-1 overflow-y-auto p-5">
         <!-- Step 1: Delivery type selection -->
         <div id="delivery-step-type" class="flex flex-col gap-3">
-          <p id="delivery-no-options" class="hidden text-sm text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-xl px-4 py-3">{strings.deliveryNoOptions}</p>
+          <p id="delivery-no-options" class="hidden text-sm text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-xl px-4 py-3">{t.deliveryNoOptions}</p>
           <button type="button" id="delivery-option-home" class="flex items-start gap-4 p-4 rounded-xl border-2 border-border-light hover:border-accent/50 transition-all text-left bg-surface">
             <div class="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center shrink-0">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-accent"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
             </div>
             <div>
-              <p class="font-semibold text-text-primary text-sm">{strings.deliveryHome}</p>
-              <p class="text-xs text-text-secondary mt-0.5">{strings.deliveryHomeDesc}</p>
+              <p class="font-semibold text-text-primary text-sm">{t.deliveryHome}</p>
+              <p class="text-xs text-text-secondary mt-0.5">{t.deliveryHomeDesc}</p>
             </div>
             <div class="delivery-check hidden ml-auto self-center w-5 h-5 rounded-full bg-accent flex items-center justify-center">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
@@ -102,8 +103,8 @@ const isLoggedIn = !!user;
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-accent"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
             </div>
             <div>
-              <p class="font-semibold text-text-primary text-sm">{strings.deliveryPickup}</p>
-              <p class="text-xs text-text-secondary mt-0.5">{strings.deliveryPickupDesc}</p>
+              <p class="font-semibold text-text-primary text-sm">{t.deliveryPickup}</p>
+              <p class="text-xs text-text-secondary mt-0.5">{t.deliveryPickupDesc}</p>
             </div>
             <div class="delivery-check hidden ml-auto self-center w-5 h-5 rounded-full bg-accent flex items-center justify-center">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
@@ -116,7 +117,7 @@ const isLoggedIn = !!user;
         <div id="delivery-step-pickup" class="hidden flex-col gap-4">
           <button type="button" id="delivery-back-to-type" class="self-start text-xs text-text-secondary hover:text-text-primary transition-colors flex items-center gap-1">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-            {strings.deliveryBack}
+            {t.deliveryBack}
           </button>
 
           <div class="flex gap-2">
@@ -132,7 +133,7 @@ const isLoggedIn = !!user;
               </svg>
             </div>
             <button type="button" id="pickup-search-btn" class="relative px-4 py-2.5 bg-accent text-bg text-sm font-semibold rounded-lg hover:bg-accent-hover transition-colors shrink-0 disabled:opacity-50 disabled:cursor-not-allowed min-w-[88px]">
-              <span data-search-label>{strings.deliverySearch}</span>
+              <span data-search-label>{t.deliverySearch}</span>
               <svg data-search-spinner class="hidden absolute inset-0 m-auto w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="14 42"/>
               </svg>
@@ -145,7 +146,7 @@ const isLoggedIn = !!user;
               <svg class="w-3.5 h-3.5 animate-spin shrink-0" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="14 42"/>
               </svg>
-              <span id="pickup-loading-label">{strings.deliverySearching}</span>
+              <span id="pickup-loading-label">{t.deliverySearching}</span>
             </div>
             <div class="flex flex-col gap-2">
               <div class="rounded-xl border-2 border-border-light bg-surface p-3 flex flex-col gap-2">
@@ -196,7 +197,7 @@ const isLoggedIn = !!user;
           class="w-full py-3 bg-accent text-bg font-semibold text-sm rounded-lg transition-colors hover:bg-accent-hover active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
           disabled
         >
-          {strings.deliveryContinue}
+          {t.deliveryContinue}
         </button>
       </div>
     </div>
@@ -204,18 +205,19 @@ const isLoggedIn = !!user;
 
   <!-- Checkout Loading Overlay -->
   <div id="checkout-loading" class="hidden fixed inset-0 z-[70] bg-bg/90 backdrop-blur-sm flex-col items-center justify-center gap-4" aria-busy="true" aria-live="polite">
-    <Spinner size="lg" label={strings.cartCheckoutRedirecting} class="text-accent" />
-    <p class="text-sm font-medium text-text-secondary">{strings.cartCheckoutRedirecting}</p>
+    <Spinner size="lg" label={t.cartCheckoutRedirecting} class="text-accent" />
+    <p class="text-sm font-medium text-text-secondary">{t.cartCheckoutRedirecting}</p>
   </div>
 </BuyerAppLayout>
 
 <script>
   import { cart, type CartItem } from '../../lib/cart/cart';
-  import { strings } from '../../lib/core/i18n';
+  import { getClientT } from '../../lib/core/i18n';
   import { setBusy } from '../../lib/ui/busy';
   import { toast } from '../../lib/ui/toast';
   import { progress } from '../../lib/ui/progress-bar';
   import { DELIVERY_TYPE, type DeliveryType } from '../../lib/orders/orderStatus';
+const t = getClientT();
 
   const currencyFormatter = new Intl.NumberFormat('es-ES', {
     style: 'currency',
@@ -280,11 +282,11 @@ const isLoggedIn = !!user;
       // Shop header
       const header = document.createElement('div');
       header.className = 'flex items-center justify-between px-4 py-3 border-b border-border-light';
-      const shippingText = shopShipping === 0 ? strings.freeShipping : currencyFormatter.format(shopShipping);
+      const shippingText = shopShipping === 0 ? t.freeShipping : currencyFormatter.format(shopShipping);
       header.innerHTML = `
         <a href="/${escapeHtml(shopSlug)}" class="text-sm font-semibold text-text-primary no-underline hover:underline">${escapeHtml(shopName)}</a>
         <div class="flex items-center gap-1.5 text-xs text-text-secondary">
-          <span>${strings.cartShipping}</span>
+          <span>${t.cartShipping}</span>
           <span class="font-semibold text-text-primary">${shippingText}</span>
         </div>
       `;
@@ -299,10 +301,10 @@ const isLoggedIn = !!user;
       const footer = document.createElement('div');
       footer.className = 'flex items-center justify-between px-4 py-3 border-t border-border-light bg-border-light/30';
       const itemCount = shopItems.reduce((s, i) => s + i.quantity, 0);
-      const itemLabel = itemCount === 1 ? strings.cartProductSingular : strings.cartProductPlural;
+      const itemLabel = itemCount === 1 ? t.cartProductSingular : t.cartProductPlural;
       footer.innerHTML = `
-        <span class="text-xs text-text-secondary">${itemCount} ${itemLabel} · ${strings.cartShippingIncluded}</span>
-        <span class="text-sm font-bold text-text-primary">${shopTotalWithShipping.toFixed(2)}${strings.currency}</span>
+        <span class="text-xs text-text-secondary">${itemCount} ${itemLabel} · ${t.cartShippingIncluded}</span>
+        <span class="text-sm font-bold text-text-primary">${shopTotalWithShipping.toFixed(2)}${t.currency}</span>
       `;
       shopSection.appendChild(footer);
 
@@ -310,7 +312,7 @@ const isLoggedIn = !!user;
     });
 
     // Update totals
-    const totalStr = `${grandTotal.toFixed(2)}${strings.currency}`;
+    const totalStr = `${grandTotal.toFixed(2)}${t.currency}`;
     const totalDesktop = document.getElementById('cart-total-desktop');
     const totalMobile = document.getElementById('cart-total-mobile');
     if (totalDesktop) totalDesktop.textContent = totalStr;
@@ -335,7 +337,7 @@ const isLoggedIn = !!user;
       <div class="flex-1 min-w-0 flex flex-col gap-1">
         <a href="${escapeHtml(productUrl)}" class="text-sm font-medium text-text-primary no-underline hover:underline line-clamp-1">${escapeHtml(item.title)}</a>
         ${item.variantName ? `<span class="text-xs text-text-secondary">${escapeHtml(item.variantName)}</span>` : ''}
-        <span class="text-xs font-medium ${inStock ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}">${inStock ? strings.productInStock : strings.productOutOfStock}</span>
+        <span class="text-xs font-medium ${inStock ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}">${inStock ? t.productInStock : t.productOutOfStock}</span>
         ${qtyExceedsStock ? `
           <span class="text-xs font-medium text-red-500 dark:text-red-400 flex items-center gap-1">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
@@ -343,19 +345,19 @@ const isLoggedIn = !!user;
           </span>
         ` : ''}
         <div class="flex items-center gap-0.5 mt-0.5">
-          <button type="button" data-cart-minus="${item.variantId}" class="w-7 h-7 flex items-center justify-center rounded-md text-text-secondary hover:text-text-primary hover:bg-border-light transition-colors" aria-label="${strings.productQtyDecrease}" ${!inStock ? 'disabled' : ''}>
+          <button type="button" data-cart-minus="${item.variantId}" class="w-7 h-7 flex items-center justify-center rounded-md text-text-secondary hover:text-text-primary hover:bg-border-light transition-colors" aria-label="${t.productQtyDecrease}" ${!inStock ? 'disabled' : ''}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg>
           </button>
           <span class="w-8 text-center text-sm font-medium text-text-primary select-none">${item.quantity}</span>
-          <button type="button" data-cart-plus="${item.variantId}" class="w-7 h-7 flex items-center justify-center rounded-md text-text-secondary hover:text-text-primary hover:bg-border-light transition-colors" aria-label="${strings.productQtyIncrease}" ${!inStock || qtyExceedsStock ? 'disabled' : ''}>
+          <button type="button" data-cart-plus="${item.variantId}" class="w-7 h-7 flex items-center justify-center rounded-md text-text-secondary hover:text-text-primary hover:bg-border-light transition-colors" aria-label="${t.productQtyIncrease}" ${!inStock || qtyExceedsStock ? 'disabled' : ''}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
           </button>
-          <button type="button" data-cart-remove="${item.variantId}" class="w-7 h-7 flex items-center justify-center rounded-md text-text-tertiary hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors ml-1" aria-label="${strings.cartRemove}">
+          <button type="button" data-cart-remove="${item.variantId}" class="w-7 h-7 flex items-center justify-center rounded-md text-text-tertiary hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors ml-1" aria-label="${t.cartRemove}">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
           </button>
         </div>
       </div>
-      <span class="text-sm font-bold text-text-primary shrink-0">${lineTotal}${strings.currency}</span>
+      <span class="text-sm font-bold text-text-primary shrink-0">${lineTotal}${t.currency}</span>
     `;
 
     // Event listeners for quantity buttons
@@ -462,7 +464,7 @@ const isLoggedIn = !!user;
     addressSpinner.classList.toggle('hidden', !loading);
     if (loading) {
       inputAddress.dataset.originalPlaceholder = inputAddress.placeholder;
-      inputAddress.placeholder = strings.deliveryLoadingAddress;
+      inputAddress.placeholder = t.deliveryLoadingAddress;
     } else if (inputAddress.dataset.originalPlaceholder) {
       inputAddress.placeholder = inputAddress.dataset.originalPlaceholder;
     }
@@ -489,8 +491,8 @@ const isLoggedIn = !!user;
       }
     };
 
-    setOption(optionHome, optionHomeHint, opts.homeAvailable, strings.deliveryHomeUnavailable, strings.deliveryHomeUnavailableMulti);
-    setOption(optionPickup, optionPickupHint, opts.pickupAvailable, strings.deliveryPickupUnavailable, strings.deliveryPickupUnavailableMulti);
+    setOption(optionHome, optionHomeHint, opts.homeAvailable, t.deliveryHomeUnavailable, t.deliveryHomeUnavailableMulti);
+    setOption(optionPickup, optionPickupHint, opts.pickupAvailable, t.deliveryPickupUnavailable, t.deliveryPickupUnavailableMulti);
 
     const noneAvailable = !opts.homeAvailable && !opts.pickupAvailable;
     noOptionsEl?.classList.toggle('hidden', !noneAvailable);
@@ -564,13 +566,13 @@ const isLoggedIn = !!user;
     if (!btnContinue) return;
     if (selectedDeliveryType === DELIVERY_TYPE.HOME) {
       btnContinue.disabled = false;
-      btnContinue.textContent = strings.deliveryContinue;
+      btnContinue.textContent = t.deliveryContinue;
     } else if (selectedDeliveryType === DELIVERY_TYPE.PICKUP_POINT && selectedPickupPoint) {
       btnContinue.disabled = false;
-      btnContinue.textContent = strings.deliveryContinue;
+      btnContinue.textContent = t.deliveryContinue;
     } else {
       btnContinue.disabled = true;
-      btnContinue.textContent = strings.deliveryContinue;
+      btnContinue.textContent = t.deliveryContinue;
     }
   }
 
@@ -630,7 +632,7 @@ const isLoggedIn = !!user;
 
     hidePickupStatus();
     pointsList.innerHTML = '';
-    showPickupLoading(strings.deliverySearching);
+    showPickupLoading(t.deliverySearching);
     setSearchButtonLoading(true);
 
     try {
@@ -642,13 +644,13 @@ const isLoggedIn = !!user;
 
       if (!res.ok || !data.points) {
         hidePickupLoading();
-        showPickupStatus(strings.deliverySearchError, 'error');
+        showPickupStatus(t.deliverySearchError, 'error');
         return;
       }
 
       if ((data.points as any[]).length === 0) {
         hidePickupLoading();
-        showPickupStatus(strings.deliveryNoResults, 'empty');
+        showPickupStatus(t.deliveryNoResults, 'empty');
         return;
       }
 
@@ -657,7 +659,7 @@ const isLoggedIn = !!user;
       renderPickupPoints(data.points as any[]);
     } catch {
       hidePickupLoading();
-      showPickupStatus(strings.deliverySearchError, 'error');
+      showPickupStatus(t.deliverySearchError, 'error');
     } finally {
       setSearchButtonLoading(false);
     }
@@ -681,7 +683,7 @@ const isLoggedIn = !!user;
     points.forEach((point) => {
       const fullAddress = `${point.street} ${point.houseNumber}, ${point.postalCode} ${point.city}`;
       const isSelected = selectedPickupPoint?.id === String(point.id);
-      const distanceText = point.distance ? strings.deliveryDistance.replace('{distance}', `${(point.distance / 1000).toFixed(1)} km`) : '';
+      const distanceText = point.distance ? t.deliveryDistance.replace('{distance}', `${(point.distance / 1000).toFixed(1)} km`) : '';
 
       // Build opening hours summary (today + tomorrow)
       const today = new Date().getDay();
@@ -700,7 +702,7 @@ const isLoggedIn = !!user;
               <span class="text-[10px] uppercase tracking-wider font-medium px-1.5 py-0.5 rounded bg-border-light text-text-secondary">${escapeHtml(point.carrier)}</span>
               ${distanceText ? `<span class="text-xs text-text-secondary">${escapeHtml(distanceText)}</span>` : ''}
             </div>
-            <p class="text-xs text-text-tertiary mt-1">${escapeHtml(strings.deliveryOpeningHours)}: ${escapeHtml(todayHours)}</p>
+            <p class="text-xs text-text-tertiary mt-1">${escapeHtml(t.deliveryOpeningHours)}: ${escapeHtml(todayHours)}</p>
           </div>
           ${isSelected ? `<div class="shrink-0 w-5 h-5 rounded-full bg-accent flex items-center justify-center mt-0.5"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>` : ''}
         </div>
@@ -736,8 +738,8 @@ const isLoggedIn = !!user;
     const checkoutBtnDesktop = document.getElementById('checkout-btn-desktop') as HTMLButtonElement | null;
     const checkoutLoading = document.getElementById('checkout-loading');
 
-    setBusy(checkoutBtnMobile, true, { label: strings.cartCheckoutRedirecting });
-    setBusy(checkoutBtnDesktop, true, { label: strings.cartCheckoutRedirecting });
+    setBusy(checkoutBtnMobile, true, { label: t.cartCheckoutRedirecting });
+    setBusy(checkoutBtnDesktop, true, { label: t.cartCheckoutRedirecting });
     if (btnContinue) btnContinue.disabled = true;
 
     checkoutLoading?.classList.remove('hidden');
@@ -778,12 +780,12 @@ const isLoggedIn = !!user;
           redirectTo?: string;
         };
         if (res.status === 401) {
-          toast.error(strings.cartLoginRequired);
+          toast.error(t.cartLoginRequired);
         } else if (data.redirectTo) {
           window.location.href = data.redirectTo;
           success = true;
         } else {
-          toast.error(data.error || strings.cartCheckoutError);
+          toast.error(data.error || t.cartCheckoutError);
         }
         return;
       }
@@ -794,14 +796,14 @@ const isLoggedIn = !!user;
       };
 
       if (!data.checkoutUrl) {
-        toast.error(data.error || strings.cartCheckoutError);
+        toast.error(data.error || t.cartCheckoutError);
         return;
       }
 
       success = true;
       window.location.href = data.checkoutUrl;
     } catch {
-      toast.error(strings.toastErrorNetwork);
+      toast.error(t.toastErrorNetwork);
     } finally {
       if (!success) {
         isCheckingOut = false;
@@ -860,9 +862,9 @@ const isLoggedIn = !!user;
       if (result.removedVariantIds.length || result.cappedVariantIds.length || result.repricedVariantIds.length) {
         renderCart();
         if (result.removedVariantIds.length) {
-          toast.error(strings.apiCheckoutProductUnavailable);
+          toast.error(t.apiCheckoutProductUnavailable);
         } else if (result.cappedVariantIds.length) {
-          toast.error(strings.cartStockExceededToast);
+          toast.error(t.cartStockExceededToast);
         }
       }
     } catch {

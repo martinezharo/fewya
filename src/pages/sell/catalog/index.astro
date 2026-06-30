@@ -2,9 +2,10 @@
 import SellerLayout from '../../../layouts/SellerLayout.astro';
 import Icon from '../../../components/icons/Icon.astro';
 import { createSupabaseAuthClient } from '../../../lib/core/auth';
-import { strings, getCategoryLabel } from '../../../lib/core/i18n';
+import { getCategoryLabel   } from '../../../lib/core/i18n';
 import { validateProductCompleteness } from '../../../lib/products/productValidation';
 import type { Product, ProductVariant } from '../../../lib/core/types';
+const { t } = Astro.locals;
 
 const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
 const { data: sessionData } = await supabase.auth.getSession();
@@ -46,38 +47,38 @@ const totalStock = productsWithCompleteness.reduce((sum, p) => sum + (p.variants
 const currencyFormatter = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' });
 ---
 
-<SellerLayout title={strings.sellerCatalogPageTitle} shopSlug={shop.slug} shopId={shop.id}>
+<SellerLayout title={t.sellerCatalogPageTitle} shopSlug={shop.slug} shopId={shop.id}>
     <div class="p-6 lg:p-10">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
             <div>
                 <p class="text-xs font-semibold uppercase tracking-[0.18em] text-text-tertiary">{shop.name}</p>
-                <h1 class="mt-2 text-2xl font-semibold tracking-tight text-text-primary">{strings.sellerCatalogTitle}</h1>
+                <h1 class="mt-2 text-2xl font-semibold tracking-tight text-text-primary">{t.sellerCatalogTitle}</h1>
             </div>
             <a
                 href="/sell/catalog/new"
                     class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-accent text-bg text-sm font-medium no-underline hover:scale-[1.02] transition-transform shrink-0"
             >
                 <Icon name="plus" size={18} />
-                {strings.sellerCatalogNewProduct}
+                {t.sellerCatalogNewProduct}
             </a>
         </div>
 
         <div class="grid gap-3 sm:grid-cols-3 mb-8">
             <section class="rounded-[28px] border border-border bg-surface p-5 shadow-sm">
                 <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">
-                    {strings.sellerCatalogTotalProducts}
+                    {t.sellerCatalogTotalProducts}
                 </p>
                 <p class="mt-3 text-2xl font-semibold tracking-tight text-text-primary tabular-nums">{allProducts.length}</p>
             </section>
             <section class="rounded-[28px] border border-border bg-surface p-5 shadow-sm">
                 <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">
-                    {strings.sellerCatalogActiveProducts}
+                    {t.sellerCatalogActiveProducts}
                 </p>
                 <p class="mt-3 text-2xl font-semibold tracking-tight text-text-primary tabular-nums">{activeCount}</p>
             </section>
             <section class="rounded-[28px] border border-border bg-surface p-5 shadow-sm">
                 <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">
-                    {strings.sellerCatalogStock}
+                    {t.sellerCatalogStock}
                 </p>
                 <p class="mt-3 text-2xl font-semibold tracking-tight text-text-primary tabular-nums">{totalStock}</p>
             </section>
@@ -95,7 +96,7 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', { style: 'currency', cu
                         : defaultVariant?.price ?? 0;
                     const stock = product.variants?.reduce((sum, v) => sum + (v.stock ?? 0), 0) ?? 0;
                     const image = product.gallery_images?.[0] || defaultVariant?.variant_image || '';
-                    const catLabel = getCategoryLabel(product.category ?? '');
+                    const catLabel = getCategoryLabel(t, product.category ?? '');
                     return (
                         <article
                             class:list={[
@@ -119,15 +120,15 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', { style: 'currency', cu
                                         <div class="flex items-center gap-2 flex-wrap">
                                             <h3 class="text-sm font-semibold text-text-primary truncate">{product.title}</h3>
                                             {!product.isComplete && (
-                                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 border border-amber-200 dark:border-amber-800" title={strings.sellerCatalogIncompleteTooltip}>
+                                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 border border-amber-200 dark:border-amber-800" title={t.sellerCatalogIncompleteTooltip}>
                                                     <Icon name="alert-triangle" size={12} />
-                                                    {strings.sellerCatalogIncompleteWarning}
+                                                    {t.sellerCatalogIncompleteWarning}
                                                 </span>
                                             )}
                                             {stock === 0 && (
                                                 <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800">
                                                     <Icon name="alert-triangle" size={12} />
-                                                    {strings.productOutOfStock}
+                                                    {t.productOutOfStock}
                                                 </span>
                                             )}
                                         </div>
@@ -137,7 +138,7 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', { style: 'currency', cu
                                             </span>
                                             {product.variants && product.variants.length > 1 && (
                                                 <span class="text-[11px] text-text-tertiary">
-                                                    {product.variants.length} {product.variants.length === 1 ? strings.sellerCatalogVariant : strings.sellerCatalogVariants}
+                                                    {product.variants.length} {product.variants.length === 1 ? t.sellerCatalogVariant : t.sellerCatalogVariants}
                                                 </span>
                                             )}
                                         </div>
@@ -146,7 +147,7 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', { style: 'currency', cu
                                         <p class="text-sm font-semibold text-text-primary tabular-nums">
                                             {minPrice === maxPrice
                                                 ? currencyFormatter.format(minPrice)
-                                                : `${strings.sellerCatalogPriceFrom} ${currencyFormatter.format(minPrice)}`}
+                                                : `${t.sellerCatalogPriceFrom} ${currencyFormatter.format(minPrice)}`}
                                         </p>
                                         <p class:list={[
                                             'text-[11px] tabular-nums',
@@ -162,18 +163,18 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', { style: 'currency', cu
                                     class="toggle-active-btn flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
                                     data-product-id={product.id}
                                     data-active={String(product.is_active)}
-                                    aria-label={strings.sellerCatalogToggleActive}
+                                    aria-label={t.sellerCatalogToggleActive}
                                 >
                                     <span class:list={[
                                         'inline-block w-1.5 h-1.5 rounded-full',
                                         product.is_active ? 'bg-green-500' : 'bg-text-tertiary'
                                     ]}></span>
-                                    {product.is_active ? strings.sellerCatalogActive : strings.sellerCatalogInactive}
+                                    {product.is_active ? t.sellerCatalogActive : t.sellerCatalogInactive}
                                 </button>
                                 <a
                                     href={`/sell/catalog/${product.id}`}
                                     class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-text-secondary hover:text-text-primary hover:bg-border-light transition-colors"
-                                    aria-label={strings.sellerCatalogEdit}
+                                    aria-label={t.sellerCatalogEdit}
                                 >
                                     <Icon name="pencil" size={16} />
                                 </a>
@@ -183,7 +184,7 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', { style: 'currency', cu
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-text-secondary hover:text-text-primary hover:bg-border-light transition-colors"
-                                        aria-label={strings.sellerCatalogViewPublic}
+                                        aria-label={t.sellerCatalogViewPublic}
                                     >
                                         <Icon name="external-link" size={16} />
                                     </a>
@@ -193,7 +194,7 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', { style: 'currency', cu
                                     class="delete-product-btn inline-flex items-center justify-center w-8 h-8 rounded-lg text-text-secondary hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                                     data-product-id={product.id}
                                     data-product-title={product.title}
-                                    aria-label={strings.sellerCatalogDelete}
+                                    aria-label={t.sellerCatalogDelete}
                                 >
                                     <Icon name="trash-2" size={16} />
                                 </button>
@@ -207,14 +208,14 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', { style: 'currency', cu
                 <div class="flex h-16 w-16 items-center justify-center rounded-full border border-border text-text-tertiary">
                     <Icon name="grid" size={26} />
                 </div>
-                <h2 class="mt-5 text-xl font-semibold tracking-tight text-text-primary">{strings.sellerCatalogEmptyTitle}</h2>
-                <p class="mt-2 max-w-md text-sm text-text-secondary">{strings.sellerCatalogEmptySubtitle}</p>
+                <h2 class="mt-5 text-xl font-semibold tracking-tight text-text-primary">{t.sellerCatalogEmptyTitle}</h2>
+                <p class="mt-2 max-w-md text-sm text-text-secondary">{t.sellerCatalogEmptySubtitle}</p>
                 <a
                     href="/sell/catalog/new"
                         class="mt-6 inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-accent text-bg text-sm font-medium no-underline hover:scale-[1.02] transition-transform"
                 >
                     <Icon name="plus" size={18} />
-                    {strings.sellerCatalogNewProduct}
+                    {t.sellerCatalogNewProduct}
                 </a>
             </section>
         )}
@@ -225,17 +226,18 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', { style: 'currency', cu
     <div class="bg-surface rounded-2xl border border-border p-6 mx-4 max-w-sm w-full shadow-xl">
         <p class="text-sm text-text-primary font-medium" id="delete-dialog-text"></p>
         <div class="mt-5 flex justify-end gap-3">
-            <button type="button" id="delete-cancel-btn"                     class="px-4 py-2 rounded-xl text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-border-light transition-colors">{strings.sellerOnboardingPrev}</button>
-            <button type="button" id="delete-confirm-btn" class="px-4 py-2 rounded-xl text-sm font-medium bg-red-500 text-white hover:bg-red-600 transition-colors">{strings.sellerCatalogDelete}</button>
+            <button type="button" id="delete-cancel-btn"                     class="px-4 py-2 rounded-xl text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-border-light transition-colors">{t.sellerOnboardingPrev}</button>
+            <button type="button" id="delete-confirm-btn" class="px-4 py-2 rounded-xl text-sm font-medium bg-red-500 text-white hover:bg-red-600 transition-colors">{t.sellerCatalogDelete}</button>
         </div>
     </div>
 </div>
 
 <script>
-    import { strings } from '../../../lib/core/i18n';
+    import { getClientT } from '../../../lib/core/i18n';
     import { setBusy } from '../../../lib/ui/busy';
     import { toast } from '../../../lib/ui/toast';
     import { runSubmit } from '../../../lib/ui/submit';
+const t = getClientT();
 
     function initCatalogPage() {
         const toggleBtns = document.querySelectorAll<HTMLButtonElement>('.toggle-active-btn');
@@ -259,7 +261,7 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', { style: 'currency', cu
                 if (dot) {
                     dot.className = `inline-block w-1.5 h-1.5 rounded-full ${newActive ? 'bg-green-500' : 'bg-text-tertiary'}`;
                 }
-                btn.lastChild!.textContent = newActive ? ` ${strings.sellerCatalogActive}` : ` ${strings.sellerCatalogInactive}`;
+                btn.lastChild!.textContent = newActive ? ` ${t.sellerCatalogActive}` : ` ${t.sellerCatalogInactive}`;
                 if (article) {
                     article.classList.toggle('opacity-60', !newActive);
                 }
@@ -278,22 +280,22 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', { style: 'currency', cu
                         if (dot) {
                             dot.className = `inline-block w-1.5 h-1.5 rounded-full ${isActive ? 'bg-green-500' : 'bg-text-tertiary'}`;
                         }
-                        btn.lastChild!.textContent = isActive ? ` ${strings.sellerCatalogActive}` : ` ${strings.sellerCatalogInactive}`;
+                        btn.lastChild!.textContent = isActive ? ` ${t.sellerCatalogActive}` : ` ${t.sellerCatalogInactive}`;
                         if (article) {
                             article.classList.toggle('opacity-60', !isActive);
                         }
-                        toast.error(strings.toastErrorGeneric);
+                        toast.error(t.toastErrorGeneric);
                     }
                 } catch {
                     btn.dataset.active = String(isActive);
                     if (dot) {
                         dot.className = `inline-block w-1.5 h-1.5 rounded-full ${isActive ? 'bg-green-500' : 'bg-text-tertiary'}`;
                     }
-                    btn.lastChild!.textContent = isActive ? ` ${strings.sellerCatalogActive}` : ` ${strings.sellerCatalogInactive}`;
+                    btn.lastChild!.textContent = isActive ? ` ${t.sellerCatalogActive}` : ` ${t.sellerCatalogInactive}`;
                     if (article) {
                         article.classList.toggle('opacity-60', !isActive);
                     }
-                    toast.error(strings.toastErrorNetwork);
+                    toast.error(t.toastErrorNetwork);
                 } finally {
                     setBusy(btn, false);
                 }
@@ -303,7 +305,7 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', { style: 'currency', cu
         deleteBtns.forEach(btn => {
             btn.addEventListener('click', () => {
                 pendingDeleteId = btn.dataset.productId!;
-                dialogText.textContent = strings.sellerCatalogConfirmDelete;
+                dialogText.textContent = t.sellerCatalogConfirmDelete;
                 dialog.classList.remove('hidden');
                 dialog.classList.add('flex');
             });
@@ -330,8 +332,8 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', { style: 'currency', cu
             const result = await runSubmit({
                 button: confirmBtn,
                 action: () => fetch(`/api/sell/catalog/product?id=${deleteId}`, { method: 'DELETE' }),
-                successMsg: strings.sellerProductDeleteSuccess,
-                errorFallback: strings.sellerProductDeleteError,
+                successMsg: t.sellerProductDeleteSuccess,
+                errorFallback: t.sellerProductDeleteError,
             });
 
             if (result.ok) {

@@ -1,4 +1,4 @@
-import { strings } from '../core/i18n';
+import type { Strings } from '../core/i18n';
 
 export interface ProductCompletenessResult {
     complete: boolean;
@@ -73,9 +73,9 @@ export function validateProductCompleteness(
     return { complete: missing.length === 0, missing };
 }
 
-export function formatShippingDisplay(cost: number | null | undefined): string {
+export function formatShippingDisplay(t: Strings, cost: number | null | undefined): string {
     if (cost == null) return '';
-    if (cost === 0) return strings.freeShipping;
+    if (cost === 0) return t.freeShipping;
     return `+${cost.toFixed(2).replace('.', ',')}€ envío`;
 }
 

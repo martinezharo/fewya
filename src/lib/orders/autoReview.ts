@@ -1,8 +1,8 @@
 import { createSupabaseAdminClient } from '../core/supabase-admin';
-import { strings } from '../core/i18n';
+import type { Strings } from '../core/i18n';
 import { pickOne, type JoinedVariant } from './orderJoins';
 
-export async function createAutoReviewsForOrder(orderId: string): Promise<void> {
+export async function createAutoReviewsForOrder(orderId: string, t: Strings): Promise<void> {
     try {
         const adminClient = createSupabaseAdminClient();
 
@@ -35,7 +35,7 @@ export async function createAutoReviewsForOrder(orderId: string): Promise<void> 
                 product_id,
                 profile_id: null,
                 rating: 5,
-                comment: strings.autoReviewComment,
+                comment: t.autoReviewComment,
                 is_auto: true,
             }))
         );

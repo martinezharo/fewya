@@ -1,11 +1,12 @@
 ---
 import BuyerAppLayout from "../../layouts/BuyerAppLayout.astro";
 import Icon from "../../components/icons/Icon.astro";
-import { strings } from "../../lib/core/i18n";
+
 import { createSupabaseAuthClient } from "../../lib/core/auth";
 import { getAllCountries } from "../../lib/shipping/countries";
 import { spainProvinces } from "../../lib/shipping/spain-provinces";
 import { isProfileComplete } from "../../lib/core/validation";
+const { t } = Astro.locals;
 
 const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
 const { data: { user } } = await supabase.auth.getUser();
@@ -39,7 +40,7 @@ const currentPrefix = profile?.phone_prefix || '+34';
 const isSpain = currentCountry === 'ES';
 ---
 
-<BuyerAppLayout title={`${strings.meDataPageTitle} — ${strings.siteTitle}`}>
+<BuyerAppLayout title={`${t.meDataPageTitle} — ${t.siteTitle}`}>
     <main class="w-full max-w-lg mx-auto px-4 pt-6 pb-28 md:pb-16 min-h-[50vh]">
 
         {/* Back button + title */}
@@ -50,7 +51,7 @@ const isSpain = currentCountry === 'ES';
                 </a>
             )}
             <h1 class="text-xl md:text-2xl font-bold text-text-primary">
-                {strings.meDataPageTitle}
+                {t.meDataPageTitle}
             </h1>
         </div>
 
@@ -59,8 +60,8 @@ const isSpain = currentCountry === 'ES';
                 <div class="flex items-start gap-3">
                     <span class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white mt-0.5">!</span>
                     <div>
-                        <p class="text-sm font-semibold">{strings.meDataIncompleteNoticeTitle}</p>
-                        <p class="mt-1 text-sm">{strings.meDataIncompleteNoticeSubtitle}</p>
+                        <p class="text-sm font-semibold">{t.meDataIncompleteNoticeTitle}</p>
+                        <p class="mt-1 text-sm">{t.meDataIncompleteNoticeSubtitle}</p>
                     </div>
                 </div>
             </div>
@@ -68,8 +69,8 @@ const isSpain = currentCountry === 'ES';
 
         {fromCheckout && (
             <div class="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
-                <p class="text-sm font-semibold">{strings.meDataCheckoutNoticeTitle}</p>
-                <p class="mt-1 text-sm">{strings.meDataCheckoutNoticeSubtitle}</p>
+                <p class="text-sm font-semibold">{t.meDataCheckoutNoticeTitle}</p>
+                <p class="mt-1 text-sm">{t.meDataCheckoutNoticeSubtitle}</p>
             </div>
         )}
 
@@ -86,13 +87,13 @@ const isSpain = currentCountry === 'ES';
                     type="button"
                     id="avatar-trigger"
                     class="relative w-24 h-24 rounded-full overflow-hidden border-2 border-border-light focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
-                    aria-label={profile?.avatar_url ? strings.meDataAvatarChange : strings.meDataAvatarUpload}
+                    aria-label={profile?.avatar_url ? t.meDataAvatarChange : t.meDataAvatarUpload}
                 >
                     <div id="avatar-preview" class="w-full h-full">
                         {profile?.avatar_url ? (
                             <img
                                 src={profile.avatar_url}
-                                alt={profile?.first_name ?? strings.meDataAvatarNote}
+                                alt={profile?.first_name ?? t.meDataAvatarNote}
                                 class="w-full h-full object-cover"
                             />
                         ) : (
@@ -103,7 +104,7 @@ const isSpain = currentCountry === 'ES';
                     </div>
                     <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                         <span class="text-white text-[11px] font-medium px-2 text-center leading-tight">
-                            {profile?.avatar_url ? strings.meDataAvatarChange : strings.meDataAvatarUpload}
+                            {profile?.avatar_url ? t.meDataAvatarChange : t.meDataAvatarUpload}
                         </span>
                     </div>
                 </button>
@@ -112,13 +113,13 @@ const isSpain = currentCountry === 'ES';
                         type="button"
                         id="avatar-remove-btn"
                         class="absolute -top-1 -right-1 w-7 h-7 rounded-full bg-bg border border-border-light text-text-secondary flex items-center justify-center hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-colors"
-                        aria-label={strings.meDataAvatarRemove}
+                        aria-label={t.meDataAvatarRemove}
                     >
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
                     </button>
                 )}
             </div>
-            <p id="avatar-status" class="mt-2 text-[13px] text-text-tertiary">{strings.meDataAvatarNote}</p>
+            <p id="avatar-status" class="mt-2 text-[13px] text-text-tertiary">{t.meDataAvatarNote}</p>
             <input type="hidden" name="avatar_url" id="avatar_url" value={profile?.avatar_url ?? ''} />
         </div>
 
@@ -164,7 +165,7 @@ const isSpain = currentCountry === 'ES';
             {/* Email (read-only) */}
             <div class="flex flex-col gap-1.5">
                 <label for="email" class="text-[13px] font-medium text-text-secondary flex items-center gap-2">
-                    {strings.meDataEmail}
+                    {t.meDataEmail}
                 </label>
                 <input
                     id="email"
@@ -178,7 +179,7 @@ const isSpain = currentCountry === 'ES';
             {/* Teléfono con prefijo */}
             <div class="flex flex-col gap-1.5">
                 <label for="phone" class="text-[13px] font-medium text-text-secondary">
-                    {strings.meDataPhone}
+                    {t.meDataPhone}
                 </label>
                 <div class="flex gap-2">
                     <select
@@ -362,7 +363,7 @@ const isSpain = currentCountry === 'ES';
                         class="mt-0.5 h-4 w-4 shrink-0 rounded border-border text-accent focus:ring-accent cursor-pointer"
                     />
                     <span class="text-[13px] leading-snug text-text-secondary">
-                        {strings.meDataEmailOptInLabel}
+                        {t.meDataEmailOptInLabel}
                     </span>
                 </label>
             )}
@@ -373,7 +374,7 @@ const isSpain = currentCountry === 'ES';
                 id="save-btn"
                 class="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-accent text-bg font-semibold text-[15px] py-3.5 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed mt-1"
             >
-                <span data-busy-label>{strings.meDataSave}</span>
+                <span data-busy-label>{t.meDataSave}</span>
             </button>
 
         </form>
@@ -381,12 +382,13 @@ const isSpain = currentCountry === 'ES';
 </BuyerAppLayout>
 
 <script>
-    import { strings } from '../../lib/core/i18n';
+    import { getClientT } from '../../lib/core/i18n';
     import { spainProvinces } from '../../lib/shipping/spain-provinces';
     import { validateProfileForm, type ProfileFormData } from '../../lib/core/validation';
     import { toast } from '../../lib/ui/toast';
     import { runSubmit } from '../../lib/ui/submit';
     import { compressImage, AVATAR_PRESET } from '../../lib/ui/imageCompress';
+const t = getClientT();
 
   function initProfileForm() {
     const form = document.getElementById('profile-form') as HTMLFormElement | null;
@@ -403,24 +405,24 @@ const isSpain = currentCountry === 'ES';
     const fromCheckout = currentUrl.searchParams.get('checkout') === '1' && returnTo === '/cart';
 
     const errorMessages: Record<string, string> = {
-        validationRequired: strings.validationRequired,
-        validationNameMinLength: strings.validationNameMinLength,
-        validationNameMaxLength: strings.validationNameMaxLength,
-        validationLastNameMinLength: strings.validationLastNameMinLength,
-        validationLastNameMaxLength: strings.validationLastNameMaxLength,
-        validationPhoneFormat: strings.validationPhoneFormat,
-        validationPhonePrefixMissing: strings.validationPhonePrefixMissing,
-        validationStreetMinLength: strings.validationStreetMinLength,
-        validationStreetMaxLength: strings.validationStreetMaxLength,
-        validationNumberMaxLength: strings.validationNumberMaxLength,
-        validationFloorMaxLength: strings.validationFloorMaxLength,
-        validationPostalCodeFormat: strings.validationPostalCodeFormat,
-        validationPostalCodeFormatEs: strings.validationPostalCodeFormatEs,
-        validationCityMinLength: strings.validationCityMinLength,
-        validationCityMaxLength: strings.validationCityMaxLength,
-        validationProvinceRequiredEs: strings.validationProvinceRequiredEs,
-        validationNameFormat: strings.validationNameFormat,
-        validationCityFormat: strings.validationCityFormat,
+        validationRequired: t.validationRequired,
+        validationNameMinLength: t.validationNameMinLength,
+        validationNameMaxLength: t.validationNameMaxLength,
+        validationLastNameMinLength: t.validationLastNameMinLength,
+        validationLastNameMaxLength: t.validationLastNameMaxLength,
+        validationPhoneFormat: t.validationPhoneFormat,
+        validationPhonePrefixMissing: t.validationPhonePrefixMissing,
+        validationStreetMinLength: t.validationStreetMinLength,
+        validationStreetMaxLength: t.validationStreetMaxLength,
+        validationNumberMaxLength: t.validationNumberMaxLength,
+        validationFloorMaxLength: t.validationFloorMaxLength,
+        validationPostalCodeFormat: t.validationPostalCodeFormat,
+        validationPostalCodeFormatEs: t.validationPostalCodeFormatEs,
+        validationCityMinLength: t.validationCityMinLength,
+        validationCityMaxLength: t.validationCityMaxLength,
+        validationProvinceRequiredEs: t.validationProvinceRequiredEs,
+        validationNameFormat: t.validationNameFormat,
+        validationCityFormat: t.validationCityFormat,
     };
 
     function showFieldError(fieldId: string, message: string | null) {
@@ -526,12 +528,12 @@ const isSpain = currentCountry === 'ES';
             const res = await fetch('/api/profile/avatar-upload', { method: 'POST', body: formData });
             const data = await res.json() as { url?: string; path?: string; error?: string };
             if (!res.ok) {
-                toast.error(data.error || strings.meDataAvatarError);
+                toast.error(data.error || t.meDataAvatarError);
                 return null;
             }
             return { url: data.url!, path: data.path! };
         } catch {
-            toast.error(strings.toastErrorNetwork);
+            toast.error(t.toastErrorNetwork);
             return null;
         }
     }
@@ -576,7 +578,7 @@ const isSpain = currentCountry === 'ES';
         btn.type = 'button';
         btn.id = 'avatar-remove-btn';
         btn.className = 'absolute -top-1 -right-1 w-7 h-7 rounded-full bg-bg border border-border-light text-text-secondary flex items-center justify-center hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-colors';
-        btn.setAttribute('aria-label', strings.meDataAvatarRemove);
+        btn.setAttribute('aria-label', t.meDataAvatarRemove);
         btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>';
         btn.addEventListener('click', removeAvatar);
         container.appendChild(btn);
@@ -594,10 +596,10 @@ const isSpain = currentCountry === 'ES';
         if (saved) {
             updateAvatarPreview(null);
             removeRemoveAvatarButton();
-            setAvatarStatus(strings.meDataAvatarNote);
+            setAvatarStatus(t.meDataAvatarNote);
             currentAvatarPath = null;
         } else {
-            toast.error(strings.meDataSaveError);
+            toast.error(t.meDataSaveError);
         }
     }
 
@@ -608,10 +610,10 @@ const isSpain = currentCountry === 'ES';
         const file = avatarInput.files[0];
         avatarInput.value = '';
 
-        setAvatarStatus(strings.meDataAvatarUploading);
+        setAvatarStatus(t.meDataAvatarUploading);
         const result = await uploadAvatarFile(file);
         if (!result) {
-            setAvatarStatus(strings.meDataAvatarError, 'error');
+            setAvatarStatus(t.meDataAvatarError, 'error');
             return;
         }
 
@@ -624,11 +626,11 @@ const isSpain = currentCountry === 'ES';
         if (saved) {
             updateAvatarPreview(result.url);
             addRemoveAvatarButton();
-            setAvatarStatus(strings.meDataAvatarSaved, 'success');
+            setAvatarStatus(t.meDataAvatarSaved, 'success');
             currentAvatarPath = result.path;
-            window.setTimeout(() => setAvatarStatus(strings.meDataAvatarNote), 2000);
+            window.setTimeout(() => setAvatarStatus(t.meDataAvatarNote), 2000);
         } else {
-            setAvatarStatus(strings.meDataSaveError, 'error');
+            setAvatarStatus(t.meDataSaveError, 'error');
         }
     });
 
@@ -685,14 +687,14 @@ const isSpain = currentCountry === 'ES';
 
         const result = await runSubmit({
             button: btn,
-            busyLabel: strings.meDataSaving,
+            busyLabel: t.meDataSaving,
             action: () => fetch('/api/profile/update', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
             }),
-            successMsg: fromCheckout ? strings.meDataSaveAndReturnSuccess : strings.profileSavedToast,
-            errorFallback: strings.meDataSaveError,
+            successMsg: fromCheckout ? t.meDataSaveAndReturnSuccess : t.profileSavedToast,
+            errorFallback: t.meDataSaveError,
         });
         if (result.ok) {
             window.setTimeout(() => {

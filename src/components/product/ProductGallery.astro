@@ -1,6 +1,6 @@
 ---
 import Icon from '../icons/Icon.astro';
-import { strings } from '../../lib/core/i18n';
+const { t } = Astro.locals;
 
 interface Props {
   images: string[];
@@ -35,7 +35,7 @@ const hasMultiple = images.length > 1;
           class="rounded-full transition-all duration-200"
           style={i === 0 ? 'width:8px;height:8px;background:white' : 'width:6px;height:6px;background:rgba(255,255,255,0.5)'}
           data-dot={i}
-          aria-label={`${strings.productImage} ${i + 1}`}
+          aria-label={`${t.productImage} ${i + 1}`}
         />
       ))}
     </div>
@@ -57,7 +57,7 @@ const hasMultiple = images.length > 1;
           type="button"
           class="absolute left-3 top-1/2 -translate-y-1/2 flex items-center justify-center w-10 h-10 rounded-full bg-white/90 dark:bg-black/60 text-text-primary shadow-md backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-white dark:hover:bg-black/80"
           data-desktop-prev
-          aria-label={strings.productPrevImage}
+          aria-label={t.productPrevImage}
         >
           <Icon name="chevron-left" size={22} />
         </button>
@@ -65,7 +65,7 @@ const hasMultiple = images.length > 1;
           type="button"
           class="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center w-10 h-10 rounded-full bg-white/90 dark:bg-black/60 text-text-primary shadow-md backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-white dark:hover:bg-black/80"
           data-desktop-next
-          aria-label={strings.productNextImage}
+          aria-label={t.productNextImage}
         >
           <Icon name="chevron-right" size={22} />
         </button>
@@ -93,7 +93,7 @@ const hasMultiple = images.length > 1;
     type="button"
     class="absolute top-4 right-4 text-white p-2 z-10"
     data-fullscreen-close
-    aria-label={strings.productClose}
+    aria-label={t.productClose}
   >
     <Icon name="x" size={28} />
   </button>

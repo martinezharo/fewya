@@ -1,19 +1,20 @@
 import type { APIRoute } from 'astro';
 import { createSupabaseAuthClient } from '../../../lib/core/auth';
 import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
-import { strings } from '../../../lib/core/i18n';
+
 import { detectImageMimeType, ALLOWED_IMAGE_TYPES } from '../../../lib/core/file-validation';
 import { securityLog } from '../../../lib/core/security-log';
 import { ORDER_STATUS } from '../../../lib/orders/orderStatus';
 
 const MAX_SIZE = 5 * 1024 * 1024;
 
-export const POST: APIRoute = async ({ cookies, request }) => {
+export const POST: APIRoute = async ({ locals, cookies, request  }) => {
+    const { t } = locals;
     const authClient = createSupabaseAuthClient(cookies, request);
     const { data: { user } } = await authClient.auth.getUser();
 
     if (!user) {
-        return new Response(JSON.stringify({ error: strings.apiUnauthorized }), { status: 401 });
+        return new Response(JSON.stringify({ error: t.apiUnauthorized }), { status: 401 });
     }
 
     const formData = await request.formData();
@@ -28,7 +29,7 @@ export const POST: APIRoute = async ({ cookies, request }) => {
     const detectedType = await detectImageMimeType(file);
     if (!detectedType || !ALLOWED_IMAGE_TYPES.includes(detectedType)) {
         securityLog('security.upload.invalid_magic_bytes', { userId: user.id, context: 'incident' });
-        return new Response(JSON.stringify({ error: strings.apiFileInvalid }), { status: 400 });
+        return new Response(JSON.stringify({ error: t.apiFileInvalid }), { status: 400 });
     }
 
     if (file.size > MAX_SIZE) {
@@ -47,7 +48,7 @@ export const POST: APIRoute = async ({ cookies, request }) => {
     }
 
     if (order.buyer_id !== user.id) {
-        return new Response(JSON.stringify({ error: strings.apiForbidden }), { status: 403 });
+        return new Response(JSON.stringify({ error: t.apiForbidden }), { status: 403 });
     }
 
     if (!([ORDER_STATUS.DELIVERED, ORDER_STATUS.CONFIRMED] as string[]).includes(order.status)) {
@@ -73,7 +74,7 @@ export const POST: APIRoute = async ({ cookies, request }) => {
 
     if (uploadError) {
         console.error(JSON.stringify({ event: 'incident_upload.failed', error: uploadError.message }));
-        return new Response(JSON.stringify({ error: strings.apiInternalError }), { status: 500 });
+        return new Response(JSON.stringify({ error: t.apiInternalError }), { status: 500 });
     }
 
     const { data: urlData } = adminClient.storage

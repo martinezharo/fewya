@@ -1,6 +1,7 @@
 ---
-import { strings } from "../lib/core/i18n";
+
 import Logo from "./Logo.astro";
+const { t } = Astro.locals;
 
 interface Props {
   isLoggedIn?: boolean;
@@ -21,8 +22,8 @@ const { isLoggedIn = false } = Astro.props;
             <Logo class="w-7 h-7 text-accent" />
           </div>
           <div>
-            <p class="text-[15px] font-bold text-text-primary leading-tight">{strings.logoText}</p>
-            <p class="text-xs text-text-secondary">{strings.heroMobileTagline}</p>
+            <p class="text-[15px] font-bold text-text-primary leading-tight">{t.logoText}</p>
+            <p class="text-xs text-text-secondary">{t.heroMobileTagline}</p>
           </div>
         </div>
 
@@ -30,19 +31,19 @@ const { isLoggedIn = false } = Astro.props;
         {!isLoggedIn ? (
           <div class="mb-5">
             <h1 class="text-[24px] font-bold tracking-[-0.4px] leading-[1.15] mb-2 text-text-primary">
-              {strings.heroTitleMobile}
+              {t.heroTitleMobile}
             </h1>
             <p class="text-[15px] leading-[1.5] text-text-secondary">
-              {strings.heroSubtitleMobile}
+              {t.heroSubtitleMobile}
             </p>
           </div>
         ) : (
           <div class="mb-5">
             <h1 class="text-[22px] font-bold tracking-[-0.3px] leading-[1.15] mb-1.5 text-text-primary">
-              {strings.heroTitleMobileLoggedIn}
+              {t.heroTitleMobileLoggedIn}
             </h1>
             <p class="text-[15px] leading-[1.5] text-text-secondary">
-              {strings.heroSubtitleMobileLoggedIn}
+              {t.heroSubtitleMobileLoggedIn}
             </p>
           </div>
         )}
@@ -55,7 +56,7 @@ const { isLoggedIn = false } = Astro.props;
           class="install-app-btn w-full inline-flex items-center justify-center gap-2.5 px-5 py-3 bg-text-primary text-surface rounded-full text-[15px] font-semibold no-underline transition-all duration-150 hover:opacity-90 active:scale-[0.98]"
         >
           <Logo class="w-5 h-5 shrink-0" />
-          {strings.heroInstallApp}
+          {t.heroInstallApp}
         </button>
 
         {!isLoggedIn && (
@@ -70,7 +71,7 @@ const { isLoggedIn = false } = Astro.props;
               <path fill="#34A853" d="M24 47c5.5 0 10.12-1.82 13.49-4.93l-7.2-5.6c-1.83 1.23-4.18 1.95-6.29 1.95-6.33 0-11.73-3.88-13.45-9.23l-7.09 6.19C7.01 41.51 14.82 47 24 47z"/>
               <path fill="none" d="M1 1h46v46H1z"/>
             </svg>
-            {strings.heroGoogleSignIn}
+            {t.heroGoogleSignIn}
           </a>
         )}
       </div>
@@ -84,10 +85,10 @@ const { isLoggedIn = false } = Astro.props;
     <div class="max-w-[560px]">
       <div class="hero-text">
         <h1 class="text-4xl font-bold tracking-[-0.5px] leading-[1.15] mb-2.5 text-text-primary">
-          {strings.heroTitle}
+          {t.heroTitle}
         </h1>
         <p class="text-[17px] leading-[1.5] text-text-secondary m-0">
-          {strings.heroSubtitle}
+          {t.heroSubtitle}
         </p>
       </div>
       <a
@@ -101,7 +102,7 @@ const { isLoggedIn = false } = Astro.props;
           <path fill="#34A853" d="M24 47c5.5 0 10.12-1.82 13.49-4.93l-7.2-5.6c-1.83 1.23-4.18 1.95-6.29 1.95-6.33 0-11.73-3.88-13.45-9.23l-7.09 6.19C7.01 41.51 14.82 47 24 47z"/>
           <path fill="none" d="M1 1h46v46H1z"/>
         </svg>
-        {strings.heroGoogleSignIn}
+        {t.heroGoogleSignIn}
       </a>
     </div>
   </section>
@@ -118,12 +119,12 @@ const { isLoggedIn = false } = Astro.props;
   <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" data-ios-modal-backdrop></div>
   <div class="relative w-full max-w-sm bg-surface rounded-2xl p-5 shadow-2xl border border-border">
     <div class="flex items-center justify-between mb-4">
-      <h2 id="ios-install-title" class="text-lg font-bold text-text-primary">{strings.installIosTitle}</h2>
+      <h2 id="ios-install-title" class="text-lg font-bold text-text-primary">{t.installIosTitle}</h2>
       <button
         type="button"
         class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-border-light transition-colors text-text-secondary"
         data-ios-modal-close
-        aria-label={strings.installClose}
+        aria-label={t.installClose}
       >
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
       </button>
@@ -134,23 +135,23 @@ const { isLoggedIn = false } = Astro.props;
         <Logo class="w-6 h-6 text-accent" />
       </div>
       <div>
-        <p class="text-sm font-semibold text-text-primary">{strings.logoText}</p>
-        <p class="text-xs text-text-secondary">{strings.installIosHint}</p>
+        <p class="text-sm font-semibold text-text-primary">{t.logoText}</p>
+        <p class="text-xs text-text-secondary">{t.installIosHint}</p>
       </div>
     </div>
 
     <ol class="space-y-3 mb-5">
       <li class="flex items-start gap-3 text-sm text-text-secondary">
         <span class="w-6 h-6 rounded-full bg-accent/10 text-accent flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">1</span>
-        <span>{strings.installIosStep1}</span>
+        <span>{t.installIosStep1}</span>
       </li>
       <li class="flex items-start gap-3 text-sm text-text-secondary">
         <span class="w-6 h-6 rounded-full bg-accent/10 text-accent flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">2</span>
-        <span>{strings.installIosStep2}</span>
+        <span>{t.installIosStep2}</span>
       </li>
       <li class="flex items-start gap-3 text-sm text-text-secondary">
         <span class="w-6 h-6 rounded-full bg-accent/10 text-accent flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">3</span>
-        <span>{strings.installIosStep3}</span>
+        <span>{t.installIosStep3}</span>
       </li>
     </ol>
 
@@ -159,7 +160,7 @@ const { isLoggedIn = false } = Astro.props;
       class="w-full py-3 bg-text-primary text-surface rounded-full text-sm font-semibold hover:opacity-90 active:scale-[0.98] transition-all"
       data-ios-modal-close
     >
-      {strings.installClose}
+      {t.installClose}
     </button>
   </div>
 </div>
@@ -183,7 +184,8 @@ const { isLoggedIn = false } = Astro.props;
 
 <script>
   import { toast } from '../lib/ui/toast';
-  import { strings } from '../lib/core/i18n';
+  import { getClientT } from '../lib/core/i18n';
+const t = getClientT();
 
   let deferredPrompt: any = null;
   let modal: HTMLElement | null = null;
@@ -218,7 +220,7 @@ const { isLoggedIn = false } = Astro.props;
       } else if (isIos && isSafari) {
         openModal();
       } else {
-        toast.info(strings.installGenericMessage);
+        toast.info(t.installGenericMessage);
       }
     });
 

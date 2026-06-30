@@ -1,6 +1,6 @@
 ---
 import Icon from "../icons/Icon.astro";
-import { strings } from "../../lib/core/i18n";
+
 import {
     normalizeOrderStatus,
     getStatusBadgeClass,
@@ -14,6 +14,7 @@ import HideOrderModal from "./HideOrderModal.astro";
 import CancelIncidentModal from "./CancelIncidentModal.astro";
 import IncidentModal from "./IncidentModal.astro";
 import ReviewModal from "./ReviewModal.astro";
+const { t } = Astro.locals;
 
 export interface OrderItem {
     productTitle: string;
@@ -61,7 +62,7 @@ interface Props {
 const { order } = Astro.props;
 
 const normalizedStatus = normalizeOrderStatus(order.status);
-const statusLabel = getStatusLabel(normalizedStatus);
+const statusLabel = getStatusLabel(t, normalizedStatus);
 const statusColor = getStatusBadgeClass(normalizedStatus);
 
 const firstItem = order.items[0];
@@ -146,7 +147,7 @@ const showHide = normalizedStatus === ORDER_STATUS.PENDING;
                     <p class="text-[15px] font-semibold text-text-primary truncate leading-snug">
                         {order.items.length === 1
                             ? `${firstItem?.productTitle}${(firstItem?.quantity ?? 1) > 1 ? ` ×${firstItem?.quantity}` : ''}`
-                            : `${itemCount} ${strings.ordersItemsPlural}`}
+                            : `${itemCount} ${t.ordersItemsPlural}`}
                     </p>
                     {order.items.length === 1 && firstItem?.variantName && (
                         <p class="text-[12px] text-text-tertiary truncate mt-0.5">
@@ -203,7 +204,7 @@ const showHide = normalizedStatus === ORDER_STATUS.PENDING;
                                 </p>
                             )}
                             <p class="text-[12px] font-medium text-text-tertiary mt-0.5">
-                                {item.quantity ?? 1} {strings.ordersItemsUnit} · {formatEur(item.unitPrice ?? 0)}
+                                {item.quantity ?? 1} {t.ordersItemsUnit} · {formatEur(item.unitPrice ?? 0)}
                             </p>
                         </div>
                         <div class="flex-shrink-0">
@@ -219,17 +220,17 @@ const showHide = normalizedStatus === ORDER_STATUS.PENDING;
             {/* Price breakdown */}
             <div class="rounded-xl border border-border-light bg-bg/50 p-4 flex flex-col gap-2">
                 <div class="flex items-center justify-between text-sm">
-                    <span class="text-text-secondary">{strings.ordersSubtotal}</span>
+                    <span class="text-text-secondary">{t.ordersSubtotal}</span>
                     <span class="font-semibold text-text-primary tabular-nums">{formatEur(order.subtotal)}</span>
                 </div>
                 <div class="flex items-center justify-between text-sm">
-                    <span class="text-text-secondary">{strings.cartShipping}</span>
+                    <span class="text-text-secondary">{t.cartShipping}</span>
                     <span class="font-semibold text-text-primary tabular-nums">
-                        {order.shipping > 0 ? formatEur(order.shipping) : strings.ordersFreeShipping}
+                        {order.shipping > 0 ? formatEur(order.shipping) : t.ordersFreeShipping}
                     </span>
                 </div>
                 <div class="mt-1 pt-2 border-t border-border-light flex items-center justify-between text-sm">
-                    <span class="font-semibold text-text-primary">{strings.cartTotal}</span>
+                    <span class="font-semibold text-text-primary">{t.cartTotal}</span>
                     <span class="font-bold text-text-primary tabular-nums">{formatEur(order.totalAmount)}</span>
                 </div>
             </div>
@@ -240,10 +241,10 @@ const showHide = normalizedStatus === ORDER_STATUS.PENDING;
         <div class="px-4 pb-4 -mt-1 md:px-5 md:pb-5">
             <div class="p-4 rounded-2xl bg-rose-50 dark:bg-rose-900/20 border border-rose-100 dark:border-rose-800">
                 <p class="text-[11px] font-semibold uppercase tracking-wider text-rose-700 dark:text-rose-400 mb-1">
-                    {strings.deliveryFailedBuyerTitle}
+                    {t.deliveryFailedBuyerTitle}
                 </p>
                 <p class="text-sm text-rose-800 dark:text-rose-300 leading-relaxed">
-                    {strings.deliveryFailedBuyerNotice}
+                    {t.deliveryFailedBuyerNotice}
                 </p>
             </div>
         </div>
@@ -253,7 +254,7 @@ const showHide = normalizedStatus === ORDER_STATUS.PENDING;
         <div class="px-4 pb-3 -mt-1 md:px-5 md:pb-4">
             <div class="p-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800">
                 <p class="text-[11px] font-semibold uppercase tracking-wider text-red-700 dark:text-red-400 mb-1">
-                    {strings.orderCancellationReason}
+                    {t.orderCancellationReason}
                 </p>
                 <p class="text-sm text-red-800 dark:text-red-300 leading-relaxed">{order.cancellationReason}</p>
             </div>
@@ -265,18 +266,18 @@ const showHide = normalizedStatus === ORDER_STATUS.PENDING;
             <div class="p-4 rounded-2xl bg-orange-50 dark:bg-orange-900/20 border border-orange-100 dark:border-orange-800">
                 <div class="flex items-start justify-between gap-3 mb-2">
                     <p class="text-[11px] font-semibold uppercase tracking-wider text-orange-700 dark:text-orange-400">
-                        {strings.orderRefundedBuyerTitle}
+                        {t.orderRefundedBuyerTitle}
                     </p>
                     <span class="shrink-0 text-base font-bold text-orange-700 dark:text-orange-300 tabular-nums">
                         {refundedAmountFormatted}
                     </span>
                 </div>
                 <p class="text-sm text-orange-800 dark:text-orange-300 leading-relaxed">
-                    {strings.orderRefundedBuyerNotice}
+                    {t.orderRefundedBuyerNotice}
                 </p>
                 {shippingRetainedFormatted && (
                     <p class="mt-2 text-[11px] text-orange-700/80 dark:text-orange-400/80 tabular-nums">
-                        {strings.orderRefundedRetainedLabel}: {shippingRetainedFormatted}
+                        {t.orderRefundedRetainedLabel}: {shippingRetainedFormatted}
                     </p>
                 )}
             </div>
@@ -304,7 +305,7 @@ const showHide = normalizedStatus === ORDER_STATUS.PENDING;
 
     {showActions && (
         <div class="px-4 pb-4 md:px-5 md:pb-5 flex flex-col gap-2">
-            <p class="text-xs text-text-tertiary">{strings.orderAutoConfirmHint}</p>
+            <p class="text-xs text-text-tertiary">{t.orderAutoConfirmHint}</p>
             <div class="flex flex-wrap gap-2">
                 <button
                     type="button"
@@ -312,7 +313,7 @@ const showHide = normalizedStatus === ORDER_STATUS.PENDING;
                     data-order-id={order.orderId}
                 >
                     <Icon name="check" size={12} />
-                    {strings.orderConfirmDelivery}
+                    {t.orderConfirmDelivery}
                 </button>
                 <button
                     type="button"
@@ -320,7 +321,7 @@ const showHide = normalizedStatus === ORDER_STATUS.PENDING;
                     data-order-id={order.orderId}
                 >
                     <Icon name="alert-circle" size={12} />
-                    {strings.orderReportIncident}
+                    {t.orderReportIncident}
                 </button>
             </div>
         </div>
@@ -334,7 +335,7 @@ const showHide = normalizedStatus === ORDER_STATUS.PENDING;
                 data-order-id={order.orderId}
             >
                 <Icon name={hasAnyReview ? 'pencil' : 'star'} size={12} />
-                {hasAnyReview ? strings.reviewEditBtn : strings.reviewAddBtn}
+                {hasAnyReview ? t.reviewEditBtn : t.reviewAddBtn}
             </button>
         </div>
     )}
@@ -347,7 +348,7 @@ const showHide = normalizedStatus === ORDER_STATUS.PENDING;
                 data-order-id={order.orderId}
             >
                 <Icon name="trash-2" size={12} />
-                {strings.orderHideBtn}
+                {t.orderHideBtn}
             </button>
         </div>
     )}
@@ -356,7 +357,7 @@ const showHide = normalizedStatus === ORDER_STATUS.PENDING;
         <div class="px-4 pb-4 md:px-5 md:pb-5 flex flex-col gap-4">
             <div class="p-4 rounded-2xl bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800">
                 <p class="text-[11px] font-semibold uppercase tracking-wider text-red-700 dark:text-red-400 mb-2">
-                    {strings.orderIncidentReported}
+                    {t.orderIncidentReported}
                 </p>
                 <p class="text-sm text-red-800 dark:text-red-300 leading-relaxed whitespace-pre-line">
                     {order.incidentDescription}
@@ -366,7 +367,7 @@ const showHide = normalizedStatus === ORDER_STATUS.PENDING;
             {order.incidentPhotos && order.incidentPhotos.length > 0 && (
                 <div>
                     <p class="text-xs font-semibold uppercase tracking-wider text-text-secondary mb-2">
-                        {strings.incidentPanelPhotosLabel}
+                        {t.incidentPanelPhotosLabel}
                     </p>
                     <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
                         {order.incidentPhotos.map((photo) => (
@@ -380,7 +381,7 @@ const showHide = normalizedStatus === ORDER_STATUS.PENDING;
 
             <div class="p-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800">
                 <p class="text-xs text-blue-800 dark:text-blue-300 leading-relaxed">
-                    {strings.incidentUnderReviewNotice}{' '}
+                    {t.incidentUnderReviewNotice}{' '}
                     {order.sellerEmail ? (
                         <a href={`mailto:${order.sellerEmail}`} class="font-semibold underline hover:no-underline text-blue-900 dark:text-blue-200">
                             {order.sellerEmail}
@@ -388,7 +389,7 @@ const showHide = normalizedStatus === ORDER_STATUS.PENDING;
                     ) : (
                         <span class="font-semibold">el vendedor</span>
                     )}
-                    {strings.incidentReturnPolicyNoticeSuffix}
+                    {t.incidentReturnPolicyNoticeSuffix}
                 </p>
             </div>
 
@@ -399,7 +400,7 @@ const showHide = normalizedStatus === ORDER_STATUS.PENDING;
                     data-order-id={order.orderId}
                 >
                     <Icon name="x" size={12} />
-                    {strings.incidentCancelBtn}
+                    {t.incidentCancelBtn}
                 </button>
             )}
         </div>
@@ -412,8 +413,9 @@ const showHide = normalizedStatus === ORDER_STATUS.PENDING;
 </article>
 
 <script>
-    import { strings } from '../../lib/core/i18n';
+    import { getClientT } from '../../lib/core/i18n';
     import { runSubmit, SubmitError } from '../../lib/ui/submit';
+const t = getClientT();
 
     class OrderIdPopover extends HTMLElement {
         constructor() {
@@ -504,10 +506,10 @@ const showHide = normalizedStatus === ORDER_STATUS.PENDING;
                             body: JSON.stringify({ orderId }),
                         });
                         const data = await res.json() as { success?: boolean; error?: string };
-                        if (!data.success) throw new SubmitError(data.error || strings.orderConfirmDeliveryError);
+                        if (!data.success) throw new SubmitError(data.error || t.orderConfirmDeliveryError);
                         return data;
                     },
-                    successMsg: strings.orderConfirmedToast,
+                    successMsg: t.orderConfirmedToast,
                 });
                 if (result.ok) {
                     window.setTimeout(() => window.location.reload(), 800);

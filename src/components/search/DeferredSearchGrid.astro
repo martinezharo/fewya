@@ -5,8 +5,9 @@ import { createSupabaseAuthClient } from "../../lib/core/auth";
 import { enrichProductsWithRatings } from "../../lib/products/productUtils";
 import type { SearchParams } from "../../lib/products/search";
 import { getMergedWishlistIds } from "../../lib/wishlist/wishlist";
-import { strings } from "../../lib/core/i18n";
+
 import type { Product } from "../../lib/core/types";
+const { t } = Astro.locals;
 
 interface Props {
     params: SearchParams;
@@ -56,8 +57,8 @@ const [, wishedProductIds] = await Promise.all([
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" class="text-text-secondary"><circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="1.75"/><path d="m21 21-4.3-4.3" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
         </div>
         <h2 class="text-[18px] font-semibold text-text-primary mb-2">
-            {strings.searchNoResults} {params.q && `"${params.q}"`}
+            {t.searchNoResults} {params.q && `"${params.q}"`}
         </h2>
-        <p class="text-[14px] text-text-secondary">{strings.searchTryDifferentTerms}</p>
+        <p class="text-[14px] text-text-secondary">{t.searchTryDifferentTerms}</p>
     </div>
 )}

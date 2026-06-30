@@ -1,5 +1,5 @@
-import { strings } from '../core/i18n';
-import { ORDER_STATUS, ORDER_STATUSES, orderStatusLabels, type OrderStatus } from './orderStatus';
+import type { Strings } from '../core/i18n';
+import { ORDER_STATUS, ORDER_STATUSES, getOrderStatusLabels, type OrderStatus } from './orderStatus';
 import { FUND_HOLD_MS } from './timing';
 
 export const ORDER_STATUS_BADGE_CLASSES: Record<OrderStatus, string> = {
@@ -22,8 +22,8 @@ export function normalizeOrderStatus(raw: string | null | undefined): OrderStatu
     return STATUS_SET.has(lower) ? (lower as OrderStatus) : ORDER_STATUS.PENDING;
 }
 
-export function getStatusLabel(status: OrderStatus): string {
-    return orderStatusLabels[status];
+export function getStatusLabel(t: Strings, status: OrderStatus): string {
+    return getOrderStatusLabels(t)[status];
 }
 
 export function getStatusBadgeClass(status: OrderStatus): string {
@@ -87,6 +87,6 @@ export function getRefundedAmounts(
     };
 }
 
-export function formatShippingCell(shipping: number): string {
-    return shipping > 0 ? formatEur(shipping) : strings.freeLabel;
+export function formatShippingCell(t: Strings, shipping: number): string {
+    return shipping > 0 ? formatEur(shipping) : t.freeLabel;
 }

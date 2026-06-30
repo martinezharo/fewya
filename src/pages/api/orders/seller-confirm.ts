@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro';
 import { createSupabaseAuthClient } from '../../../lib/core/auth';
 import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
-import { strings } from '../../../lib/core/i18n';
+
 import { getStripeClient } from '../../../lib/payments/stripe';
 import { createAutoReviewsForOrder } from '../../../lib/orders/autoReview';
 import { pickOne } from '../../../lib/orders/orderJoins';
@@ -16,26 +16,27 @@ function jsonResponse(payload: Record<string, unknown>, status: number) {
     });
 }
 
-export const POST: APIRoute = async ({ request, cookies }) => {
+export const POST: APIRoute = async ({ locals, request, cookies  }) => {
+    const { t } = locals;
     const authClient = createSupabaseAuthClient(cookies, request);
     const {
         data: { user },
     } = await authClient.auth.getUser();
 
     if (!user) {
-        return jsonResponse({ error: strings.apiUnauthorized }, 401);
+        return jsonResponse({ error: t.apiUnauthorized }, 401);
     }
 
     let body: { orderId?: string };
     try {
         body = await request.json();
     } catch {
-        return jsonResponse({ error: strings.apiInvalidBody }, 400);
+        return jsonResponse({ error: t.apiInvalidBody }, 400);
     }
 
     const orderId = body.orderId;
     if (!orderId) {
-        return jsonResponse({ error: strings.apiInvalidBody }, 400);
+        return jsonResponse({ error: t.apiInvalidBody }, 400);
     }
 
     const adminClient = createSupabaseAdminClient();
@@ -52,21 +53,21 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         .single();
 
     if (orderError || !order) {
-        return jsonResponse({ error: strings.apiForbidden }, 403);
+        return jsonResponse({ error: t.apiForbidden }, 403);
     }
 
     type OrderShopJoin = { id: string; owner_id: string | null };
     const shop = pickOne((order as unknown as { shops: OrderShopJoin | OrderShopJoin[] | null }).shops);
     if (shop?.owner_id !== user.id) {
-        return jsonResponse({ error: strings.apiForbidden }, 403);
+        return jsonResponse({ error: t.apiForbidden }, 403);
     }
 
     if (order.status !== ORDER_STATUS.DELIVERED) {
-        return jsonResponse({ error: strings.apiInvalidBody }, 400);
+        return jsonResponse({ error: t.apiInvalidBody }, 400);
     }
 
     if (!order.delivered_at || Date.now() - new Date(order.delivered_at).getTime() < FUND_HOLD_MS) {
-        return jsonResponse({ error: strings.apiInvalidBody }, 400);
+        return jsonResponse({ error: t.apiInvalidBody }, 400);
     }
 
     if (order.funds_released_at) {
@@ -88,7 +89,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             publicId: order.public_id,
             error: updateError.message,
         }));
-        return jsonResponse({ error: strings.sellerOrderConfirmDeliveryError }, 500);
+        return jsonResponse({ error: t.sellerOrderConfirmDeliveryError }, 500);
     }
 
     // 3. Release funds to seller via Stripe
@@ -107,13 +108,13 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             error: releaseResult.error,
         }));
         return jsonResponse({
-            error: strings.sellerOrderRefundUnexpectedError,
+            error: t.sellerOrderRefundUnexpectedError,
             orderId: order.id,
         }, 500);
     }
 
     // 4. Create auto-reviews (silent — non-critical)
-    await createAutoReviewsForOrder(orderId);
+    await createAutoReviewsForOrder(orderId, t);
 
     return jsonResponse({ success: true, orderId: order.id, publicId: order.public_id }, 200);
 };

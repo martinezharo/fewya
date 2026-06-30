@@ -8,9 +8,10 @@ import { createSupabaseAuthClient } from '../../lib/core/auth';
 import { enrichProductsWithRatings } from '../../lib/products/productUtils';
 import { isProductComplete } from '../../lib/products/productValidation';
 import { getMergedWishlistIds } from '../../lib/wishlist/wishlist';
-import { strings } from '../../lib/core/i18n';
+
 import type { Shop, Product } from '../../lib/core/types';
 import { SHOP_STATUS } from '../../lib/core/shopStatus';
+const { t } = Astro.locals;
 
 const { shopSlug } = Astro.params;
 
@@ -63,7 +64,7 @@ const { data: { user } } = await authClient.auth.getUser();
 const wishedProductIds = await getMergedWishlistIds(authClient, Astro.cookies, user?.id ?? null);
 ---
 
-<BuyerDetailLayout title={`${shop.name} — ${strings.siteTitle}`}>
+<BuyerDetailLayout title={`${shop.name} — ${t.siteTitle}`}>
   <main class="pb-[120px] md:pb-[60px]" data-gallery>
     <!-- Desktop Layout Wrapper -->
     <div class="md:max-w-[1200px] md:mx-auto md:px-10 md:py-8">
@@ -112,16 +113,16 @@ const wishedProductIds = await getMergedWishlistIds(authClient, Astro.cookies, u
             </div>
             <!-- More stats if available -->
             <div class="text-sm text-text-secondary">
-              {products.length} {strings.shopProductsCount}
+              {products.length} {t.shopProductsCount}
             </div>
           </div>
 
           <!-- About & Location -->
           <div class="flex flex-col gap-6">
             <div>
-              <h2 class="text-lg font-semibold text-text-primary mb-2">{strings.shopAbout}</h2>
+              <h2 class="text-lg font-semibold text-text-primary mb-2">{t.shopAbout}</h2>
               <p class="text-sm text-text-secondary leading-relaxed whitespace-pre-line">
-                {shop.description || strings.shopNoDescription}
+                {shop.description || t.shopNoDescription}
               </p>
             </div>
             {shop.location && (
@@ -140,7 +141,7 @@ const wishedProductIds = await getMergedWishlistIds(authClient, Astro.cookies, u
       <div class="mt-8 md:mt-0">
         <div class="px-4 md:px-0 mb-6 flex items-center justify-between">
           <h2 class="text-xl md:text-2xl font-bold text-text-primary">
-            {strings.shopProducts}
+            {t.shopProducts}
           </h2>
         </div>
         

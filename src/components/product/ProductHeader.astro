@@ -1,6 +1,7 @@
 ---
 import Icon from '../icons/Icon.astro';
-import { strings } from '../../lib/core/i18n';
+const { t } = Astro.locals;
+
 ---
 
 <header class="fixed top-0 left-0 right-0 z-50 md:hidden transition-[background-color,box-shadow] duration-200" data-product-header>
@@ -8,7 +9,7 @@ import { strings } from '../../lib/core/i18n';
     <button
       type="button"
       class="flex items-center justify-center w-9 h-9 rounded-full bg-black/20 backdrop-blur-md text-white transition-colors duration-200"
-      aria-label={strings.productBack}
+      aria-label={t.productBack}
       data-header-btn
       data-back-btn
     >
@@ -17,7 +18,7 @@ import { strings } from '../../lib/core/i18n';
     <button
       type="button"
       class="flex items-center justify-center w-9 h-9 rounded-full bg-black/20 backdrop-blur-md text-white transition-colors duration-200"
-      aria-label={strings.productShare}
+      aria-label={t.productShare}
       data-header-btn
       data-share-btn
     >

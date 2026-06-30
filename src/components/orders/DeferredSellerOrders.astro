@@ -3,8 +3,10 @@ import SellerOrderCard from './SellerOrderCard.astro';
 import type { SellerOrderCardData, SellerOrderItem } from './SellerOrderCard.astro';
 import Icon from '../icons/Icon.astro';
 import { createSupabaseAuthClient } from '../../lib/core/auth';
-import { strings } from '../../lib/core/i18n';
-import { ORDER_STATUS, ORDER_STATUSES, orderStatusLabels } from '../../lib/orders/orderStatus';
+
+import { ORDER_STATUS, ORDER_STATUSES, getOrderStatusLabels } from '../../lib/orders/orderStatus';
+const { t } = Astro.locals;
+const orderStatusLabels = getOrderStatusLabels(t);
 
 interface Props {
     shopId: string;
@@ -88,7 +90,7 @@ const orders: SellerOrderCardData[] = (ordersData ?? []).map((order: any) => {
         const shippingCost = Number(variant.shipping_cost ?? 0);
 
         items.push({
-            productTitle: product.title ?? strings.fallbackProductName,
+            productTitle: product.title ?? t.fallbackProductName,
             imageUrl: variant.variant_image || product.gallery_images?.[0] || '',
             productSlug: product.slug ?? null,
             variantName: variant.variant_name ?? null,
@@ -157,7 +159,7 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', {
         <div class="mt-8 grid gap-3 sm:grid-cols-3">
             <section class="rounded-[28px] border border-border bg-surface p-5 shadow-sm">
                 <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">
-                    {strings.sellerOrdersSummarySales}
+                    {t.sellerOrdersSummarySales}
                 </p>
                 <p class="mt-3 text-2xl font-semibold tracking-tight text-text-primary tabular-nums">
                     {currencyFormatter.format(totalSales)}
@@ -166,7 +168,7 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', {
 
             <section class="rounded-[28px] border border-border bg-surface p-5 shadow-sm">
                 <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">
-                    {strings.sellerOrdersSummaryOrders}
+                    {t.sellerOrdersSummaryOrders}
                 </p>
                 <p class="mt-3 text-2xl font-semibold tracking-tight text-text-primary tabular-nums">
                     {totalOrders}
@@ -175,7 +177,7 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', {
 
             <section class="rounded-[28px] border border-border bg-surface p-5 shadow-sm">
                 <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">
-                    {strings.sellerOrdersSummaryItems}
+                    {t.sellerOrdersSummaryItems}
                 </p>
                 <p class="mt-3 text-2xl font-semibold tracking-tight text-text-primary tabular-nums">
                     {totalItemsSold}
@@ -196,10 +198,10 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', {
                         <span class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform peer-checked:translate-x-5" />
                     </div>
                     <span class="text-sm font-medium text-text-primary">
-                        {strings.sellerOrdersFilterShowPending}
+                        {t.sellerOrdersFilterShowPending}
                     </span>
                     <span class="hidden text-xs text-text-tertiary sm:inline">
-                        {strings.sellerOrdersFilterShowPendingHint}
+                        {t.sellerOrdersFilterShowPendingHint}
                     </span>
                 </label>
             ) : (
@@ -208,14 +210,14 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', {
 
             <div class="flex items-center gap-2">
                 <label for="status-filter" class="text-sm font-medium text-text-secondary">
-                    {strings.sellerOrdersFilterStatusLabel}
+                    {t.sellerOrdersFilterStatusLabel}
                 </label>
                 <div class="relative">
                     <select
                         id="status-filter"
                         class="min-w-[160px] appearance-none rounded-xl border border-border bg-surface px-3 py-2 pr-10 text-sm text-text-primary shadow-sm outline-none ring-accent focus:ring-2 transition-shadow cursor-pointer"
                     >
-                        <option value="all">{strings.sellerOrdersFilterStatusAll}</option>
+                        <option value="all">{t.sellerOrdersFilterStatusAll}</option>
                         {ORDER_STATUSES.map((status) => (
                             <option value={status}>{orderStatusLabels[status]}</option>
                         ))}
@@ -241,10 +243,10 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', {
             <Icon name="package" size={26} />
         </div>
         <h2 class="mt-5 text-xl font-semibold tracking-tight text-text-primary">
-            {strings.sellerOrdersEmpty}
+            {t.sellerOrdersEmpty}
         </h2>
         <p class="mt-2 max-w-md text-sm text-text-secondary">
-            {strings.sellerOrdersEmptySub}
+            {t.sellerOrdersEmptySub}
         </p>
     </section>
 )}

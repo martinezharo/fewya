@@ -1,7 +1,10 @@
 ---
 import Icon from '../icons/Icon.astro';
-import { sellerNavItems, sellerDetailsNavItem, sellerFooterNavItem } from '../../lib/ui/seller-nav';
-import { strings } from '../../lib/core/i18n';
+import { getSellerNavItems, getSellerDetailsNavItem, getSellerFooterNavItem } from '../../lib/ui/seller-nav';
+const { t } = Astro.locals;
+const sellerNavItems = getSellerNavItems(t);
+const sellerDetailsNavItem = getSellerDetailsNavItem(t);
+const sellerFooterNavItem = getSellerFooterNavItem(t);
 
 interface Props {
     currentPath: string;
@@ -31,7 +34,7 @@ function isActive(href: string) {
 
 <aside
     id="seller-sidebar"
-    aria-label={strings.sellerSidebarLabel}
+    aria-label={t.sellerSidebarLabel}
     class="
         fixed inset-y-0 left-0 z-50 flex flex-col shrink-0
         bg-surface border-r border-border
@@ -45,14 +48,14 @@ function isActive(href: string) {
             href="/sell"
             class="sidebar-brand flex-1 min-w-0 font-semibold text-sm text-text-primary tracking-tight truncate"
         >
-            {strings.sellerBrandName}
+            {t.sellerBrandName}
         </a>
 
         <!-- Desktop: collapse/expand toggle -->
         <button
             id="seller-sidebar-collapse-btn"
             class="hidden lg:flex shrink-0 items-center justify-center w-8 h-8 rounded-lg text-text-tertiary hover:text-text-primary hover:bg-border-light transition-colors"
-            aria-label={strings.sellerSidebarCollapseLabel}
+            aria-label={t.sellerSidebarCollapseLabel}
         >
             <Icon name="panel-left" size={16} />
         </button>
@@ -61,14 +64,14 @@ function isActive(href: string) {
         <button
             id="seller-sidebar-close-btn"
             class="flex lg:hidden shrink-0 items-center justify-center w-8 h-8 rounded-lg text-text-tertiary hover:text-text-primary hover:bg-border-light transition-colors"
-            aria-label={strings.sellerSidebarCloseLabel}
+            aria-label={t.sellerSidebarCloseLabel}
         >
             <Icon name="x" size={18} />
         </button>
     </div>
 
     <!-- Main navigation -->
-    <nav class="flex-1 overflow-y-auto overflow-x-hidden px-2 py-3" aria-label={strings.sellerSidebarLabel}>
+    <nav class="flex-1 overflow-y-auto overflow-x-hidden px-2 py-3" aria-label={t.sellerSidebarLabel}>
         <ul class="space-y-0.5" role="list">
             {sellerNavItems.map(item => (
                 <li>
@@ -136,7 +139,7 @@ function isActive(href: string) {
                             </span>
                         )}
                     </span>
-                    <span id="stripe-nav-label" class="sidebar-label truncate">{strings.sellerNavStripe}</span>
+                    <span id="stripe-nav-label" class="sidebar-label truncate">{t.sellerNavStripe}</span>
                     <span id="stripe-nav-spinner" class="hidden shrink-0">
                         <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -144,9 +147,9 @@ function isActive(href: string) {
                         </svg>
                     </span>
                     {stripeStatus !== 'ready' && (
-                        <span id="stripe-nav-badge" class="sidebar-label ml-auto text-[10px] font-semibold uppercase tracking-wider text-amber-500 dark:text-amber-400">{strings.sellerNavStripeWarning}</span>
+                        <span id="stripe-nav-badge" class="sidebar-label ml-auto text-[10px] font-semibold uppercase tracking-wider text-amber-500 dark:text-amber-400">{t.sellerNavStripeWarning}</span>
                     )}
-                    <span class="sidebar-tooltip" role="tooltip" aria-hidden="true">{strings.sellerNavStripe}</span>
+                    <span class="sidebar-tooltip" role="tooltip" aria-hidden="true">{t.sellerNavStripe}</span>
                 </button>
             </li>
             <li>
@@ -176,7 +179,7 @@ function isActive(href: string) {
                         <span class:list={[
                             'sidebar-label ml-auto text-[10px] font-semibold uppercase tracking-wider',
                             isActive(sellerDetailsNavItem.href) ? 'text-bg/80' : 'text-amber-500 dark:text-amber-400',
-                        ]}>{strings.sellerNavDetailsIncomplete}</span>
+                        ]}>{t.sellerNavDetailsIncomplete}</span>
                     )}
                     <span class="sidebar-tooltip" role="tooltip" aria-hidden="true">{sellerDetailsNavItem.label}</span>
                 </a>
@@ -194,8 +197,8 @@ function isActive(href: string) {
                 class="sidebar-link relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent text-text-secondary hover:text-text-primary hover:bg-border-light"
             >
                 <Icon name="external-link" size={20} class="shrink-0" />
-                <span class="sidebar-label truncate">{strings.sellerSidebarViewShop}</span>
-                <span class="sidebar-tooltip" role="tooltip" aria-hidden="true">{strings.sellerSidebarViewShop}</span>
+                <span class="sidebar-label truncate">{t.sellerSidebarViewShop}</span>
+                <span class="sidebar-tooltip" role="tooltip" aria-hidden="true">{t.sellerSidebarViewShop}</span>
             </a>
         )}
         <a
@@ -282,7 +285,8 @@ function isActive(href: string) {
 
 <script>
     import { toast } from '../../lib/ui/toast';
-    import { strings } from '../../lib/core/i18n';
+    import { getClientT } from '../../lib/core/i18n';
+const t = getClientT();
 
     declare global {
         interface Window {
@@ -360,7 +364,7 @@ function isActive(href: string) {
         if (stripeNavBtn) {
             const resetStripeBtn = () => {
                 stripeNavBtn.removeAttribute('disabled');
-                if (stripeNavLabel) stripeNavLabel.textContent = strings.sellerNavStripe;
+                if (stripeNavLabel) stripeNavLabel.textContent = t.sellerNavStripe;
                 if (stripeNavSpinner) stripeNavSpinner.classList.add('hidden');
                 if (stripeNavBadge) stripeNavBadge.classList.remove('hidden');
             };
@@ -375,7 +379,7 @@ function isActive(href: string) {
                 }
 
                 stripeNavBtn.setAttribute('disabled', 'true');
-                if (stripeNavLabel) stripeNavLabel.textContent = strings.sellerNavStripeOpening;
+                if (stripeNavLabel) stripeNavLabel.textContent = t.sellerNavStripeOpening;
                 if (stripeNavSpinner) stripeNavSpinner.classList.remove('hidden');
                 if (stripeNavBadge) stripeNavBadge.classList.add('hidden');
 
@@ -392,10 +396,10 @@ function isActive(href: string) {
                         return;
                     }
 
-                    toast.error(data.error || strings.sellerOnboardingStripeError);
+                    toast.error(data.error || t.sellerOnboardingStripeError);
                     resetStripeBtn();
                 } catch {
-                    toast.error(strings.sellerOnboardingStripeError);
+                    toast.error(t.sellerOnboardingStripeError);
                     resetStripeBtn();
                 }
             });

@@ -1,16 +1,17 @@
 ---
 import BuyerAppLayout from '../../layouts/BuyerAppLayout.astro';
-import { strings } from '../../lib/core/i18n';
+const { t } = Astro.locals;
+
 ---
 
-<BuyerAppLayout title={strings.cartSuccessPageTitle}>
+<BuyerAppLayout title={t.cartSuccessPageTitle}>
     <main class="min-h-[60dvh] px-4 py-8 md:py-12">
         <div class="max-w-xl mx-auto rounded-3xl border border-border-light bg-surface p-6 md:p-8 text-center">
             <div id="checkout-success-loading" class="flex flex-col items-center gap-4">
                 <div class="h-12 w-12 rounded-full border-4 border-border-light border-t-accent animate-spin"></div>
                 <div class="space-y-2">
-                    <h1 class="text-xl font-semibold text-text-primary">{strings.cartSuccessLoading}</h1>
-                    <p class="text-sm text-text-secondary">{strings.cartSuccessSubtitle}</p>
+                    <h1 class="text-xl font-semibold text-text-primary">{t.cartSuccessLoading}</h1>
+                    <p class="text-sm text-text-secondary">{t.cartSuccessSubtitle}</p>
                 </div>
             </div>
 
@@ -19,20 +20,20 @@ import { strings } from '../../lib/core/i18n';
                     <span class="text-3xl">✓</span>
                 </div>
                 <div class="space-y-2">
-                    <h1 class="text-2xl font-semibold text-text-primary">{strings.cartSuccessTitle}</h1>
-                    <p class="text-sm text-text-secondary">{strings.cartSuccessSubtitle}</p>
+                    <h1 class="text-2xl font-semibold text-text-primary">{t.cartSuccessTitle}</h1>
+                    <p class="text-sm text-text-secondary">{t.cartSuccessSubtitle}</p>
                 </div>
                 <div class="rounded-2xl border border-border-light bg-border-light/30 px-4 py-3 min-w-56">
-                    <p class="text-xs uppercase tracking-[0.18em] text-text-tertiary">{strings.cartSuccessOrderNumber}</p>
+                    <p class="text-xs uppercase tracking-[0.18em] text-text-tertiary">{t.cartSuccessOrderNumber}</p>
                     <p id="checkout-success-order-id" class="mt-1 text-lg font-semibold text-text-primary"></p>
                     <p id="checkout-success-order-count" class="mt-1 text-xs text-text-secondary"></p>
                 </div>
                 <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                     <a href="/me/orders" class="inline-flex items-center justify-center px-6 py-3 rounded-lg bg-accent text-bg font-semibold text-sm no-underline hover:bg-accent-hover transition-colors">
-                        {strings.cartSuccessOrdersCta}
+                        {t.cartSuccessOrdersCta}
                     </a>
                     <a href="/" class="inline-flex items-center justify-center px-6 py-3 rounded-lg border border-border-light text-text-primary font-semibold text-sm no-underline hover:bg-border-light transition-colors">
-                        {strings.cartSuccessContinueCta}
+                        {t.cartSuccessContinueCta}
                     </a>
                 </div>
             </div>
@@ -42,15 +43,15 @@ import { strings } from '../../lib/core/i18n';
                     <span class="text-3xl">!</span>
                 </div>
                 <div class="space-y-2">
-                    <h1 class="text-2xl font-semibold text-text-primary">{strings.cartSuccessErrorTitle}</h1>
-                    <p id="checkout-success-error-text" class="text-sm text-text-secondary">{strings.cartSuccessErrorSubtitle}</p>
+                    <h1 class="text-2xl font-semibold text-text-primary">{t.cartSuccessErrorTitle}</h1>
+                    <p id="checkout-success-error-text" class="text-sm text-text-secondary">{t.cartSuccessErrorSubtitle}</p>
                 </div>
                 <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                     <a href="/me/orders" class="inline-flex items-center justify-center px-6 py-3 rounded-lg bg-accent text-bg font-semibold text-sm no-underline hover:bg-accent-hover transition-colors">
-                        {strings.cartSuccessOrdersCta}
+                        {t.cartSuccessOrdersCta}
                     </a>
                     <a href="/cart" class="inline-flex items-center justify-center px-6 py-3 rounded-lg border border-border-light text-text-primary font-semibold text-sm no-underline hover:bg-border-light transition-colors">
-                        {strings.cartCancelReturnCta}
+                        {t.cartCancelReturnCta}
                     </a>
                 </div>
             </div>
@@ -60,7 +61,8 @@ import { strings } from '../../lib/core/i18n';
 
 <script>
     import { cart } from '../../lib/cart/cart';
-    import { strings } from '../../lib/core/i18n';
+    import { getClientT } from '../../lib/core/i18n';
+const t = getClientT();
 
     let confirmationStarted = false;
 
@@ -104,7 +106,7 @@ import { strings } from '../../lib/core/i18n';
         const sessionId = currentUrl.searchParams.get('session_id');
 
         if (!sessionId) {
-            showState('error', strings.apiCheckoutConfirmationError);
+            showState('error', t.apiCheckoutConfirmationError);
             return;
         }
 
@@ -116,7 +118,7 @@ import { strings } from '../../lib/core/i18n';
             };
 
             if (!response.ok) {
-                throw new Error(data.error || strings.apiCheckoutConfirmationError);
+                throw new Error(data.error || t.apiCheckoutConfirmationError);
             }
 
             cart.clear();
@@ -129,7 +131,7 @@ import { strings } from '../../lib/core/i18n';
                 orderCount: data.orders?.length ?? 1,
             });
         } catch (error: unknown) {
-            const message = error instanceof Error ? error.message : strings.apiCheckoutConfirmationError;
+            const message = error instanceof Error ? error.message : t.apiCheckoutConfirmationError;
             showState('error', message);
         }
     }

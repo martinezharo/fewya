@@ -34,7 +34,8 @@ function jsonResponse(payload: Record<string, unknown>, status: number) {
     });
 }
 
-export const POST: APIRoute = async ({ request, cookies }) => {
+export const POST: APIRoute = async ({ request, cookies, locals }) => {
+    const { t } = locals;
     const { createSupabaseAuthClient } = await import('../../../lib/core/auth');
     const authClient = createSupabaseAuthClient(cookies, request);
 
@@ -76,6 +77,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             authClient,
             orderId,
             labelCost,
+            t,
         });
         if (!result.success) {
             return jsonResponse({ error: result.error }, result.status);

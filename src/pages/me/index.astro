@@ -1,10 +1,12 @@
 ---
 import BuyerAppLayout from "../../layouts/BuyerAppLayout.astro";
 import Icon from "../../components/icons/Icon.astro";
-import { strings } from "../../lib/core/i18n";
+
 import { createSupabaseAuthClient } from "../../lib/core/auth";
-import { orderStatusLabels, ORDER_STATUS } from "../../lib/orders/orderStatus";
+import { getOrderStatusLabels, ORDER_STATUS } from "../../lib/orders/orderStatus";
 import { isProfileComplete } from "../../lib/core/validation";
+const { t } = Astro.locals;
+const orderStatusLabels = getOrderStatusLabels(t);
 
 interface PurchaseGroup {
     orderId: string;
@@ -85,13 +87,13 @@ if (ordersData) {
             const product = (Array.isArray(rawProduct) ? rawProduct[0] : rawProduct) as any;
             if (!product) continue;
             
-            const shop = Array.isArray(product.shops) ? product.shops[0] : (product.shops || {id:'unknown', name: strings.fallbackShopName});
+            const shop = Array.isArray(product.shops) ? product.shops[0] : (product.shops || {id:'unknown', name: t.fallbackShopName});
             if (!shop) continue;
 
             const imageUrl = variant.variant_image 
                                 ? variant.variant_image 
                                 : (product.gallery_images?.[0] || '');
-            const productName = product.title || strings.fallbackProductName;
+            const productName = product.title || t.fallbackProductName;
             const quantity = item.quantity || 1;
 
             if (!itemsByShop.has(shop.id)) {
@@ -119,10 +121,10 @@ if (ordersData) {
 const recentPurchases = purchaseGroups.slice(0, 5);
 ---
 
-<BuyerAppLayout title={strings.mePageTitle}>
+<BuyerAppLayout title={t.mePageTitle}>
     <main class="w-full max-w-[1400px] mx-auto px-4 md:px-10 pt-6 pb-24 md:pb-16 min-h-[50vh]">
         <h1 class="text-xl md:text-2xl font-bold text-text-primary mb-8">
-            {strings.mePageTitle}
+            {t.mePageTitle}
         </h1>
 
         <div class="flex flex-col md:grid md:grid-cols-12 gap-8 md:gap-12 max-w-5xl">
@@ -131,7 +133,7 @@ const recentPurchases = purchaseGroups.slice(0, 5);
             <section class="col-span-12 md:col-span-7 lg:col-span-8">
                 <header class="flex items-center justify-between mb-4">
                     <h2 class="text-[17px] font-semibold text-text-primary">
-                        {strings.meLastPurchases}
+                        {t.meLastPurchases}
                     </h2>
                 </header>
 
@@ -175,7 +177,7 @@ const recentPurchases = purchaseGroups.slice(0, 5);
                                         {purchase.shopName}
                                     </h3>
                                     <span class={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${statusColor}`}>
-                                        {orderStatusLabels[purchase.status?.toLowerCase() as keyof typeof orderStatusLabels] || purchase.status || strings.orderStatusPending}
+                                        {orderStatusLabels[purchase.status?.toLowerCase() as keyof typeof orderStatusLabels] || purchase.status || t.orderStatusPending}
                                     </span>
                                 </div>
                             </a>
@@ -189,7 +191,7 @@ const recentPurchases = purchaseGroups.slice(0, 5);
                                     <Icon name="chevron-right" class="w-5 h-5 text-text-secondary group-hover:text-text-primary transition-colors" />
                                 </div>
                                 <span class="text-[13px] font-medium text-text-secondary group-hover:text-text-primary transition-colors px-2 text-center">
-                                    {strings.meViewAllOrders}
+                                    {t.meViewAllOrders}
                                 </span>
                             </a>
                         </div>
@@ -205,7 +207,7 @@ const recentPurchases = purchaseGroups.slice(0, 5);
                             <Icon name="shopping-cart" size={18} strokeWidth={2} />
                         </div>
                         <span class="flex-1 font-medium text-text-primary text-[15px]">
-                            {strings.meMyOrders}
+                            {t.meMyOrders}
                         </span>
                         <Icon name="chevron-right" size={18} class="text-text-secondary/50 group-hover:text-text-primary transition-colors" />
                     </a>
@@ -220,7 +222,7 @@ const recentPurchases = purchaseGroups.slice(0, 5);
                             )}
                         </div>
                         <span class="flex-1 font-medium text-text-primary text-[15px]">
-                            {strings.meMyData}
+                            {t.meMyData}
                         </span>
                         {profileIncomplete && (
                             <span class="text-xs font-medium text-red-500 dark:text-red-400 mr-1">
@@ -235,7 +237,7 @@ const recentPurchases = purchaseGroups.slice(0, 5);
                             <Icon name="sliders" size={18} strokeWidth={2} />
                         </div>
                         <span class="flex-1 font-medium text-text-primary text-[15px]">
-                            {strings.meSettings}
+                            {t.meSettings}
                         </span>
                         <Icon name="chevron-right" size={18} class="text-text-secondary/50 group-hover:text-text-primary transition-colors" />
                     </a>
@@ -245,7 +247,7 @@ const recentPurchases = purchaseGroups.slice(0, 5);
                             <Icon name="message-circle" size={18} strokeWidth={2} />
                         </div>
                         <span class="flex-1 font-medium text-text-primary text-[15px]">
-                            {strings.meSupport}
+                            {t.meSupport}
                         </span>
                         <Icon name="chevron-right" size={18} class="text-text-secondary/50 group-hover:text-text-primary transition-colors" />
                     </a>

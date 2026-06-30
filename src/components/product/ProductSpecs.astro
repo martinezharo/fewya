@@ -1,5 +1,5 @@
 ---
-import { strings } from '../../lib/core/i18n';
+const { t } = Astro.locals;
 
 interface Props {
   category: string | null;
@@ -17,13 +17,13 @@ const categoryLabel = category ? category.charAt(0).toUpperCase() + category.sli
     <dl class="divide-y divide-border-light">
       {category && (
         <div class="flex justify-between px-4 py-3">
-          <dt class="text-sm text-text-secondary">{strings.productCategory}</dt>
+          <dt class="text-sm text-text-secondary">{t.productCategory}</dt>
           <dd class="text-sm font-medium text-text-primary">{categoryLabel}</dd>
         </div>
       )}
       {brand && (
         <div class="flex justify-between px-4 py-3">
-          <dt class="text-sm text-text-secondary">{strings.productBrand}</dt>
+          <dt class="text-sm text-text-secondary">{t.productBrand}</dt>
           <dd class="text-sm font-medium text-text-primary">{brand}</dd>
         </div>
       )}

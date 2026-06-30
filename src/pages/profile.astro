@@ -1,7 +1,7 @@
 ---
 import BuyerAppLayout from "../layouts/BuyerAppLayout.astro";
 import { createSupabaseAuthClient } from "../lib/core/auth";
-import { strings } from "../lib/core/i18n";
+const { t } = Astro.locals;
 
 const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
 const { data: { user } } = await supabase.auth.getUser();
@@ -10,11 +10,11 @@ if (!user) {
     return Astro.redirect('/login?redirect_to=/profile');
 }
 
-const displayName = user.user_metadata?.full_name ?? user.user_metadata?.name ?? user.email ?? strings.profileAnonymous;
+const displayName = user.user_metadata?.full_name ?? user.user_metadata?.name ?? user.email ?? t.profileAnonymous;
 const avatarUrl = user.user_metadata?.avatar_url as string | undefined;
 ---
 
-<BuyerAppLayout title={strings.profilePageTitle}>
+<BuyerAppLayout title={t.profilePageTitle}>
     <main class="max-w-[480px] mx-auto px-4 pt-10 pb-24 md:pb-10">
         <div class="flex flex-col items-center gap-5 py-10">
             {avatarUrl ? (
@@ -39,7 +39,7 @@ const avatarUrl = user.user_metadata?.avatar_url as string | undefined;
                 href="/api/auth/logout"
                 class="mt-4 px-5 py-2.5 text-[14px] font-semibold rounded-full border border-border-light text-text-secondary no-underline transition-colors duration-150 hover:bg-border-light hover:text-text-primary"
             >
-                {strings.profileSignOut}
+                {t.profileSignOut}
             </a>
         </div>
     </main>

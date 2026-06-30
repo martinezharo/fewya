@@ -1,15 +1,16 @@
 import type { APIRoute } from 'astro';
 import { createSupabaseAuthClient } from '../../../../lib/core/auth';
-import { strings } from '../../../../lib/core/i18n';
+
 import { SHOP_STATUS } from '../../../../lib/core/shopStatus';
 
-export const DELETE: APIRoute = async ({ cookies, request }) => {
+export const DELETE: APIRoute = async ({ locals, cookies, request  }) => {
+    const { t } = locals;
     const supabase = createSupabaseAuthClient(cookies, request);
 
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
-        return new Response(JSON.stringify({ error: strings.apiUnauthorized }), {
+        return new Response(JSON.stringify({ error: t.apiUnauthorized }), {
             status: 401,
             headers: { 'Content-Type': 'application/json' },
         });
@@ -23,7 +24,7 @@ export const DELETE: APIRoute = async ({ cookies, request }) => {
         .maybeSingle();
 
     if (shopError || !shop) {
-        return new Response(JSON.stringify({ error: strings.apiForbidden }), {
+        return new Response(JSON.stringify({ error: t.apiForbidden }), {
             status: 403,
             headers: { 'Content-Type': 'application/json' },
         });

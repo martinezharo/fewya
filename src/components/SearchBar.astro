@@ -1,6 +1,6 @@
 ---
 import Icon from "./icons/Icon.astro";
-import { strings } from "../lib/core/i18n";
+const { t } = Astro.locals;
 
 interface Props {
     value?: string;
@@ -29,21 +29,21 @@ const { value = '', autofocus = false } = Astro.props;
             name="q"
             value={value}
             autofocus={autofocus}
-            placeholder={strings.searchPlaceholder}
+            placeholder={t.searchPlaceholder}
             class="search-input flex-1 border-none bg-transparent text-[15px] font-sans text-text-primary outline-none placeholder:text-text-secondary w-full"
-            aria-label={strings.searchPlaceholder}
+            aria-label={t.searchPlaceholder}
             autocomplete="off"
         />
-        <button type="button" class="search-clear hidden shrink-0 text-text-tertiary hover:text-text-primary p-0.5 cursor-pointer" aria-label={strings.searchClear}>
+        <button type="button" class="search-clear hidden shrink-0 text-text-tertiary hover:text-text-primary p-0.5 cursor-pointer" aria-label={t.searchClear}>
             <Icon name="x" size={16} />
         </button>
     </form>
     
     <div class="search-dropdown absolute top-[calc(100%+8px)] left-0 right-0 bg-surface rounded-xl shadow-[0_4px_24px_rgba(0,0,0,0.1)] border border-border-light hidden flex-col overflow-hidden z-[60] max-h-[300px] overflow-y-auto">
         <div class="flex items-center justify-between px-4 py-3 border-b border-border-light">
-            <span class="text-[13px] font-semibold text-text-primary">{strings.searchRecent}</span>
+            <span class="text-[13px] font-semibold text-text-primary">{t.searchRecent}</span>
             <button type="button" class="search-clear-all text-[12px] font-medium text-text-secondary hover:text-text-primary cursor-pointer border-none bg-transparent">
-                {strings.searchClearRecent}
+                {t.searchClearRecent}
             </button>
         </div>
         <ul class="search-recent-list m-0 p-0 list-none">

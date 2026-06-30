@@ -1,4 +1,4 @@
-import { strings } from '../core/i18n';
+import { getClientT } from '../core/i18n';
 import { getCarrierSubsidy } from '../cart/checkout';
 
 export interface RemoteEstimate {
@@ -49,6 +49,7 @@ export function setShippingState(
     state: 'empty' | 'loading' | 'error' | 'ready',
     payload?: { estimates?: RemoteEstimate[]; billable?: number; errorMsg?: string },
 ) {
+    const t = getClientT();
     const quotesEl = scope.querySelector('.shipping-quotes') as HTMLElement;
     const loadingEl = scope.querySelector('.shipping-loading') as HTMLElement;
     const errorEl = scope.querySelector('.shipping-error') as HTMLElement;
@@ -65,7 +66,7 @@ export function setShippingState(
     cta?.classList.remove('inline-flex');
 
     if (state === 'empty') {
-        setShippingSummary(scope, strings.sellerProductShippingLiveAwaiting);
+        setShippingSummary(scope, t.sellerProductShippingLiveAwaiting);
         quotesEl.classList.add('hidden');
         quotesEl.innerHTML = '';
         ctaShow?.classList.remove('hidden');
@@ -73,14 +74,14 @@ export function setShippingState(
         return;
     }
     if (state === 'loading') {
-        setShippingSummary(scope, strings.sellerProductShippingLiveLoading);
+        setShippingSummary(scope, t.sellerProductShippingLiveLoading);
         loadingEl.classList.remove('hidden');
         loadingEl.classList.add('flex');
         return;
     }
     if (state === 'error') {
-        setShippingSummary(scope, strings.sellerProductShippingLiveError);
-        errorEl.textContent = payload?.errorMsg || strings.sellerProductShippingLiveError;
+        setShippingSummary(scope, t.sellerProductShippingLiveError);
+        errorEl.textContent = payload?.errorMsg || t.sellerProductShippingLiveError;
         errorEl.classList.remove('hidden');
         return;
     }
@@ -98,15 +99,16 @@ export function setShippingState(
         const cheapest = estimates.filter(e => e.price != null).reduce((a, b) => a.price! < b.price! ? a : b);
         const subsidizedMin = Math.max(0, cheapest.price! - getCarrierSubsidy(cheapest.key));
         const weightPart = billable > 0 ? ` · ${fmtWeight(billable)}` : '';
-        const summaryHtml = `${strings.sellerProductShippingDesde} <s class="text-text-tertiary">${fmtCurrency(cheapest.price!)}</s> <span class="font-semibold text-text-primary">${fmtCurrency(subsidizedMin)}</span> · <span class="text-text-tertiary">${strings.sellerProductShippingVatIncluded}</span>${weightPart}`;
+        const summaryHtml = `${t.sellerProductShippingDesde} <s class="text-text-tertiary">${fmtCurrency(cheapest.price!)}</s> <span class="font-semibold text-text-primary">${fmtCurrency(subsidizedMin)}</span> · <span class="text-text-tertiary">${t.sellerProductShippingVatIncluded}</span>${weightPart}`;
         setShippingSummary(scope, '', summaryHtml);
         cta?.classList.remove('hidden');
         cta?.classList.add('inline-flex');
     } else {
-        setShippingSummary(scope, strings.sellerProductShippingEstimateNone);
+        setShippingSummary(scope, t.sellerProductShippingEstimateNone);
     }
 
     quotesEl.innerHTML = estimates.map((e) => {
+        const t = getClientT();
         const available = e.price != null;
         const dotClass = available ? 'bg-green-500' : 'bg-amber-500';
         const valueHtml = available
@@ -115,9 +117,9 @@ export function setShippingState(
                        <s class="text-xs text-text-tertiary tabular-nums">${fmtCurrency(e.price!, e.currency)}</s>
                        <span class="text-sm font-semibold text-text-primary tabular-nums">${fmtCurrency(Math.max(0, e.price! - getCarrierSubsidy(e.key)), e.currency)}</span>
                    </div>
-                   <p class="text-[10px] text-text-tertiary">${strings.sellerProductShippingVatIncluded}</p>
+                   <p class="text-[10px] text-text-tertiary">${t.sellerProductShippingVatIncluded}</p>
                </div>`
-            : `<span class="text-[11px] font-medium text-amber-700 dark:text-amber-400">${strings.sellerProductShippingLiveUnavailable}</span>`;
+            : `<span class="text-[11px] font-medium text-amber-700 dark:text-amber-400">${t.sellerProductShippingLiveUnavailable}</span>`;
         return `
             <div class="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-surface border border-border">
                 <span class="inline-block w-1.5 h-1.5 rounded-full ${dotClass} shrink-0"></span>
@@ -150,7 +152,7 @@ export async function fetchShippingPreview(
 
         const data = await res.json() as { estimates?: RemoteEstimate[]; billableWeightKg?: number; error?: string };
         if (!res.ok) {
-            setShippingState(scope, 'error', { errorMsg: strings.sellerProductShippingLiveError });
+            setShippingState(scope, 'error', { errorMsg: getClientT().sellerProductShippingLiveError });
             return;
         }
         setShippingState(scope, 'ready', {

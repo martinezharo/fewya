@@ -1,6 +1,6 @@
 import { cart } from './cart';
 import { toast } from '../ui/toast';
-import { strings } from '../core/i18n';
+import { getClientT } from '../core/i18n';
 
 function mountCartDelegation() {
     const w = window as Window & { __fewyaCartDelegated?: boolean };
@@ -56,7 +56,7 @@ function mountCartDelegation() {
             window.dispatchEvent(new CustomEvent('cart-stock-error', {
                 detail: { variantId, title: existing ? null : title }
             }));
-            toast.error(strings.cartStockExceededToast);
+            toast.error(getClientT().cartStockExceededToast);
         } else {
             cart.add({
                 productId,
@@ -72,7 +72,7 @@ function mountCartDelegation() {
                 productSlug,
                 shippingCost,
             }, qty);
-            toast.success(strings.cartAddedToast, { id: 'cart-added' });
+            toast.success(getClientT().cartAddedToast, { id: 'cart-added' });
         }
 
         // Visual feedback: brief disabled + check icon

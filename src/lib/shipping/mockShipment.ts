@@ -1,5 +1,5 @@
 import { createSupabaseAdminClient } from '../core/supabase-admin';
-import { strings } from '../core/i18n';
+import type { Strings } from '../core/i18n';
 import { generateMockShippingLabel } from './shippingLabelPdf';
 import { parseSpanishAddress } from './sendcloud';
 import { uploadLabelPdf } from './labelStorage';
@@ -13,6 +13,7 @@ export interface MockShipmentParams {
     authClient: AuthClient;
     orderId: string;
     labelCost: number;
+    t: Strings;
 }
 
 export interface MockShipmentSuccess {
@@ -33,13 +34,13 @@ export interface MockShipmentFailure {
 export type MockShipmentResult = MockShipmentSuccess | MockShipmentFailure;
 
 export async function runMockShipment(params: MockShipmentParams): Promise<MockShipmentResult> {
-    const { userId, authClient, orderId, labelCost } = params;
+    const { userId, authClient, orderId, labelCost, t } = params;
 
     const { data: hasAccess } = await authClient.rpc('order_belongs_to_seller', {
         p_order_id: orderId,
     });
     if (!hasAccess) {
-        return { success: false, status: 403, error: strings.apiForbidden };
+        return { success: false, status: 403, error: t.apiForbidden };
     }
 
     const { data: order, error: orderError } = await authClient
@@ -78,14 +79,14 @@ export async function runMockShipment(params: MockShipmentParams): Promise<MockS
 
     if (orderError || !order) {
         console.error('mock-shipment: order lookup failed', orderError);
-        return { success: false, status: 404, error: strings.apiShopNotFound };
+        return { success: false, status: 404, error: t.apiShopNotFound };
     }
 
     const shop = Array.isArray(order.shops) ? order.shops[0] : order.shops;
     const owner = shop && (Array.isArray(shop.owner) ? shop.owner[0] : shop.owner);
     if (!shop || !owner) {
         console.error('mock-shipment: shop/owner lookup failed');
-        return { success: false, status: 404, error: strings.apiShopNotFound };
+        return { success: false, status: 404, error: t.apiShopNotFound };
     }
 
     const isPickup = order.delivery_type === DELIVERY_TYPE.PICKUP_POINT;
@@ -175,7 +176,7 @@ export async function runMockShipment(params: MockShipmentParams): Promise<MockS
         });
     } catch (pdfErr) {
         console.error('mock-shipment: PDF generation failed', pdfErr);
-        return { success: false, status: 500, error: strings.sellerOrderLabelError };
+        return { success: false, status: 500, error: t.sellerOrderLabelError };
     }
 
     let labelUrl: string;
@@ -183,7 +184,7 @@ export async function runMockShipment(params: MockShipmentParams): Promise<MockS
         labelUrl = await uploadLabelPdf(order.public_id, pdfBytes);
     } catch (storageErr) {
         console.error('mock-shipment: storage error', storageErr);
-        return { success: false, status: 500, error: strings.sellerOrderLabelError };
+        return { success: false, status: 500, error: t.sellerOrderLabelError };
     }
 
     const adminClient = createSupabaseAdminClient();
@@ -204,7 +205,7 @@ export async function runMockShipment(params: MockShipmentParams): Promise<MockS
 
     if (shipmentError) {
         console.error('mock shipment creation failed', shipmentError);
-        return { success: false, status: 500, error: strings.sellerOrderLabelError };
+        return { success: false, status: 500, error: t.sellerOrderLabelError };
     }
 
     await adminClient.rpc('mark_order_processing', { p_actor_id: userId, p_order_id: orderId });

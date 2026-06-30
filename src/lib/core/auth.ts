@@ -2,7 +2,6 @@ import { createServerClient, parseCookieHeader } from '@supabase/ssr';
 import type { AstroCookies } from 'astro';
 import { SUPABASE_URL, SUPABASE_KEY } from 'astro:env/server';
 import type { User } from '@supabase/supabase-js';
-import { strings } from './i18n';
 
 const AUTH_REDIRECT_BASE = 'fewya-auth-redirect';
 const AUTH_ROLE_BASE = 'fewya-auth-role';
@@ -21,7 +20,7 @@ function authCookieName(base: string, url: URL): string {
  */
 export function createSupabaseAuthClient(cookies: AstroCookies, request: Request) {
     if (!SUPABASE_URL || !SUPABASE_KEY) {
-        throw new Error(strings.authMissingSupabaseEnv);
+        throw new Error('SUPABASE_URL or SUPABASE_KEY environment variables are not configured');
     }
     return createServerClient(SUPABASE_URL, SUPABASE_KEY, {
         cookies: {

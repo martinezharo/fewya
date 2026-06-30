@@ -1,9 +1,10 @@
 ---
 import Icon from '../icons/Icon.astro';
-import { strings } from '../../lib/core/i18n';
+const { t } = Astro.locals;
+
 ---
 
-<div class="grid grid-cols-3 gap-2" role="radiogroup" aria-label={strings.settingsThemeLabel}>
+<div class="grid grid-cols-3 gap-2" role="radiogroup" aria-label={t.settingsThemeLabel}>
     <button
         type="button"
         data-theme-btn="system"
@@ -14,7 +15,7 @@ import { strings } from '../../lib/core/i18n';
             <Icon name="monitor" size={20} class="text-text-secondary" />
         </div>
         <span class="text-[13px] font-medium text-text-primary">
-            {strings.settingsThemeSystem}
+            {t.settingsThemeSystem}
         </span>
     </button>
 
@@ -28,7 +29,7 @@ import { strings } from '../../lib/core/i18n';
             <Icon name="sun" size={20} class="text-text-secondary" />
         </div>
         <span class="text-[13px] font-medium text-text-primary">
-            {strings.settingsThemeLight}
+            {t.settingsThemeLight}
         </span>
     </button>
 
@@ -42,7 +43,7 @@ import { strings } from '../../lib/core/i18n';
             <Icon name="moon" size={20} class="text-text-secondary" />
         </div>
         <span class="text-[13px] font-medium text-text-primary">
-            {strings.settingsThemeDark}
+            {t.settingsThemeDark}
         </span>
     </button>
 </div>

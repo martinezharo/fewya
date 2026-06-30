@@ -1,6 +1,6 @@
 ---
 import Icon from '../icons/Icon.astro';
-import { strings } from '../../lib/core/i18n';
+const { t } = Astro.locals;
 
 interface Props {
     orderId: string;
@@ -20,10 +20,10 @@ const {
     shippingAmount,
     endpoint,
     allowPartial = true,
-    title = strings.sellerIncidentRefundConfirmTitle,
-    body = strings.sellerIncidentRefundConfirmBody,
-    successMsg = strings.sellerIncidentRefundSuccess,
-    errorMsg = strings.sellerIncidentRefundError,
+    title = t.sellerIncidentRefundConfirmTitle,
+    body = t.sellerIncidentRefundConfirmBody,
+    successMsg = t.sellerIncidentRefundSuccess,
+    errorMsg = t.sellerIncidentRefundError,
 } = Astro.props;
 
 const refundAmount = Math.max(0, Math.round((totalAmount - shippingAmount) * 100) / 100);
@@ -60,10 +60,10 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', {
                 <input type="radio" name={`refund-type-${orderId}`} value="full" class="refund-type-input mt-1 accent-accent" />
                 <div class="flex-1 min-w-0">
                     <div class="flex items-center justify-between gap-2">
-                        <span class="text-sm font-semibold text-text-primary">{strings.refundTypeFullTitle}</span>
+                        <span class="text-sm font-semibold text-text-primary">{t.refundTypeFullTitle}</span>
                         <span class="text-sm font-bold text-text-primary tabular-nums">{currencyFormatter.format(totalAmount)}</span>
                     </div>
-                    <p class="mt-0.5 text-xs text-text-secondary leading-snug">{strings.refundTypeFullDesc}</p>
+                    <p class="mt-0.5 text-xs text-text-secondary leading-snug">{t.refundTypeFullDesc}</p>
                 </div>
             </label>
 
@@ -71,10 +71,10 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', {
                 <input type="radio" name={`refund-type-${orderId}`} value="product" class="refund-type-input mt-1 accent-accent" checked />
                 <div class="flex-1 min-w-0">
                     <div class="flex items-center justify-between gap-2">
-                        <span class="text-sm font-semibold text-text-primary">{strings.refundTypeProductTitle}</span>
+                        <span class="text-sm font-semibold text-text-primary">{t.refundTypeProductTitle}</span>
                         <span class="text-sm font-bold text-text-primary tabular-nums">{currencyFormatter.format(refundAmount)}</span>
                     </div>
-                    <p class="mt-0.5 text-xs text-text-secondary leading-snug">{strings.refundTypeProductDesc}</p>
+                    <p class="mt-0.5 text-xs text-text-secondary leading-snug">{t.refundTypeProductDesc}</p>
                 </div>
             </label>
 
@@ -82,11 +82,11 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', {
                 <label class="refund-option group relative flex items-start gap-3 rounded-2xl border border-border-light bg-bg/40 p-3 cursor-pointer transition-all hover:border-border has-[input:checked]:border-accent has-[input:checked]:bg-accent/5">
                     <input type="radio" name={`refund-type-${orderId}`} value="partial" class="refund-type-input mt-1 accent-accent" />
                     <div class="flex-1 min-w-0">
-                        <span class="text-sm font-semibold text-text-primary">{strings.refundTypePartialTitle}</span>
-                        <p class="mt-0.5 text-xs text-text-secondary leading-snug">{strings.refundTypePartialDesc}</p>
+                        <span class="text-sm font-semibold text-text-primary">{t.refundTypePartialTitle}</span>
+                        <p class="mt-0.5 text-xs text-text-secondary leading-snug">{t.refundTypePartialDesc}</p>
                         <div class="partial-input-wrap hidden mt-3">
                             <label class="block text-[11px] font-semibold uppercase tracking-wider text-text-secondary mb-1.5">
-                                {strings.refundPartialInputLabel}
+                                {t.refundPartialInputLabel}
                             </label>
                             <div class="relative">
                                 <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-text-tertiary">€</span>
@@ -100,9 +100,9 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', {
                                 />
                             </div>
                             <p class="mt-1.5 text-[11px] text-text-tertiary tabular-nums">
-                                {strings.refundPartialMaxHint.replace('{amount}', currencyFormatter.format(totalAmount))}
+                                {t.refundPartialMaxHint.replace('{amount}', currencyFormatter.format(totalAmount))}
                             </p>
-                            <p class="partial-error hidden mt-1.5 text-[11px] text-red-600">{strings.sellerIncidentRefundInvalidPartial}</p>
+                            <p class="partial-error hidden mt-1.5 text-[11px] text-red-600">{t.sellerIncidentRefundInvalidPartial}</p>
                         </div>
                     </div>
                 </label>
@@ -110,7 +110,7 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', {
         </div>
 
         <div class="mt-5 flex items-center justify-between rounded-xl border border-border-light bg-bg/60 px-4 py-3">
-            <span class="text-sm font-semibold text-text-primary">{strings.refundSummaryLabel}</span>
+            <span class="text-sm font-semibold text-text-primary">{t.refundSummaryLabel}</span>
             <span class="refund-summary-amount text-base font-bold text-red-600 dark:text-red-400 tabular-nums">
                 {currencyFormatter.format(refundAmount)}
             </span>
@@ -118,22 +118,23 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', {
 
         <div class="mt-5 flex gap-2 justify-end">
             <button type="button" class="close-refund-modal-btn px-3 py-1.5 text-sm font-medium text-text-secondary hover:text-text-primary transition-colors">
-                {strings.sellerIncidentRefundDismiss}
+                {t.sellerIncidentRefundDismiss}
             </button>
             <button
                 type="button"
                 class="confirm-refund-btn px-3 py-1.5 text-sm font-semibold rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 data-order-id={orderId}
             >
-                {strings.sellerIncidentRefundConfirmCta}
+                {t.sellerIncidentRefundConfirmCta}
             </button>
         </div>
     </div>
 </div>
 
 <script>
-    import { strings } from '../../lib/core/i18n';
+    import { getClientT } from '../../lib/core/i18n';
     import { runSubmit, SubmitError } from '../../lib/ui/submit';
+const t = getClientT();
 
     const currencyFormatter = new Intl.NumberFormat('es-ES', {
         style: 'currency',
@@ -219,8 +220,8 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', {
             const orderId = confirmBtn.dataset.orderId;
             if (!orderId) return;
             const endpoint = modal.dataset.endpoint || '/api/orders/refund-incident';
-            const successMsg = modal.dataset.successMsg || strings.sellerIncidentRefundSuccess;
-            const errorMsg = modal.dataset.errorMsg || strings.sellerIncidentRefundError;
+            const successMsg = modal.dataset.successMsg || t.sellerIncidentRefundSuccess;
+            const errorMsg = modal.dataset.errorMsg || t.sellerIncidentRefundError;
 
             const state = getModalState(modal);
             if (state.selected === 'partial') {

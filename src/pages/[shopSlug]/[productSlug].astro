@@ -11,10 +11,11 @@ import ShopContact from '../../components/product/ShopContact.astro';
 import { supabase } from '../../lib/core/supabase';
 import { createSupabaseAuthClient } from '../../lib/core/auth';
 import { isProductComplete } from '../../lib/products/productValidation';
-import { strings } from '../../lib/core/i18n';
+
 import { getMergedWishlistIds } from '../../lib/wishlist/wishlist';
 import type { Product, Review, Shop } from '../../lib/core/types';
 import { SHOP_STATUS } from '../../lib/core/shopStatus';
+const { t } = Astro.locals;
 
 const { shopSlug, productSlug } = Astro.params;
 
@@ -72,7 +73,7 @@ const sortedVariants = [...(product.variants ?? [])].sort((a, b) =>
 const activeVariant = sortedVariants[0];
 const price = activeVariant?.price ?? 0;
 const shippingCost = activeVariant?.shipping_cost ?? 0;
-const shippingDisplay = shippingCost === 0 ? strings.freeShipping : `+${shippingCost.toFixed(2).replace('.', ',')}€ envío`;
+const shippingDisplay = shippingCost === 0 ? t.freeShipping : `+${shippingCost.toFixed(2).replace('.', ',')}€ envío`;
 const hasVariants = sortedVariants.length > 1;
 const activeVariantStock = activeVariant?.stock ?? 0;
 
@@ -133,7 +134,7 @@ const productJsonLd = {
         <div class="flex items-center justify-between order-1 md:order-2">
           <div class="flex items-baseline gap-2">
             <span class="text-xl md:text-2xl font-bold text-text-primary" data-product-price>
-              {price.toFixed(2)}{strings.currency}
+              {price.toFixed(2)}{t.currency}
             </span>
             <span class="text-xs md:text-sm text-text-secondary" data-product-shipping>{shippingDisplay}</span>
           </div>
@@ -154,17 +155,17 @@ const productJsonLd = {
         <div class="order-4 flex flex-col gap-3">
           <div class="flex items-center justify-between">
             {hasVariants && (
-              <h3 class="text-sm font-semibold text-text-primary">{strings.productVariantsTitle}</h3>
+              <h3 class="text-sm font-semibold text-text-primary">{t.productVariantsTitle}</h3>
             )}
             <span class={`text-[13px] font-medium ${(activeVariant?.stock ?? 0) > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'} ${!hasVariants ? 'ml-auto' : ''}`} data-variant-stock-global>
-              {(activeVariant?.stock ?? 0) > 0 ? strings.productInStock : strings.productOutOfStock}
+              {(activeVariant?.stock ?? 0) > 0 ? t.productInStock : t.productOutOfStock}
             </span>
           </div>
           <div data-stock-warning-wrapper>
             {activeVariantStock > 0 && activeVariantStock <= 5 && (
               <p class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-200 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-800 font-semibold text-xs self-start" data-stock-warning>
                 <Icon name="alert-triangle" size={14} />
-                <span data-stock-warning-text>{strings.productStockWarning.replace(/\{stock\}/, String(activeVariantStock))}</span>
+                <span data-stock-warning-text>{t.productStockWarning.replace(/\{stock\}/, String(activeVariantStock))}</span>
               </p>
             )}
           </div>
@@ -181,7 +182,7 @@ const productJsonLd = {
               type="button"
               class="w-10 h-11 flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors"
               data-qty-minus
-              aria-label={strings.productQtyDecrease}
+              aria-label={t.productQtyDecrease}
             >
               <Icon name="minus" size={18} />
             </button>
@@ -190,7 +191,7 @@ const productJsonLd = {
               type="button"
               class="w-10 h-11 flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors"
               data-qty-plus
-              aria-label={strings.productQtyIncrease}
+              aria-label={t.productQtyIncrease}
             >
               <Icon name="plus" size={18} />
             </button>
@@ -212,7 +213,7 @@ const productJsonLd = {
             data-cart-shop-slug={shop.slug}
             data-cart-product-slug={product.slug}
           >
-            {strings.productAddToCart}
+            {t.productAddToCart}
           </button>
         </div>
 
@@ -233,7 +234,7 @@ const productJsonLd = {
       {product.description && (
         <div>
           <h3 class="text-base md:text-lg font-semibold text-text-primary mb-2 md:mb-3">
-            {strings.productDescription}
+            {t.productDescription}
           </h3>
           <p class="text-sm md:text-[15px] text-text-secondary leading-relaxed whitespace-pre-line md:max-w-[720px]">
             {product.description}

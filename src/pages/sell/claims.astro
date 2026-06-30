@@ -2,9 +2,10 @@
 import SellerLayout from '../../layouts/SellerLayout.astro';
 import Icon from '../../components/icons/Icon.astro';
 import RefundOrderModal from '../../components/orders/RefundOrderModal.astro';
-import { strings } from '../../lib/core/i18n';
+
 import { createSupabaseAuthClient } from '../../lib/core/auth';
 import { ORDER_STATUS } from '../../lib/orders/orderStatus';
+const { t } = Astro.locals;
 
 const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
 const {
@@ -87,7 +88,7 @@ interface ClaimOrder {
 const claims: ClaimOrder[] = (ordersData ?? []).map((order: any) => {
     const rawItems = order.order_items ?? [];
     let itemCount = 0;
-    let firstProductTitle = strings.fallbackProductName;
+    let firstProductTitle = t.fallbackProductName;
     let firstProductImage = '';
     let shippingAmount = 0;
 
@@ -108,7 +109,7 @@ const claims: ClaimOrder[] = (ordersData ?? []).map((order: any) => {
 
         itemCount += qty;
         if (!firstProductImage) {
-            firstProductTitle = product.title ?? strings.fallbackProductName;
+            firstProductTitle = product.title ?? t.fallbackProductName;
             firstProductImage = variant.variant_image || product.gallery_images?.[0] || '';
         }
     }
@@ -148,12 +149,12 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', {
 });
 ---
 
-<SellerLayout title={strings.incidentPanelTitle} shopSlug={shop.slug} shopId={shop.id}>
+<SellerLayout title={t.incidentPanelTitle} shopSlug={shop.slug} shopId={shop.id}>
     <div class="p-6 lg:p-10">
         <div>
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-text-tertiary">{shop.name}</p>
             <h1 class="mt-2 text-2xl font-semibold tracking-tight text-text-primary">
-                {strings.incidentPanelTitle}
+                {t.incidentPanelTitle}
             </h1>
             <p class="mt-2 text-sm text-text-secondary">
                 Revisa las incidencias reportadas por tus compradores.
@@ -177,17 +178,17 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', {
                             <div class="min-w-0 flex-1">
                                 <div class="flex items-center gap-2 flex-wrap">
                                     <span class="shrink-0 inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400">
-                                        {strings.orderStatusIncident}
+                                        {t.orderStatusIncident}
                                     </span>
                                     <span class="text-[11px] font-bold uppercase tracking-[0.12em] text-text-secondary">
                                         #{claim.publicId}
                                     </span>
                                 </div>
                                 <p class="mt-1 text-sm font-semibold text-text-primary truncate">
-                                    {claim.itemCount > 1 ? `${claim.itemCount} ${strings.ordersItemsPlural}` : claim.firstProductTitle}
+                                    {claim.itemCount > 1 ? `${claim.itemCount} ${t.ordersItemsPlural}` : claim.firstProductTitle}
                                 </p>
                                 <p class="text-xs text-text-secondary mt-0.5">
-                                    {claim.buyerName || claim.buyerEmail || strings.profileAnonymous}
+                                    {claim.buyerName || claim.buyerEmail || t.profileAnonymous}
                                     {' · '}
                                     {dateFormatter.format(claim.incidentCreatedAt)}
                                 </p>
@@ -196,7 +197,7 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', {
 
                         <div class="p-4 rounded-2xl bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800">
                             <p class="text-[11px] font-semibold uppercase tracking-wider text-red-700 dark:text-red-400 mb-2">
-                                {strings.incidentPanelDescriptionLabel}
+                                {t.incidentPanelDescriptionLabel}
                             </p>
                             <p class="text-sm text-red-800 dark:text-red-300 leading-relaxed whitespace-pre-line">
                                 {claim.incidentDescription}
@@ -206,7 +207,7 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', {
                         {claim.incidentPhotos.length > 0 && (
                             <div>
                                 <p class="text-xs font-semibold uppercase tracking-wider text-text-secondary mb-2">
-                                    {strings.incidentPanelPhotosLabel}
+                                    {t.incidentPanelPhotosLabel}
                                 </p>
                                 <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
                                     {claim.incidentPhotos.map((photo) => (
@@ -226,7 +227,7 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', {
                         <div class="flex flex-wrap items-center justify-end gap-3 pt-2 border-t border-border-light">
                             <div class="text-xs text-text-secondary tabular-nums mr-auto">
                                 <span class="font-semibold text-text-primary">{currencyFormatter.format(claim.refundAmount)}</span>
-                                <span class="text-text-tertiary"> · {strings.cartShipping}: {claim.shippingAmount > 0 ? currencyFormatter.format(claim.shippingAmount) : strings.ordersFreeShipping}</span>
+                                <span class="text-text-tertiary"> · {t.cartShipping}: {claim.shippingAmount > 0 ? currencyFormatter.format(claim.shippingAmount) : t.ordersFreeShipping}</span>
                             </div>
                             <button
                                 type="button"
@@ -234,7 +235,7 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', {
                                 data-order-id={claim.orderId}
                             >
                                 <Icon name="credit-card" size={13} />
-                                {strings.sellerIncidentRefundBtn}
+                                {t.sellerIncidentRefundBtn}
                             </button>
                         </div>
 
@@ -253,10 +254,10 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', {
                     <Icon name="check" size={26} />
                 </div>
                 <h2 class="mt-5 text-xl font-semibold tracking-tight text-text-primary">
-                    {strings.incidentPanelEmpty}
+                    {t.incidentPanelEmpty}
                 </h2>
                 <p class="mt-2 max-w-md text-sm text-text-secondary">
-                    {strings.incidentPanelEmptySub}
+                    {t.incidentPanelEmptySub}
                 </p>
             </section>
         )}

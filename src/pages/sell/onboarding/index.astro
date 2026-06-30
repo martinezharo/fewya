@@ -2,9 +2,10 @@
 import Layout from '../../../layouts/Layout.astro';
 import { createSupabaseAuthClient } from '../../../lib/core/auth';
 import ShopForm from '../../../components/seller/ShopForm.astro';
-import { strings } from '../../../lib/core/i18n';
+
 import { getStripeClient, getStripeAccountStatus } from '../../../lib/payments/stripe';
 import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
+const { t } = Astro.locals;
 
 const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
 const { data: sessionData } = await supabase.auth.getSession();
@@ -115,7 +116,7 @@ if (Astro.request.method === 'POST') {
     const { data: slugCheck } = await supabase.from('shops').select('id').eq('slug', slug).maybeSingle();
     
     if (slugCheck) {
-        return new Response(JSON.stringify({ error: strings.sellerOnboardingUrlInUse }), { status: 400 });
+        return new Response(JSON.stringify({ error: t.sellerOnboardingUrlInUse }), { status: 400 });
     }
 
     const { error } = await supabase.from('shops').insert({
@@ -140,9 +141,9 @@ if (Astro.request.method === 'POST') {
 }
 ---
 
-<Layout title={`${strings.sellerOnboardingTitle} - Fewya`}>
+<Layout title={`${t.sellerOnboardingTitle} - Fewya`}>
     <div class="max-w-2xl mx-auto px-4 py-8 md:py-16 min-h-[calc(100vh-80px)] flex flex-col justify-center">
-        <h1 class="text-3xl font-semibold tracking-tight text-text-primary mb-8">{strings.sellerOnboardingTitle}</h1>
+        <h1 class="text-3xl font-semibold tracking-tight text-text-primary mb-8">{t.sellerOnboardingTitle}</h1>
         
         <form id="onboarding-form" method="POST" class={`bg-surface p-6 md:p-8 rounded-3xl border border-border shadow-sm relative overflow-hidden ${showStripeStep ? 'hidden' : ''}`}>
             <!-- Progress Bar -->
@@ -162,8 +163,8 @@ if (Astro.request.method === 'POST') {
                 <div class="h-full bg-accent w-full transition-all duration-300"></div>
             </div>
 
-            <h2 class="font-medium text-text-primary text-xl mb-1">{strings.sellerOnboardingStep4Title}</h2>
-            <p class="text-sm text-text-tertiary mb-6 font-normal">{strings.sellerOnboardingStep4Subtitle}</p>
+            <h2 class="font-medium text-text-primary text-xl mb-1">{t.sellerOnboardingStep4Title}</h2>
+            <p class="text-sm text-text-tertiary mb-6 font-normal">{t.sellerOnboardingStep4Subtitle}</p>
 
             <div class="space-y-6">
                 <div class="flex items-start gap-4 p-4 rounded-2xl bg-bg border border-border">
@@ -173,7 +174,7 @@ if (Astro.request.method === 'POST') {
                         </svg>
                     </div>
                     <div class="flex-1">
-                        <p class="text-sm text-text-secondary">{strings.sellerOnboardingStep4Description}</p>
+                        <p class="text-sm text-text-secondary">{t.sellerOnboardingStep4Description}</p>
                     </div>
                 </div>
 
@@ -181,21 +182,21 @@ if (Astro.request.method === 'POST') {
                 <div id="stripe-status" class={`flex items-center gap-3 p-4 rounded-2xl border ${stripeReady ? 'bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-900/30' : 'bg-bg border-border'}`}>
                     <div class={`w-2.5 h-2.5 rounded-full ${stripeReady ? 'bg-green-500' : 'bg-amber-500'}`}></div>
                     <span class={`text-sm font-medium ${stripeReady ? 'text-green-700 dark:text-green-400' : 'text-text-secondary'}`}>
-                        {stripeReady ? strings.sellerOnboardingStripeStatusReady : strings.sellerOnboardingStripeStatusPending}
+                        {stripeReady ? t.sellerOnboardingStripeStatusReady : t.sellerOnboardingStripeStatusPending}
                     </span>
                 </div>
 
                 <!-- Action buttons -->
                 <div class="flex flex-col sm:flex-row gap-3">
                     <button type="button" id="stripe-connect-btn" class="flex-1 px-6 py-2.5 bg-[#625afa] text-white font-medium rounded-full shadow-sm hover:opacity-90 transition-opacity flex items-center justify-center gap-2">
-                        <span id="stripe-connect-text">{stripeReady ? strings.sellerOnboardingStripeConnectCta : strings.sellerOnboardingStripeConnectCta}</span>
+                        <span id="stripe-connect-text">{stripeReady ? t.sellerOnboardingStripeConnectCta : t.sellerOnboardingStripeConnectCta}</span>
                         <svg id="stripe-connect-spinner" class="animate-spin h-4 w-4 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
                     </button>
                     <button type="button" id="skip-stripe-btn" class="px-6 py-2.5 bg-bg text-text-secondary border border-border font-medium rounded-full hover:bg-border-light transition">
-                        {strings.sellerOnboardingSkipStripe}
+                        {t.sellerOnboardingSkipStripe}
                     </button>
                 </div>
 
@@ -204,17 +205,17 @@ if (Astro.request.method === 'POST') {
                 <!-- Stripe return notification -->
                 {stripeReturnParam === 'return' && stripeReady && (
                     <div class="p-4 rounded-2xl bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-900/30">
-                        <p class="text-sm text-green-700 dark:text-green-400 font-medium">{strings.sellerStripeReturnReady}</p>
+                        <p class="text-sm text-green-700 dark:text-green-400 font-medium">{t.sellerStripeReturnReady}</p>
                     </div>
                 )}
                 {stripeReturnParam === 'return' && !stripeReady && (
                     <div class="p-4 rounded-2xl bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-900/30">
-                        <p class="text-sm text-amber-700 dark:text-amber-400 font-medium">{strings.sellerStripeReturnPending}</p>
+                        <p class="text-sm text-amber-700 dark:text-amber-400 font-medium">{t.sellerStripeReturnPending}</p>
                     </div>
                 )}
                 {stripeReturnParam === 'refresh' && (
                     <div class="p-4 rounded-2xl bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-900/30">
-                        <p class="text-sm text-amber-700 dark:text-amber-400 font-medium">{strings.sellerStripeReturnPending}</p>
+                        <p class="text-sm text-amber-700 dark:text-amber-400 font-medium">{t.sellerStripeReturnPending}</p>
                     </div>
                 )}
 
@@ -225,7 +226,8 @@ if (Astro.request.method === 'POST') {
 </Layout>
 
 <script>
-    import { strings } from '../../../lib/core/i18n';
+    import { getClientT } from '../../../lib/core/i18n';
+const t = getClientT();
 
     const initOnboarding = () => {
         type OnboardingResponse = {
@@ -337,13 +339,13 @@ if (Astro.request.method === 'POST') {
                     const data = await response.json() as OnboardingResponse;
 
                     if (!response.ok) {
-                        throw new Error(data.error || strings.sellerOnboardingGenericError);
+                        throw new Error(data.error || t.sellerOnboardingGenericError);
                     }
 
                     showStep4();
                 } catch (error: unknown) {
                     if (errorMessage instanceof HTMLElement) {
-                        errorMessage.textContent = error instanceof Error ? error.message : strings.sellerOnboardingGenericError;
+                        errorMessage.textContent = error instanceof Error ? error.message : t.sellerOnboardingGenericError;
                         errorMessage.classList.remove('hidden');
                     }
 
@@ -376,7 +378,7 @@ if (Astro.request.method === 'POST') {
             stripeConnectBtn.addEventListener('click', async () => {
                 stripeConnectBtn.setAttribute('disabled', 'true');
                 if (stripeConnectText) {
-                    stripeConnectText.textContent = strings.sellerOnboardingStripeConnecting;
+                    stripeConnectText.textContent = t.sellerOnboardingStripeConnecting;
                 }
                 stripeConnectSpinner?.classList.remove('hidden');
                 stripeError?.classList.add('hidden');
@@ -390,18 +392,18 @@ if (Astro.request.method === 'POST') {
                     const data = await res.json() as StripeConnectResponse;
 
                     if (!res.ok || !data.url) {
-                        throw new Error(data.error || strings.sellerOnboardingStripeError);
+                        throw new Error(data.error || t.sellerOnboardingStripeError);
                     }
 
                     window.location.href = data.url;
                 } catch (error: unknown) {
                     if (stripeError instanceof HTMLElement) {
-                        stripeError.textContent = error instanceof Error ? error.message : strings.sellerOnboardingStripeError;
+                        stripeError.textContent = error instanceof Error ? error.message : t.sellerOnboardingStripeError;
                         stripeError.classList.remove('hidden');
                     }
                     stripeConnectBtn.removeAttribute('disabled');
                     if (stripeConnectText) {
-                        stripeConnectText.textContent = strings.sellerOnboardingStripeConnectCta;
+                        stripeConnectText.textContent = t.sellerOnboardingStripeConnectCta;
                     }
                     stripeConnectSpinner?.classList.add('hidden');
                 }

@@ -1,6 +1,6 @@
 ---
 import Icon from '../icons/Icon.astro';
-    import { strings } from '../../lib/core/i18n';
+const { t } = Astro.locals;
 
 interface Props {
     mode: 'onboarding' | 'edit';
@@ -31,25 +31,25 @@ const profileImg = shopData.profile_img || '';
             "font-medium text-text-primary",
             isEdit ? "text-lg mb-4 border-b border-border pb-2" : "text-xl mb-6"
         ]}>
-            {!isEdit ? strings.sellerOnboardingStep1Title : strings.sellerShopEditTitle}
+            {!isEdit ? t.sellerOnboardingStep1Title : t.sellerShopEditTitle}
         </h2>
         <div class="space-y-6 max-w-2xl">
             <div>
-                <label class="block text-sm font-medium text-text-secondary mb-2">{strings.sellerOnboardingShopNameLabel} <span class="text-red-500">*</span></label>
-                <input type="text" name="name" id="shop-name" required value={shopData.name || ''} class="w-full px-4 py-3 rounded-xl border border-border bg-transparent text-text-primary focus:ring-2 focus:ring-accent outline-none transition" placeholder={strings.sellerOnboardingShopNamePlaceholder} />
+                <label class="block text-sm font-medium text-text-secondary mb-2">{t.sellerOnboardingShopNameLabel} <span class="text-red-500">*</span></label>
+                <input type="text" name="name" id="shop-name" required value={shopData.name || ''} class="w-full px-4 py-3 rounded-xl border border-border bg-transparent text-text-primary focus:ring-2 focus:ring-accent outline-none transition" placeholder={t.sellerOnboardingShopNamePlaceholder} />
             </div>
             <div>
-                <label class="block text-sm font-medium text-text-secondary mb-2">{strings.sellerOnboardingShopSlugLabel} <span class="text-red-500">*</span></label>
+                <label class="block text-sm font-medium text-text-secondary mb-2">{t.sellerOnboardingShopSlugLabel} <span class="text-red-500">*</span></label>
                 <div class="flex items-stretch rounded-xl border border-border focus-within:ring-2 focus-within:ring-accent transition overflow-hidden">
                     <span class="flex items-center pl-4 pr-2 text-text-tertiary bg-bg whitespace-nowrap select-none text-sm">fewya.com/</span>
-                    <input type="text" name="slug" id="shop-slug" required value={shopData.slug || ''} class="w-full px-2 py-3 bg-transparent text-text-primary outline-none" placeholder={strings.sellerOnboardingShopSlugPlaceholder} />
+                    <input type="text" name="slug" id="shop-slug" required value={shopData.slug || ''} class="w-full px-2 py-3 bg-transparent text-text-primary outline-none" placeholder={t.sellerOnboardingShopSlugPlaceholder} />
                 </div>
-                <p class="text-xs text-text-tertiary mt-2">{strings.sellerOnboardingShopSlugNote}</p>
+                <p class="text-xs text-text-tertiary mt-2">{t.sellerOnboardingShopSlugNote}</p>
             </div>
         </div>
         {!isEdit && (
             <div class="mt-8 flex justify-end">
-                <button type="button" class="next-btn px-6 py-2.5 bg-accent text-bg font-medium rounded-full shadow-sm hover:scale-105 transition-transform" data-next="2">{strings.sellerOnboardingNext}</button>
+                <button type="button" class="next-btn px-6 py-2.5 bg-accent text-bg font-medium rounded-full shadow-sm hover:scale-105 transition-transform" data-next="2">{t.sellerOnboardingNext}</button>
             </div>
         )}
     </div>
@@ -60,13 +60,13 @@ const profileImg = shopData.profile_img || '';
             "font-medium text-text-primary",
             isEdit ? "text-lg mb-4 border-b border-border pb-2" : "text-xl mb-1"
         ]}>
-            {!isEdit ? strings.sellerOnboardingStep2Title : strings.sellerOnboardingStep2Title.replace('2. ', '')}
+            {!isEdit ? t.sellerOnboardingStep2Title : t.sellerOnboardingStep2Title.replace('2. ', '')}
         </h2>
-        {!isEdit && <p class="text-sm text-text-tertiary mb-6 font-normal">{strings.sellerOnboardingStep2Subtitle}</p>}
+        {!isEdit && <p class="text-sm text-text-tertiary mb-6 font-normal">{t.sellerOnboardingStep2Subtitle}</p>}
         <div class="space-y-6 max-w-2xl">
             {!isEdit && (
                 <div>
-                    <label class="block text-sm font-medium text-text-secondary mb-2">{strings.sellerShopProfileImgLabel}</label>
+                    <label class="block text-sm font-medium text-text-secondary mb-2">{t.sellerShopProfileImgLabel}</label>
                     <div class="flex items-center gap-4">
                         <div class="relative w-20 h-20 shrink-0 rounded-full overflow-hidden border-2 border-border bg-bg cursor-pointer group" id="onboarding-profile-upload">
                             <div class="w-full h-full flex items-center justify-center" id="onboarding-profile-preview">
@@ -83,20 +83,20 @@ const profileImg = shopData.profile_img || '';
                         </div>
                         <div>
                             <button type="button" id="onboarding-profile-btn" class="px-3 py-1.5 rounded-lg text-xs font-medium text-text-secondary border border-border hover:bg-border-light transition-colors">
-                                {profileImg ? strings.sellerShopProfileImgChange : strings.sellerShopProfileImgUpload}
+                                {profileImg ? t.sellerShopProfileImgChange : t.sellerShopProfileImgUpload}
                             </button>
-                            <p class="text-xs text-text-tertiary mt-1">{strings.sellerShopProfileImgHint}</p>
+                            <p class="text-xs text-text-tertiary mt-1">{t.sellerShopProfileImgHint}</p>
                         </div>
                         <input type="hidden" name="profile_img" id="onboarding-profile-value" value={profileImg} />
                     </div>
                 </div>
             )}
             <div>
-                <label class="block text-sm font-medium text-text-secondary mb-2">{strings.sellerOnboardingDescriptionLabel}</label>
-                <textarea name="description" rows="3" class="w-full px-4 py-3 rounded-xl border border-border bg-transparent text-text-primary focus:ring-2 focus:ring-accent outline-none transition resize-none" placeholder={strings.sellerOnboardingDescriptionPlaceholder}>{shopData.description || ''}</textarea>
+                <label class="block text-sm font-medium text-text-secondary mb-2">{t.sellerOnboardingDescriptionLabel}</label>
+                <textarea name="description" rows="3" class="w-full px-4 py-3 rounded-xl border border-border bg-transparent text-text-primary focus:ring-2 focus:ring-accent outline-none transition resize-none" placeholder={t.sellerOnboardingDescriptionPlaceholder}>{shopData.description || ''}</textarea>
             </div>
             <div>
-                <label class="block text-sm font-medium text-text-secondary mb-2">{strings.sellerOnboardingAccentColorLabel}</label>
+                <label class="block text-sm font-medium text-text-secondary mb-2">{t.sellerOnboardingAccentColorLabel}</label>
                 <div class="flex items-center gap-4">
                     <div class="relative group">
                         <div id="color-preview" class="w-12 h-12 rounded-xl border-2 border-border shadow-sm transition-all duration-200 group-hover:scale-105 group-hover:shadow-md cursor-pointer" style={`background-color: ${shopData.accent_color || '#000000'}`}></div>
@@ -116,8 +116,8 @@ const profileImg = shopData.profile_img || '';
         </div>
         {!isEdit && (
             <div class="mt-8 flex justify-between">
-                <button type="button" class="prev-btn px-6 py-2.5 bg-bg text-text-secondary border border-border font-medium rounded-full hover:bg-border-light transition" data-prev="1">{strings.sellerOnboardingPrev}</button>
-                <button type="button" class="next-btn px-6 py-2.5 bg-accent text-bg font-medium rounded-full shadow-sm hover:scale-105 transition-transform" data-next="3">{strings.sellerOnboardingNext}</button>
+                <button type="button" class="prev-btn px-6 py-2.5 bg-bg text-text-secondary border border-border font-medium rounded-full hover:bg-border-light transition" data-prev="1">{t.sellerOnboardingPrev}</button>
+                <button type="button" class="next-btn px-6 py-2.5 bg-accent text-bg font-medium rounded-full shadow-sm hover:scale-105 transition-transform" data-next="3">{t.sellerOnboardingNext}</button>
             </div>
         )}
     </div>
@@ -128,28 +128,28 @@ const profileImg = shopData.profile_img || '';
             "font-medium text-text-primary",
             isEdit ? "text-lg mb-4 border-b border-border pb-2" : "text-xl mb-1"
         ]}>
-            {!isEdit ? strings.sellerOnboardingStep3Title : strings.sellerOnboardingStep3Title.replace('3. ', '')}
+            {!isEdit ? t.sellerOnboardingStep3Title : t.sellerOnboardingStep3Title.replace('3. ', '')}
         </h2>
-        {!isEdit && <p class="text-sm text-text-tertiary mb-6 font-normal">{strings.sellerOnboardingStep3Subtitle}</p>}
+        {!isEdit && <p class="text-sm text-text-tertiary mb-6 font-normal">{t.sellerOnboardingStep3Subtitle}</p>}
         <div class="space-y-6 max-w-2xl">
             <div>
-                <label class="block text-sm font-medium text-text-secondary mb-2">{strings.sellerOnboardingContactEmailLabel} <span class="text-red-500">*</span></label>
-                <input type="email" name="contact_email" required value={defaultEmail} class="w-full px-4 py-3 rounded-xl border border-border bg-transparent text-text-primary focus:ring-2 focus:ring-accent outline-none transition" placeholder={strings.sellerOnboardingContactEmailPlaceholder}/>
+                <label class="block text-sm font-medium text-text-secondary mb-2">{t.sellerOnboardingContactEmailLabel} <span class="text-red-500">*</span></label>
+                <input type="email" name="contact_email" required value={defaultEmail} class="w-full px-4 py-3 rounded-xl border border-border bg-transparent text-text-primary focus:ring-2 focus:ring-accent outline-none transition" placeholder={t.sellerOnboardingContactEmailPlaceholder}/>
             </div>
             <div>
-                <label class="block text-sm font-medium text-text-secondary mb-2">{strings.sellerOnboardingWhatsappLabel}</label>
-                <input type="tel" name="whatsapp" value={shopData.whatsapp || ''} class="w-full px-4 py-3 rounded-xl border border-border bg-transparent text-text-primary focus:ring-2 focus:ring-accent outline-none transition" placeholder={strings.sellerOnboardingWhatsappPlaceholder} />
+                <label class="block text-sm font-medium text-text-secondary mb-2">{t.sellerOnboardingWhatsappLabel}</label>
+                <input type="tel" name="whatsapp" value={shopData.whatsapp || ''} class="w-full px-4 py-3 rounded-xl border border-border bg-transparent text-text-primary focus:ring-2 focus:ring-accent outline-none transition" placeholder={t.sellerOnboardingWhatsappPlaceholder} />
             </div>
             <div>
-                <label class="block text-sm font-medium text-text-secondary mb-2">{strings.sellerOnboardingLocationLabel}</label>
-                <input type="text" name="location" value={shopData.location || ''} class="w-full px-4 py-3 rounded-xl border border-border bg-transparent text-text-primary focus:ring-2 focus:ring-accent outline-none transition" placeholder={strings.sellerOnboardingLocationPlaceholder} />
+                <label class="block text-sm font-medium text-text-secondary mb-2">{t.sellerOnboardingLocationLabel}</label>
+                <input type="text" name="location" value={shopData.location || ''} class="w-full px-4 py-3 rounded-xl border border-border bg-transparent text-text-primary focus:ring-2 focus:ring-accent outline-none transition" placeholder={t.sellerOnboardingLocationPlaceholder} />
             </div>
         </div>
         {!isEdit ? (
             <div class="mt-8 flex justify-between">
-                <button type="button" class="prev-btn px-6 py-2.5 bg-bg text-text-secondary border border-border font-medium rounded-full hover:bg-border-light transition" data-prev="2">{strings.sellerOnboardingPrev}</button>
+                <button type="button" class="prev-btn px-6 py-2.5 bg-bg text-text-secondary border border-border font-medium rounded-full hover:bg-border-light transition" data-prev="2">{t.sellerOnboardingPrev}</button>
                 <button type="submit" id="submit-btn" class="px-6 py-2.5 bg-accent text-bg font-medium rounded-full shadow-sm hover:scale-105 transition-transform flex items-center justify-center min-w-35">
-                    <span id="submit-text">{strings.sellerOnboardingNext}</span>
+                    <span id="submit-text">{t.sellerOnboardingNext}</span>
                     <svg id="submit-spinner" class="animate-spin -ml-1 mr-2 h-5 w-5 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -159,7 +159,7 @@ const profileImg = shopData.profile_img || '';
         ) : (
             <div class="pt-8 flex justify-start">
                 <button type="submit" id="submit-btn" class="px-6 py-2.5 bg-accent text-bg font-medium rounded-full shadow-sm hover:scale-105 transition-transform flex items-center justify-center min-w-35">
-                    <span id="submit-text">{strings.sellerShopEditSave}</span>
+                    <span id="submit-text">{t.sellerShopEditSave}</span>
                     <svg id="submit-spinner" class="animate-spin -ml-1 mr-2 h-5 w-5 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -171,9 +171,11 @@ const profileImg = shopData.profile_img || '';
 </div>
 
 <script>
-import { strings } from '../../lib/core/i18n';
+
 import { toast } from '../../lib/ui/toast';
 import { compressImage, SHOP_LOGO_PRESET } from '../../lib/ui/imageCompress';
+import { getClientT } from '../../lib/core/i18n';
+const t = getClientT();
 
     const initShopForm = () => {
         const nameInput = document.getElementById('shop-name') as HTMLInputElement;
@@ -292,7 +294,7 @@ import { compressImage, SHOP_LOGO_PRESET } from '../../lib/ui/imageCompress';
 
                 try {
                     if (profileBtn) {
-                        profileBtn.textContent = strings.sellerShopImageUploading;
+                        profileBtn.textContent = t.sellerShopImageUploading;
                         profileBtn.setAttribute('disabled', 'true');
                     }
 
@@ -300,7 +302,7 @@ import { compressImage, SHOP_LOGO_PRESET } from '../../lib/ui/imageCompress';
                     const data = await res.json() as UploadResponse;
 
                     if (!res.ok) {
-                        const errorMsg = ('error' in data ? data.error : null) ?? strings.sellerOnboardingGenericError;
+                        const errorMsg = ('error' in data ? data.error : null) ?? t.sellerOnboardingGenericError;
                         toast.error(errorMsg);
                         return;
                     }
@@ -309,10 +311,10 @@ import { compressImage, SHOP_LOGO_PRESET } from '../../lib/ui/imageCompress';
                     if (profilePreview) {
                         profilePreview.innerHTML = `<img src="${data.url}" alt="" class="w-full h-full object-cover" />`;
                     }
-                    if (profileBtn) profileBtn.textContent = strings.sellerShopProfileImgChange;
-                    toast.success(strings.sellerShopImageSaved);
+                    if (profileBtn) profileBtn.textContent = t.sellerShopProfileImgChange;
+                    toast.success(t.sellerShopImageSaved);
                 } catch {
-                    toast.error(strings.toastErrorNetwork);
+                    toast.error(t.toastErrorNetwork);
                 } finally {
                     if (profileBtn) profileBtn.removeAttribute('disabled');
                     profileInput.value = '';

@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { createSupabaseAuthClient } from '../../../../lib/core/auth';
-import { strings } from '../../../../lib/core/i18n';
+
 import { validateProductCompleteness } from '../../../../lib/products/productValidation';
 import { enforceVariantPricing, type PricingCheckVariant } from '../../../../lib/products/pricingEnforcement';
 
@@ -37,12 +37,13 @@ function slugify(text: string): string {
         .replace(/(^-|-$)+/g, '');
 }
 
-export const POST: APIRoute = async ({ cookies, request }) => {
+export const POST: APIRoute = async ({ locals, cookies, request  }) => {
+    const { t } = locals;
     const supabase = createSupabaseAuthClient(cookies, request);
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
-        return new Response(JSON.stringify({ error: strings.apiUnauthorized }), { status: 401 });
+        return new Response(JSON.stringify({ error: t.apiUnauthorized }), { status: 401 });
     }
 
     const { data: shop } = await supabase
@@ -52,33 +53,33 @@ export const POST: APIRoute = async ({ cookies, request }) => {
         .maybeSingle();
 
     if (!shop) {
-        return new Response(JSON.stringify({ error: strings.apiForbidden }), { status: 403 });
+        return new Response(JSON.stringify({ error: t.apiForbidden }), { status: 403 });
     }
 
     let body: ProductPayload;
     try {
         body = await request.json();
     } catch {
-        return new Response(JSON.stringify({ error: strings.apiInvalidBody }), { status: 400 });
+        return new Response(JSON.stringify({ error: t.apiInvalidBody }), { status: 400 });
     }
 
     if (!body.title?.trim()) {
-        return new Response(JSON.stringify({ error: strings.sellerProductTitleRequired }), { status: 400 });
+        return new Response(JSON.stringify({ error: t.sellerProductTitleRequired }), { status: 400 });
     }
 
     if (!body.category?.trim()) {
-        return new Response(JSON.stringify({ error: strings.sellerProductCategoryRequired }), { status: 400 });
+        return new Response(JSON.stringify({ error: t.sellerProductCategoryRequired }), { status: 400 });
     }
 
     const completeness = validateProductCompleteness(body, body.variants ?? []);
     if (!completeness.complete) {
         const list = completeness.missing.join(', ');
-        return new Response(JSON.stringify({ error: strings.sellerProductIncompleteError.replace('{fields}', list) }), { status: 400 });
+        return new Response(JSON.stringify({ error: t.sellerProductIncompleteError.replace('{fields}', list) }), { status: 400 });
     }
 
     const willBeActive = body.is_active !== false;
     if (willBeActive && !shop.allow_loss && body.variants && body.variants.length > 0) {
-        const pricing = await enforceVariantPricing(body.variants as PricingCheckVariant[]);
+        const pricing = await enforceVariantPricing(t, body.variants as PricingCheckVariant[]);
         if (!pricing.ok) {
             return new Response(JSON.stringify({ error: pricing.errors.join('\n') }), { status: 400 });
         }
@@ -94,7 +95,7 @@ export const POST: APIRoute = async ({ cookies, request }) => {
         .maybeSingle();
 
     if (slugCheck) {
-        return new Response(JSON.stringify({ error: strings.sellerProductSlugInUse }), { status: 409 });
+        return new Response(JSON.stringify({ error: t.sellerProductSlugInUse }), { status: 409 });
     }
 
     const { data: product, error: productError } = await supabase
@@ -115,7 +116,7 @@ export const POST: APIRoute = async ({ cookies, request }) => {
 
     if (productError) {
         if ((productError as { code?: string }).code === '23505') {
-            return new Response(JSON.stringify({ error: strings.sellerProductSlugInUse }), { status: 409 });
+            return new Response(JSON.stringify({ error: t.sellerProductSlugInUse }), { status: 409 });
         }
         return new Response(JSON.stringify({ error: productError.message }), { status: 500 });
     }
@@ -193,17 +194,18 @@ export const POST: APIRoute = async ({ cookies, request }) => {
     return new Response(JSON.stringify({ product, variants: variantResults }), { status: 201 });
 };
 
-export const PATCH: APIRoute = async ({ cookies, request, url }) => {
+export const PATCH: APIRoute = async ({ locals, cookies, request, url  }) => {
+    const { t } = locals;
     const supabase = createSupabaseAuthClient(cookies, request);
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
-        return new Response(JSON.stringify({ error: strings.apiUnauthorized }), { status: 401 });
+        return new Response(JSON.stringify({ error: t.apiUnauthorized }), { status: 401 });
     }
 
     const productId = url.searchParams.get('id');
     if (!productId) {
-        return new Response(JSON.stringify({ error: strings.apiInvalidBody }), { status: 400 });
+        return new Response(JSON.stringify({ error: t.apiInvalidBody }), { status: 400 });
     }
 
     const { data: shop } = await supabase
@@ -213,7 +215,7 @@ export const PATCH: APIRoute = async ({ cookies, request, url }) => {
         .maybeSingle();
 
     if (!shop) {
-        return new Response(JSON.stringify({ error: strings.apiForbidden }), { status: 403 });
+        return new Response(JSON.stringify({ error: t.apiForbidden }), { status: 403 });
     }
 
     const { data: existing } = await supabase
@@ -224,22 +226,22 @@ export const PATCH: APIRoute = async ({ cookies, request, url }) => {
         .maybeSingle();
 
     if (!existing) {
-        return new Response(JSON.stringify({ error: strings.apiForbidden }), { status: 403 });
+        return new Response(JSON.stringify({ error: t.apiForbidden }), { status: 403 });
     }
 
     let body: ProductPayload;
     try {
         body = await request.json();
     } catch {
-        return new Response(JSON.stringify({ error: strings.apiInvalidBody }), { status: 400 });
+        return new Response(JSON.stringify({ error: t.apiInvalidBody }), { status: 400 });
     }
 
     if (body.title !== undefined && !body.title?.trim()) {
-        return new Response(JSON.stringify({ error: strings.sellerProductTitleRequired }), { status: 400 });
+        return new Response(JSON.stringify({ error: t.sellerProductTitleRequired }), { status: 400 });
     }
 
     if (body.category !== undefined && !body.category?.trim()) {
-        return new Response(JSON.stringify({ error: strings.sellerProductCategoryRequired }), { status: 400 });
+        return new Response(JSON.stringify({ error: t.sellerProductCategoryRequired }), { status: 400 });
     }
 
     // Validate completeness when relevant fields are being updated
@@ -263,14 +265,14 @@ export const PATCH: APIRoute = async ({ cookies, request, url }) => {
             const completeness = validateProductCompleteness(mergedProduct, variantsForCheck);
             if (!completeness.complete) {
                 const list = completeness.missing.join(', ');
-                return new Response(JSON.stringify({ error: strings.sellerProductIncompleteError.replace('{fields}', list) }), { status: 400 });
+                return new Response(JSON.stringify({ error: t.sellerProductIncompleteError.replace('{fields}', list) }), { status: 400 });
             }
         }
     }
 
     const willBeActive = body.is_active === undefined ? existing.is_active : body.is_active;
     if (willBeActive && !shop.allow_loss && body.variants && body.variants.length > 0) {
-        const pricing = await enforceVariantPricing(body.variants as PricingCheckVariant[]);
+        const pricing = await enforceVariantPricing(t, body.variants as PricingCheckVariant[]);
         if (!pricing.ok) {
             return new Response(JSON.stringify({ error: pricing.errors.join('\n') }), { status: 400 });
         }
@@ -288,7 +290,7 @@ export const PATCH: APIRoute = async ({ cookies, request, url }) => {
                 .eq('slug', newSlug)
                 .maybeSingle();
             if (slugCheck) {
-                return new Response(JSON.stringify({ error: strings.sellerProductSlugInUse }), { status: 409 });
+                return new Response(JSON.stringify({ error: t.sellerProductSlugInUse }), { status: 409 });
             }
         }
         updates.slug = newSlug;
@@ -385,17 +387,18 @@ export const PATCH: APIRoute = async ({ cookies, request, url }) => {
     return new Response(JSON.stringify({ product }), { status: 200 });
 };
 
-export const DELETE: APIRoute = async ({ cookies, request, url }) => {
+export const DELETE: APIRoute = async ({ locals, cookies, request, url  }) => {
+    const { t } = locals;
     const supabase = createSupabaseAuthClient(cookies, request);
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
-        return new Response(JSON.stringify({ error: strings.apiUnauthorized }), { status: 401 });
+        return new Response(JSON.stringify({ error: t.apiUnauthorized }), { status: 401 });
     }
 
     const productId = url.searchParams.get('id');
     if (!productId) {
-        return new Response(JSON.stringify({ error: strings.apiInvalidBody }), { status: 400 });
+        return new Response(JSON.stringify({ error: t.apiInvalidBody }), { status: 400 });
     }
 
     const { data: shop } = await supabase
@@ -405,7 +408,7 @@ export const DELETE: APIRoute = async ({ cookies, request, url }) => {
         .maybeSingle();
 
     if (!shop) {
-        return new Response(JSON.stringify({ error: strings.apiForbidden }), { status: 403 });
+        return new Response(JSON.stringify({ error: t.apiForbidden }), { status: 403 });
     }
 
     const { error } = await supabase
@@ -416,7 +419,7 @@ export const DELETE: APIRoute = async ({ cookies, request, url }) => {
 
     if (error) {
         if (error.code === '23503') {
-            return new Response(JSON.stringify({ error: strings.sellerProductDeleteHasOrders }), { status: 409 });
+            return new Response(JSON.stringify({ error: t.sellerProductDeleteHasOrders }), { status: 409 });
         }
         return new Response(JSON.stringify({ error: error.message }), { status: 500 });
     }

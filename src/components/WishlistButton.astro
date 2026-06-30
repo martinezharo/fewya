@@ -1,6 +1,6 @@
 ---
 import Icon from "./icons/Icon.astro";
-import { strings } from "../lib/core/i18n";
+const { t } = Astro.locals;
 
 interface Props {
     productId: string;
@@ -31,7 +31,7 @@ const color = isWished ? "text-wishlist" : "text-text-secondary hover:text-wishl
 
 <button
     class:list={[base, variants[variant], color, extraClass]}
-    aria-label={isWished ? strings.removeFromWishlist : strings.addToWishlist}
+    aria-label={isWished ? t.removeFromWishlist : t.addToWishlist}
     data-product-id={productId}
     data-wished={isWished ? "true" : "false"}
     data-icon-size={size}

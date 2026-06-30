@@ -7,7 +7,7 @@ import {
 } from '../../../lib/cart/checkout';
 import { createSupabaseAuthClient } from '../../../lib/core/auth';
 import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
-import { strings } from '../../../lib/core/i18n';
+
 import { validateCheckoutReadiness } from '../../../lib/products/productValidation';
 import { buildAbsoluteUrl, getStripeClient } from '../../../lib/payments/stripe';
 import { isProfileComplete } from '../../../lib/core/validation';
@@ -52,7 +52,7 @@ function normalizeItems(items: CheckoutItemPayload[]) {
     return Array.from(combined.entries()).map(([variantId, quantity]) => ({ variantId, quantity }));
 }
 
-function buildStripeLineItems(items: CheckoutResolvedItem[]) {
+function buildStripeLineItems(t: import('../../../lib/core/i18n').Strings, items: CheckoutResolvedItem[]) {
     const lineItems = items.map((item) => ({
         quantity: item.quantity,
         price_data: {
@@ -78,7 +78,7 @@ function buildStripeLineItems(items: CheckoutResolvedItem[]) {
                 currency: CHECKOUT_CURRENCY,
                 unit_amount: toMinorUnits(payout.shipping),
                 product_data: {
-                    name: `${strings.cartShipping} · ${payout.shopName}`,
+                    name: `${t.cartShipping} · ${payout.shopName}`,
                     description: undefined,
                     metadata: {
                         productId: '',
@@ -94,30 +94,31 @@ function buildStripeLineItems(items: CheckoutResolvedItem[]) {
     return lineItems;
 }
 
-export const POST: APIRoute = async ({ request, cookies }) => {
+export const POST: APIRoute = async ({ locals, request, cookies  }) => {
+    const { t } = locals;
     const authClient = createSupabaseAuthClient(cookies, request);
     const {
         data: { user },
     } = await authClient.auth.getUser();
 
     if (!user) {
-        return jsonResponse({ error: strings.apiUnauthorized }, 401);
+        return jsonResponse({ error: t.apiUnauthorized }, 401);
     }
 
     let body: { items: CheckoutItemPayload[]; delivery?: DeliveryPayload };
     try {
         body = await request.json();
     } catch {
-        return jsonResponse({ error: strings.apiInvalidBody }, 400);
+        return jsonResponse({ error: t.apiInvalidBody }, 400);
     }
 
     if (!Array.isArray(body.items) || body.items.length === 0) {
-        return jsonResponse({ error: strings.apiCartEmpty }, 400);
+        return jsonResponse({ error: t.apiCartEmpty }, 400);
     }
 
     const normalizedItems = normalizeItems(body.items);
     if (!normalizedItems) {
-        return jsonResponse({ error: strings.apiInvalidProductData }, 400);
+        return jsonResponse({ error: t.apiInvalidProductData }, 400);
     }
 
     const { data: profile } = await authClient
@@ -135,7 +136,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         });
 
         return jsonResponse({
-            error: strings.apiProfileIncomplete,
+            error: t.apiProfileIncomplete,
             redirectTo: `/me/details?${redirectParams.toString()}`,
         }, 400);
     }
@@ -205,7 +206,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             event: 'checkout.variant_lookup_failed',
             error: variantsError.message,
         }));
-        return jsonResponse({ error: strings.apiCheckoutProductUnavailable }, 500);
+        return jsonResponse({ error: t.apiCheckoutProductUnavailable }, 500);
     }
 
     type CheckoutVariantRow = JoinedVariant & { id: string };
@@ -227,7 +228,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
                 variantId: item.variantId,
                 reason: !variant ? 'variant_not_found' : !product ? 'product_not_found' : 'shop_not_found',
             }));
-            return jsonResponse({ error: strings.apiCheckoutProductUnavailable }, 400);
+            return jsonResponse({ error: t.apiCheckoutProductUnavailable }, 400);
         }
 
         if (!product.is_active || !shop.is_active) {
@@ -238,7 +239,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
                 shopId: shop.id,
                 reason: !product.is_active ? 'product_inactive' : 'shop_inactive',
             }));
-            return jsonResponse({ error: strings.apiCheckoutProductUnavailable }, 400);
+            return jsonResponse({ error: t.apiCheckoutProductUnavailable }, 400);
         }
 
         const checkoutCheck = validateCheckoutReadiness(product, variant, item.quantity);
@@ -254,18 +255,18 @@ export const POST: APIRoute = async ({ request, cookies }) => {
                 quantity: item.quantity,
             }));
             if (checkoutCheck.reason === 'out_of_stock') {
-                return jsonResponse({ error: strings.apiCheckoutOutOfStock }, 400);
+                return jsonResponse({ error: t.apiCheckoutOutOfStock }, 400);
             }
-            return jsonResponse({ error: strings.apiCheckoutProductUnavailable }, 400);
+            return jsonResponse({ error: t.apiCheckoutProductUnavailable }, 400);
         }
 
         const stock = Number(variant.stock ?? 0);
         if (item.quantity > stock) {
-            return jsonResponse({ error: strings.apiCheckoutOutOfStock }, 400);
+            return jsonResponse({ error: t.apiCheckoutOutOfStock }, 400);
         }
 
         if (!paymentAccount?.stripe_account_id || !paymentAccount.charges_enabled || !paymentAccount.payouts_enabled || !paymentAccount.details_submitted) {
-            return jsonResponse({ error: strings.apiCheckoutSellerNotReady }, 400);
+            return jsonResponse({ error: t.apiCheckoutSellerNotReady }, 400);
         }
 
         if (!shop.seller_details_complete) {
@@ -273,7 +274,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
                 event: 'checkout.seller_details_incomplete',
                 shopId: shop.id,
             }));
-            return jsonResponse({ error: strings.apiCheckoutSellerNotReady }, 400);
+            return jsonResponse({ error: t.apiCheckoutSellerNotReady }, 400);
         }
 
         if (!shopPlatforms.has(shop.id)) {
@@ -312,7 +313,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
                     deliveryPlatform,
                     enabled: platforms,
                 }));
-                return jsonResponse({ error: strings.apiCheckoutCarrierUnavailable }, 400);
+                return jsonResponse({ error: t.apiCheckoutCarrierUnavailable }, 400);
             }
         }
     }
@@ -326,8 +327,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     try {
         session = await stripe.checkout.sessions.create({
             mode: 'payment',
-            locale: 'es',
-            line_items: buildStripeLineItems(resolvedItems),
+            locale: locals.locale === 'es' ? 'es' : 'en',
+            line_items: buildStripeLineItems(t, resolvedItems),
             success_url: successUrl,
             cancel_url: cancelUrl,
             customer_email: buyerEmail ?? undefined,
@@ -350,13 +351,13 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             error: error instanceof Error ? error.message : String(error),
         }));
 
-        const message = error instanceof Error ? error.message : strings.apiCheckoutSessionError;
-        const normalizedMessage = message === strings.authMissingStripeEnv ? message : strings.apiCheckoutSessionError;
+        const message = error instanceof Error ? error.message : t.apiCheckoutSessionError;
+        const normalizedMessage = message === t.authMissingStripeEnv ? message : t.apiCheckoutSessionError;
         return jsonResponse({ error: normalizedMessage }, 500);
     }
 
     if (!session.url) {
-        return jsonResponse({ error: strings.apiCheckoutSessionError }, 500);
+        return jsonResponse({ error: t.apiCheckoutSessionError }, 500);
     }
 
     // Group items by shop and create one order per shop
@@ -442,7 +443,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
                 }));
             });
 
-            return jsonResponse({ error: strings.apiOrderCreateError }, 500);
+            return jsonResponse({ error: t.apiOrderCreateError }, 500);
         }
 
         const order = Array.isArray(orderData) ? orderData[0] : orderData;

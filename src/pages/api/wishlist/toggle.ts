@@ -2,13 +2,13 @@ import type { APIRoute } from 'astro';
 import { createSupabaseAuthClient } from '../../../lib/core/auth';
 import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
 import { getWishlistIdsFromCookie } from '../../../lib/wishlist/wishlist';
-import { strings } from '../../../lib/core/i18n';
 
 type WishlistToggleBody = {
     productId?: unknown;
 };
 
-export const POST: APIRoute = async ({ cookies, request }) => {
+export const POST: APIRoute = async ({ locals, cookies, request  }) => {
+    const { t } = locals;
     const authClient = createSupabaseAuthClient(cookies, request);
     const { data: { user } } = await authClient.auth.getUser();
 
@@ -67,7 +67,7 @@ export const POST: APIRoute = async ({ cookies, request }) => {
 
     // Only insert if product is active
     if (!product) {
-        return new Response(JSON.stringify({ error: strings.apiProductNotFound }), { status: 404 });
+        return new Response(JSON.stringify({ error: t.apiProductNotFound }), { status: 404 });
     }
 
     await authClient

@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro';
 import { createSupabaseAuthClient } from '../../../lib/core/auth';
 import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
-import { strings } from '../../../lib/core/i18n';
+
 import { ORDER_STATUS } from '../../../lib/orders/orderStatus';
 
 function jsonResponse(payload: Record<string, unknown>, status: number) {
@@ -11,35 +11,36 @@ function jsonResponse(payload: Record<string, unknown>, status: number) {
     });
 }
 
-export const POST: APIRoute = async ({ request, cookies }) => {
+export const POST: APIRoute = async ({ locals, request, cookies  }) => {
+    const { t } = locals;
     const authClient = createSupabaseAuthClient(cookies, request);
     const {
         data: { user },
     } = await authClient.auth.getUser();
 
     if (!user) {
-        return jsonResponse({ error: strings.apiUnauthorized }, 401);
+        return jsonResponse({ error: t.apiUnauthorized }, 401);
     }
 
     let body: { reviews?: { productId: string; rating: number; comment?: string }[] };
     try {
         body = await request.json();
     } catch {
-        return jsonResponse({ error: strings.apiInvalidBody }, 400);
+        return jsonResponse({ error: t.apiInvalidBody }, 400);
     }
 
     const reviews = body.reviews;
     if (!Array.isArray(reviews) || reviews.length === 0) {
-        return jsonResponse({ error: strings.apiInvalidBody }, 400);
+        return jsonResponse({ error: t.apiInvalidBody }, 400);
     }
 
     for (const r of reviews) {
         if (!r.productId || typeof r.rating !== 'number' || r.rating < 1 || r.rating > 5) {
-            return jsonResponse({ error: strings.apiInvalidBody }, 400);
+            return jsonResponse({ error: t.apiInvalidBody }, 400);
         }
         // A4: limit comment length
         if (r.comment !== undefined && (typeof r.comment !== 'string' || r.comment.length > 2000)) {
-            return jsonResponse({ error: strings.apiInvalidBody }, 400);
+            return jsonResponse({ error: t.apiInvalidBody }, 400);
         }
     }
 
@@ -57,7 +58,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     if (validError) {
         console.error('valid purchase check failed', validError);
-        return jsonResponse({ error: strings.apiForbidden }, 403);
+        return jsonResponse({ error: t.apiForbidden }, 403);
     }
 
     const purchasedProductIds = new Set<string>();
@@ -71,7 +72,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     for (const r of reviews) {
         if (!purchasedProductIds.has(r.productId)) {
-            return jsonResponse({ error: strings.apiForbidden }, 403);
+            return jsonResponse({ error: t.apiForbidden }, 403);
         }
     }
 
@@ -109,7 +110,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         const { error: insertError } = await adminClient.from('reviews').insert(toInsert);
         if (insertError) {
             console.error('review batch insert error', insertError);
-            return jsonResponse({ error: strings.reviewSubmitError }, 500);
+            return jsonResponse({ error: t.reviewSubmitError }, 500);
         }
     }
 
@@ -120,7 +121,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             .eq('id', upd.id);
         if (updateError) {
             console.error('review batch update error', updateError);
-            return jsonResponse({ error: strings.reviewSubmitError }, 500);
+            return jsonResponse({ error: t.reviewSubmitError }, 500);
         }
     }
 

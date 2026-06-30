@@ -1,10 +1,11 @@
 ---
 import SellerLayout from "../../layouts/SellerLayout.astro";
-import { strings } from "../../lib/core/i18n";
+
 import { createSupabaseAuthClient } from "../../lib/core/auth";
 import { getAllCountries } from "../../lib/shipping/countries";
 import { spainProvinces } from "../../lib/shipping/spain-provinces";
 import { isProfileComplete } from "../../lib/core/validation";
+const { t } = Astro.locals;
 
 const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
 const { data: { user } } = await supabase.auth.getUser();
@@ -38,13 +39,13 @@ const currentPrefix = profile?.phone_prefix || '+34';
 const isSpain = currentCountry === 'ES';
 ---
 
-<SellerLayout title={strings.sellerDetailsPageTitle} shopSlug={shop.slug} shopId={shop.id}>
+<SellerLayout title={t.sellerDetailsPageTitle} shopSlug={shop.slug} shopId={shop.id}>
     <main class="w-full max-w-2xl mx-auto px-4 py-8 lg:py-12">
 
         <div class="mb-8">
-            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-text-tertiary">{strings.sellerBrandName}</p>
-            <h1 class="mt-2 text-2xl font-semibold tracking-tight text-text-primary">{strings.sellerDetailsHeading}</h1>
-            <p class="mt-2 text-sm text-text-secondary">{strings.sellerDetailsSubtitle}</p>
+            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-text-tertiary">{t.sellerBrandName}</p>
+            <h1 class="mt-2 text-2xl font-semibold tracking-tight text-text-primary">{t.sellerDetailsHeading}</h1>
+            <p class="mt-2 text-sm text-text-secondary">{t.sellerDetailsSubtitle}</p>
         </div>
 
         {profileIncomplete && (
@@ -52,8 +53,8 @@ const isSpain = currentCountry === 'ES';
                 <div class="flex items-start gap-3">
                     <svg class="shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
                     <div>
-                        <p class="text-sm font-semibold">{strings.sellerDetailsIncompleteNoticeTitle}</p>
-                        <p class="mt-1 text-sm">{strings.sellerDetailsIncompleteNoticeSubtitle}</p>
+                        <p class="text-sm font-semibold">{t.sellerDetailsIncompleteNoticeTitle}</p>
+                        <p class="mt-1 text-sm">{t.sellerDetailsIncompleteNoticeSubtitle}</p>
                     </div>
                 </div>
             </div>
@@ -100,7 +101,7 @@ const isSpain = currentCountry === 'ES';
             {/* Email (read-only) */}
             <div class="flex flex-col gap-1.5">
                 <label for="email" class="text-[13px] font-medium text-text-secondary">
-                    {strings.meDataEmail}
+                    {t.meDataEmail}
                 </label>
                 <input
                     id="email"
@@ -114,7 +115,7 @@ const isSpain = currentCountry === 'ES';
             {/* Teléfono con prefijo */}
             <div class="flex flex-col gap-1.5">
                 <label for="phone" class="text-[13px] font-medium text-text-secondary">
-                    {strings.meDataPhone}
+                    {t.meDataPhone}
                 </label>
                 <div class="flex gap-2">
                     <select
@@ -294,7 +295,7 @@ const isSpain = currentCountry === 'ES';
                 id="save-btn"
                 class="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-accent text-bg font-semibold text-[15px] py-3.5 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed mt-1"
             >
-                <span data-busy-label>{strings.meDataSave}</span>
+                <span data-busy-label>{t.meDataSave}</span>
             </button>
 
         </form>
@@ -302,10 +303,11 @@ const isSpain = currentCountry === 'ES';
 </SellerLayout>
 
 <script>
-    import { strings } from '../../lib/core/i18n';
+    import { getClientT } from '../../lib/core/i18n';
     import { spainProvinces } from '../../lib/shipping/spain-provinces';
     import { validateProfileForm, type ProfileFormData } from '../../lib/core/validation';
     import { runSubmit } from '../../lib/ui/submit';
+const t = getClientT();
 
   function initSellerProfileForm() {
     const form = document.getElementById('seller-profile-form') as HTMLFormElement | null;
@@ -315,24 +317,24 @@ const isSpain = currentCountry === 'ES';
         const provinceContainer = document.getElementById('province-container') as unknown as HTMLDivElement;
 
         const errorMessages: Record<string, string> = {
-            validationRequired: strings.validationRequired,
-            validationNameMinLength: strings.validationNameMinLength,
-            validationNameMaxLength: strings.validationNameMaxLength,
-            validationLastNameMinLength: strings.validationLastNameMinLength,
-            validationLastNameMaxLength: strings.validationLastNameMaxLength,
-            validationPhoneFormat: strings.validationPhoneFormat,
-            validationPhonePrefixMissing: strings.validationPhonePrefixMissing,
-            validationStreetMinLength: strings.validationStreetMinLength,
-            validationStreetMaxLength: strings.validationStreetMaxLength,
-            validationNumberMaxLength: strings.validationNumberMaxLength,
-            validationFloorMaxLength: strings.validationFloorMaxLength,
-            validationPostalCodeFormat: strings.validationPostalCodeFormat,
-            validationPostalCodeFormatEs: strings.validationPostalCodeFormatEs,
-            validationCityMinLength: strings.validationCityMinLength,
-            validationCityMaxLength: strings.validationCityMaxLength,
-            validationProvinceRequiredEs: strings.validationProvinceRequiredEs,
-            validationNameFormat: strings.validationNameFormat,
-            validationCityFormat: strings.validationCityFormat,
+            validationRequired: t.validationRequired,
+            validationNameMinLength: t.validationNameMinLength,
+            validationNameMaxLength: t.validationNameMaxLength,
+            validationLastNameMinLength: t.validationLastNameMinLength,
+            validationLastNameMaxLength: t.validationLastNameMaxLength,
+            validationPhoneFormat: t.validationPhoneFormat,
+            validationPhonePrefixMissing: t.validationPhonePrefixMissing,
+            validationStreetMinLength: t.validationStreetMinLength,
+            validationStreetMaxLength: t.validationStreetMaxLength,
+            validationNumberMaxLength: t.validationNumberMaxLength,
+            validationFloorMaxLength: t.validationFloorMaxLength,
+            validationPostalCodeFormat: t.validationPostalCodeFormat,
+            validationPostalCodeFormatEs: t.validationPostalCodeFormatEs,
+            validationCityMinLength: t.validationCityMinLength,
+            validationCityMaxLength: t.validationCityMaxLength,
+            validationProvinceRequiredEs: t.validationProvinceRequiredEs,
+            validationNameFormat: t.validationNameFormat,
+            validationCityFormat: t.validationCityFormat,
         };
 
         function showFieldError(fieldId: string, message: string | null) {
@@ -441,14 +443,14 @@ const isSpain = currentCountry === 'ES';
 
             const result = await runSubmit({
                 button: btn,
-                busyLabel: strings.meDataSaving,
+                busyLabel: t.meDataSaving,
                 action: () => fetch('/api/profile/update', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data),
                 }),
-                successMsg: strings.meDataSaveSuccess,
-                errorFallback: strings.meDataSaveError,
+                successMsg: t.meDataSaveSuccess,
+                errorFallback: t.meDataSaveError,
             });
             if (result.ok) {
                 window.setTimeout(() => {

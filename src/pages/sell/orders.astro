@@ -3,7 +3,7 @@ import DeferredSellerOrders from '../../components/orders/DeferredSellerOrders.a
 import SkeletonOrderList from '../../components/ui/SkeletonOrderList.astro';
 import SellerLayout from '../../layouts/SellerLayout.astro';
 import { createSupabaseAuthClient } from '../../lib/core/auth';
-import { strings } from '../../lib/core/i18n';
+const { t } = Astro.locals;
 
 const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
 const {
@@ -35,14 +35,14 @@ if (!shop) {
 }
 ---
 
-<SellerLayout title={strings.sellerOrdersPageTitle} shopSlug={shop.slug} shopId={shop.id}>
+<SellerLayout title={t.sellerOrdersPageTitle} shopSlug={shop.slug} shopId={shop.id}>
     <div class="p-6 lg:p-10">
         <div>
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-text-tertiary">{shop.name}</p>
             <h1 class="mt-2 text-2xl font-semibold tracking-tight text-text-primary">
-                {strings.sellerOrdersHeading}
+                {t.sellerOrdersHeading}
             </h1>
-            <p class="mt-2 text-sm text-text-secondary">{strings.sellerOrdersIntro}</p>
+            <p class="mt-2 text-sm text-text-secondary">{t.sellerOrdersIntro}</p>
         </div>
 
         <DeferredSellerOrders server:defer shopId={shop.id} shopSlug={shop.slug}>

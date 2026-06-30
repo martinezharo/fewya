@@ -1,6 +1,6 @@
 ---
 import Icon from '../icons/Icon.astro';
-import { strings } from '../../lib/core/i18n';
+const { t } = Astro.locals;
 
 interface VariantData {
     id?: string;
@@ -41,9 +41,9 @@ const isNew = v.id ? 'false' : 'true';
 >
     <header class="variant-header flex items-center gap-2.5 px-4 py-3 cursor-pointer hover:bg-border-light/40 transition-colors select-none">
         <svg class="variant-chevron text-text-tertiary transition-transform duration-200 shrink-0" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>
-        <span class="variant-name-display text-sm font-medium text-text-primary min-w-0 truncate">{variantName || strings.sellerProductVariantPlaceholderName}</span>
+        <span class="variant-name-display text-sm font-medium text-text-primary min-w-0 truncate">{variantName || t.sellerProductVariantPlaceholderName}</span>
         {isDefault && (
-            <span class="variant-default-pill inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-medium bg-accent text-bg shrink-0">{strings.sellerProductVariantDefault}</span>
+            <span class="variant-default-pill inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-medium bg-accent text-bg shrink-0">{t.sellerProductVariantDefault}</span>
         )}
         <span class="variant-summary-meta hidden sm:flex items-center gap-1.5 text-xs text-text-secondary tabular-nums shrink-0">
             <span class="text-text-tertiary">·</span>
@@ -54,9 +54,9 @@ const isNew = v.id ? 'false' : 'true';
         <span class="variant-summary-shipping hidden sm:inline ml-auto text-xs text-text-secondary tabular-nums truncate"></span>
         <span class="variant-summary-warning hidden ml-auto items-center gap-1 text-amber-600 dark:text-amber-400 text-xs font-medium shrink-0">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-            {strings.sellerProductVariantSummaryMissing}
+            {t.sellerProductVariantSummaryMissing}
         </span>
-        <button type="button" class="variant-remove-btn flex items-center justify-center w-7 h-7 rounded-lg text-text-tertiary hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors shrink-0" aria-label={strings.sellerProductVariantRemove}>
+        <button type="button" class="variant-remove-btn flex items-center justify-center w-7 h-7 rounded-lg text-text-tertiary hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors shrink-0" aria-label={t.sellerProductVariantRemove}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
         </button>
     </header>
@@ -65,39 +65,39 @@ const isNew = v.id ? 'false' : 'true';
         <!-- Datos básicos -->
         <div class="grid gap-3 sm:grid-cols-12">
             <div class="sm:col-span-5">
-                <label class="block text-[11px] font-medium text-text-tertiary mb-1.5">{strings.sellerProductVariantNameLabel}</label>
+                <label class="block text-[11px] font-medium text-text-tertiary mb-1.5">{t.sellerProductVariantNameLabel}</label>
                 <input
                     type="text"
                     class="variant-name-input w-full px-3 py-2 rounded-lg border border-border bg-surface text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition"
-                    placeholder={strings.sellerProductVariantNamePlaceholder}
+                    placeholder={t.sellerProductVariantNamePlaceholder}
                     value={variantName}
                 />
             </div>
             <div class="sm:col-span-3">
-                <label class="block text-[11px] font-medium text-text-tertiary mb-1.5">{strings.sellerProductVariantPriceLabel}</label>
+                <label class="block text-[11px] font-medium text-text-tertiary mb-1.5">{t.sellerProductVariantPriceLabel}</label>
                 <input
                     type="number"
                     step="0.01"
                     min="0"
                     class="variant-price-input w-full px-3 py-2 rounded-lg border border-border bg-surface text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition tabular-nums"
-                    placeholder={strings.sellerProductVariantPricePlaceholder}
+                    placeholder={t.sellerProductVariantPricePlaceholder}
                     value={price || ''}
                 />
             </div>
             <div class="sm:col-span-2">
-                <label class="block text-[11px] font-medium text-text-tertiary mb-1.5">{strings.sellerProductVariantStockLabel}</label>
+                <label class="block text-[11px] font-medium text-text-tertiary mb-1.5">{t.sellerProductVariantStockLabel}</label>
                 <input
                     type="number"
                     min="0"
                     class="variant-stock-input w-full px-3 py-2 rounded-lg border border-border bg-surface text-text-primary text-sm focus:ring-2 focus:ring-accent outline-none transition tabular-nums"
-                    placeholder={strings.sellerProductVariantStockPlaceholder}
+                    placeholder={t.sellerProductVariantStockPlaceholder}
                     value={stock || ''}
                 />
             </div>
             <div class="sm:col-span-2 flex items-end pb-1">
                 <label class="flex items-center gap-2 text-xs text-text-secondary cursor-pointer select-none">
                     <input type="checkbox" class="variant-default-checkbox rounded border-border accent-neutral-900 dark:accent-white" checked={isDefault} />
-                    {strings.sellerProductVariantDefault}
+                    {t.sellerProductVariantDefault}
                 </label>
             </div>
         </div>
@@ -118,16 +118,16 @@ const isNew = v.id ? 'false' : 'true';
             <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" class="variant-image-input hidden" />
             <button type="button" class="variant-customize-shipping-btn ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium text-text-secondary border border-border hover:bg-border-light transition-colors">
                 <Icon name="truck" size={12} />
-                <span class="variant-customize-shipping-label">{hasShippingOverride ? strings.sellerProductVariantEditShipping : strings.sellerProductVariantCustomizeShipping}</span>
+                <span class="variant-customize-shipping-label">{hasShippingOverride ? t.sellerProductVariantEditShipping : t.sellerProductVariantCustomizeShipping}</span>
             </button>
         </div>
 
         <!-- Override status -->
         <p class={`variant-shipping-status text-[11px] flex items-center gap-1.5 ${hasShippingOverride ? 'text-accent' : 'text-text-tertiary'}`}>
             <span class="variant-shipping-status-icon">{hasShippingOverride ? '✦' : '·'}</span>
-            <span class="variant-shipping-status-text">{hasShippingOverride ? strings.sellerProductVariantUsesCustomShipping : strings.sellerProductVariantUsesCommonShipping}</span>
+            <span class="variant-shipping-status-text">{hasShippingOverride ? t.sellerProductVariantUsesCustomShipping : t.sellerProductVariantUsesCommonShipping}</span>
             {hasShippingOverride && (
-                <button type="button" class="variant-reset-shipping-btn ml-1 text-text-tertiary hover:text-text-primary underline underline-offset-2">{strings.sellerProductVariantResetShipping}</button>
+                <button type="button" class="variant-reset-shipping-btn ml-1 text-text-tertiary hover:text-text-primary underline underline-offset-2">{t.sellerProductVariantResetShipping}</button>
             )}
         </p>
 

@@ -3,8 +3,8 @@ import SellerLayout from '../../../layouts/SellerLayout.astro';
 import { createSupabaseAuthClient } from '../../../lib/core/auth';
 import ShopForm from '../../../components/seller/ShopForm.astro';
 import Icon from '../../../components/icons/Icon.astro';
-import { strings } from '../../../lib/core/i18n';
 
+const { t } = Astro.locals;
 const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
 const { data: sessionData } = await supabase.auth.getSession();
 const user = sessionData?.session?.user;
@@ -40,7 +40,7 @@ if (Astro.request.method === 'POST') {
     if (slug !== shop.slug) {
         const { data: slugCheck } = await supabase.from('shops').select('id').eq('slug', slug).maybeSingle();
         if (slugCheck) {
-            return new Response(JSON.stringify({ error: strings.sellerOnboardingUrlInUse }), { status: 400 });
+            return new Response(JSON.stringify({ error: t.sellerOnboardingUrlInUse }), { status: 400 });
         }
     }
 
@@ -68,11 +68,11 @@ const profileImg = shop.profile_img || '';
 const bannerImg = shop.banner_img || '';
 ---
 
-<SellerLayout title={`${strings.sellerShopEditTitle} - Fewya Seller`} shopSlug={shop.slug} shopId={shop.id}>
+<SellerLayout title={`${t.sellerShopEditTitle} - Fewya Seller`} shopSlug={shop.slug} shopId={shop.id}>
     <div class="max-w-4xl mx-auto px-4 py-8 lg:py-12">
         <div class="mb-8">
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-text-tertiary">{shop.name}</p>
-            <h1 class="mt-2 text-2xl font-semibold tracking-tight text-text-primary">{strings.sellerShopEditTitle}</h1>
+            <h1 class="mt-2 text-2xl font-semibold tracking-tight text-text-primary">{t.sellerShopEditTitle}</h1>
         </div>
 
         <!-- Banner + Profile Image Section -->
@@ -94,16 +94,16 @@ const bannerImg = shop.banner_img || '';
                     <div class="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/30 transition-colors cursor-pointer" id="banner-trigger">
                         <div class="opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center gap-1.5">
                             <Icon name="camera" size={24} class="text-white" />
-                            <span class="text-sm text-white font-medium">{strings.sellerShopBannerChange}</span>
+                            <span class="text-sm text-white font-medium">{t.sellerShopBannerChange}</span>
                         </div>
                     </div>
                     {bannerImg && (
-                        <button type="button" id="banner-remove-btn" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/80" aria-label={strings.sellerShopImageRemove}>
+                        <button type="button" id="banner-remove-btn" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/80" aria-label={t.sellerShopImageRemove}>
                             <Icon name="x" size={16} />
                         </button>
                     )}
                     <input type="file" id="banner-input" accept="image/jpeg,image/png,image/webp,image/gif" class="hidden" />
-                    <p class="absolute bottom-3 right-3 text-xs text-white/70 opacity-0 group-hover:opacity-100 transition-opacity">{strings.sellerShopBannerHint}</p>
+                    <p class="absolute bottom-3 right-3 text-xs text-white/70 opacity-0 group-hover:opacity-100 transition-opacity">{t.sellerShopBannerHint}</p>
 
                     <!-- Profile Image overlapping banner -->
                     <div class="absolute -bottom-12 left-6 md:left-8">
@@ -132,13 +132,13 @@ const bannerImg = shop.banner_img || '';
                 <!-- Auto-save indicator for banner -->
                 <div id="banner-saved-indicator" class="hidden mx-6 mt-2 mb-1 px-3 py-1.5 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 text-xs font-medium flex items-center gap-1.5">
                     <Icon name="check" size={14} class="text-green-600 dark:text-green-400" />
-                    <span>{strings.sellerShopImageSaved}</span>
+                    <span>{t.sellerShopImageSaved}</span>
                 </div>
 
                 <!-- Profile label -->
                 <div class="pt-14 md:pt-16 px-6 md:px-8 pb-4">
-                    <p class="text-sm font-medium text-text-secondary">{strings.sellerShopProfileImgLabel}</p>
-                    <p class="text-xs text-text-tertiary mt-0.5">{strings.sellerShopProfileImgHint}</p>
+                    <p class="text-sm font-medium text-text-secondary">{t.sellerShopProfileImgLabel}</p>
+                    <p class="text-xs text-text-tertiary mt-0.5">{t.sellerShopProfileImgHint}</p>
                 </div>
             </section>
 
@@ -149,7 +149,7 @@ const bannerImg = shop.banner_img || '';
                 <!-- Messages -->
                 <div id="error-message" class="text-red-700 dark:text-red-300 font-medium text-sm mt-6 hidden p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl"></div>
                 <div id="success-message" class="text-green-700 dark:text-green-300 font-medium text-sm mt-6 hidden p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl">
-                    {strings.sellerShopEditSuccess}
+                    {t.sellerShopEditSuccess}
                 </div>
             </section>
         </form>
@@ -157,9 +157,10 @@ const bannerImg = shop.banner_img || '';
 </SellerLayout>
 
 <script>
-    import { strings } from '../../../lib/core/i18n';
+    import { getClientT } from '../../../lib/core/i18n';
     import { toast } from '../../../lib/ui/toast';
     import { compressImage, SHOP_LOGO_PRESET, SHOP_BANNER_PRESET } from '../../../lib/ui/imageCompress';
+const t = getClientT();
 
     type ShopUpdateResponse = {
         success?: boolean;
@@ -222,13 +223,13 @@ const bannerImg = shop.banner_img || '';
             const res = await fetch('/api/sell/shop/upload', { method: 'POST', body: formData });
             const data = await res.json() as UploadResponse;
             if (!res.ok) {
-                const errorMsg = data.error || strings.sellerOnboardingGenericError;
+                const errorMsg = data.error || t.sellerOnboardingGenericError;
                 toast.error(errorMsg);
                 return null;
             }
             return { url: data.url };
         } catch {
-            toast.error(strings.toastErrorNetwork);
+            toast.error(t.toastErrorNetwork);
             return null;
         }
     };
@@ -262,7 +263,7 @@ const bannerImg = shop.banner_img || '';
                 removeBtn.type = 'button';
                 removeBtn.id = 'banner-remove-btn';
                 removeBtn.className = 'absolute top-3 right-3 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/80';
-                removeBtn.setAttribute('aria-label', strings.sellerShopImageRemove);
+                removeBtn.setAttribute('aria-label', t.sellerShopImageRemove);
                 removeBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>';
                 removeBtn.addEventListener('click', removeBanner);
                 uploadArea.appendChild(removeBtn);
@@ -337,7 +338,7 @@ const bannerImg = shop.banner_img || '';
             const data = await response.json() as ShopUpdateResponse;
 
             if (!response.ok) {
-                throw new Error(data.error || strings.sellerShopEditError);
+                throw new Error(data.error || t.sellerShopEditError);
             }
 
             // Success
@@ -349,7 +350,7 @@ const bannerImg = shop.banner_img || '';
 
         } catch (error: unknown) {
             if (errorMessage) {
-                errorMessage.textContent = error instanceof Error ? error.message : strings.sellerShopEditError;
+                errorMessage.textContent = error instanceof Error ? error.message : t.sellerShopEditError;
                 errorMessage.classList.remove('hidden');
             }
         } finally {

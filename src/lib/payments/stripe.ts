@@ -1,6 +1,5 @@
 import Stripe from 'stripe';
 import { getStripeSecretKey } from '../core/env';
-import { strings } from '../core/i18n';
 
 export const DEFAULT_STRIPE_ACCOUNT_COUNTRY = 'ES';
 
@@ -15,7 +14,7 @@ export interface StripeAccountStatus {
 export function getStripeClient() {
     const secretKey = getStripeSecretKey();
     if (!secretKey) {
-        throw new Error(strings.authMissingStripeEnv);
+        throw new Error('STRIPE_SECRET_KEY is not configured for the current mode');
     }
 
     return new Stripe(secretKey, {

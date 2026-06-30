@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro';
 import { createSupabaseAuthClient } from '../../../lib/core/auth';
 import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
-import { strings } from '../../../lib/core/i18n';
+
 import { getStripeClient } from '../../../lib/payments/stripe';
 import { CHECKOUT_CURRENCY, toMinorUnits } from '../../../lib/cart/checkout';
 import { extractPayoutContext, type JoinedOrderItem } from '../../../lib/orders/orderJoins';
@@ -20,27 +20,28 @@ function roundMoney(value: number): number {
     return Math.round(value * 100) / 100;
 }
 
-export const POST: APIRoute = async ({ request, cookies }) => {
+export const POST: APIRoute = async ({ locals, request, cookies  }) => {
+    const { t } = locals;
     const authClient = createSupabaseAuthClient(cookies, request);
     const {
         data: { user },
     } = await authClient.auth.getUser();
 
     if (!user) {
-        return jsonResponse({ error: strings.apiUnauthorized }, 401);
+        return jsonResponse({ error: t.apiUnauthorized }, 401);
     }
 
     let body: { orderId?: string; refundType?: RefundType };
     try {
         body = await request.json();
     } catch {
-        return jsonResponse({ error: strings.apiInvalidBody }, 400);
+        return jsonResponse({ error: t.apiInvalidBody }, 400);
     }
 
     const orderId = body.orderId;
     const refundType: RefundType = body.refundType ?? 'product';
     if (!orderId || !['full', 'product'].includes(refundType)) {
-        return jsonResponse({ error: strings.apiInvalidBody }, 400);
+        return jsonResponse({ error: t.apiInvalidBody }, 400);
     }
 
     const { data: hasAccess } = await authClient.rpc('order_belongs_to_seller', {
@@ -48,7 +49,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     });
 
     if (!hasAccess) {
-        return jsonResponse({ error: strings.apiForbidden }, 403);
+        return jsonResponse({ error: t.apiForbidden }, 403);
     }
 
     const { data: order, error: orderError } = await authClient
@@ -58,11 +59,11 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         .single();
 
     if (orderError || !order) {
-        return jsonResponse({ error: strings.apiShopNotFound }, 404);
+        return jsonResponse({ error: t.apiShopNotFound }, 404);
     }
 
     if (order.status !== ORDER_STATUS.DELIVERY_FAILED) {
-        return jsonResponse({ error: strings.deliveryFailedRefundInvalidStatus }, 400);
+        return jsonResponse({ error: t.deliveryFailedRefundInvalidStatus }, 400);
     }
 
     const { data: orderItems, error: itemsError } = await authClient
@@ -89,7 +90,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             publicId: order.public_id,
             error: itemsError?.message,
         }));
-        return jsonResponse({ error: strings.deliveryFailedRefundError }, 500);
+        return jsonResponse({ error: t.deliveryFailedRefundError }, 500);
     }
 
     let shippingAmount = 0;
@@ -166,7 +167,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
                 publicId: order.public_id,
                 error: resolveError?.message,
             }));
-            return jsonResponse({ error: strings.deliveryFailedRefundError }, 500);
+            return jsonResponse({ error: t.deliveryFailedRefundError }, 500);
         }
 
         await authClient.from('refunds').insert({
@@ -192,6 +193,6 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             publicId: order.public_id,
             error: error instanceof Error ? error.message : String(error),
         }));
-        return jsonResponse({ error: strings.deliveryFailedRefundError }, 500);
+        return jsonResponse({ error: t.deliveryFailedRefundError }, 500);
     }
 };

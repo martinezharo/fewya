@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro';
 import { createSupabaseAuthClient } from '../../../lib/core/auth';
 import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
-import { strings } from '../../../lib/core/i18n';
+
 import { getStripeClient } from '../../../lib/payments/stripe';
 import { toMinorUnits } from '../../../lib/cart/checkout';
 import { ORDER_STATUS } from '../../../lib/orders/orderStatus';
@@ -13,26 +13,27 @@ function jsonResponse(payload: Record<string, unknown>, status: number) {
     });
 }
 
-export const POST: APIRoute = async ({ request, cookies }) => {
+export const POST: APIRoute = async ({ locals, request, cookies  }) => {
+    const { t } = locals;
     const authClient = createSupabaseAuthClient(cookies, request);
     const {
         data: { user },
     } = await authClient.auth.getUser();
 
     if (!user) {
-        return jsonResponse({ error: strings.apiUnauthorized }, 401);
+        return jsonResponse({ error: t.apiUnauthorized }, 401);
     }
 
     let body: { orderId?: string; cancellationReason?: string };
     try {
         body = await request.json();
     } catch {
-        return jsonResponse({ error: strings.apiInvalidBody }, 400);
+        return jsonResponse({ error: t.apiInvalidBody }, 400);
     }
 
     const orderId = body.orderId;
     if (!orderId) {
-        return jsonResponse({ error: strings.apiInvalidBody }, 400);
+        return jsonResponse({ error: t.apiInvalidBody }, 400);
     }
 
     const cancellationReason = body.cancellationReason?.trim();
@@ -43,7 +44,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     });
 
     if (!hasAccess) {
-        return jsonResponse({ error: strings.apiForbidden }, 403);
+        return jsonResponse({ error: t.apiForbidden }, 403);
     }
 
     // Get order with payment intent
@@ -54,12 +55,12 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         .single();
 
     if (orderError || !order) {
-        return jsonResponse({ error: strings.apiShopNotFound }, 404);
+        return jsonResponse({ error: t.apiShopNotFound }, 404);
     }
 
     // Only allow cancelling paid/processing orders
     if (!([ORDER_STATUS.PAID, ORDER_STATUS.PROCESSING] as string[]).includes(order.status)) {
-        return jsonResponse({ error: strings.apiOrderCannotBeCancelled }, 400);
+        return jsonResponse({ error: t.apiOrderCannotBeCancelled }, 400);
     }
 
     const stripe = getStripeClient();
@@ -93,7 +94,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
                 publicId: order.public_id,
                 error: cancelError?.message,
             }));
-            return jsonResponse({ error: strings.sellerOrderRefundError }, 500);
+            return jsonResponse({ error: t.sellerOrderRefundError }, 500);
         }
 
         // Save refund record
@@ -117,6 +118,6 @@ export const POST: APIRoute = async ({ request, cookies }) => {
             publicId: order.public_id,
             error: error instanceof Error ? error.message : String(error),
         }));
-        return jsonResponse({ error: strings.sellerOrderRefundError }, 500);
+        return jsonResponse({ error: t.sellerOrderRefundError }, 500);
     }
 };

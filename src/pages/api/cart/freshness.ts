@@ -1,6 +1,5 @@
 import type { APIRoute } from 'astro';
 import { supabase } from '../../../lib/core/supabase';
-import { strings } from '../../../lib/core/i18n';
 
 interface RequestBody {
     variantIds?: unknown;
@@ -24,12 +23,13 @@ function jsonResponse(payload: unknown, status: number) {
     });
 }
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ locals, request  }) => {
+    const { t } = locals;
     let body: RequestBody;
     try {
         body = await request.json();
     } catch {
-        return jsonResponse({ error: strings.apiInvalidBody }, 400);
+        return jsonResponse({ error: t.apiInvalidBody }, 400);
     }
 
     const raw = Array.isArray(body.variantIds) ? body.variantIds : [];
@@ -51,7 +51,7 @@ export const POST: APIRoute = async ({ request }) => {
         .in('id', variantIds);
 
     if (error) {
-        return jsonResponse({ error: strings.apiCheckoutProductUnavailable }, 500);
+        return jsonResponse({ error: t.apiCheckoutProductUnavailable }, 500);
     }
 
     type FreshnessRow = {

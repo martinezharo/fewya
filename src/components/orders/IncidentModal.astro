@@ -1,6 +1,6 @@
 ---
 import Icon from '../icons/Icon.astro';
-import { strings } from '../../lib/core/i18n';
+const { t } = Astro.locals;
 
 interface Props {
     orderId: string;
@@ -13,7 +13,7 @@ const { orderId, sellerEmail } = Astro.props;
 <div class="incident-modal hidden fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4" data-order-id={orderId}>
     <div class="w-full max-w-lg rounded-t-2xl sm:rounded-2xl border border-border bg-surface p-5 shadow-xl max-h-[90vh] overflow-y-auto">
         <div class="flex items-center justify-between mb-4">
-            <h3 class="text-base font-semibold text-text-primary">{strings.orderReportIncident}</h3>
+            <h3 class="text-base font-semibold text-text-primary">{t.orderReportIncident}</h3>
             <button type="button" class="close-incident-modal-btn p-1.5 rounded-lg hover:bg-border-light transition-colors text-text-secondary">
                 <Icon name="x" size={18} />
             </button>
@@ -21,7 +21,7 @@ const { orderId, sellerEmail } = Astro.props;
 
         <div class="p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 mb-4">
             <p class="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
-                {strings.incidentReturnPolicyNotice}{' '}
+                {t.incidentReturnPolicyNotice}{' '}
                 {sellerEmail ? (
                     <a href={`mailto:${sellerEmail}`} class="font-semibold underline hover:no-underline text-amber-900 dark:text-amber-200">
                         {sellerEmail}
@@ -29,40 +29,40 @@ const { orderId, sellerEmail } = Astro.props;
                 ) : (
                     <span class="font-semibold">el vendedor</span>
                 )}
-                {strings.incidentReturnPolicyNoticeSuffix}
+                {t.incidentReturnPolicyNoticeSuffix}
             </p>
         </div>
 
         <div class="flex flex-col gap-4">
             <div>
                 <label class="block text-sm font-medium text-text-primary mb-1.5">
-                    {strings.incidentDescriptionLabel}
+                    {t.incidentDescriptionLabel}
                 </label>
                 <textarea
                     class="incident-desc-input w-full rounded-xl border border-border bg-bg px-3 py-2.5 text-sm text-text-primary shadow-sm outline-none ring-accent focus:ring-2 transition-shadow resize-none"
                     rows="4"
-                    placeholder={strings.incidentDescriptionPlaceholder}
+                    placeholder={t.incidentDescriptionPlaceholder}
                 ></textarea>
-                <p class="incident-desc-error hidden mt-1.5 text-xs text-red-600">{strings.incidentDescriptionError}</p>
+                <p class="incident-desc-error hidden mt-1.5 text-xs text-red-600">{t.incidentDescriptionError}</p>
             </div>
 
             <div>
                 <label class="block text-sm font-medium text-text-primary mb-1.5">
-                    {strings.incidentPhotosLabel}
+                    {t.incidentPhotosLabel}
                 </label>
-                <p class="text-xs text-text-secondary mb-2">{strings.incidentPhotosHint}</p>
+                <p class="text-xs text-text-secondary mb-2">{t.incidentPhotosHint}</p>
                 <div class="flex flex-wrap gap-2 mb-2">
                     <span class="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 text-[11px] font-medium">
                         <Icon name="tag" size={10} />
-                        {strings.incidentPhotoTypeShippingLabel}
+                        {t.incidentPhotoTypeShippingLabel}
                     </span>
                     <span class="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 text-[11px] font-medium">
                         <Icon name="package" size={10} />
-                        {strings.incidentPhotoTypePackagingLabel}
+                        {t.incidentPhotoTypePackagingLabel}
                     </span>
                     <span class="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300 text-[11px] font-medium">
                         <Icon name="alert-circle" size={10} />
-                        {strings.incidentPhotoTypeDefectLabel}
+                        {t.incidentPhotoTypeDefectLabel}
                     </span>
                 </div>
 
@@ -72,17 +72,17 @@ const { orderId, sellerEmail } = Astro.props;
                     <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple class="incident-file-input hidden" />
                 </label>
 
-                <p class="incident-photos-error hidden mt-1.5 text-xs text-red-600">{strings.incidentMinPhotosError}</p>
+                <p class="incident-photos-error hidden mt-1.5 text-xs text-red-600">{t.incidentMinPhotosError}</p>
 
                 <div class="incident-photo-preview grid grid-cols-4 gap-2 mt-3"></div>
             </div>
 
             <div class="flex gap-2 justify-end pt-2">
                 <button type="button" class="close-incident-modal-btn px-3 py-1.5 text-sm font-medium text-text-secondary hover:text-text-primary transition-colors">
-                    {strings.incidentCancel}
+                    {t.incidentCancel}
                 </button>
                 <button type="button" class="submit-incident-btn px-3 py-1.5 text-sm font-semibold rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                    {strings.incidentSubmit}
+                    {t.incidentSubmit}
                 </button>
             </div>
         </div>
@@ -90,11 +90,12 @@ const { orderId, sellerEmail } = Astro.props;
 </div>
 
 <script>
-    import { strings } from '../../lib/core/i18n';
+    import { getClientT } from '../../lib/core/i18n';
     import { toast } from '../../lib/ui/toast';
     import { setBusy } from '../../lib/ui/busy';
     import { runSubmit, SubmitError } from '../../lib/ui/submit';
     import { compressImage, INCIDENT_PRESET } from '../../lib/ui/imageCompress';
+const t = getClientT();
 
     function setupPhotoUpload(modal: HTMLElement) {
         if (modal.dataset.incidentWired === '1') return;
@@ -144,9 +145,9 @@ const { orderId, sellerEmail } = Astro.props;
             const remainingSlots = 20 - uploadedPhotos.length;
             const toUpload = files.slice(0, remainingSlots);
 
-            if (toUpload.length < files.length) toast.error(strings.incidentMaxPhotosError);
+            if (toUpload.length < files.length) toast.error(t.incidentMaxPhotosError);
 
-            setBusy(submitBtn!, true, { label: strings.incidentUploading });
+            setBusy(submitBtn!, true, { label: t.incidentUploading });
 
             for (const file of toUpload) {
                 const compressed = await compressImage(file, INCIDENT_PRESET);
@@ -195,7 +196,7 @@ const { orderId, sellerEmail } = Astro.props;
 
             const incidentResult = await runSubmit({
                 button: submitBtn,
-                busyLabel: strings.incidentSubmitting,
+                busyLabel: t.incidentSubmitting,
                 action: async () => {
                     const res = await fetch('/api/orders/report-incident', {
                         method: 'POST',
@@ -203,10 +204,10 @@ const { orderId, sellerEmail } = Astro.props;
                         body: JSON.stringify({ orderId, description, photos: uploadedPhotos }),
                     });
                     const data = await res.json() as { success?: boolean; error?: string };
-                    if (!data.success) throw new SubmitError(data.error || strings.orderReportIncidentError);
+                    if (!data.success) throw new SubmitError(data.error || t.orderReportIncidentError);
                     return data;
                 },
-                successMsg: strings.incidentReportedToast,
+                successMsg: t.incidentReportedToast,
             });
             if (incidentResult.ok) {
                 window.setTimeout(() => window.location.reload(), 800);

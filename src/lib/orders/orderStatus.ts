@@ -1,4 +1,4 @@
-import { strings } from '../core/i18n';
+import type { Strings } from '../core/i18n';
 
 export const ORDER_STATUS = {
     PENDING: 'pending',
@@ -34,15 +34,17 @@ export const DELIVERY_TYPE = {
 } as const;
 export type DeliveryType = (typeof DELIVERY_TYPE)[keyof typeof DELIVERY_TYPE];
 
-export const orderStatusLabels: Record<OrderStatus, string> = {
-    pending: strings.orderStatusPending,
-    paid: strings.orderStatusPaid,
-    processing: strings.orderStatusProcessing,
-    shipped: strings.orderStatusShipped,
-    delivered: strings.orderStatusDelivered,
-    confirmed: strings.orderStatusConfirmed,
-    incident: strings.orderStatusIncident,
-    delivery_failed: strings.orderStatusDeliveryFailed,
-    cancelled: strings.orderStatusCancelled,
-    refunded: strings.orderStatusRefunded,
-};
+export function getOrderStatusLabels(t: Strings): Record<OrderStatus, string> {
+    return {
+        pending: t.orderStatusPending,
+        paid: t.orderStatusPaid,
+        processing: t.orderStatusProcessing,
+        shipped: t.orderStatusShipped,
+        delivered: t.orderStatusDelivered,
+        confirmed: t.orderStatusConfirmed,
+        incident: t.orderStatusIncident,
+        delivery_failed: t.orderStatusDeliveryFailed,
+        cancelled: t.orderStatusCancelled,
+        refunded: t.orderStatusRefunded,
+    };
+}

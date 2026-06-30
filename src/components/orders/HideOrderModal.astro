@@ -1,6 +1,6 @@
 ---
 import Icon from '../icons/Icon.astro';
-import { strings } from '../../lib/core/i18n';
+const { t } = Astro.locals;
 
 interface Props {
     orderId: string;
@@ -12,26 +12,27 @@ const { orderId } = Astro.props;
 <div class="hide-order-modal hidden fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4" data-order-id={orderId}>
     <div class="w-full max-w-md rounded-t-2xl sm:rounded-2xl border border-border bg-surface p-5 shadow-xl">
         <div class="flex items-center justify-between mb-4">
-            <h3 class="text-base font-semibold text-text-primary">{strings.orderHideModalTitle}</h3>
+            <h3 class="text-base font-semibold text-text-primary">{t.orderHideModalTitle}</h3>
             <button type="button" class="close-hide-order-modal-btn p-1.5 rounded-lg hover:bg-border-light transition-colors text-text-secondary">
                 <Icon name="x" size={18} />
             </button>
         </div>
-        <p class="text-sm text-text-secondary mb-5 leading-relaxed">{strings.orderHideModalBody}</p>
+        <p class="text-sm text-text-secondary mb-5 leading-relaxed">{t.orderHideModalBody}</p>
         <div class="flex gap-2 justify-end">
             <button type="button" class="close-hide-order-modal-btn px-3 py-1.5 text-sm font-medium text-text-secondary hover:text-text-primary transition-colors">
-                {strings.orderHideDismiss}
+                {t.orderHideDismiss}
             </button>
             <button type="button" class="confirm-hide-order-btn px-3 py-1.5 text-sm font-semibold rounded-lg bg-zinc-800 text-white dark:bg-zinc-200 dark:text-zinc-900 hover:bg-zinc-700 dark:hover:bg-zinc-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" data-order-id={orderId}>
-                {strings.orderHideConfirm}
+                {t.orderHideConfirm}
             </button>
         </div>
     </div>
 </div>
 
 <script>
-    import { strings } from '../../lib/core/i18n';
+    import { getClientT } from '../../lib/core/i18n';
     import { runSubmit, SubmitError } from '../../lib/ui/submit';
+const t = getClientT();
 
     function wireModal(modal: HTMLElement) {
         if (modal.dataset.hideOrderWired === '1') return;
@@ -67,10 +68,10 @@ const { orderId } = Astro.props;
                         body: JSON.stringify({ orderId }),
                     });
                     const data = await res.json() as { success?: boolean; error?: string };
-                    if (!data.success) throw new SubmitError(data.error || strings.orderHideError);
+                    if (!data.success) throw new SubmitError(data.error || t.orderHideError);
                     return data;
                 },
-                successMsg: strings.orderHideSuccess,
+                successMsg: t.orderHideSuccess,
             });
             if (result.ok) {
                 modal.classList.add('hidden');

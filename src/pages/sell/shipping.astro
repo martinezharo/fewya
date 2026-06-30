@@ -2,9 +2,10 @@
 import SellerLayout from '../../layouts/SellerLayout.astro';
 import ShippingEditorPanel from '../../components/seller/ShippingEditorPanel.astro';
 import Icon from '../../components/icons/Icon.astro';
-import { strings } from '../../lib/core/i18n';
+
 import { createSupabaseAuthClient } from '../../lib/core/auth';
 import { normalizeShippingPlatforms } from '../../lib/shipping/shippingPlatform';
+const { t } = Astro.locals;
 
 const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
 const { data: sessionData } = await supabase.auth.getSession();
@@ -38,12 +39,12 @@ const defaults = {
 };
 ---
 
-<SellerLayout title={strings.sellerShippingPageTitle} shopSlug={shop.slug} shopId={shop.id}>
+<SellerLayout title={t.sellerShippingPageTitle} shopSlug={shop.slug} shopId={shop.id}>
     <div class="max-w-3xl mx-auto px-4 py-8 lg:py-12">
         <div class="mb-8">
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-text-tertiary">{shop.name}</p>
-            <h1 class="mt-2 text-2xl font-semibold tracking-tight text-text-primary">{strings.sellerShippingTitle}</h1>
-            <p class="mt-1 text-sm text-text-secondary">{strings.sellerShippingSubtitle}</p>
+            <h1 class="mt-2 text-2xl font-semibold tracking-tight text-text-primary">{t.sellerShippingTitle}</h1>
+            <p class="mt-1 text-sm text-text-secondary">{t.sellerShippingSubtitle}</p>
         </div>
 
         <div class="rounded-3xl border border-border bg-surface shadow-sm">
@@ -53,9 +54,9 @@ const defaults = {
                 <div>
                     <div class="flex items-center gap-2 text-[13px] font-bold uppercase tracking-wider text-text-primary mb-1">
                         <Icon name="truck" size={15} class="text-text-tertiary" />
-                        <span>{strings.sellerSettingsShippingSection}</span>
+                        <span>{t.sellerSettingsShippingSection}</span>
                     </div>
-                    <p class="text-sm text-text-secondary pl-[23px]">{strings.sellerSettingsShippingSubtitle}</p>
+                    <p class="text-sm text-text-secondary pl-[23px]">{t.sellerSettingsShippingSubtitle}</p>
                 </div>
 
                 <ShippingEditorPanel
@@ -70,15 +71,15 @@ const defaults = {
                 <!-- Plataformas de envío -->
                 <div class="pt-6 border-t border-border space-y-4" id="carriers-group">
                     <div>
-                        <p class="text-sm font-semibold text-text-primary">{strings.sellerSettingsCarriersSection}</p>
-                        <p class="mt-1 text-sm text-text-secondary">{strings.sellerSettingsCarriersSubtitle}</p>
+                        <p class="text-sm font-semibold text-text-primary">{t.sellerSettingsCarriersSection}</p>
+                        <p class="mt-1 text-sm text-text-secondary">{t.sellerSettingsCarriersSubtitle}</p>
                     </div>
 
                     <div class="space-y-2.5">
                         <label class="flex items-center justify-between gap-4 p-4 rounded-2xl border border-border bg-bg cursor-pointer">
                             <div class="min-w-0">
-                                <p class="text-sm font-medium text-text-primary">{strings.sellerSettingsCarrierInpostLabel}</p>
-                                <p class="text-xs text-text-secondary">{strings.sellerSettingsCarrierInpostDesc}</p>
+                                <p class="text-sm font-medium text-text-primary">{t.sellerSettingsCarrierInpostLabel}</p>
+                                <p class="text-xs text-text-secondary">{t.sellerSettingsCarrierInpostDesc}</p>
                             </div>
                             <input type="checkbox" data-carrier="inpost" class="peer sr-only" checked={defaults.carriers.includes('inpost')} />
                             <span class="relative shrink-0 w-11 h-6 rounded-full bg-border-light peer-checked:bg-accent transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:w-5 after:h-5 after:rounded-full after:bg-white after:shadow-sm after:transition-transform peer-checked:after:translate-x-5"></span>
@@ -86,15 +87,15 @@ const defaults = {
 
                         <label class="flex items-center justify-between gap-4 p-4 rounded-2xl border border-border bg-bg cursor-pointer">
                             <div class="min-w-0">
-                                <p class="text-sm font-medium text-text-primary">{strings.sellerSettingsCarrierCorreosLabel}</p>
-                                <p class="text-xs text-text-secondary">{strings.sellerSettingsCarrierCorreosDesc}</p>
+                                <p class="text-sm font-medium text-text-primary">{t.sellerSettingsCarrierCorreosLabel}</p>
+                                <p class="text-xs text-text-secondary">{t.sellerSettingsCarrierCorreosDesc}</p>
                             </div>
                             <input type="checkbox" data-carrier="correos" class="peer sr-only" checked={defaults.carriers.includes('correos')} />
                             <span class="relative shrink-0 w-11 h-6 rounded-full bg-border-light peer-checked:bg-accent transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:w-5 after:h-5 after:rounded-full after:bg-white after:shadow-sm after:transition-transform peer-checked:after:translate-x-5"></span>
                         </label>
                     </div>
 
-                    <p id="carriers-error" class="hidden text-xs font-medium text-red-500">{strings.sellerSettingsCarriersAtLeastOne}</p>
+                    <p id="carriers-error" class="hidden text-xs font-medium text-red-500">{t.sellerSettingsCarriersAtLeastOne}</p>
                 </div>
 
                 <div class="flex items-center justify-end pt-2">
@@ -103,7 +104,7 @@ const defaults = {
                         id="save-shipping-btn"
                         class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-accent text-bg font-medium text-sm hover:bg-accent-hover active:scale-[0.98] transition-all"
                     >
-                        <span data-busy-label>{strings.sellerSettingsSave}</span>
+                        <span data-busy-label>{t.sellerSettingsSave}</span>
                     </button>
                 </div>
             </section>
@@ -113,9 +114,10 @@ const defaults = {
 </SellerLayout>
 
 <script>
-    import { strings } from '../../lib/core/i18n';
+    import { getClientT } from '../../lib/core/i18n';
     import { runSubmit } from '../../lib/ui/submit';
     import { initShippingEditor } from '../../lib/ui/shipping-editor';
+const t = getClientT();
 
     function initShippingPage() {
         const panel = document.querySelector<HTMLElement>('.shipping-editor-panel');
@@ -169,14 +171,14 @@ const defaults = {
 
             await runSubmit({
                 button: saveBtn,
-                busyLabel: strings.sellerSettingsSaving,
+                busyLabel: t.sellerSettingsSaving,
                 action: () => fetch('/api/sell/settings/shipping', {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload),
                 }),
-                successMsg: strings.settingsSavedToast,
-                errorFallback: strings.sellerSettingsSaveError,
+                successMsg: t.settingsSavedToast,
+                errorFallback: t.sellerSettingsSaveError,
             });
         });
     }

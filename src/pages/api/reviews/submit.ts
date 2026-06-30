@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro';
 import { createSupabaseAuthClient } from '../../../lib/core/auth';
 import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
-import { strings } from '../../../lib/core/i18n';
+
 import { ORDER_STATUS } from '../../../lib/orders/orderStatus';
 
 function jsonResponse(payload: Record<string, unknown>, status: number) {
@@ -11,31 +11,32 @@ function jsonResponse(payload: Record<string, unknown>, status: number) {
     });
 }
 
-export const POST: APIRoute = async ({ request, cookies }) => {
+export const POST: APIRoute = async ({ locals, request, cookies  }) => {
+    const { t } = locals;
     const authClient = createSupabaseAuthClient(cookies, request);
     const {
         data: { user },
     } = await authClient.auth.getUser();
 
     if (!user) {
-        return jsonResponse({ error: strings.apiUnauthorized }, 401);
+        return jsonResponse({ error: t.apiUnauthorized }, 401);
     }
 
     let body: { productId?: string; rating?: number; comment?: string };
     try {
         body = await request.json();
     } catch {
-        return jsonResponse({ error: strings.apiInvalidBody }, 400);
+        return jsonResponse({ error: t.apiInvalidBody }, 400);
     }
 
     const { productId, rating, comment } = body;
     if (!productId || typeof rating !== 'number' || rating < 1 || rating > 5) {
-        return jsonResponse({ error: strings.apiInvalidBody }, 400);
+        return jsonResponse({ error: t.apiInvalidBody }, 400);
     }
 
     // A4: limit comment length to prevent storage abuse
     if (comment !== undefined && (typeof comment !== 'string' || comment.length > 2000)) {
-        return jsonResponse({ error: strings.apiInvalidBody }, 400);
+        return jsonResponse({ error: t.apiInvalidBody }, 400);
     }
 
     const adminClient = createSupabaseAdminClient();
@@ -49,7 +50,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         .limit(1);
 
     if (purchaseError || !purchaseData || purchaseData.length === 0) {
-        return jsonResponse({ error: strings.apiForbidden }, 403);
+        return jsonResponse({ error: t.apiForbidden }, 403);
     }
 
     // More precise check: does any confirmed order contain this product?
@@ -64,7 +65,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     if (validError || !validPurchase) {
         console.error('valid purchase check failed', validError);
-        return jsonResponse({ error: strings.apiForbidden }, 403);
+        return jsonResponse({ error: t.apiForbidden }, 403);
     }
 
     // Check if review already exists
@@ -104,7 +105,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     if (result.error) {
         console.error('review submit error', result.error);
-        return jsonResponse({ error: strings.reviewSubmitError }, 500);
+        return jsonResponse({ error: t.reviewSubmitError }, 500);
     }
 
     return jsonResponse({ success: true, review: result.data }, 200);

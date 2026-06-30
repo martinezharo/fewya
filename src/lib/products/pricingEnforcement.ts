@@ -1,4 +1,4 @@
-import { strings } from '../core/i18n';
+import type { Strings } from '../core/i18n';
 import { getMaxLabelPriceEur } from '../shipping/sendcloud';
 import {
     validateVariantPricing,
@@ -24,30 +24,31 @@ function fmtEur(value: number): string {
     return `${value.toFixed(2).replace('.', ',')} €`;
 }
 
-function variantLabel(v: PricingCheckVariant): string {
+function variantLabel(t: Strings, v: PricingCheckVariant): string {
     const name = v.variant_name?.trim();
-    return name && name.length > 0 ? name : strings.sellerProductPricingVariantFallbackName;
+    return name && name.length > 0 ? name : t.sellerProductPricingVariantFallbackName;
 }
 
 function messageFor(
+    t: Strings,
     code: VariantPricingViolation,
     v: PricingCheckVariant,
     maxLabel: number,
 ): string {
     const price = Number(v.price) || 0;
     const shipping = Number(v.shipping_cost) || 0;
-    const variant = variantLabel(v);
+    const variant = variantLabel(t, v);
 
     switch (code) {
         case 'price_below_min':
-            return strings.sellerProductPricingPriceBelowMin.replace('{variant}', variant);
+            return t.sellerProductPricingPriceBelowMin.replace('{variant}', variant);
         case 'shipping_exceeds_label':
-            return strings.sellerProductPricingShippingExceedsLabel
+            return t.sellerProductPricingShippingExceedsLabel
                 .replace('{variant}', variant)
                 .replace('{charged}', fmtEur(shipping))
                 .replace('{maxLabel}', fmtEur(maxLabel));
         case 'margin_below_floor':
-            return strings.sellerProductPricingMarginTooLow
+            return t.sellerProductPricingMarginTooLow
                 .replace('{variant}', variant)
                 .replace('{total}', fmtEur(price + shipping))
                 .replace('{maxLabel}', fmtEur(maxLabel));
@@ -55,6 +56,7 @@ function messageFor(
 }
 
 export async function enforceVariantPricing(
+    t: Strings,
     variants: PricingCheckVariant[],
 ): Promise<PricingCheckResult> {
     if (!variants.length) return { ok: true, errors: [] };
@@ -80,9 +82,9 @@ export async function enforceVariantPricing(
 
         if (maxLabel === undefined || maxLabel === null) {
             errors.push(
-                strings.sellerProductPricingLabelUnavailable.replace(
+                t.sellerProductPricingLabelUnavailable.replace(
                     '{variant}',
-                    variantLabel(v),
+                    variantLabel(t, v),
                 ),
             );
             continue;
@@ -95,7 +97,7 @@ export async function enforceVariantPricing(
         });
 
         for (const code of codes) {
-            errors.push(messageFor(code, v, maxLabel));
+            errors.push(messageFor(t, code, v, maxLabel));
         }
     }
 
