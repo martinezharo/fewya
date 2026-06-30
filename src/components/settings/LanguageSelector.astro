@@ -1,0 +1,96 @@
+---
+import { LOCALE_LABELS, SUPPORTED_LOCALES, type Locale } from '../../lib/core/i18n';
+
+const { t, locale } = Astro.locals;
+---
+<div class="bg-surface border border-border-light rounded-2xl p-5" data-language-selector>
+    <p class="text-[13px] font-medium text-text-secondary mb-1">
+        {t.settingsLanguageLabel}
+    </p>
+    <p class="text-xs text-text-tertiary mb-4">
+        {t.settingsLanguageHint}
+    </p>
+
+    <div class="flex gap-2" role="radiogroup" aria-label={t.settingsLanguageLabel}>
+        {SUPPORTED_LOCALES.map((code: Locale) => {
+            const isActive = code === locale;
+            return (
+                <button
+                    type="button"
+                    role="radio"
+                    aria-checked={isActive}
+                    data-locale={code}
+                    disabled={isActive}
+                    class:list={[
+                        'flex-1 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors border',
+                        isActive
+                            ? 'bg-accent/10 border-accent text-accent cursor-default'
+                            : 'bg-bg border-border-light text-text-primary hover:bg-border-light/50 active:scale-[0.98]',
+                    ]}
+                >
+                    {LOCALE_LABELS[code]}
+                </button>
+            );
+        })}
+    </div>
+
+    <p class="text-xs text-emerald-600 dark:text-emerald-400 mt-3 hidden" data-locale-success>
+        {t.languageSavedToast}
+    </p>
+</div>
+
+<script>
+    import { runSubmit } from '../../lib/ui/submit';
+    import { mountToastRoot } from '../../lib/ui/toast';
+
+    function init() {
+        mountToastRoot();
+        document.querySelectorAll<HTMLElement>('[data-language-selector]').forEach((scope) => {
+            const buttons = scope.querySelectorAll<HTMLButtonElement>('button[data-locale]');
+            const successEl = scope.querySelector<HTMLElement>('[data-locale-success]');
+            buttons.forEach((btn) => {
+                if (btn.disabled) return;
+                btn.addEventListener('click', () => {
+                    const code = btn.dataset.locale;
+                    if (!code) return;
+
+                    void runSubmit({
+                        button: btn,
+                        action: () =>
+                            fetch('/api/locale', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ locale: code }),
+                            }),
+                        successMsg: '',
+                        silentSuccess: true,
+                    }).then((result) => {
+                        if (!result.ok) {
+                            // runSubmit already toasted the error — nothing else to do
+                            return;
+                        }
+                        // Mark the chosen option as active, then reload so the new
+                        // locale takes effect across every server-rendered string.
+                        buttons.forEach((b) => {
+                            b.disabled = b === btn;
+                            b.setAttribute('aria-checked', b === btn ? 'true' : 'false');
+                            b.classList.remove('bg-accent/10', 'border-accent', 'text-accent', 'cursor-default');
+                            b.classList.add('bg-bg', 'border-border-light', 'text-text-primary', 'hover:bg-border-light/50', 'active:scale-[0.98]');
+                        });
+                        btn.classList.remove('bg-bg', 'border-border-light', 'text-text-primary', 'hover:bg-border-light/50', 'active:scale-[0.98]');
+                        btn.classList.add('bg-accent/10', 'border-accent', 'text-accent', 'cursor-default');
+                        if (successEl) {
+                            successEl.classList.remove('hidden');
+                            window.setTimeout(() => successEl.classList.add('hidden'), 1500);
+                        }
+                        window.setTimeout(() => window.location.reload(), 600);
+                    });
+                });
+            });
+        });
+    }
+
+    document.addEventListener('astro:page-load', init);
+    if (document.readyState !== 'loading') init();
+    else document.addEventListener('DOMContentLoaded', init);
+</script>

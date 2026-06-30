@@ -3,9 +3,11 @@ import SellerLayout from '../../layouts/SellerLayout.astro';
 import ThemeSelector from '../../components/settings/ThemeSelector.astro';
 import SignOutButton from '../../components/settings/SignOutButton.astro';
 import NotificationsToggle from '../../components/settings/NotificationsToggle.astro';
+import LanguageSelector from '../../components/settings/LanguageSelector.astro';
 import Icon from '../../components/icons/Icon.astro';
-import { strings } from '../../lib/core/i18n';
+
 import { createSupabaseAuthClient } from '../../lib/core/auth';
+const { t } = Astro.locals;
 
 const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
 const { data: sessionData } = await supabase.auth.getSession();
@@ -30,11 +32,11 @@ const { data: shop } = await supabase
 if (!shop) return Astro.redirect('/sell/onboarding');
 ---
 
-<SellerLayout title={strings.sellerSettingsPageTitle} shopSlug={shop.slug} shopId={shop.id}>
+<SellerLayout title={t.sellerSettingsPageTitle} shopSlug={shop.slug} shopId={shop.id}>
     <div class="max-w-3xl mx-auto px-4 py-8 lg:py-12">
         <div class="mb-8">
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-text-tertiary">{shop.name}</p>
-            <h1 class="mt-2 text-2xl font-semibold tracking-tight text-text-primary">{strings.sellerSettingsTitle}</h1>
+            <h1 class="mt-2 text-2xl font-semibold tracking-tight text-text-primary">{t.sellerSettingsTitle}</h1>
         </div>
 
         <div class="rounded-3xl border border-border bg-surface shadow-sm divide-y divide-border">
@@ -43,16 +45,29 @@ if (!shop) return Astro.redirect('/sell/onboarding');
             <section class="p-6 md:p-8 space-y-6">
                 <div class="flex items-center gap-2 text-[13px] font-bold uppercase tracking-wider text-text-primary">
                     <Icon name="sun" size={15} class="text-text-tertiary" />
-                    <span>{strings.settingsAppearanceSection}</span>
+                    <span>{t.settingsAppearanceSection}</span>
                 </div>
                 <ThemeSelector />
+            </section>
+
+            <!-- Idioma -->
+            <section class="p-6 md:p-8 space-y-6">
+                <div class="flex items-center gap-2 text-[13px] font-bold uppercase tracking-wider text-text-primary">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 text-text-tertiary" aria-hidden="true">
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="M2 12h20" />
+                        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+                    </svg>
+                    <span>{t.settingsLanguageSection}</span>
+                </div>
+                <LanguageSelector />
             </section>
 
             <!-- Notificaciones -->
             <section class="p-6 md:p-8 space-y-6">
                 <div class="flex items-center gap-2 text-[13px] font-bold uppercase tracking-wider text-text-primary">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 text-text-tertiary"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
-                    <span>{strings.notifSettingsSection}</span>
+                    <span>{t.notifSettingsSection}</span>
                 </div>
                 <NotificationsToggle />
             </section>
@@ -61,7 +76,7 @@ if (!shop) return Astro.redirect('/sell/onboarding');
             <section class="p-6 md:p-8 space-y-6">
                 <div class="flex items-center gap-2 text-[13px] font-bold uppercase tracking-wider text-text-primary">
                     <Icon name="user" size={15} class="text-text-tertiary" />
-                    <span>{strings.settingsAccountSection}</span>
+                    <span>{t.settingsAccountSection}</span>
                 </div>
                 <SignOutButton />
             </section>
@@ -70,9 +85,9 @@ if (!shop) return Astro.redirect('/sell/onboarding');
             <section class="p-6 md:p-8 space-y-4">
                 <div class="flex items-center gap-2 text-[13px] font-bold uppercase tracking-wider text-red-500">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
-                    <span>{strings.sellerSettingsDeleteShop}</span>
+                    <span>{t.sellerSettingsDeleteShop}</span>
                 </div>
-                <p class="text-sm text-text-secondary">{strings.sellerSettingsDeleteShopConfirm}</p>
+                <p class="text-sm text-text-secondary">{t.sellerSettingsDeleteShopConfirm}</p>
                 <button
                     type="button"
                     id="delete-shop-btn"
@@ -81,7 +96,7 @@ if (!shop) return Astro.redirect('/sell/onboarding');
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
-                    {strings.sellerSettingsDeleteShop}
+                    {t.sellerSettingsDeleteShop}
                 </button>
             </section>
 
@@ -93,15 +108,16 @@ if (!shop) return Astro.redirect('/sell/onboarding');
     <div class="bg-surface rounded-2xl border border-border p-6 mx-4 max-w-sm w-full shadow-xl">
         <p class="text-sm text-text-primary font-medium" id="delete-dialog-text"></p>
         <div class="mt-5 flex justify-end gap-3">
-            <button type="button" id="delete-cancel-btn" class="px-4 py-2 rounded-xl text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-border-light transition-colors">{strings.sellerOnboardingPrev}</button>
-            <button type="button" id="delete-confirm-btn" class="px-4 py-2 rounded-xl text-sm font-medium bg-red-500 text-white hover:bg-red-600 transition-colors">{strings.sellerSettingsDeleteShop}</button>
+            <button type="button" id="delete-cancel-btn" class="px-4 py-2 rounded-xl text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-border-light transition-colors">{t.sellerOnboardingPrev}</button>
+            <button type="button" id="delete-confirm-btn" class="px-4 py-2 rounded-xl text-sm font-medium bg-red-500 text-white hover:bg-red-600 transition-colors">{t.sellerSettingsDeleteShop}</button>
         </div>
     </div>
 </div>
 
 <script>
-    import { strings } from '../../lib/core/i18n';
+    import { getClientT } from '../../lib/core/i18n';
     import { runSubmit } from '../../lib/ui/submit';
+const t = getClientT();
 
     function initSettingsPage() {
         const deleteBtn = document.getElementById('delete-shop-btn') as HTMLButtonElement | null;
@@ -114,7 +130,7 @@ if (!shop) return Astro.redirect('/sell/onboarding');
         const confirmBtn = document.getElementById('delete-confirm-btn') as HTMLButtonElement | null;
 
         deleteBtn.addEventListener('click', () => {
-            if (dialogText) dialogText.textContent = strings.sellerSettingsDeleteShopConfirm;
+            if (dialogText) dialogText.textContent = t.sellerSettingsDeleteShopConfirm;
             dialog?.classList.remove('hidden');
             dialog?.classList.add('flex');
         });
@@ -129,8 +145,8 @@ if (!shop) return Astro.redirect('/sell/onboarding');
             const result = await runSubmit({
                 button: confirmBtn,
                 action: () => fetch('/api/sell/shop/delete', { method: 'DELETE' }),
-                successMsg: strings.sellerSettingsDeleteShopSuccess,
-                errorFallback: strings.sellerSettingsDeleteShopError,
+                successMsg: t.sellerSettingsDeleteShopSuccess,
+                errorFallback: t.sellerSettingsDeleteShopError,
             });
             if (result.ok) {
                 setTimeout(() => { window.location.href = '/'; }, 1200);

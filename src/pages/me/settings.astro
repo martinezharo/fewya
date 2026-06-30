@@ -4,8 +4,10 @@ import Icon from "../../components/icons/Icon.astro";
 import ThemeSelector from "../../components/settings/ThemeSelector.astro";
 import SignOutButton from "../../components/settings/SignOutButton.astro";
 import NotificationsToggle from "../../components/settings/NotificationsToggle.astro";
-import { strings } from "../../lib/core/i18n";
+import LanguageSelector from "../../components/settings/LanguageSelector.astro";
+
 import { createSupabaseAuthClient } from "../../lib/core/auth";
+const { t } = Astro.locals;
 
 const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
 const { data: { user } } = await supabase.auth.getUser();
@@ -15,7 +17,7 @@ if (!user) {
 }
 ---
 
-<BuyerAppLayout title={strings.settingsPageTitle}>
+<BuyerAppLayout title={t.settingsPageTitle}>
     <main class="w-full max-w-lg mx-auto px-4 pt-6 pb-28 md:pb-16 min-h-[50vh]">
 
         {/* Back button + title */}
@@ -23,34 +25,43 @@ if (!user) {
             <a
                 href="/me"
                 class="w-9 h-9 rounded-full flex items-center justify-center hover:bg-border-light transition-colors -ml-1 text-text-secondary hover:text-text-primary"
-                aria-label={strings.productBack}
+                aria-label={t.productBack}
             >
                 <Icon name="arrow-left" size={20} />
             </a>
             <h1 class="text-xl md:text-2xl font-bold text-text-primary">
-                {strings.settingsTitle}
+                {t.settingsTitle}
             </h1>
         </div>
 
         {/* Apariencia */}
         <section class="mb-6">
             <h2 class="text-[11px] font-semibold uppercase tracking-widest text-text-tertiary mb-3 px-1">
-                {strings.settingsAppearanceSection}
+                {t.settingsAppearanceSection}
             </h2>
 
             <div class="bg-surface border border-border-light rounded-2xl p-5">
                 <p class="text-[13px] font-medium text-text-secondary mb-4">
-                    {strings.settingsThemeLabel}
+                    {t.settingsThemeLabel}
                 </p>
 
                 <ThemeSelector />
             </div>
         </section>
 
+        {/* Idioma */}
+        <section class="mb-6">
+            <h2 class="text-[11px] font-semibold uppercase tracking-widest text-text-tertiary mb-3 px-1">
+                {t.settingsLanguageSection}
+            </h2>
+
+            <LanguageSelector />
+        </section>
+
         {/* Notificaciones */}
         <section class="mb-6">
             <h2 class="text-[11px] font-semibold uppercase tracking-widest text-text-tertiary mb-3 px-1">
-                {strings.notifSettingsSection}
+                {t.notifSettingsSection}
             </h2>
 
             <NotificationsToggle />
@@ -59,7 +70,7 @@ if (!user) {
         {/* Cuenta */}
         <section class="mb-6">
             <h2 class="text-[11px] font-semibold uppercase tracking-widest text-text-tertiary mb-3 px-1">
-                {strings.settingsAccountSection}
+                {t.settingsAccountSection}
             </h2>
 
             <SignOutButton />
@@ -68,7 +79,7 @@ if (!user) {
         {/* Legal */}
         <section class="mb-6">
             <h2 class="text-[11px] font-semibold uppercase tracking-widest text-text-tertiary mb-3 px-1">
-                {strings.settingsLegalSection}
+                {t.settingsLegalSection}
             </h2>
 
             <div class="bg-surface border border-border-light rounded-2xl overflow-hidden">
@@ -76,14 +87,14 @@ if (!user) {
                     href="/privacy-policy"
                     class="flex items-center justify-between px-5 py-4 hover:bg-border-light/30 transition-colors border-b border-border-light"
                 >
-                    <span class="text-sm text-text-primary">{strings.settingsPrivacyPolicy}</span>
+                    <span class="text-sm text-text-primary">{t.settingsPrivacyPolicy}</span>
                     <Icon name="chevron-right" size={16} class="text-text-tertiary" />
                 </a>
                 <a
                     href="/terms-of-service"
                     class="flex items-center justify-between px-5 py-4 hover:bg-border-light/30 transition-colors"
                 >
-                    <span class="text-sm text-text-primary">{strings.settingsTermsOfService}</span>
+                    <span class="text-sm text-text-primary">{t.settingsTermsOfService}</span>
                     <Icon name="chevron-right" size={16} class="text-text-tertiary" />
                 </a>
             </div>
