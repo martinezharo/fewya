@@ -113,7 +113,7 @@ pending → paid → processing → shipped → delivered → confirmed
                                cancelled (from pending/paid)
 ```
 
-Status labels are Spanish strings from `i18n.ts`. The full enum is in `lib/orders/orderStatus.ts`.
+Status labels come from `getOrderStatusLabels(t)` in `lib/orders/orderStatus.ts` (callers pass the active `t` from `Astro.locals`).
 
 ### Wishlist
 
@@ -138,7 +138,7 @@ Thin vanilla-TS helpers used inside `<script>` blocks in Astro components:
 
 - **Efficiency:** Less code = fewer bugs. Always choose the smartest, most scalable solution.
 - **Modularity:** Separate files for components and functions that are reusable or complex enough to warrant it.
-- **i18n:** All user-facing strings go in `lib/core/i18n.ts` (Spanish). Never hardcode UI text.
+- **i18n:** All user-facing strings go in `lib/core/i18n/` (Spanish + English). Never hardcode UI text. The active locale is resolved in `middleware.ts` (cookie override → `Accept-Language` → `en` default) and exposed on `Astro.locals` as `locale` and `t`. In `.astro` frontmatter, pull strings with `const { t, locale } = Astro.locals;`. Server-side helpers in `lib/` accept `t` (a `Strings` object) as a parameter; client-side modules call `getClientT()` from `lib/core/i18n/client.ts` which reads the `__fewyaT__` global injected by `Layout.astro`. Adding a new key: add it to `strings.es.ts` AND `strings.en.ts` (and the `Strings` interface in `types.ts` — TypeScript will catch mismatches). To add a new locale, extend `SUPPORTED_LOCALES` in `locales.ts` and add a new strings file.
 - **Page routes:** English only (e.g., `/sell/catalog`, `/me/orders`).
 - **Types:** Shared domain types (`Shop`, `Product`, `ProductVariant`, `Review`) live in `lib/core/types.ts`.
 - **Unused vars:** Prefix with `_` to suppress ESLint errors.
