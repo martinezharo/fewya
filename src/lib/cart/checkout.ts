@@ -106,7 +106,15 @@ export function normalizeCheckoutItems(
         combined.set(item.variantId, (combined.get(item.variantId) ?? 0) + item.quantity);
     }
 
-    return Array.from(combined.entries()).map(([variantId, quantity]) => ({ variantId, quantity }));
+    const normalized = Array.from(combined.entries()).map(([variantId, quantity]) => ({ variantId, quantity }));
+
+    // Re-check the cap after merging duplicates: two valid lines for the same
+    // variant must not combine into a quantity above the per-variant limit.
+    if (normalized.some((item) => item.quantity > 99)) {
+        return null;
+    }
+
+    return normalized;
 }
 
 export interface StripeCheckoutLineItem {

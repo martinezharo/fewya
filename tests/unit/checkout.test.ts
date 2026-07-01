@@ -168,14 +168,18 @@ describe('normalizeCheckoutItems', () => {
         expect(normalizeCheckoutItems([])).toEqual([]);
     });
 
-    // Comportamiento actual documentado: la fusión de duplicados NO re-valida el
-    // tope de 99, por lo que dos líneas válidas pueden superarlo al combinarse.
-    // Ver nota en chat: candidato a corregir.
-    it('NO reaplica el tope de 99 tras fusionar duplicados', () => {
+    it('reaplica el tope de 99 tras fusionar duplicados', () => {
         expect(normalizeCheckoutItems([
             { variantId: 'var-1', quantity: 60 },
             { variantId: 'var-1', quantity: 60 },
-        ])).toEqual([{ variantId: 'var-1', quantity: 120 }]);
+        ])).toBeNull();
+    });
+
+    it('acepta duplicados que al fusionarse siguen dentro del tope', () => {
+        expect(normalizeCheckoutItems([
+            { variantId: 'var-1', quantity: 40 },
+            { variantId: 'var-1', quantity: 59 },
+        ])).toEqual([{ variantId: 'var-1', quantity: 99 }]);
     });
 });
 
