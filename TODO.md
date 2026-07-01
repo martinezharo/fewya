@@ -11,7 +11,7 @@ mocked context — for the remaining critical routes that still lack coverage:
       checks, per-shop Stripe session, order creation, rollback on failure).
 - [x] `GET /api/auth/callback` — auth code exchange and new-buyer redirect (security).
 - [x] `POST /api/orders/seller-confirm` — seller-side state transition.
-- [ ] `POST /api/orders/refund-incident` — incident refund money path.
+- [x] `POST /api/orders/refund-incident` — incident refund money path.
 - [ ] `POST /api/reviews/submit` and `submit-batch` — review integrity.
 
 Lower priority: the remaining CRUD routes under `/api/sell/*` and `/api/me/*` are
