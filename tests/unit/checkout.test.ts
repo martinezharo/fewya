@@ -4,7 +4,10 @@ import {
     fromMinorUnits,
     buildShopPayouts,
     calculateOrderTotal,
+    normalizeCheckoutItems,
+    buildStripeLineItems,
     type CheckoutPricedItem,
+    type CheckoutResolvedItem,
 } from '../../src/lib/cart/checkout';
 
 function createItem(overrides: Partial<CheckoutPricedItem> = {}): CheckoutPricedItem {
@@ -16,6 +19,19 @@ function createItem(overrides: Partial<CheckoutPricedItem> = {}): CheckoutPriced
         quantity: 1,
         unitPrice: 10,
         shippingCost: 2.5,
+        ...overrides,
+    };
+}
+
+function createResolvedItem(overrides: Partial<CheckoutResolvedItem> = {}): CheckoutResolvedItem {
+    return {
+        ...createItem(),
+        productId: 'prod-1',
+        productTitle: 'Producto A',
+        productSlug: 'producto-a',
+        variantId: 'var-1',
+        variantName: 'Talla M',
+        image: null,
         ...overrides,
     };
 }
@@ -102,5 +118,119 @@ describe('calculateOrderTotal', () => {
 
     it('devuelve 0 para carrito vacío', () => {
         expect(calculateOrderTotal([])).toBe(0);
+    });
+});
+
+describe('normalizeCheckoutItems', () => {
+    it('deja pasar items válidos sin cambios', () => {
+        const result = normalizeCheckoutItems([
+            { variantId: 'var-1', quantity: 2 },
+            { variantId: 'var-2', quantity: 1 },
+        ]);
+        expect(result).toEqual([
+            { variantId: 'var-1', quantity: 2 },
+            { variantId: 'var-2', quantity: 1 },
+        ]);
+    });
+
+    it('fusiona variantes duplicadas sumando cantidades', () => {
+        const result = normalizeCheckoutItems([
+            { variantId: 'var-1', quantity: 2 },
+            { variantId: 'var-1', quantity: 3 },
+        ]);
+        expect(result).toEqual([{ variantId: 'var-1', quantity: 5 }]);
+    });
+
+    it('rechaza cantidades no enteras', () => {
+        expect(normalizeCheckoutItems([{ variantId: 'var-1', quantity: 1.5 }])).toBeNull();
+    });
+
+    it('rechaza cantidades menores a 1', () => {
+        expect(normalizeCheckoutItems([{ variantId: 'var-1', quantity: 0 }])).toBeNull();
+        expect(normalizeCheckoutItems([{ variantId: 'var-1', quantity: -1 }])).toBeNull();
+    });
+
+    it('rechaza cantidades mayores a 99', () => {
+        expect(normalizeCheckoutItems([{ variantId: 'var-1', quantity: 100 }])).toBeNull();
+    });
+
+    it('acepta el límite exacto de 99', () => {
+        expect(normalizeCheckoutItems([{ variantId: 'var-1', quantity: 99 }])).toEqual([
+            { variantId: 'var-1', quantity: 99 },
+        ]);
+    });
+
+    it('rechaza variantId vacío', () => {
+        expect(normalizeCheckoutItems([{ variantId: '', quantity: 1 }])).toBeNull();
+    });
+
+    it('devuelve array vacío para entrada vacía', () => {
+        expect(normalizeCheckoutItems([])).toEqual([]);
+    });
+
+    // Comportamiento actual documentado: la fusión de duplicados NO re-valida el
+    // tope de 99, por lo que dos líneas válidas pueden superarlo al combinarse.
+    // Ver nota en chat: candidato a corregir.
+    it('NO reaplica el tope de 99 tras fusionar duplicados', () => {
+        expect(normalizeCheckoutItems([
+            { variantId: 'var-1', quantity: 60 },
+            { variantId: 'var-1', quantity: 60 },
+        ])).toEqual([{ variantId: 'var-1', quantity: 120 }]);
+    });
+});
+
+describe('buildStripeLineItems', () => {
+    const t = { cartShipping: 'Envío' };
+
+    it('genera una línea de producto y una de envío por tienda', () => {
+        const lineItems = buildStripeLineItems(t, [createResolvedItem()]);
+        expect(lineItems).toHaveLength(2);
+
+        const [product, shipping] = lineItems;
+        expect(product.price_data.product_data.metadata.type).toBe('product');
+        expect(shipping.price_data.product_data.metadata.type).toBe('shipping');
+    });
+
+    it('convierte precios a céntimos y usa EUR', () => {
+        const [product] = buildStripeLineItems(t, [
+            createResolvedItem({ unitPrice: 9.99, shippingCost: 3.5 }),
+        ]);
+        expect(product.price_data.unit_amount).toBe(999);
+        expect(product.price_data.currency).toBe('eur');
+    });
+
+    it('usa el envío máximo por tienda y lo etiqueta con el nombre de la tienda', () => {
+        const lineItems = buildStripeLineItems(t, [
+            createResolvedItem({ shopId: 'shop-a', shopName: 'Tienda A', variantId: 'v1', shippingCost: 2 }),
+            createResolvedItem({ shopId: 'shop-a', shopName: 'Tienda A', variantId: 'v2', shippingCost: 5 }),
+        ]);
+
+        const shipping = lineItems.filter((li) => li.price_data.product_data.metadata.type === 'shipping');
+        expect(shipping).toHaveLength(1);
+        expect(shipping[0].price_data.unit_amount).toBe(500); // max(2, 5) → céntimos
+        expect(shipping[0].price_data.product_data.name).toBe('Envío · Tienda A');
+    });
+
+    it('genera una línea de envío por cada tienda distinta', () => {
+        const lineItems = buildStripeLineItems(t, [
+            createResolvedItem({ shopId: 'shop-a', variantId: 'v1' }),
+            createResolvedItem({ shopId: 'shop-b', variantId: 'v2' }),
+        ]);
+        const shipping = lineItems.filter((li) => li.price_data.product_data.metadata.type === 'shipping');
+        expect(shipping).toHaveLength(2);
+    });
+
+    it('usa variantName como descripción del producto', () => {
+        const [product] = buildStripeLineItems(t, [
+            createResolvedItem({ variantName: 'Talla L' }),
+        ]);
+        expect(product.price_data.product_data.description).toBe('Talla L');
+    });
+
+    it('deja la descripción undefined cuando no hay variantName', () => {
+        const [product] = buildStripeLineItems(t, [
+            createResolvedItem({ variantName: null }),
+        ]);
+        expect(product.price_data.product_data.description).toBeUndefined();
     });
 });

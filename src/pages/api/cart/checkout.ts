@@ -1,9 +1,9 @@
 import type { APIRoute } from 'astro';
 import {
-    buildShopPayouts,
+    buildStripeLineItems,
     CHECKOUT_CURRENCY,
     type CheckoutResolvedItem,
-    toMinorUnits,
+    normalizeCheckoutItems,
 } from '../../../lib/cart/checkout';
 import { createSupabaseAuthClient } from '../../../lib/core/auth';
 import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
@@ -38,62 +38,6 @@ function jsonResponse(payload: Record<string, unknown>, status: number) {
     });
 }
 
-function normalizeItems(items: CheckoutItemPayload[]) {
-    const combined = new Map<string, number>();
-
-    for (const item of items) {
-        if (!item.variantId || !Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > 99) {
-            return null;
-        }
-
-        combined.set(item.variantId, (combined.get(item.variantId) ?? 0) + item.quantity);
-    }
-
-    return Array.from(combined.entries()).map(([variantId, quantity]) => ({ variantId, quantity }));
-}
-
-function buildStripeLineItems(t: import('../../../lib/core/i18n').Strings, items: CheckoutResolvedItem[]) {
-    const lineItems = items.map((item) => ({
-        quantity: item.quantity,
-        price_data: {
-            currency: CHECKOUT_CURRENCY,
-            unit_amount: toMinorUnits(item.unitPrice),
-            product_data: {
-                name: item.productTitle,
-                description: item.variantName ?? undefined,
-                metadata: {
-                    productId: item.productId,
-                    variantId: item.variantId,
-                    shopId: item.shopId,
-                    type: 'product',
-                },
-            },
-        },
-    }));
-
-    for (const payout of buildShopPayouts(items)) {
-        lineItems.push({
-            quantity: 1,
-            price_data: {
-                currency: CHECKOUT_CURRENCY,
-                unit_amount: toMinorUnits(payout.shipping),
-                product_data: {
-                    name: `${t.cartShipping} · ${payout.shopName}`,
-                    description: undefined,
-                    metadata: {
-                        productId: '',
-                        variantId: '',
-                        shopId: payout.shopId,
-                        type: 'shipping',
-                    },
-                },
-            },
-        });
-    }
-
-    return lineItems;
-}
-
 export const POST: APIRoute = async ({ locals, request, cookies  }) => {
     const { t } = locals;
     const authClient = createSupabaseAuthClient(cookies, request);
@@ -116,7 +60,7 @@ export const POST: APIRoute = async ({ locals, request, cookies  }) => {
         return jsonResponse({ error: t.apiCartEmpty }, 400);
     }
 
-    const normalizedItems = normalizeItems(body.items);
+    const normalizedItems = normalizeCheckoutItems(body.items);
     if (!normalizedItems) {
         return jsonResponse({ error: t.apiInvalidProductData }, 400);
     }

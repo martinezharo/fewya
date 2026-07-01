@@ -1,3 +1,5 @@
+import type { Strings } from '../core/i18n';
+
 export const CHECKOUT_CURRENCY = 'eur';
 export const SHIPPING_SUBSIDY = 2;
 
@@ -77,6 +79,102 @@ export function buildShopPayouts(
 
 export function calculateOrderTotal(items: CheckoutPricedItem[]): number {
     return buildShopPayouts(items).reduce((sum, payout) => sum + payout.total, 0);
+}
+
+export interface CheckoutItemInput {
+    variantId: string;
+    quantity: number;
+}
+
+/**
+ * Validate and de-duplicate the raw checkout item payload.
+ *
+ * Returns `null` (reject the request) if any item is missing a variant id
+ * or has a quantity that is not an integer in the range 1–99. Duplicate
+ * variant ids are merged into a single line, summing their quantities.
+ */
+export function normalizeCheckoutItems(
+    items: CheckoutItemInput[]
+): CheckoutItemInput[] | null {
+    const combined = new Map<string, number>();
+
+    for (const item of items) {
+        if (!item.variantId || !Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > 99) {
+            return null;
+        }
+
+        combined.set(item.variantId, (combined.get(item.variantId) ?? 0) + item.quantity);
+    }
+
+    return Array.from(combined.entries()).map(([variantId, quantity]) => ({ variantId, quantity }));
+}
+
+export interface StripeCheckoutLineItem {
+    quantity: number;
+    price_data: {
+        currency: string;
+        unit_amount: number;
+        product_data: {
+            name: string;
+            description: string | undefined;
+            metadata: {
+                productId: string;
+                variantId: string;
+                shopId: string;
+                type: 'product' | 'shipping';
+            };
+        };
+    };
+}
+
+/**
+ * Build the Stripe Checkout `line_items` for a resolved cart: one line per
+ * product plus one shipping line per shop (shipping cost per shop is the max
+ * across its items, via {@link buildShopPayouts}).
+ */
+export function buildStripeLineItems(
+    t: Pick<Strings, 'cartShipping'>,
+    items: CheckoutResolvedItem[]
+): StripeCheckoutLineItem[] {
+    const lineItems: StripeCheckoutLineItem[] = items.map((item) => ({
+        quantity: item.quantity,
+        price_data: {
+            currency: CHECKOUT_CURRENCY,
+            unit_amount: toMinorUnits(item.unitPrice),
+            product_data: {
+                name: item.productTitle,
+                description: item.variantName ?? undefined,
+                metadata: {
+                    productId: item.productId,
+                    variantId: item.variantId,
+                    shopId: item.shopId,
+                    type: 'product',
+                },
+            },
+        },
+    }));
+
+    for (const payout of buildShopPayouts(items)) {
+        lineItems.push({
+            quantity: 1,
+            price_data: {
+                currency: CHECKOUT_CURRENCY,
+                unit_amount: toMinorUnits(payout.shipping),
+                product_data: {
+                    name: `${t.cartShipping} · ${payout.shopName}`,
+                    description: undefined,
+                    metadata: {
+                        productId: '',
+                        variantId: '',
+                        shopId: payout.shopId,
+                        type: 'shipping',
+                    },
+                },
+            },
+        });
+    }
+
+    return lineItems;
 }
 
 /**
