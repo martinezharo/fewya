@@ -38,15 +38,15 @@ export const POST: APIRoute = async ({ locals, request, cookies  }) => {
     // Client-side validation is helpful but we enforce server-side too
     const nonSpaceLength = description.replace(/\s/g, '').length;
     if (nonSpaceLength < 50) {
-        return jsonResponse({ error: 'La explicación es insuficiente, debes dar más detalles' }, 400);
+        return jsonResponse({ error: t.incidentDescriptionError }, 400);
     }
 
     if (photos.length < 3) {
-        return jsonResponse({ error: 'Debes subir al menos 3 imágenes' }, 400);
+        return jsonResponse({ error: t.incidentMinPhotosError }, 400);
     }
 
     if (photos.length > 20) {
-        return jsonResponse({ error: 'Máximo 20 imágenes permitidas' }, 400);
+        return jsonResponse({ error: t.incidentMaxPhotosError }, 400);
     }
 
     const adminClient = createSupabaseAdminClient();
