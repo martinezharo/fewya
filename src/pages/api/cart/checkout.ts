@@ -362,6 +362,7 @@ export const POST: APIRoute = async ({ locals, request, cookies  }) => {
                 variant_id: item.variantId,
                 quantity: item.quantity,
                 price_at_purchase: item.unitPrice,
+                shipping_cost_at_purchase: item.shippingCost,
             })),
             p_delivery_type: delivery?.type || DELIVERY_TYPE.HOME,
             p_pickup_point_id: delivery?.pickupPointId || null,

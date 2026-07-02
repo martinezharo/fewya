@@ -8,6 +8,7 @@ import { FUNDS_RELEASE_STATUS } from './orderStatus';
 const ITEMS_JOIN = `
     quantity,
     price_at_purchase,
+    shipping_cost_at_purchase,
     product_variants (
         shipping_cost,
         products (

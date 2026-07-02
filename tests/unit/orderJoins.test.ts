@@ -30,6 +30,7 @@ function buildItem(opts: {
     qty?: number;
     price?: number;
     shipping?: number;
+    shippingAtPurchase?: number | null;
     stripeAccountId?: string | null;
     shop?: { id?: string; name?: string; slug?: string } | null;
 } = {}): JoinedOrderItem {
@@ -44,6 +45,7 @@ function buildItem(opts: {
     return {
         quantity: opts.qty ?? 1,
         price_at_purchase: opts.price ?? 10,
+        shipping_cost_at_purchase: opts.shippingAtPurchase,
         product_variants: {
             shipping_cost: opts.shipping ?? 2.5,
             products: {
@@ -94,6 +96,16 @@ describe('extractPayoutContext', () => {
         const ctx = extractPayoutContext({ quantity: 1, price_at_purchase: 1 });
         expect(ctx.shop).toBeNull();
         expect(ctx.paymentAccount).toBeNull();
+    });
+
+    it('prefiere el shipping_cost_at_purchase congelado sobre el shipping_cost en vivo de la variante', () => {
+        const ctx = extractPayoutContext(buildItem({ shipping: 9, shippingAtPurchase: 4 }));
+        expect(ctx.shippingCost).toBe(4);
+    });
+
+    it('recurre al shipping_cost en vivo cuando shipping_cost_at_purchase es null (pedidos antiguos)', () => {
+        const ctx = extractPayoutContext(buildItem({ shipping: 9, shippingAtPurchase: null }));
+        expect(ctx.shippingCost).toBe(9);
     });
 });
 

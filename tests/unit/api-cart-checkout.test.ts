@@ -284,7 +284,7 @@ describe('POST /api/cart/checkout', () => {
             p_currency: 'eur',
             p_stripe_checkout_session_id: 'cs_1',
             p_delivery_type: 'home',
-            p_items: [{ variant_id: 'var-1', quantity: 2, price_at_purchase: 20 }],
+            p_items: [{ variant_id: 'var-1', quantity: 2, price_at_purchase: 20, shipping_cost_at_purchase: 3 }],
         }));
         // shop-2: 1 × 10 + 5 shipping
         expect(mockAdminRpc).toHaveBeenNthCalledWith(2, 'create_checkout_order', expect.objectContaining({
