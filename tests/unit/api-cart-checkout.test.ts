@@ -7,6 +7,8 @@ const mockVariantsIn = vi.fn();
 const mockAdminRpc = vi.fn();
 const mockSessionCreate = vi.fn();
 const mockSessionExpire = vi.fn();
+const mockOrdersUpdateIn = vi.fn();
+const mockOrdersUpdate = vi.fn(() => ({ in: mockOrdersUpdateIn }));
 
 vi.mock('../../src/lib/core/auth', () => ({
     createSupabaseAuthClient: () => ({
@@ -22,7 +24,10 @@ vi.mock('../../src/lib/core/auth', () => ({
 }));
 
 vi.mock('../../src/lib/core/supabase-admin', () => ({
-    createSupabaseAdminClient: () => ({ rpc: mockAdminRpc }),
+    createSupabaseAdminClient: () => ({
+        rpc: mockAdminRpc,
+        from: () => ({ update: mockOrdersUpdate }),
+    }),
 }));
 
 vi.mock('../../src/lib/payments/stripe', () => ({
@@ -111,6 +116,7 @@ describe('POST /api/cart/checkout', () => {
         mockAdminRpc.mockResolvedValue({ data: [{ id: 'order-uuid-1' }], error: null });
         mockSessionCreate.mockResolvedValue({ id: 'cs_1', url: 'https://stripe.test/session/cs_1' });
         mockSessionExpire.mockResolvedValue({});
+        mockOrdersUpdateIn.mockResolvedValue({ error: null });
     });
 
     it('returns 401 when there is no authenticated user', async () => {
@@ -214,6 +220,34 @@ describe('POST /api/cart/checkout', () => {
         expect(res.status).toBe(500);
         expect(mockSessionExpire).toHaveBeenCalledWith('cs_1');
         expect(await res.json()).toMatchObject({ error: en.apiOrderCreateError });
+        expect(mockOrdersUpdate).not.toHaveBeenCalled();
+    });
+
+    it('cancels orders already created for other shops when a later shop fails to create its order', async () => {
+        const shopTwo = shop({ id: 'shop-2', name: 'Shop Two', slug: 'shop-two' });
+        mockVariantsIn.mockResolvedValueOnce({
+            data: [
+                variantRow(),
+                variantRow({ id: 'var-2', price: 10, shipping_cost: 5 }, { id: 'prod-2', title: 'Gadget', slug: 'gadget', shops: shopTwo }),
+            ],
+            error: null,
+        });
+        // shop-1 succeeds, shop-2 fails
+        mockAdminRpc
+            .mockResolvedValueOnce({ data: [{ id: 'order-uuid-1' }], error: null })
+            .mockResolvedValueOnce({ data: null, error: { message: 'rpc failed' } });
+
+        const res = await call({
+            items: [
+                { variantId: 'var-1', quantity: 1 },
+                { variantId: 'var-2', quantity: 1 },
+            ],
+        });
+
+        expect(res.status).toBe(500);
+        expect(mockSessionExpire).toHaveBeenCalledWith('cs_1');
+        expect(mockOrdersUpdate).toHaveBeenCalledWith(expect.objectContaining({ status: 'cancelled' }));
+        expect(mockOrdersUpdateIn).toHaveBeenCalledWith('id', ['order-uuid-1']);
     });
 
     it('creates one order per shop and returns the checkout URL on the happy path', async () => {

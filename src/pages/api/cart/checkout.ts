@@ -387,6 +387,26 @@ export const POST: APIRoute = async ({ locals, request, cookies  }) => {
                 }));
             });
 
+            // Orders already created for other shops in this same checkout attempt
+            // point at the now-expired session and can never be paid — cancel them
+            // instead of leaving them stuck as "pending" forever.
+            if (createdOrders.length > 0) {
+                const rollbackClient = createSupabaseAdminClient();
+                const { error: rollbackError } = await rollbackClient
+                    .from('orders')
+                    .update({ status: 'cancelled', cancellation_reason: 'checkout_failed' })
+                    .in('id', createdOrders.map((created) => created.id));
+
+                if (rollbackError) {
+                    console.error(JSON.stringify({
+                        event: 'checkout.order_rollback_failed',
+                        checkoutGroupId,
+                        orderIds: createdOrders.map((created) => created.id),
+                        error: rollbackError.message,
+                    }));
+                }
+            }
+
             return jsonResponse({ error: t.apiOrderCreateError }, 500);
         }
 
