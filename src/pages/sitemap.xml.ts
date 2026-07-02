@@ -31,8 +31,10 @@ function renderSitemap(entries: SitemapEntry[]): string {
     return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`;
 }
 
-export const GET: APIRoute = async ({ url }) => {
-    const origin = `${url.protocol}//${url.host}`;
+export const GET: APIRoute = async ({ url, site }) => {
+    // Always emit canonical-domain URLs, even when the Worker is reached via
+    // an alternate host (e.g. *.workers.dev), to avoid duplicate-URL signals.
+    const origin = site ? site.origin : `${url.protocol}//${url.host}`;
     const entries: SitemapEntry[] = [
         { loc: `${origin}/`, changefreq: 'daily', priority: 1.0 },
         { loc: `${origin}/search`, changefreq: 'daily', priority: 0.8 },
