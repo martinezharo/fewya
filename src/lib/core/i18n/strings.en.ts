@@ -26,6 +26,9 @@ export const en: Strings = {
     heroInstallApp: 'Install Fewya',
     heroMobileTagline: 'Marketplace for small businesses',
 
+    // Home — Shops row
+    homeShopsTitle: 'Discover shops',
+
     // App Install Instructions
     installIosTitle: 'Add Fewya to your home screen',
     installIosHint: 'This site works like an app. Add it to your home screen to open it instantly.',

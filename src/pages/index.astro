@@ -2,6 +2,7 @@
 import BuyerAppLayout from "../layouts/BuyerAppLayout.astro";
 import HeroBanner from "../components/HeroBanner.astro";
 import DeferredHomeGrid from "../components/home/DeferredHomeGrid.astro";
+import ShopsRow from "../components/home/ShopsRow.astro";
 import SkeletonProductGrid from "../components/ui/SkeletonProductGrid.astro";
 import { createSupabaseAuthClient } from "../lib/core/auth";
 import { supabase } from "../lib/core/supabase";
@@ -31,6 +32,7 @@ const preloadImageUrls: string[] = (topProducts ?? [])
 	))}
 	<main>
 		<HeroBanner isLoggedIn={isLoggedIn} />
+		<ShopsRow />
 		<DeferredHomeGrid userId={user?.id ?? null} server:defer>
 			<SkeletonProductGrid count={10} slot="fallback" />
 		</DeferredHomeGrid>

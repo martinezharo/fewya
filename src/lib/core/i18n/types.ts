@@ -24,6 +24,9 @@ export interface Strings {
     heroInstallApp: string;
     heroMobileTagline: string;
 
+    // Home — Shops row
+    homeShopsTitle: string;
+
     // App Install Instructions
     installIosTitle: string;
     installIosHint: string;

@@ -1,0 +1,53 @@
+---
+import { supabase } from "../../lib/core/supabase";
+import { SHOP_STATUS } from "../../lib/core/shopStatus";
+
+const { t } = Astro.locals;
+
+interface ShopLink {
+    slug: string;
+    name: string;
+    profile_img: string | null;
+}
+
+// Server-rendered shop links: the product grid below is deferred (server:defer),
+// so this row is the only crawlable internal linking in the initial home HTML.
+const { data } = await supabase
+    .from("shops")
+    .select("slug, name, profile_img")
+    .eq("is_active", true)
+    .eq("status", SHOP_STATUS.ACTIVE)
+    .eq("payments_active", true)
+    .eq("seller_details_complete", true)
+    .order("created_at", { ascending: false })
+    .limit(12);
+
+const shops = (data ?? []) as ShopLink[];
+---
+
+{shops.length > 0 && (
+    <section class="px-4 md:px-10 md:max-w-[1400px] md:mx-auto mt-2 mb-4" aria-label={t.homeShopsTitle}>
+        <h2 class="text-base md:text-lg font-semibold text-text-primary mb-3">{t.homeShopsTitle}</h2>
+        <ul class="flex gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden list-none m-0 p-0">
+            {shops.map((shop) => (
+                <li class="shrink-0">
+                    <a href={`/${shop.slug}`} class="flex flex-col items-center gap-2 w-[76px] no-underline group">
+                        <span class="w-16 h-16 rounded-full overflow-hidden border border-border-light bg-border-light block">
+                            <img
+                                src={shop.profile_img || '/placeholder.svg'}
+                                alt={shop.name}
+                                width="64"
+                                height="64"
+                                loading="lazy"
+                                class="w-full h-full object-cover"
+                            />
+                        </span>
+                        <span class="text-xs text-text-secondary group-hover:text-text-primary text-center leading-tight line-clamp-2 transition-colors">
+                            {shop.name}
+                        </span>
+                    </a>
+                </li>
+            ))}
+        </ul>
+    </section>
+)}
