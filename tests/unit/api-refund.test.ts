@@ -96,6 +96,8 @@ describe('POST /api/orders/refund', () => {
         expect(mockStripeRefundCreate).toHaveBeenCalledWith(expect.objectContaining({
             payment_intent: 'pi_1',
             amount: 4250, // 42.50 EUR → cents
+        }), expect.objectContaining({
+            idempotencyKey: 'cancel-refund:order-1',
         }));
         expect(mockAdminRpc).toHaveBeenCalledWith('cancel_order', expect.objectContaining({
             p_actor_id: 'seller-1',
