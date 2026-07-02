@@ -7,35 +7,27 @@ performance/DB/testing). Items are grouped by area and roughly ordered by urgenc
 
 ## 🔴 Critical bugs (money / data integrity)
 
-- [ ] **Silent stock-conflict failure after payment captured** — `src/pages/api/webhooks/stripe.ts:137-148`.
-      When `mark_order_paid` → `reserve_stock` raises `insufficient_stock` (stock ran out between checkout
-      and payment), the error is only `console.error`'d and the loop `continue`s. The webhook still succeeds,
-      the event is recorded as processed, and the order is stuck `pending` forever — but the buyer has already
-      been charged by Stripe. No refund, no alert, no recovery path. Needs: auto-refund the payment intent when
-      this happens, and/or surface an ops alert.
-- [ ] **Missing idempotency key on seller-initiated cancellation refund** — `src/pages/api/orders/refund.ts:71-81`.
-      Every other refund/transfer call site (`refund-incident.ts`, `resolve-delivery-failure.ts`) passes an
-      `idempotencyKey` to Stripe; this one doesn't. A retried/double-clicked request re-enters before `cancel_order`
-      updates the status, causing a **double refund** to the buyer.
-- [ ] **Orphaned "pending" orders on partial multi-shop checkout failure** — `src/pages/api/cart/checkout.ts:339-401`.
-      One shared Stripe Checkout Session is created for all shops, then one `orders` row per shop is inserted in a
-      loop. If shop N's `create_checkout_order` RPC fails, the code expires the session and returns 500 — but orders
-      already created for shops 1..N-1 are never rolled back. They stay `pending` forever, pointing at an expired,
-      unpayable session.
-- [ ] **Shipping cost read live instead of frozen at order time** — `src/lib/orders/orderJoins.ts` /
-      `src/lib/orders/payoutFlow.ts` (`ITEMS_JOIN`). `order_items` only stores `price_at_purchase`, no shipping
-      snapshot. Payout release and refunds read `product_variants.shipping_cost` **live**, so if a seller edits a
-      variant's shipping cost between checkout and the 48h fund-release/refund, the seller gets paid (or the buyer
-      refunded) a different shipping amount than what was actually charged at checkout. Add a `shipping_cost_at_purchase`
-      column to `order_items` and freeze it at checkout, same as `price_at_purchase`.
+- [x] **Silent stock-conflict failure after payment captured** — `src/pages/api/webhooks/stripe.ts`.
+      Fixed: when `mark_order_paid` fails, the handler now refunds the payment intent (idempotent per session)
+      and cancels the affected order(s) instead of just logging and moving on.
+- [x] **Missing idempotency key on seller-initiated cancellation refund** — `src/pages/api/orders/refund.ts`.
+      Fixed: added an `idempotencyKey`, matching the other refund/transfer call sites.
+- [x] **Orphaned "pending" orders on partial multi-shop checkout failure** — `src/pages/api/cart/checkout.ts`.
+      Fixed: orders already created for other shops in the same checkout attempt are now cancelled when a later
+      shop's order creation fails.
+- [x] **Shipping cost read live instead of frozen at order time** — `src/lib/orders/orderJoins.ts` /
+      `src/lib/orders/payoutFlow.ts`. Fixed in code: added `order_items.shipping_cost_at_purchase`, populated at
+      checkout, with payout/refund code preferring it over the live variant value (falling back to the live value
+      only for orders that predate the column). **⚠️ The DB migration
+      (`.migrations/2026-07-02-freeze-shipping-cost-at-purchase.sql`) has NOT been applied to Supabase yet** — no
+      Supabase MCP tool was available in the session that made this fix. It must be applied before/with deploying
+      that commit, or `refund-incident`, `resolve-delivery-failure`, and fund release will error on the missing
+      column.
 
 ## 🟠 Security
 
-- [ ] **Open-redirect bypass in auth flow** — `src/lib/core/auth.ts:70-76` (`normalizeAuthRedirectPath`). Only
-      blocks paths starting with `//`; a `redirect_to` of `/\evil.com` passes the check (`startsWith('/')` true,
-      `startsWith('//')` false) but browsers normalize a leading backslash to `/`, turning it into a protocol-relative
-      `//evil.com` once placed in a redirect. Reachable via `/api/auth/login?redirect_to=...` and the callback flow.
-      Fix: also reject `/\` prefixes, or resolve with `new URL(path, base)` and compare origins.
+- [x] **Open-redirect bypass in auth flow** — `src/lib/core/auth.ts` (`normalizeAuthRedirectPath`). Fixed: now
+      also rejects `/\`-prefixed paths, which browsers normalize to a protocol-relative `//` redirect.
 - [ ] **`profiles` RLS policy is `FOR ALL` on the whole row** — `db-structure/00-base.sql:267`. Lets an authenticated
       user write *any* column on their own row via direct REST/JS client access, not just the fields exposed by
       `profile/update.ts`. No exploit today, but it's a latent risk if a sensitive/admin-controlled column is added
@@ -65,9 +57,10 @@ performance/DB/testing). Items are grouped by area and roughly ordered by urgenc
     joins, no `.limit()`/`.range()`.
   - `src/pages/sell/catalog/index.astro:33-36` — fetches all products for a shop.
   - `src/pages/sell/reviews.astro:63-70` — fetches all reviews for a shop.
-- [ ] **`.migrations/` directory referenced by AGENTS.md doesn't exist in the repo** — no migration files have been
-      committed for any past schema change, despite the process being documented as mandatory. Backfill going forward
-      at minimum; consider reconstructing history for the current schema if feasible.
+- [ ] `.migrations/` is git-ignored by design (local staging area before applying to Supabase via
+      `mcp__supabase__apply_migration`), so its absence from git history isn't itself a bug — but it also means
+      there's no durable, shared record of past schema changes beyond the current-state snapshot in `db-structure/`.
+      Worth deciding whether to track migrations in git after all (e.g. drop the `.gitignore` entry) for auditability.
 - [ ] Images missing `width`/`height` (CLS risk): `src/components/ProductCardMinimal.astro:27-33` and
       `src/components/product/ProductGallery.astro:48-53` (desktop main image also has no `loading` attribute).
 - [ ] `src/lib/shipping/syncTracking.ts:30-47` fires one Sendcloud API call per open shipment in parallel with no
@@ -113,18 +106,15 @@ performance/DB/testing). Items are grouped by area and roughly ordered by urgenc
 - [ ] `src/pages/api/sitemap.xml.ts:45-60` uses the admin (RLS-bypassing) client to read already-public data
       (active shops/products) — not a security bug since filters are explicit, but should use the RLS-respecting
       client for consistency with the rest of the codebase.
-- [ ] `AGENTS.md`'s "Cart & checkout" section says "one Stripe Checkout Session per shop" — the actual implementation
-      creates a **single combined session** for all shops in the cart, charged to the platform account, with separate
-      `stripe.transfers.create` calls later via `releaseOrderFunds()`. Architecture is sound but the docs are stale
-      and will mislead future contributors/agents — update AGENTS.md to match reality.
+- [x] `AGENTS.md`'s "Cart & checkout" section said "one Stripe Checkout Session per shop" — corrected to describe
+      the actual single-combined-session-per-cart architecture.
 
 ## ✅ Testing gaps
 
-- [ ] No test for the double-refund scenario in `refund.ts` (missing idempotency key) or the webhook
-      `insufficient_stock` silent-failure path — both are the two highest-severity bugs found in this review and
-      should get regression tests alongside their fixes.
-- [ ] No test for shipping-cost drift between checkout and payout/refund (`payoutFlow.ts` / `orderJoins.ts`).
-- [ ] No test for the multi-shop checkout partial-failure/orphaned-order path (`cart/checkout.ts`).
+- [x] Regression tests added alongside the fixes above: `refund.ts` idempotency key, webhook
+      `insufficient_stock` refund-and-cancel path (including the sub-case where the compensating refund itself
+      fails), shipping-cost-frozen-vs-live fallback in `orderJoins.ts`, and the multi-shop checkout
+      partial-failure/rollback path in `cart/checkout.ts`.
 - [ ] Zero test coverage on: `lib/notifications/scan.ts`, `lib/shipping/syncTracking.ts`, `lib/orders/autoConfirm.ts`,
       `lib/orders/autoReview.ts`, `lib/orders/payoutFlow.ts`, `lib/payments/payoutValidation.ts`,
       `lib/products/pricingEnforcement.ts`, `lib/products/productUtils.ts`, `lib/products/search.ts`,
@@ -153,4 +143,5 @@ performance/DB/testing). Items are grouped by area and roughly ordered by urgenc
 ---
 
 *Reviewed: 2026-07-02. Findings verified by reading the referenced source directly; line numbers may drift slightly
-as the code changes.*
+as the code changes. All 4 critical bugs and the open-redirect security issue were fixed the same day (separate
+commits, each with regression tests) — see the ⚠️ note on the shipping-cost fix for a pending manual step.*
