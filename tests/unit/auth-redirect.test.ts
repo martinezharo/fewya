@@ -18,6 +18,11 @@ describe('normalizeAuthRedirectPath', () => {
         expect(normalizeAuthRedirectPath('//evil.com')).toBe('/');
     });
 
+    it('returns / for backslash-prefixed paths that browsers normalize to //', () => {
+        expect(normalizeAuthRedirectPath('/\\evil.com')).toBe('/');
+        expect(normalizeAuthRedirectPath('/\\/evil.com')).toBe('/');
+    });
+
     it('preserves valid relative paths', () => {
         expect(normalizeAuthRedirectPath('/me/orders')).toBe('/me/orders');
     });
