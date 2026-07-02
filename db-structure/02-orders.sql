@@ -61,6 +61,13 @@ CREATE TABLE public.order_items (
   order_id uuid NOT NULL,
   quantity integer NOT NULL,
   price_at_purchase numeric NOT NULL,
+  -- Shipping cost snapshot at checkout time (per shop, this is the max across
+  -- items in the shop — see buildShopPayouts). NULL for orders placed before
+  -- this column existed; payout/refund code falls back to the live
+  -- product_variants.shipping_cost for those. Frozen so a seller editing a
+  -- variant's shipping cost after checkout can't change what gets paid out or
+  -- refunded for an order that already charged the buyer a different amount.
+  shipping_cost_at_purchase numeric,
   variant_id uuid,
   CONSTRAINT order_items_pkey PRIMARY KEY (id),
   CONSTRAINT order_items_order_id_fkey FOREIGN KEY (order_id) REFERENCES public.orders(id),
@@ -197,12 +204,13 @@ BEGIN
   )
   RETURNING * INTO new_order;
 
-  INSERT INTO public.order_items (order_id, variant_id, quantity, price_at_purchase)
+  INSERT INTO public.order_items (order_id, variant_id, quantity, price_at_purchase, shipping_cost_at_purchase)
   SELECT
     new_order.id,
     (item->>'variant_id')::uuid,
     (item->>'quantity')::integer,
-    (item->>'price_at_purchase')::numeric
+    (item->>'price_at_purchase')::numeric,
+    (item->>'shipping_cost_at_purchase')::numeric
   FROM jsonb_array_elements(p_items) item;
 
   RETURN new_order;

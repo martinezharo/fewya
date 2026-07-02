@@ -42,6 +42,7 @@ export interface JoinedOrderItem {
     order_id?: string;
     quantity?: number | null;
     price_at_purchase?: number | null;
+    shipping_cost_at_purchase?: number | null;
     product_variants?: JoinedVariant | JoinedVariant[] | null;
 }
 
@@ -67,10 +68,14 @@ export function extractPayoutContext(item: JoinedOrderItem): PayoutExtractContex
     const product = pickOne(variant?.products ?? null);
     const shop = pickOne(product?.shops ?? null);
     const paymentAccount = pickOne(shop?.shop_payment_accounts ?? null);
+    // Prefer the shipping cost frozen at checkout time; fall back to the
+    // live variant value only for orders placed before that column existed.
+    const shippingCost = item.shipping_cost_at_purchase ?? variant?.shipping_cost ?? 0;
+
     return {
         quantity: Number(item.quantity ?? 0),
         unitPrice: Number(item.price_at_purchase ?? 0),
-        shippingCost: Number(variant?.shipping_cost ?? 0),
+        shippingCost: Number(shippingCost),
         shop,
         paymentAccount,
         variant,

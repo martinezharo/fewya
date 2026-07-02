@@ -69,6 +69,7 @@ export const POST: APIRoute = async ({ locals, request, cookies  }) => {
     const { data: orderItems, error: itemsError } = await authClient
         .from('order_items')
         .select(`
+            shipping_cost_at_purchase,
             product_variants (
                 shipping_cost,
                 products (

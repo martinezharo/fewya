@@ -362,6 +362,7 @@ export const POST: APIRoute = async ({ locals, request, cookies  }) => {
                 variant_id: item.variantId,
                 quantity: item.quantity,
                 price_at_purchase: item.unitPrice,
+                shipping_cost_at_purchase: item.shippingCost,
             })),
             p_delivery_type: delivery?.type || DELIVERY_TYPE.HOME,
             p_pickup_point_id: delivery?.pickupPointId || null,
@@ -386,6 +387,26 @@ export const POST: APIRoute = async ({ locals, request, cookies  }) => {
                     error: expireError instanceof Error ? expireError.message : String(expireError),
                 }));
             });
+
+            // Orders already created for other shops in this same checkout attempt
+            // point at the now-expired session and can never be paid — cancel them
+            // instead of leaving them stuck as "pending" forever.
+            if (createdOrders.length > 0) {
+                const rollbackClient = createSupabaseAdminClient();
+                const { error: rollbackError } = await rollbackClient
+                    .from('orders')
+                    .update({ status: 'cancelled', cancellation_reason: 'checkout_failed' })
+                    .in('id', createdOrders.map((created) => created.id));
+
+                if (rollbackError) {
+                    console.error(JSON.stringify({
+                        event: 'checkout.order_rollback_failed',
+                        checkoutGroupId,
+                        orderIds: createdOrders.map((created) => created.id),
+                        error: rollbackError.message,
+                    }));
+                }
+            }
 
             return jsonResponse({ error: t.apiOrderCreateError }, 500);
         }

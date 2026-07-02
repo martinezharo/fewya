@@ -89,7 +89,7 @@ export const POST: APIRoute = async ({ request }) => {
 async function handlePaymentConfirmed(
     event: import('stripe').Stripe.Event,
     adminClient: ReturnType<typeof createSupabaseAdminClient>,
-    _stripe: import('stripe').default,
+    stripe: import('stripe').default,
 ) {
     let sessionId: string | null = null;
     let paymentIntentId: string | null = null;
@@ -144,6 +144,21 @@ async function handlePaymentConfirmed(
 
         if (error) {
             console.error(JSON.stringify({ event: 'stripe_webhook.mark_paid_failed', sessionId: sid, error: error.message }));
+
+            // The buyer's card has already been charged for this session (that's why
+            // we're in this handler), but mark_order_paid failed atomically — most
+            // commonly because stock ran out between checkout-session creation and
+            // payment. Leaving the order at "pending" here would silently strand a
+            // charged buyer with no order and no refund. Refund the charge and cancel
+            // the order(s) instead of just logging and moving on.
+            await refundAndCancelUnfulfillableOrders({
+                adminClient,
+                stripe,
+                sessionId: sid,
+                orderIds: orderIdsBySession.get(sid) ?? [],
+                paymentIntentId,
+                failureReason: error.message || 'payment_confirmation_failed',
+            });
             continue;
         }
 
@@ -161,5 +176,61 @@ async function handlePaymentConfirmed(
                 console.error(JSON.stringify({ event: 'stripe_webhook.notify_failed', orderId, error: e instanceof Error ? e.message : String(e) }));
             }
         }
+    }
+}
+
+async function refundAndCancelUnfulfillableOrders({
+    adminClient,
+    stripe,
+    sessionId,
+    orderIds,
+    paymentIntentId,
+    failureReason,
+}: {
+    adminClient: ReturnType<typeof createSupabaseAdminClient>;
+    stripe: import('stripe').default;
+    sessionId: string;
+    orderIds: string[];
+    paymentIntentId: string | null;
+    failureReason: string;
+}) {
+    if (paymentIntentId) {
+        try {
+            await stripe.refunds.create({
+                payment_intent: paymentIntentId,
+                reason: 'requested_by_customer',
+                metadata: { sessionId, reason: failureReason },
+            }, {
+                // Keyed on the session, not the event id, so a Stripe webhook retry
+                // of the same event (or a retry of a different event for the same
+                // session) can't trigger a second refund.
+                idempotencyKey: `mark-paid-failure-refund:${sessionId}`,
+            });
+        } catch (e) {
+            console.error(JSON.stringify({
+                event: 'stripe_webhook.refund_failed',
+                sessionId,
+                paymentIntentId,
+                error: e instanceof Error ? e.message : String(e),
+            }));
+        }
+    } else {
+        console.error(JSON.stringify({ event: 'stripe_webhook.refund_skipped_no_payment_intent', sessionId }));
+    }
+
+    if (orderIds.length === 0) return;
+
+    const { error: cancelError } = await adminClient
+        .from('orders')
+        .update({ status: 'cancelled', cancellation_reason: failureReason })
+        .in('id', orderIds);
+
+    if (cancelError) {
+        console.error(JSON.stringify({
+            event: 'stripe_webhook.order_cancel_failed',
+            sessionId,
+            orderIds,
+            error: cancelError.message,
+        }));
     }
 }

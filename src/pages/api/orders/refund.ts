@@ -77,6 +77,8 @@ export const POST: APIRoute = async ({ locals, request, cookies  }) => {
                     publicId: order.public_id,
                     cancelledBy: user.id,
                 },
+            }, {
+                idempotencyKey: `cancel-refund:${order.id}`,
             });
         }
 

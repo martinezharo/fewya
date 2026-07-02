@@ -68,7 +68,11 @@ function appendAuthError(path: string, url: URL) {
 }
 
 export function normalizeAuthRedirectPath(path: string | null | undefined) {
-    if (!path || !path.startsWith('/') || path.startsWith('//')) {
+    // Reject anything that isn't a same-origin absolute path. Browsers normalize a
+    // leading backslash to a forward slash, so `/\evil.com` would otherwise be
+    // treated as safe here while resolving to a protocol-relative `//evil.com`
+    // open redirect once placed in a Location header.
+    if (!path || !path.startsWith('/') || path.startsWith('//') || path.startsWith('/\\')) {
         return '/';
     }
 

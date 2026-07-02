@@ -94,10 +94,11 @@ Components prefixed `Deferred*` (e.g., `DeferredHomeGrid`, `DeferredBuyerOrders`
 ### Cart & checkout
 
 - Cart items are grouped by shop. Shipping cost per shop = **max** shipping cost across items in that shop (not sum).
-- One Stripe Checkout Session is created **per shop**, each going directly to the seller's Stripe Connect account.
-- `buildShopPayouts()` in `lib/cart/checkout.ts` handles this aggregation.
+- A single Stripe Checkout Session is created for the whole cart (all shops), charged to the platform account. One `orders` row is created **per shop** against that shared session.
+- `buildShopPayouts()` in `lib/cart/checkout.ts` handles the per-shop shipping/subtotal aggregation.
 - Currency: always EUR. Use `toMinorUnits()` / `fromMinorUnits()` for Stripe (cents).
-- Payout release via `releaseOrderFunds()` uses `transfer_group` keyed to the order's public ID for idempotency.
+- Payout release via `releaseOrderFunds()` uses `transfer_group` keyed to the order's public ID for idempotency, and separate `stripe.transfers.create` calls move funds to each seller's Connect account after confirmation.
+- Shipping cost is frozen per order item at checkout time (`order_items.shipping_cost_at_purchase`) so a seller editing a variant's shipping cost later can't change what gets paid out or refunded for an already-placed order.
 
 ### Product validation — two tiers
 
