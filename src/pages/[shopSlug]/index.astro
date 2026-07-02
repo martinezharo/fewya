@@ -62,9 +62,36 @@ const profileImg = shop.profile_img || '/placeholder.svg';
 const authClient = createSupabaseAuthClient(Astro.cookies, Astro.request);
 const { data: { user } } = await authClient.auth.getUser();
 const wishedProductIds = await getMergedWishlistIds(authClient, Astro.cookies, user?.id ?? null);
+
+const siteOrigin = (Astro.site ?? new URL(`${Astro.url.protocol}//${Astro.url.host}`)).origin;
+const shopUrl = `${siteOrigin}/${shop.slug}`;
+const shopDescription = (shop.description || t.siteDescription).slice(0, 160);
+const shopImage = shop.profile_img || shop.banner_img || undefined;
+const shopOgImage = shopImage && !shopImage.startsWith('/') ? shopImage : undefined;
+
+const shopJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'OnlineStore',
+  name: shop.name,
+  description: shop.description ?? undefined,
+  url: shopUrl,
+  image: shopOgImage,
+  address: shop.location ? { '@type': 'PostalAddress', addressLocality: shop.location } : undefined,
+  aggregateRating: totalReviews > 0 ? {
+    '@type': 'AggregateRating',
+    ratingValue: +avgRating.toFixed(2),
+    reviewCount: totalReviews,
+  } : undefined,
+};
 ---
 
-<BuyerDetailLayout title={`${shop.name} — ${t.siteTitle}`}>
+<BuyerDetailLayout title={`${shop.name} — ${t.siteTitle}`} description={shopDescription} image={shopOgImage}>
+  <script
+    is:inline
+    slot="structured-data"
+    type="application/ld+json"
+    set:html={JSON.stringify(shopJsonLd)}
+  />
   <main class="pb-[120px] md:pb-[60px]" data-gallery>
     <!-- Desktop Layout Wrapper -->
     <div class="md:max-w-[1200px] md:mx-auto md:px-10 md:py-8">
