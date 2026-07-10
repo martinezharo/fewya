@@ -3,7 +3,8 @@ import Icon from "../icons/Icon.astro";
 
 import type { SearchParams } from "../../lib/products/search";
 import { buildSearchUrl } from "../../lib/products/search";
-const { t } = Astro.locals;
+import { getCurrencyAffixes } from "../../lib/core/formatCurrency";
+const { t, locale } = Astro.locals;
 
 interface Props {
     params: SearchParams;
@@ -13,6 +14,7 @@ interface Props {
 const { params, currentUrl } = Astro.props;
 
 const clearUrl = buildSearchUrl(currentUrl, { minPrice: null, maxPrice: null, showOos: false });
+const { prefix: currencyPrefix, suffix: currencySuffix } = getCurrencyAffixes(locale);
 ---
 
 <dialog id="filter-modal" class="m-0 max-w-none w-full max-h-[85vh] h-auto top-auto bottom-0 mt-auto bg-surface rounded-t-[20px] shadow-[0_-8px_30px_rgba(0,0,0,0.12)] border-0 md:max-w-[400px] md:h-[100dvh] md:max-h-none md:right-0 md:left-auto md:rounded-l-[20px] md:rounded-tr-none backdrop:bg-bg/60 backdrop:backdrop-blur-sm open:flex flex-col slide-up md:slide-left pointer-events-auto">
@@ -41,7 +43,7 @@ const clearUrl = buildSearchUrl(currentUrl, { minPrice: null, maxPrice: null, sh
                 <div class="flex items-center justify-between">
                     <span class="text-[15px] font-semibold text-text-primary">{t.searchPriceRange}</span>
                     <div class="text-[14px] font-medium text-text-secondary font-mono tracking-tight">
-                        <span id="price-min-display">{params.minPrice || 0}</span>{t.currency} - <span id="price-max-display">{params.maxPrice || 500}</span>{t.currency}+
+                        {currencyPrefix}<span id="price-min-display">{params.minPrice || 0}</span>{currencySuffix} - {currencyPrefix}<span id="price-max-display">{params.maxPrice || 500}</span>{currencySuffix}+
                     </div>
                 </div>
                 

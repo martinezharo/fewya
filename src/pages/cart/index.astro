@@ -212,17 +212,14 @@ const isLoggedIn = !!user;
 
 <script>
   import { cart, type CartItem } from '../../lib/cart/cart';
-  import { getClientT } from '../../lib/core/i18n';
+  import { getClientT, getClientLocale } from '../../lib/core/i18n';
+  import { formatCurrency } from '../../lib/core/formatCurrency';
   import { setBusy } from '../../lib/ui/busy';
   import { toast } from '../../lib/ui/toast';
   import { progress } from '../../lib/ui/progress-bar';
   import { DELIVERY_TYPE, type DeliveryType } from '../../lib/orders/orderStatus';
 const t = getClientT();
-
-  const currencyFormatter = new Intl.NumberFormat('es-ES', {
-    style: 'currency',
-    currency: 'EUR',
-  });
+const locale = getClientLocale();
 
   let isCheckingOut = false;
 
@@ -282,7 +279,7 @@ const t = getClientT();
       // Shop header
       const header = document.createElement('div');
       header.className = 'flex items-center justify-between px-4 py-3 border-b border-border-light';
-      const shippingText = shopShipping === 0 ? t.freeShipping : currencyFormatter.format(shopShipping);
+      const shippingText = shopShipping === 0 ? t.freeShipping : formatCurrency(shopShipping, locale);
       header.innerHTML = `
         <a href="/${escapeHtml(shopSlug)}" class="text-sm font-semibold text-text-primary no-underline hover:underline">${escapeHtml(shopName)}</a>
         <div class="flex items-center gap-1.5 text-xs text-text-secondary">
@@ -304,7 +301,7 @@ const t = getClientT();
       const itemLabel = itemCount === 1 ? t.cartProductSingular : t.cartProductPlural;
       footer.innerHTML = `
         <span class="text-xs text-text-secondary">${itemCount} ${itemLabel} · ${t.cartShippingIncluded}</span>
-        <span class="text-sm font-bold text-text-primary">${shopTotalWithShipping.toFixed(2)}${t.currency}</span>
+        <span class="text-sm font-bold text-text-primary">${formatCurrency(shopTotalWithShipping, locale)}</span>
       `;
       shopSection.appendChild(footer);
 
@@ -312,7 +309,7 @@ const t = getClientT();
     });
 
     // Update totals
-    const totalStr = `${grandTotal.toFixed(2)}${t.currency}`;
+    const totalStr = formatCurrency(grandTotal, locale);
     const totalDesktop = document.getElementById('cart-total-desktop');
     const totalMobile = document.getElementById('cart-total-mobile');
     if (totalDesktop) totalDesktop.textContent = totalStr;
@@ -326,7 +323,7 @@ const t = getClientT();
 
     const productUrl = `/${item.shopSlug}/${item.productSlug}`;
     const inStock = item.stock > 0;
-    const lineTotal = (item.price * item.quantity).toFixed(2);
+    const lineTotal = formatCurrency(item.price * item.quantity, locale);
     const qtyExceedsStock = item.quantity > item.stock;
     const stockDeficit = qtyExceedsStock ? item.quantity - item.stock : 0;
 
@@ -357,7 +354,7 @@ const t = getClientT();
           </button>
         </div>
       </div>
-      <span class="text-sm font-bold text-text-primary shrink-0">${lineTotal}${t.currency}</span>
+      <span class="text-sm font-bold text-text-primary shrink-0">${lineTotal}</span>
     `;
 
     // Event listeners for quantity buttons

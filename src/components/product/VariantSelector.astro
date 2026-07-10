@@ -65,8 +65,10 @@ const { variants, defaultImage } = Astro.props;
 </style>
 
 <script>
-  import { getClientT } from '../../lib/core/i18n';
+  import { getClientT, getClientLocale } from '../../lib/core/i18n';
+  import { formatCurrency } from '../../lib/core/formatCurrency';
 const t = getClientT();
+const locale = getClientLocale();
 
   function initVariantSelector() {
   // Detect overflow and add scroll animation
@@ -111,7 +113,7 @@ const t = getClientT();
       // Update price
       const price = parseFloat(btn.dataset.variantPrice ?? '0');
       document.querySelectorAll('[data-product-price]').forEach(el => {
-        el.textContent = `${price.toFixed(2)}${t.currency}`;
+        el.textContent = formatCurrency(price, locale);
       });
 
       // Update stock

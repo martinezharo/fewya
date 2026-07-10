@@ -252,7 +252,10 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', {
 )}
 
 <script>
+    import { getClientT } from '../../lib/core/i18n';
+
     function initSellerOrdersFilter() {
+        const t = getClientT();
         const toggle = document.getElementById('show-pending-toggle') as HTMLInputElement | null;
         const select = document.getElementById('status-filter') as HTMLSelectElement | null;
         const list = document.getElementById('orders-list');
@@ -281,8 +284,8 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', {
             });
 
             countLabel!.textContent = visible === total
-                ? `Mostrando ${total} pedidos`
-                : `Mostrando ${visible} de ${total} pedidos`;
+                ? t.sellerOrdersFilterCountAll.replace('{total}', String(total))
+                : t.sellerOrdersFilterCountFiltered.replace('{visible}', String(visible)).replace('{total}', String(total));
         }
 
         if (toggle) toggle.addEventListener('change', applyFilters);

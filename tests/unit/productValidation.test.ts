@@ -9,6 +9,8 @@ import {
     MIN_LISTING_MARGIN_EUR,
 } from '../../src/lib/products/productValidation';
 import { es } from '../../src/lib/core/i18n/strings.es';
+import { en } from '../../src/lib/core/i18n/strings.en';
+import { formatCurrency } from '../../src/lib/core/formatCurrency';
 
 describe('validateProductCompleteness', () => {
     it('devuelve completo para producto válido con variantes', () => {
@@ -112,17 +114,22 @@ describe('validateProductCompleteness', () => {
 
 describe('formatShippingDisplay', () => {
     it('devuelve cadena vacía para coste nulo', () => {
-        expect(formatShippingDisplay(es, null)).toBe('');
-        expect(formatShippingDisplay(es, undefined)).toBe('');
+        expect(formatShippingDisplay(es, 'es', null)).toBe('');
+        expect(formatShippingDisplay(es, 'es', undefined)).toBe('');
     });
 
     it('muestra envío gratis para coste 0', () => {
-        expect(formatShippingDisplay(es, 0)).toBe('Envío gratis');
+        expect(formatShippingDisplay(es, 'es', 0)).toBe('Envío gratis');
     });
 
-    it('formatea coste con coma decimal', () => {
-        expect(formatShippingDisplay(es, 3.5)).toBe('+3,50€ envío');
-        expect(formatShippingDisplay(es, 10)).toBe('+10,00€ envío');
+    it('formatea el coste usando el helper de moneda compartido (es: coma decimal, símbolo detrás)', () => {
+        expect(formatShippingDisplay(es, 'es', 3.5)).toBe(`+${formatCurrency(3.5, 'es')} envío`);
+        expect(formatShippingDisplay(es, 'es', 10)).toBe(`+${formatCurrency(10, 'es')} envío`);
+    });
+
+    it('respeta las convenciones del locale inglés (símbolo delante, punto decimal)', () => {
+        expect(formatShippingDisplay(en, 'en', 3.5)).toBe(`+${formatCurrency(3.5, 'en')} shipping`);
+        expect(formatCurrency(3.5, 'en')).toBe('€3.50');
     });
 });
 
