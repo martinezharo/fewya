@@ -1,8 +1,9 @@
 ---
 import WishlistButton from "./WishlistButton.astro";
 
+import { formatCurrency } from "../lib/core/formatCurrency";
 import type { Product } from "../lib/core/types";
-const { t } = Astro.locals;
+const { t, locale } = Astro.locals;
 
 interface Props {
     product: Product;
@@ -14,7 +15,7 @@ const { product, isWished = false } = Astro.props;
 const imageUrl = product.gallery_images?.[0] ?? "/placeholder.svg";
 const defaultVariant = product.variants?.find(v => v.is_default);
 const price = defaultVariant?.price ?? product.variants?.[0]?.price ?? 0;
-const formattedPrice = `${price.toFixed(2)}${t.currency}`;
+const formattedPrice = formatCurrency(price, locale);
 const isOutOfStock = product.variants?.every(v => (v.stock ?? 0) <= 0) ?? true;
 const shopName = product.shop?.name ?? "";
 const shopSlug = product.shop?.slug ?? "";

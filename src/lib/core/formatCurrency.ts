@@ -35,3 +35,26 @@ function getFormatter(locale: Locale): Intl.NumberFormat {
 export function formatCurrency(amount: number, locale: Locale): string {
     return getFormatter(locale).format(amount);
 }
+
+/**
+ * Splits the locale's currency formatting into the literal text surrounding
+ * the number (symbol, spacing) so a caller can render a live-updating number
+ * (e.g. a slider display) while keeping the surrounding text in the right
+ * position for the locale, instead of hardcoding the symbol on one side.
+ */
+export function getCurrencyAffixes(locale: Locale): { prefix: string; suffix: string } {
+    const parts = getFormatter(locale).formatToParts(0);
+    const numberTypes = new Set(['integer', 'group', 'decimal', 'fraction']);
+    let prefix = '';
+    let suffix = '';
+    let pastNumber = false;
+    for (const part of parts) {
+        if (numberTypes.has(part.type)) {
+            pastNumber = true;
+            continue;
+        }
+        if (pastNumber) suffix += part.value;
+        else prefix += part.value;
+    }
+    return { prefix, suffix };
+}
