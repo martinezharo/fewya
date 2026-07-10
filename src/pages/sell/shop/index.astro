@@ -91,7 +91,7 @@ const bannerImg = shop.banner_img || '';
                             )}
                         </div>
                     </div>
-                    <div class="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/30 transition-colors cursor-pointer" id="banner-trigger">
+                    <div class="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/30 transition-colors cursor-pointer" id="banner-trigger" role="button" tabindex="0" aria-label={t.sellerShopBannerChange}>
                         <div class="opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center gap-1.5">
                             <Icon name="camera" size={24} class="text-white" />
                             <span class="text-sm text-white font-medium">{t.sellerShopBannerChange}</span>
@@ -236,6 +236,13 @@ const t = getClientT();
 
     bannerTrigger?.addEventListener('click', () => {
         bannerInput?.click();
+    });
+
+    bannerTrigger?.addEventListener('keydown', (event: KeyboardEvent) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            bannerInput?.click();
+        }
     });
 
     bannerInput?.addEventListener('change', async () => {

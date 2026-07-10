@@ -327,6 +327,7 @@ export interface Strings {
     orderHideBtn: string;
     orderHideModalTitle: string;
     orderHideModalBody: string;
+    orderHideModalClose: string;
     orderHideConfirm: string;
     orderHideDismiss: string;
     orderHideSuccess: string;
@@ -459,6 +460,7 @@ export interface Strings {
     reviewEditBtn: string;
     reviewModalTitleAdd: string;
     reviewModalTitleEdit: string;
+    reviewModalClose: string;
     reviewRatingLabel: string;
     reviewCommentLabel: string;
     reviewCommentPlaceholder: string;
@@ -479,6 +481,7 @@ export interface Strings {
     incidentPhotoTypeShippingLabel: string;
     incidentPhotoTypePackagingLabel: string;
     incidentPhotoTypeDefectLabel: string;
+    incidentReportModalClose: string;
     incidentSubmit: string;
     incidentSubmitting: string;
     incidentCancel: string;
@@ -503,6 +506,7 @@ export interface Strings {
     incidentCancelBtn: string;
     incidentCancelModalTitle: string;
     incidentCancelModalWarning: string;
+    incidentCancelModalClose: string;
     incidentCancelConfirm: string;
     incidentCancelDismiss: string;
     incidentCancelledToast: string;
@@ -539,6 +543,7 @@ export interface Strings {
     refundPartialInputLabel: string;
     refundPartialMaxHint: string;
     refundSummaryLabel: string;
+    refundModalClose: string;
 
     // Refunded order panels
     orderRefundedBadge: string;
