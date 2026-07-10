@@ -89,10 +89,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         correos_pickup: null,
     };
 
-    console.log(`[preview-quote] ${quotes.length} quotes for ${billable.toFixed(3)} kg → ES`);
     for (const q of quotes) {
         const key = categorize(q.carrierId, q.serviceName, q.servicePointInput);
-        console.log(`[preview-quote]  ${key ?? '∅'}  carrier="${q.carrierId}"  service="${q.serviceName}"  sp_input="${q.servicePointInput ?? ''}"  price=${q.price}`);
         if (!key) continue;
         const current = buckets[key];
         if (!current || q.price < current.price) {

@@ -309,8 +309,6 @@ export async function createShipment(data: SendcloudShipmentData): Promise<Sendc
         payload.to_service_point = { id: data.toServicePointId };
     }
 
-    console.log(JSON.stringify(payload));
-
     const result = await sendcloudRequestV3<{
         data: {
             id: string;
