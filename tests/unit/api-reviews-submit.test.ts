@@ -8,8 +8,8 @@ const mockReviewUpdate = vi.fn();
 const mockReviewMutationSingle = vi.fn();
 const mockAutoReviewDelete = vi.fn();
 
-// The route runs two sequential queries against `orders`; results are
-// consumed from this queue in order (purchase check, then product match).
+// The route runs a single product-scoped query against `orders` (via
+// `.maybeSingle()`); results are consumed from this queue in order.
 let ordersResults: unknown[] = [];
 
 function ordersChain() {
@@ -68,10 +68,7 @@ describe('POST /api/reviews/submit', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         mockGetUser.mockResolvedValue({ data: { user: { id: 'buyer-1' } } });
-        ordersResults = [
-            { data: [{ id: 'order-1' }], error: null },
-            { data: { id: 'order-1' }, error: null },
-        ];
+        ordersResults = [{ data: { id: 'order-1' }, error: null }];
         mockExistingReviewMaybeSingle.mockResolvedValue({ data: null });
         mockAutoReviewDelete.mockResolvedValue({ error: null });
         mockReviewMutationSingle.mockResolvedValue({
@@ -99,17 +96,14 @@ describe('POST /api/reviews/submit', () => {
     });
 
     it('returns 403 when the buyer has no confirmed orders', async () => {
-        ordersResults = [{ data: [], error: null }];
+        ordersResults = [{ data: null, error: null }];
         const res = await call({ productId: 'prod-1', rating: 5 });
         expect(res.status).toBe(403);
         expect(mockReviewInsert).not.toHaveBeenCalled();
     });
 
     it('returns 403 when no confirmed order contains the product', async () => {
-        ordersResults = [
-            { data: [{ id: 'order-1' }], error: null },
-            { data: null, error: null },
-        ];
+        ordersResults = [{ data: null, error: null }];
         const res = await call({ productId: 'prod-1', rating: 5 });
         expect(res.status).toBe(403);
         expect(mockReviewInsert).not.toHaveBeenCalled();
