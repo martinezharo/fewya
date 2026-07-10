@@ -372,7 +372,7 @@ const showHide = normalizedStatus === ORDER_STATUS.PENDING;
                     <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
                         {order.incidentPhotos.map((photo) => (
                             <a href={photo} target="_blank" rel="noopener noreferrer" class="block aspect-square rounded-xl overflow-hidden border border-border-light bg-border-light hover:opacity-90 transition-opacity">
-                                <img src={photo} alt="Evidencia" class="w-full h-full object-cover" loading="lazy" />
+                                <img src={photo} alt={t.incidentPanelPhotosLabel} class="w-full h-full object-cover" loading="lazy" />
                             </a>
                         ))}
                     </div>
