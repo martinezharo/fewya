@@ -113,6 +113,27 @@ describe('POST /api/orders/cancel-incident', () => {
         expect(mockReleaseAndRecord).not.toHaveBeenCalled();
     });
 
+    // NOTE (coverage gap): this endpoint, like confirm-delivery, has NO
+    // TypeScript-level check of the order's current status before calling
+    // `confirm_order_delivery`. The 'delivered'/'incident' -> 'confirmed'
+    // transition legality is enforced entirely inside the Postgres RPC
+    // (see db-structure/02-orders.sql: `WHERE status IN ('delivered', 'incident')`),
+    // which raises an exception for any other starting status (e.g. an
+    // already-'confirmed' or 'cancelled' order). We can't spin up a real
+    // Postgres instance in unit tests, so we simulate that rejection via the
+    // mocked RPC error to lock in the route's *handling* of an illegal
+    // transition (it must surface a 400 and skip the payout release), even
+    // though the transition rule itself lives only in SQL.
+    it('returns 400 when the order is not eligible for the delivered/incident -> confirmed transition', async () => {
+        mockAdminRpc.mockResolvedValueOnce({
+            data: null,
+            error: { message: 'Order not found or not in delivered or incident status' },
+        });
+        const res = await call({ orderId: 'order-1' });
+        expect(res.status).toBe(400);
+        expect(mockReleaseAndRecord).not.toHaveBeenCalled();
+    });
+
     it('returns 500 when fund release fails after confirmation', async () => {
         mockReleaseAndRecord.mockResolvedValueOnce({ success: false, error: 'transfer failed' });
         const res = await call({ orderId: 'order-1' });
