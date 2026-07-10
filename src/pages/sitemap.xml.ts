@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { createSupabaseAdminClient } from '../lib/core/supabase-admin';
+import { createSupabaseAuthClient } from '../lib/core/auth';
 import { SHOP_STATUS } from '../lib/core/shopStatus';
 
 interface SitemapEntry {
@@ -31,7 +31,7 @@ function renderSitemap(entries: SitemapEntry[]): string {
     return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`;
 }
 
-export const GET: APIRoute = async ({ url, site }) => {
+export const GET: APIRoute = async ({ url, site, cookies, request }) => {
     // Always emit canonical-domain URLs, even when the Worker is reached via
     // an alternate host (e.g. *.workers.dev), to avoid duplicate-URL signals.
     const origin = site ? site.origin : `${url.protocol}//${url.host}`;
@@ -42,9 +42,12 @@ export const GET: APIRoute = async ({ url, site }) => {
     ];
 
     try {
-        const admin = createSupabaseAdminClient();
+        // Public data only (active shops/products); RLS public-read policies on
+        // shops/products (db-structure/00-base.sql, 01-catalog.sql) already permit
+        // this for anon, so use the RLS-respecting client instead of admin.
+        const authClient = createSupabaseAuthClient(cookies, request);
         const [shopsRes, productsRes] = await Promise.all([
-            admin
+            authClient
                 .from('shops')
                 .select('slug, created_at')
                 .eq('is_active', true)
@@ -52,7 +55,7 @@ export const GET: APIRoute = async ({ url, site }) => {
                 .eq('payments_active', true)
                 .eq('seller_details_complete', true)
                 .limit(5000),
-            admin
+            authClient
                 .from('products')
                 .select('slug, created_at, shops!inner(slug, is_active, payments_active, seller_details_complete)')
                 .eq('is_active', true)
