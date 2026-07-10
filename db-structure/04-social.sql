@@ -20,6 +20,7 @@ CREATE TABLE public.reviews (
 
 -- One auto-review per product at most
 CREATE UNIQUE INDEX reviews_product_auto_unique ON public.reviews(product_id) WHERE is_auto = true;
+CREATE INDEX reviews_product_id_idx ON public.reviews(product_id);
 
 CREATE TABLE public.wishlist (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -28,8 +29,11 @@ CREATE TABLE public.wishlist (
   created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
   CONSTRAINT wishlist_pkey PRIMARY KEY (id),
   CONSTRAINT wishlist_profile_id_fkey FOREIGN KEY (profile_id) REFERENCES public.profiles(id),
-  CONSTRAINT wishlist_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.products(id) ON DELETE CASCADE
+  CONSTRAINT wishlist_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.products(id) ON DELETE CASCADE,
+  CONSTRAINT wishlist_profile_id_product_id_key UNIQUE (profile_id, product_id)
 );
+
+CREATE INDEX wishlist_product_id_idx ON public.wishlist(product_id);
 
 -- ============================================================
 -- Policies

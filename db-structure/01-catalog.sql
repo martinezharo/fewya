@@ -51,6 +51,8 @@ CREATE TABLE public.product_variants (
   CONSTRAINT product_variants_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.products(id) ON DELETE CASCADE
 );
 
+CREATE INDEX product_variants_product_id_idx ON public.product_variants(product_id);
+
 -- ============================================================
 -- Functions
 -- ============================================================

@@ -44,6 +44,8 @@ CREATE TABLE public.shipments (
   CONSTRAINT shipments_order_id_fkey FOREIGN KEY (order_id) REFERENCES public.orders(id)
 );
 
+CREATE INDEX shipments_order_id_idx ON public.shipments(order_id);
+
 -- Shipment tracking history
 CREATE TABLE public.shipment_tracking (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -57,6 +59,8 @@ CREATE TABLE public.shipment_tracking (
   CONSTRAINT shipment_tracking_pkey PRIMARY KEY (id),
   CONSTRAINT shipment_tracking_shipment_id_fkey FOREIGN KEY (shipment_id) REFERENCES public.shipments(id) ON DELETE CASCADE
 );
+
+CREATE INDEX shipment_tracking_shipment_id_idx ON public.shipment_tracking(shipment_id);
 
 -- ============================================================
 -- Functions
