@@ -41,19 +41,7 @@ export const POST: APIRoute = async ({ locals, request, cookies  }) => {
 
     const adminClient = createSupabaseAdminClient();
 
-    // Verify the user has purchased this product in a confirmed order
-    const { data: purchaseData, error: purchaseError } = await adminClient
-        .from('orders')
-        .select('id')
-        .eq('buyer_id', user.id)
-        .eq('status', ORDER_STATUS.CONFIRMED)
-        .limit(1);
-
-    if (purchaseError || !purchaseData || purchaseData.length === 0) {
-        return jsonResponse({ error: t.apiForbidden }, 403);
-    }
-
-    // More precise check: does any confirmed order contain this product?
+    // Verify the user has purchased this specific product in a confirmed order
     const { data: validPurchase, error: validError } = await adminClient
         .from('orders')
         .select('id, order_items!inner(product_variants!inner(product_id))')
