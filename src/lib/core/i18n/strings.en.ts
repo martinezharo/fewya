@@ -64,6 +64,7 @@ export const en: Strings = {
 
     // Product Page
     productShipping: 'Shipping',
+    productShippingCostExtra: '+{amount} shipping',
     productVariantsTitle: 'Variant',
     productInStock: 'In stock',
     productOutOfStock: 'Out of stock',
@@ -312,6 +313,8 @@ export const en: Strings = {
     sellerOrdersFilterStatusAll: 'All statuses',
     sellerOrdersFilterShowPending: 'Show pending',
     sellerOrdersFilterShowPendingHint: 'Hidden by default',
+    sellerOrdersFilterCountAll: 'Showing {total} orders',
+    sellerOrdersFilterCountFiltered: 'Showing {visible} of {total} orders',
 
     // Fund holding / buyer actions
     orderConfirmDelivery: 'Confirm delivery',

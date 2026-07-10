@@ -4,7 +4,7 @@ import { createSupabaseAuthClient } from '../../../../lib/core/auth';
 import { enforceVariantPricing, type PricingCheckVariant } from '../../../../lib/products/pricingEnforcement';
 
 export const PATCH: APIRoute = async ({ locals, cookies, request, url  }) => {
-    const { t } = locals;
+    const { t, locale } = locals;
     const supabase = createSupabaseAuthClient(cookies, request);
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -40,7 +40,7 @@ export const PATCH: APIRoute = async ({ locals, cookies, request, url  }) => {
             .select('variant_name, price, shipping_cost, weight_kg, length_cm, width_cm, height_cm')
             .eq('product_id', productId);
 
-        const pricing = await enforceVariantPricing(t, (variants ?? []) as PricingCheckVariant[]);
+        const pricing = await enforceVariantPricing(t, locale, (variants ?? []) as PricingCheckVariant[]);
         if (!pricing.ok) {
             return new Response(JSON.stringify({ error: pricing.errors.join('\n') }), { status: 400 });
         }

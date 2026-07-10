@@ -10,12 +10,13 @@ import ProductReviews from '../../components/product/ProductReviews.astro';
 import ShopContact from '../../components/product/ShopContact.astro';
 import { supabase } from '../../lib/core/supabase';
 import { createSupabaseAuthClient } from '../../lib/core/auth';
-import { isProductComplete } from '../../lib/products/productValidation';
+import { isProductComplete, formatShippingDisplay } from '../../lib/products/productValidation';
+import { formatCurrency } from '../../lib/core/formatCurrency';
 
 import { getMergedWishlistIds } from '../../lib/wishlist/wishlist';
 import type { Product, Review, Shop } from '../../lib/core/types';
 import { SHOP_STATUS } from '../../lib/core/shopStatus';
-const { t } = Astro.locals;
+const { t, locale } = Astro.locals;
 
 const { shopSlug, productSlug } = Astro.params;
 
@@ -73,7 +74,7 @@ const sortedVariants = [...(product.variants ?? [])].sort((a, b) =>
 const activeVariant = sortedVariants[0];
 const price = activeVariant?.price ?? 0;
 const shippingCost = activeVariant?.shipping_cost ?? 0;
-const shippingDisplay = shippingCost === 0 ? t.freeShipping : `+${shippingCost.toFixed(2).replace('.', ',')}€ envío`;
+const shippingDisplay = formatShippingDisplay(t, locale, shippingCost);
 const hasVariants = sortedVariants.length > 1;
 const activeVariantStock = activeVariant?.stock ?? 0;
 
@@ -151,7 +152,7 @@ const breadcrumbJsonLd = {
         <div class="flex items-center justify-between order-1 md:order-2">
           <div class="flex items-baseline gap-2">
             <span class="text-xl md:text-2xl font-bold text-text-primary" data-product-price>
-              {price.toFixed(2)}{t.currency}
+              {formatCurrency(price, locale)}
             </span>
             <span class="text-xs md:text-sm text-text-secondary" data-product-shipping>{shippingDisplay}</span>
           </div>

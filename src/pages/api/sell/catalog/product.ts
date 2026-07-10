@@ -38,7 +38,7 @@ function slugify(text: string): string {
 }
 
 export const POST: APIRoute = async ({ locals, cookies, request  }) => {
-    const { t } = locals;
+    const { t, locale } = locals;
     const supabase = createSupabaseAuthClient(cookies, request);
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -79,7 +79,7 @@ export const POST: APIRoute = async ({ locals, cookies, request  }) => {
 
     const willBeActive = body.is_active !== false;
     if (willBeActive && !shop.allow_loss && body.variants && body.variants.length > 0) {
-        const pricing = await enforceVariantPricing(t, body.variants as PricingCheckVariant[]);
+        const pricing = await enforceVariantPricing(t, locale, body.variants as PricingCheckVariant[]);
         if (!pricing.ok) {
             return new Response(JSON.stringify({ error: pricing.errors.join('\n') }), { status: 400 });
         }
@@ -195,7 +195,7 @@ export const POST: APIRoute = async ({ locals, cookies, request  }) => {
 };
 
 export const PATCH: APIRoute = async ({ locals, cookies, request, url  }) => {
-    const { t } = locals;
+    const { t, locale } = locals;
     const supabase = createSupabaseAuthClient(cookies, request);
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -272,7 +272,7 @@ export const PATCH: APIRoute = async ({ locals, cookies, request, url  }) => {
 
     const willBeActive = body.is_active === undefined ? existing.is_active : body.is_active;
     if (willBeActive && !shop.allow_loss && body.variants && body.variants.length > 0) {
-        const pricing = await enforceVariantPricing(t, body.variants as PricingCheckVariant[]);
+        const pricing = await enforceVariantPricing(t, locale, body.variants as PricingCheckVariant[]);
         if (!pricing.ok) {
             return new Response(JSON.stringify({ error: pricing.errors.join('\n') }), { status: 400 });
         }

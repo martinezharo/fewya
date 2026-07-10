@@ -62,6 +62,7 @@ export interface Strings {
 
     // Product Page
     productShipping: string;
+    productShippingCostExtra: string;
     productVariantsTitle: string;
     productInStock: string;
     productOutOfStock: string;
@@ -310,6 +311,8 @@ export interface Strings {
     sellerOrdersFilterStatusAll: string;
     sellerOrdersFilterShowPending: string;
     sellerOrdersFilterShowPendingHint: string;
+    sellerOrdersFilterCountAll: string;
+    sellerOrdersFilterCountFiltered: string;
 
     // Fund holding / buyer actions
     orderConfirmDelivery: string;

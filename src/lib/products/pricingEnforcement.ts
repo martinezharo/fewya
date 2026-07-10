@@ -1,4 +1,6 @@
 import type { Strings } from '../core/i18n';
+import type { Locale } from '../core/i18n/locales';
+import { formatCurrency } from '../core/formatCurrency';
 import { getMaxLabelPriceEur } from '../shipping/sendcloud';
 import {
     validateVariantPricing,
@@ -20,10 +22,6 @@ export interface PricingCheckResult {
     errors: string[];
 }
 
-function fmtEur(value: number): string {
-    return `${value.toFixed(2).replace('.', ',')} €`;
-}
-
 function variantLabel(t: Strings, v: PricingCheckVariant): string {
     const name = v.variant_name?.trim();
     return name && name.length > 0 ? name : t.sellerProductPricingVariantFallbackName;
@@ -31,6 +29,7 @@ function variantLabel(t: Strings, v: PricingCheckVariant): string {
 
 function messageFor(
     t: Strings,
+    locale: Locale,
     code: VariantPricingViolation,
     v: PricingCheckVariant,
     maxLabel: number,
@@ -45,18 +44,19 @@ function messageFor(
         case 'shipping_exceeds_label':
             return t.sellerProductPricingShippingExceedsLabel
                 .replace('{variant}', variant)
-                .replace('{charged}', fmtEur(shipping))
-                .replace('{maxLabel}', fmtEur(maxLabel));
+                .replace('{charged}', formatCurrency(shipping, locale))
+                .replace('{maxLabel}', formatCurrency(maxLabel, locale));
         case 'margin_below_floor':
             return t.sellerProductPricingMarginTooLow
                 .replace('{variant}', variant)
-                .replace('{total}', fmtEur(price + shipping))
-                .replace('{maxLabel}', fmtEur(maxLabel));
+                .replace('{total}', formatCurrency(price + shipping, locale))
+                .replace('{maxLabel}', formatCurrency(maxLabel, locale));
     }
 }
 
 export async function enforceVariantPricing(
     t: Strings,
+    locale: Locale,
     variants: PricingCheckVariant[],
 ): Promise<PricingCheckResult> {
     if (!variants.length) return { ok: true, errors: [] };
@@ -97,7 +97,7 @@ export async function enforceVariantPricing(
         });
 
         for (const code of codes) {
-            errors.push(messageFor(t, code, v, maxLabel));
+            errors.push(messageFor(t, locale, code, v, maxLabel));
         }
     }
 

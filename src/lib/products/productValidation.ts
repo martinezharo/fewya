@@ -1,4 +1,6 @@
 import type { Strings } from '../core/i18n';
+import type { Locale } from '../core/i18n/locales';
+import { formatCurrency } from '../core/formatCurrency';
 
 export interface ProductCompletenessResult {
     complete: boolean;
@@ -73,10 +75,10 @@ export function validateProductCompleteness(
     return { complete: missing.length === 0, missing };
 }
 
-export function formatShippingDisplay(t: Strings, cost: number | null | undefined): string {
+export function formatShippingDisplay(t: Strings, locale: Locale, cost: number | null | undefined): string {
     if (cost == null) return '';
     if (cost === 0) return t.freeShipping;
-    return `+${cost.toFixed(2).replace('.', ',')}€ envío`;
+    return t.productShippingCostExtra.replace('{amount}', formatCurrency(cost, locale));
 }
 
 export function isProductComplete(product: Record<string, any>): boolean {
