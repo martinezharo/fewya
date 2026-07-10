@@ -38,6 +38,22 @@ export const POST: APIRoute = async ({ locals, request, cookies  }) => {
     }
 
     const adminClient = createSupabaseAdminClient();
+
+    // Ownership check BEFORE any Stripe calls: only the buyer may cancel the
+    // incident on their own order. The RPC below also enforces this, but
+    // checking here first avoids exposing Stripe account lookups (needless
+    // API/rate-limit surface) for an order id the caller doesn't own.
+    const { data: ownedOrder } = await adminClient
+        .from('orders')
+        .select('id')
+        .eq('id', orderId)
+        .eq('buyer_id', user.id)
+        .single();
+
+    if (!ownedOrder) {
+        return jsonResponse({ error: t.apiForbidden }, 403);
+    }
+
     const stripe = getStripeClient();
 
     // Pre-validate Stripe destinations BEFORE flipping status. If a seller's
