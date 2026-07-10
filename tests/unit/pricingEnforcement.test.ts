@@ -9,8 +9,10 @@ vi.mock('../../src/lib/shipping/sendcloud', () => ({
 import { enforceVariantPricing, type PricingCheckVariant } from '../../src/lib/products/pricingEnforcement';
 import { es } from '../../src/lib/core/i18n/strings.es';
 
+import { formatCurrency } from '../../src/lib/core/formatCurrency';
+
 function fmtEur(value: number): string {
-    return `${value.toFixed(2).replace('.', ',')} €`;
+    return formatCurrency(value, 'es');
 }
 
 function makeVariant(overrides: Partial<PricingCheckVariant> = {}): PricingCheckVariant {
@@ -32,7 +34,7 @@ describe('enforceVariantPricing', () => {
     });
 
     it('returns ok:true immediately for an empty variant list without calling Sendcloud', async () => {
-        const result = await enforceVariantPricing(es, []);
+        const result = await enforceVariantPricing(es, 'es', []);
         expect(result).toEqual({ ok: true, errors: [] });
         expect(getMaxLabelPriceEurMock).not.toHaveBeenCalled();
     });
@@ -40,13 +42,13 @@ describe('enforceVariantPricing', () => {
     it('passes weight and dimensions through to getMaxLabelPriceEur', async () => {
         getMaxLabelPriceEurMock.mockResolvedValueOnce(5);
         const variant = makeVariant({ weight_kg: 2, length_cm: 30, width_cm: 20, height_cm: 10, price: 20, shipping_cost: 1 });
-        await enforceVariantPricing(es, [variant]);
+        await enforceVariantPricing(es, 'es', [variant]);
         expect(getMaxLabelPriceEurMock).toHaveBeenCalledWith(2, 30, 20, 10);
     });
 
     it('skips the API call and reports "label unavailable" when weight is zero or negative', async () => {
         const variants = [makeVariant({ weight_kg: 0 }), makeVariant({ weight_kg: -1 })];
-        const result = await enforceVariantPricing(es, variants);
+        const result = await enforceVariantPricing(es, 'es', variants);
 
         expect(getMaxLabelPriceEurMock).not.toHaveBeenCalled();
         expect(result.ok).toBe(false);
@@ -57,14 +59,14 @@ describe('enforceVariantPricing', () => {
     });
 
     it('skips the API call and reports "label unavailable" when weight is not finite', async () => {
-        const result = await enforceVariantPricing(es, [makeVariant({ weight_kg: NaN })]);
+        const result = await enforceVariantPricing(es, 'es', [makeVariant({ weight_kg: NaN })]);
         expect(getMaxLabelPriceEurMock).not.toHaveBeenCalled();
         expect(result.ok).toBe(false);
     });
 
     it('reports "label unavailable" when the Sendcloud quote throws', async () => {
         getMaxLabelPriceEurMock.mockRejectedValueOnce(new Error('network down'));
-        const result = await enforceVariantPricing(es, [makeVariant()]);
+        const result = await enforceVariantPricing(es, 'es', [makeVariant()]);
 
         expect(result.ok).toBe(false);
         expect(result.errors).toEqual([
@@ -74,7 +76,7 @@ describe('enforceVariantPricing', () => {
 
     it('reports "label unavailable" when the Sendcloud quote resolves null', async () => {
         getMaxLabelPriceEurMock.mockResolvedValueOnce(null);
-        const result = await enforceVariantPricing(es, [makeVariant()]);
+        const result = await enforceVariantPricing(es, 'es', [makeVariant()]);
         expect(result.ok).toBe(false);
         expect(result.errors).toEqual([
             es.sellerProductPricingLabelUnavailable.replace('{variant}', 'Talla M'),
@@ -83,7 +85,7 @@ describe('enforceVariantPricing', () => {
 
     it('falls back to a generic variant label when variant_name is missing or blank', async () => {
         getMaxLabelPriceEurMock.mockResolvedValueOnce(null);
-        const result = await enforceVariantPricing(es, [makeVariant({ variant_name: '   ' })]);
+        const result = await enforceVariantPricing(es, 'es', [makeVariant({ variant_name: '   ' })]);
         expect(result.errors).toEqual([
             es.sellerProductPricingLabelUnavailable.replace(
                 '{variant}',
@@ -94,13 +96,13 @@ describe('enforceVariantPricing', () => {
 
     it('returns ok:true with no errors when pricing is valid', async () => {
         getMaxLabelPriceEurMock.mockResolvedValueOnce(5);
-        const result = await enforceVariantPricing(es, [makeVariant({ price: 8, shipping_cost: 3 })]);
+        const result = await enforceVariantPricing(es, 'es', [makeVariant({ price: 8, shipping_cost: 3 })]);
         expect(result).toEqual({ ok: true, errors: [] });
     });
 
     it('reports price_below_min with the correct message', async () => {
         getMaxLabelPriceEurMock.mockResolvedValueOnce(4);
-        const result = await enforceVariantPricing(es, [makeVariant({ price: 0.5, shipping_cost: 10 })]);
+        const result = await enforceVariantPricing(es, 'es', [makeVariant({ price: 0.5, shipping_cost: 10 })]);
 
         expect(result.ok).toBe(false);
         expect(result.errors).toContain(
@@ -110,7 +112,7 @@ describe('enforceVariantPricing', () => {
 
     it('reports shipping_exceeds_label with charged/maxLabel amounts formatted in EUR', async () => {
         getMaxLabelPriceEurMock.mockResolvedValueOnce(5);
-        const result = await enforceVariantPricing(es, [makeVariant({ price: 20, shipping_cost: 7 })]);
+        const result = await enforceVariantPricing(es, 'es', [makeVariant({ price: 20, shipping_cost: 7 })]);
 
         const expected = es.sellerProductPricingShippingExceedsLabel
             .replace('{variant}', 'Talla M')
@@ -121,7 +123,7 @@ describe('enforceVariantPricing', () => {
 
     it('reports margin_below_floor with total/maxLabel amounts formatted in EUR', async () => {
         getMaxLabelPriceEurMock.mockResolvedValueOnce(5);
-        const result = await enforceVariantPricing(es, [makeVariant({ price: 2, shipping_cost: 1 })]);
+        const result = await enforceVariantPricing(es, 'es', [makeVariant({ price: 2, shipping_cost: 1 })]);
 
         const expected = es.sellerProductPricingMarginTooLow
             .replace('{variant}', 'Talla M')
@@ -132,7 +134,7 @@ describe('enforceVariantPricing', () => {
 
     it('can report multiple violations for the same variant', async () => {
         getMaxLabelPriceEurMock.mockResolvedValueOnce(4);
-        const result = await enforceVariantPricing(es, [makeVariant({ price: 0.5, shipping_cost: 1 })]);
+        const result = await enforceVariantPricing(es, 'es', [makeVariant({ price: 0.5, shipping_cost: 1 })]);
 
         expect(result.errors.length).toBeGreaterThanOrEqual(2);
         expect(result.errors.some((e) => e.includes('mínimo'))).toBe(true);
@@ -144,7 +146,7 @@ describe('enforceVariantPricing', () => {
             makeVariant({ variant_name: 'OK', price: 8, shipping_cost: 3 }),
             makeVariant({ variant_name: 'Bad', price: 0.5, shipping_cost: 10 }),
         ];
-        const result = await enforceVariantPricing(es, variants);
+        const result = await enforceVariantPricing(es, 'es', variants);
 
         expect(result.ok).toBe(false);
         // "Bad" (price 0.5, shipping 10, maxLabel 5) triggers both price_below_min
@@ -158,6 +160,7 @@ describe('enforceVariantPricing', () => {
         getMaxLabelPriceEurMock.mockResolvedValueOnce(5);
         const result = await enforceVariantPricing(
             es,
+            'es',
             [makeVariant({ price: null, shipping_cost: undefined })],
         );
         expect(result.ok).toBe(false);
