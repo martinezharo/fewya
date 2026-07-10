@@ -44,10 +44,10 @@ vi.mock('../../src/lib/orders/autoReview', () => ({
     createAutoReviewsForOrder: mockCreateAutoReviews,
 }));
 
-const { POST } = await import('../../src/pages/api/orders/confirm-delivery');
+const { POST } = await import('../../src/pages/api/orders/cancel-incident');
 
 function call(body: unknown, { rawBody }: { rawBody?: string } = {}) {
-    const request = new Request('https://fewya.com/api/orders/confirm-delivery', {
+    const request = new Request('https://fewya.com/api/orders/cancel-incident', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: rawBody ?? JSON.stringify(body),
@@ -55,7 +55,7 @@ function call(body: unknown, { rawBody }: { rawBody?: string } = {}) {
     return POST({ locals: { t: en, locale: 'en' }, request, cookies: {} } as any);
 }
 
-describe('POST /api/orders/confirm-delivery', () => {
+describe('POST /api/orders/cancel-incident', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         mockGetUser.mockResolvedValue({ data: { user: { id: 'user-1' } } });
