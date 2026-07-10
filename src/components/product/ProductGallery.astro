@@ -49,6 +49,10 @@ const hasMultiple = images.length > 1;
       src={images[0]}
       alt={title}
       class="w-full h-full object-cover"
+      width="800"
+      height="800"
+      loading="eager"
+      fetchpriority="high"
       data-desktop-main
     />
     {hasMultiple && (
