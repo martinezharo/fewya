@@ -50,7 +50,7 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', {
                 <h3 class="text-base font-semibold text-text-primary">{title}</h3>
                 <p class="mt-1 text-sm text-text-secondary">{body}</p>
             </div>
-            <button type="button" class="close-refund-modal-btn shrink-0 p-1.5 rounded-lg hover:bg-border-light transition-colors text-text-secondary">
+            <button type="button" class="close-refund-modal-btn shrink-0 p-1.5 rounded-lg hover:bg-border-light transition-colors text-text-secondary" aria-label={t.refundModalClose}>
                 <Icon name="x" size={18} />
             </button>
         </div>
