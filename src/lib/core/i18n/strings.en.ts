@@ -34,7 +34,8 @@ export const en: Strings = {
     installIosHint: 'This site works like an app. Add it to your home screen to open it instantly.',
     installIosStep1: 'Tap the Share button in Safari\'s bar',
     installIosStep2: "Scroll down and tap 'Add to Home Screen'",
-    installIosStep3: "Tap 'Add'",
+    installIosStep3: "Turn on 'Open as Web App'",
+    installIosStep4: "Tap 'Add'",
     installGenericMessage: "To install Fewya, use the 'Add to Home Screen' option in your browser's menu.",
     installClose: 'Got it',
 

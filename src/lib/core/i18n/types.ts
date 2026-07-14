@@ -33,6 +33,7 @@ export interface Strings {
     installIosStep1: string;
     installIosStep2: string;
     installIosStep3: string;
+    installIosStep4: string;
     installGenericMessage: string;
     installClose: string;
 

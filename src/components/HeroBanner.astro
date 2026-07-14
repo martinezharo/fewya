@@ -111,13 +111,13 @@ const { isLoggedIn = false } = Astro.props;
 {/* iOS Install Instructions Modal */}
 <div
   id="ios-install-modal"
-  class="hidden fixed inset-0 z-[150] flex items-end sm:items-center justify-center p-4 sm:p-6"
+  class="ios-install-modal hidden fixed inset-0 z-[150] flex items-center justify-center px-4 sm:px-6"
   role="dialog"
   aria-modal="true"
   aria-labelledby="ios-install-title"
 >
   <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" data-ios-modal-backdrop></div>
-  <div class="relative w-full max-w-sm bg-surface rounded-2xl p-5 shadow-2xl border border-border">
+  <div class="ios-install-panel relative w-full max-w-sm bg-surface rounded-2xl p-5 shadow-2xl border border-border">
     <div class="flex items-center justify-between mb-4">
       <h2 id="ios-install-title" class="text-lg font-bold text-text-primary">{t.installIosTitle}</h2>
       <button
@@ -153,6 +153,10 @@ const { isLoggedIn = false } = Astro.props;
         <span class="w-6 h-6 rounded-full bg-accent/10 text-accent flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">3</span>
         <span>{t.installIosStep3}</span>
       </li>
+      <li class="flex items-start gap-3 text-sm text-text-secondary">
+        <span class="w-6 h-6 rounded-full bg-accent/10 text-accent flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">4</span>
+        <span>{t.installIosStep4}</span>
+      </li>
     </ol>
 
     <button
@@ -166,6 +170,17 @@ const { isLoggedIn = false } = Astro.props;
 </div>
 
 <style>
+  .ios-install-modal {
+    padding-top: max(1rem, env(safe-area-inset-top));
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+
+  .ios-install-panel {
+    max-height: 100%;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
   @media (display-mode: standalone) {
     .mobile-hero-content {
       display: none !important;
@@ -205,27 +220,32 @@ const t = getClientT();
   }
 
   function initHeroInstall() {
-    const installBtn = document.querySelector('.install-app-btn');
+    const installBtn = document.querySelector<HTMLButtonElement>('.install-app-btn');
     modal = document.getElementById('ios-install-modal');
-    const modalClosers = document.querySelectorAll('[data-ios-modal-close]');
-    const backdrop = document.querySelector('[data-ios-modal-backdrop]');
+    const modalClosers = document.querySelectorAll<HTMLElement>('[data-ios-modal-close]');
+    const backdrop = document.querySelector<HTMLElement>('[data-ios-modal-backdrop]');
 
-    installBtn?.addEventListener('click', async () => {
-      if (deferredPrompt) {
-        deferredPrompt.prompt();
-        const { outcome } = await deferredPrompt.userChoice;
-        if (outcome === 'accepted') {
-          deferredPrompt = null;
+    if (installBtn) {
+      // Astro may initialize this component through both the initial document
+      // lifecycle and astro:page-load. Assigning the handler makes rebinding
+      // idempotent instead of accumulating a second click listener.
+      installBtn.onclick = async () => {
+        if (deferredPrompt) {
+          deferredPrompt.prompt();
+          const { outcome } = await deferredPrompt.userChoice;
+          if (outcome === 'accepted') {
+            deferredPrompt = null;
+          }
+        } else if (isIos && isSafari) {
+          openModal();
+        } else {
+          toast.info(t.installGenericMessage);
         }
-      } else if (isIos && isSafari) {
-        openModal();
-      } else {
-        toast.info(t.installGenericMessage);
-      }
-    });
+      };
+    }
 
-    modalClosers.forEach((btn) => btn.addEventListener('click', closeModal));
-    backdrop?.addEventListener('click', closeModal);
+    modalClosers.forEach((btn) => { btn.onclick = closeModal; });
+    if (backdrop) backdrop.onclick = closeModal;
 
     // Hide mobile hero in standalone (installed app) when user is logged in
     if (window.matchMedia('(display-mode: standalone)').matches) {

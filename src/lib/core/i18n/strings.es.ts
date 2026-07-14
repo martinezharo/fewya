@@ -34,7 +34,8 @@ export const es: Strings = {
     installIosHint: 'Esta web funciona como una app. Añádela a tu pantalla de inicio para abrirla al instante.',
     installIosStep1: 'Pulsa el botón Compartir en la barra de Safari',
     installIosStep2: "Desplázate hacia abajo y pulsa 'Añadir a pantalla de inicio'",
-    installIosStep3: "Pulsa 'Añadir'",
+    installIosStep3: "Activa 'Abrir como app web'",
+    installIosStep4: "Pulsa 'Añadir'",
     installGenericMessage: "Para instalar Fewya, usa la opción 'Añadir a pantalla de inicio' en el menú de tu navegador.",
     installClose: 'Entendido',
 
