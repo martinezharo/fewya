@@ -59,12 +59,12 @@ const reviewAvg = product.review_avg ?? 0;
     <div class="flex flex-col justify-between flex-1 min-w-0 p-3 gap-1.5">
         <div class="flex flex-col gap-1.5">
             {shopName && (
-                <a href={`/${shopSlug}`} class="flex items-center gap-1.5 text-xs text-text-secondary no-underline hover:text-text-primary hover:underline">
+                <a href={`/${shopSlug}`} class="flex min-h-6 items-center gap-1.5 text-xs text-text-secondary no-underline hover:text-text-primary hover:underline">
                     <span class="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: shopAccentColor }}></span>
                     <span class="truncate">{shopName}</span>
                 </a>
             )}
-            <a href={productUrl} class="text-sm font-medium text-text-primary no-underline leading-snug line-clamp-2 hover:underline">
+            <a href={productUrl} class="inline-flex min-h-6 items-center text-sm font-medium text-text-primary no-underline leading-snug line-clamp-2 hover:underline">
                 {product.title}
             </a>
             <div class="flex items-center justify-between gap-2">
@@ -83,7 +83,7 @@ const reviewAvg = product.review_avg ?? 0;
             </div>
         </div>
         <button
-            class="w-full py-2 text-sm font-medium rounded-md bg-accent text-surface cursor-pointer border-none transition-colors duration-150 hover:bg-accent-hover disabled:bg-border-light disabled:text-text-tertiary disabled:cursor-not-allowed"
+            class="w-full py-2 text-sm font-medium rounded-md bg-accent text-[#10152c] cursor-pointer border-none transition-colors duration-150 hover:bg-accent-hover disabled:bg-border-light disabled:text-text-tertiary disabled:cursor-not-allowed"
             disabled={isOutOfStock}
             type="button"
             data-add-to-cart
