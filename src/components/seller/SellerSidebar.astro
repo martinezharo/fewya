@@ -219,6 +219,19 @@ function isActive(href: string) {
 </aside>
 
 <style>
+    /* ─── Mobile: fixed width & direct manipulation while swiping ─── */
+    @media (max-width: 1023px) {
+        #seller-sidebar {
+            width: min(85vw, 240px);
+            touch-action: pan-y;
+        }
+
+        #seller-sidebar.sidebar-dragging,
+        #seller-sidebar-backdrop.sidebar-dragging {
+            transition: none;
+        }
+    }
+
     /* ─── Desktop: width & collapse transition ─── */
     @media (min-width: 1024px) {
         #seller-sidebar {
@@ -292,6 +305,7 @@ const t = getClientT();
         interface Window {
             openSellerSidebar: () => void;
             closeSellerSidebar: () => void;
+            sellerSidebarGestureAbortController?: AbortController;
         }
     }
 
@@ -301,7 +315,15 @@ const t = getClientT();
         const collapseBtn = document.getElementById('seller-sidebar-collapse-btn');
         const closeBtn = document.getElementById('seller-sidebar-close-btn');
 
-        if (!sidebar) return;
+        if (!sidebar || sidebar.dataset.sidebarInitialized === 'true') return;
+        sidebar.dataset.sidebarInitialized = 'true';
+
+        // Document-level gesture listeners survive Astro navigations, so replace
+        // the previous instance before wiring this sidebar.
+        window.sellerSidebarGestureAbortController?.abort();
+        const gestureAbortController = new AbortController();
+        window.sellerSidebarGestureAbortController = gestureAbortController;
+        const { signal } = gestureAbortController;
 
         // Restore desktop preference
         if (window.innerWidth >= 1024 && localStorage.getItem('fewya-seller-sidebar') === 'collapsed') {
@@ -323,38 +345,177 @@ const t = getClientT();
             }
         });
 
-        // Mobile: open
-        window.openSellerSidebar = () => {
-            sidebar.classList.remove('-translate-x-full');
+        const mobileToggle = document.getElementById('seller-mobile-menu-toggle');
+
+        const clearDragStyles = () => {
+            sidebar.classList.remove('sidebar-dragging');
+            sidebar.style.removeProperty('transform');
             if (backdrop) {
-                backdrop.classList.remove('pointer-events-none', 'opacity-0');
-                backdrop.classList.add('opacity-100');
+                backdrop.classList.remove('sidebar-dragging');
+                backdrop.style.removeProperty('opacity');
             }
         };
 
-        // Mobile: close
-        window.closeSellerSidebar = () => {
-            sidebar.classList.add('-translate-x-full');
+        const setMobileSidebarOpen = (isOpen: boolean) => {
+            clearDragStyles();
+            sidebar.classList.toggle('-translate-x-full', !isOpen);
+            mobileToggle?.setAttribute('aria-expanded', String(isOpen));
+
             if (backdrop) {
-                backdrop.classList.add('pointer-events-none', 'opacity-0');
-                backdrop.classList.remove('opacity-100');
+                backdrop.classList.toggle('pointer-events-none', !isOpen);
+                backdrop.classList.toggle('opacity-0', !isOpen);
+                backdrop.classList.toggle('opacity-100', isOpen);
             }
         };
+
+        // Mobile: open
+        window.openSellerSidebar = () => setMobileSidebarOpen(true);
+
+        // Mobile: close
+        window.closeSellerSidebar = () => setMobileSidebarOpen(false);
 
         closeBtn?.addEventListener('click', window.closeSellerSidebar);
         backdrop?.addEventListener('click', window.closeSellerSidebar);
 
-        // On resize: reset mobile open state when going to desktop
+        // Mobile: drag right from the left edge to open; drag the sidebar left
+        // to close. Direction locking keeps normal vertical scrolling intact.
+        const SWIPE_EDGE_WIDTH = 28;
+        const SWIPE_DIRECTION_THRESHOLD = 8;
+        const SWIPE_TRIGGER_RATIO = 0.3;
+        const SWIPE_VELOCITY_THRESHOLD = 0.5;
+
+        let gesture: {
+            startX: number;
+            startY: number;
+            startTime: number;
+            opening: boolean;
+            horizontal: boolean;
+        } | null = null;
+
+        const restoreGestureStartState = () => {
+            if (!gesture) return;
+            setMobileSidebarOpen(!gesture.opening);
+            gesture = null;
+        };
+
+        const onTouchStart = (event: TouchEvent) => {
+            if (window.innerWidth >= 1024 || event.touches.length !== 1) return;
+
+            const touch = event.touches[0];
+            if (!touch) return;
+
+            const isOpen = !sidebar.classList.contains('-translate-x-full');
+            const target = event.target;
+            const startedInsideSidebar = target instanceof Node && sidebar.contains(target);
+
+            if ((!isOpen && touch.clientX > SWIPE_EDGE_WIDTH) || (isOpen && !startedInsideSidebar)) {
+                return;
+            }
+
+            gesture = {
+                startX: touch.clientX,
+                startY: touch.clientY,
+                startTime: performance.now(),
+                opening: !isOpen,
+                horizontal: false,
+            };
+
+            sidebar.classList.add('sidebar-dragging');
+            backdrop?.classList.add('sidebar-dragging');
+        };
+
+        const onTouchMove = (event: TouchEvent) => {
+            if (!gesture || event.touches.length !== 1) return;
+
+            const touch = event.touches[0];
+            if (!touch) return;
+
+            const deltaX = touch.clientX - gesture.startX;
+            const deltaY = touch.clientY - gesture.startY;
+            const absX = Math.abs(deltaX);
+            const absY = Math.abs(deltaY);
+
+            if (!gesture.horizontal) {
+                if (Math.max(absX, absY) < SWIPE_DIRECTION_THRESHOLD) return;
+                if (absY >= absX) {
+                    restoreGestureStartState();
+                    return;
+                }
+
+                const movingInExpectedDirection = gesture.opening ? deltaX > 0 : deltaX < 0;
+                if (!movingInExpectedDirection) {
+                    restoreGestureStartState();
+                    return;
+                }
+
+                gesture.horizontal = true;
+            }
+
+            event.preventDefault();
+
+            const width = sidebar.getBoundingClientRect().width;
+            if (width <= 0) return;
+
+            const translateX = gesture.opening
+                ? Math.min(0, -width + Math.max(0, deltaX))
+                : Math.max(-width, Math.min(0, deltaX));
+            const openProgress = 1 + translateX / width;
+
+            sidebar.style.transform = `translateX(${translateX}px)`;
+            if (backdrop) {
+                backdrop.classList.remove('pointer-events-none', 'opacity-0', 'opacity-100');
+                backdrop.style.opacity = String(openProgress);
+            }
+        };
+
+        const onTouchEnd = (event: TouchEvent) => {
+            if (!gesture) return;
+
+            const touch = event.changedTouches[0];
+            if (!touch) {
+                restoreGestureStartState();
+                return;
+            }
+
+            const elapsed = Math.max(performance.now() - gesture.startTime, 1);
+            const deltaX = touch.clientX - gesture.startX;
+            const distance = gesture.opening ? deltaX : -deltaX;
+            const velocity = distance / elapsed;
+            const width = sidebar.getBoundingClientRect().width;
+            const shouldComplete = gesture.horizontal && (
+                distance >= width * SWIPE_TRIGGER_RATIO ||
+                velocity >= SWIPE_VELOCITY_THRESHOLD
+            );
+            const shouldOpen = shouldComplete ? gesture.opening : !gesture.opening;
+
+            gesture = null;
+            setMobileSidebarOpen(shouldOpen);
+        };
+
+        document.addEventListener('touchstart', onTouchStart, { passive: true, signal });
+        document.addEventListener('touchmove', onTouchMove, { passive: false, signal });
+        document.addEventListener('touchend', onTouchEnd, { passive: true, signal });
+        document.addEventListener('touchcancel', restoreGestureStartState, { passive: true, signal });
+
+        // On resize: reset mobile state when crossing the desktop breakpoint.
+        let wasDesktop = window.innerWidth >= 1024;
         const onResize = () => {
-            if (window.innerWidth >= 1024) {
+            const isDesktop = window.innerWidth >= 1024;
+            if (isDesktop) {
+                gesture = null;
+                clearDragStyles();
                 sidebar.classList.remove('-translate-x-full');
+                mobileToggle?.setAttribute('aria-expanded', 'false');
                 if (backdrop) {
                     backdrop.classList.add('pointer-events-none', 'opacity-0');
                     backdrop.classList.remove('opacity-100');
                 }
+            } else if (wasDesktop) {
+                window.closeSellerSidebar();
             }
+            wasDesktop = isDesktop;
         };
-        window.addEventListener('resize', onResize, { passive: true });
+        window.addEventListener('resize', onResize, { passive: true, signal });
 
         // Stripe nav button
         const stripeNavBtn = document.getElementById('stripe-nav-btn');
