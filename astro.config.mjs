@@ -58,11 +58,11 @@ export default defineConfig({
         name: 'Fewya Marketplace',
         short_name: 'Fewya',
         description: 'Marketplace moderno para pequeños negocios',
-        theme_color: '#F5F7FF',
-        background_color: '#F5F7FF',
-        display: 'standalone',
         start_url: '/',
         scope: '/',
+        display: 'standalone',
+        background_color: '#F5F7FF',
+        theme_color: '#F5F7FF',
         icons: [
           {
             src: 'icon-192.png',
@@ -97,6 +97,11 @@ export default defineConfig({
         ]
       },
       workbox: {
+        // Take control on the first visit. Without clientsClaim, the worker can
+        // be active while the page that registered it remains uncontrolled
+        // until a reload, which can make Android fall back to a plain shortcut.
+        clientsClaim: true,
+        skipWaiting: true,
         globPatterns: ['**/*.{js,css,ico,png,svg}'],
         navigateFallback: null,
         // Push + notificationclick handlers live in a static script that Workbox
