@@ -54,10 +54,16 @@ export default defineConfig({
         suppressWarnings: true,
       },
       manifest: {
+        id: '/',
         name: 'Fewya Marketplace',
         short_name: 'Fewya',
         description: 'Marketplace moderno para pequeños negocios',
+        lang: 'es',
         theme_color: '#F5F7FF',
+        background_color: '#F5F7FF',
+        display: 'standalone',
+        start_url: '/',
+        scope: '/',
         icons: [
           {
             src: 'icon-192.png',
