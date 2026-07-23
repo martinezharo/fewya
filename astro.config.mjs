@@ -54,9 +54,14 @@ export default defineConfig({
         suppressWarnings: true,
       },
       manifest: {
+        id: '/',
         name: 'Fewya Marketplace',
         short_name: 'Fewya',
         description: 'Marketplace moderno para pequeños negocios',
+        start_url: '/',
+        scope: '/',
+        display: 'standalone',
+        background_color: '#F5F7FF',
         theme_color: '#F5F7FF',
         icons: [
           {
@@ -92,6 +97,9 @@ export default defineConfig({
         ]
       },
       workbox: {
+        // Activate updates and control open pages without waiting for a reload.
+        clientsClaim: true,
+        skipWaiting: true,
         globPatterns: ['**/*.{js,css,ico,png,svg}'],
         navigateFallback: null,
         // Push + notificationclick handlers live in a static script that Workbox
