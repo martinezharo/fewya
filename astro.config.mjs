@@ -97,9 +97,7 @@ export default defineConfig({
         ]
       },
       workbox: {
-        // Take control on the first visit. Without clientsClaim, the worker can
-        // be active while the page that registered it remains uncontrolled
-        // until a reload, which can make Android fall back to a plain shortcut.
+        // Activate updates and control open pages without waiting for a reload.
         clientsClaim: true,
         skipWaiting: true,
         globPatterns: ['**/*.{js,css,ico,png,svg}'],
