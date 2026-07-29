@@ -4,6 +4,7 @@ import WishlistButton from "./WishlistButton.astro";
 
 import { optimizeImageUrl } from "../lib/ui/imageOptimize";
 import { formatCurrency } from "../lib/core/formatCurrency";
+import { getDefaultVariant, isInStock } from "../lib/products/variants";
 import type { Product } from "../lib/core/types";
 const { t, locale } = Astro.locals;
 
@@ -17,11 +18,11 @@ const { product, isWished = false, priority = false } = Astro.props;
 
 const rawImageUrl = product.gallery_images?.[0] ?? "/placeholder.svg";
 const imageUrl = optimizeImageUrl(rawImageUrl, 400);
-const defaultVariant = product.variants?.find(v => v.is_default) ?? product.variants?.[0];
+const defaultVariant = getDefaultVariant(product.variants);
 const price = defaultVariant?.price ?? 0;
 const shippingCost = defaultVariant?.shipping_cost ?? 0;
 const formattedPrice = formatCurrency(price, locale);
-const isOutOfStock = product.variants?.every(v => (v.stock ?? 0) <= 0) ?? true;
+const isOutOfStock = !isInStock(product.variants);
 const shopName = product.shop?.name ?? "";
 const shopSlug = product.shop?.slug ?? "";
 const shopAccentColor = product.shop?.accent_color ?? "#888";
