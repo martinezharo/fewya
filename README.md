@@ -74,6 +74,20 @@ CLOUDFLARE_ENV=production bun run build && wrangler deploy
 
 See [`wrangler.jsonc`](wrangler.jsonc) for bindings and environments. The test worker (`fewya-test`) runs on `*.workers.dev` with mocked shipping and Stripe test keys.
 
+## Public catalog feed
+
+Sellers can mirror their own Fewya listings on their own site without touching the
+database:
+
+```
+GET /api/public/shops/<shopSlug>/catalog.json
+```
+
+Anonymous, cacheable and read-only. It returns what the public product pages
+already show — title, description, images, brand, price and an `in_stock`
+boolean. Exact inventory levels are deliberately not exposed, and shops that
+cannot currently sell return 404 so the feed never leaks onboarding state.
+
 ## Contributing
 
 1. Create a feature branch: `git checkout -b feat/my-feature`

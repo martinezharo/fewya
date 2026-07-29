@@ -4,6 +4,7 @@ import Icon from '../../../components/icons/Icon.astro';
 import { createSupabaseAuthClient } from '../../../lib/core/auth';
 import { getCategoryLabel   } from '../../../lib/core/i18n';
 import { validateProductCompleteness } from '../../../lib/products/productValidation';
+import { getDefaultVariant, getTotalStock } from '../../../lib/products/variants';
 import type { Product, ProductVariant } from '../../../lib/core/types';
 const { t } = Astro.locals;
 
@@ -43,7 +44,7 @@ const productsWithCompleteness = allProducts.map(p => {
 });
 
 const activeCount = productsWithCompleteness.filter(p => p.is_active).length;
-const totalStock = productsWithCompleteness.reduce((sum, p) => sum + (p.variants?.reduce((vs, v) => vs + (v.stock ?? 0), 0) ?? 0), 0);
+const totalStock = productsWithCompleteness.reduce((sum, p) => sum + getTotalStock(p.variants), 0);
 const currencyFormatter = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' });
 ---
 
@@ -87,14 +88,14 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', { style: 'currency', cu
         {productsWithCompleteness.length > 0 ? (
             <div class="flex flex-col gap-3" id="product-list">
                 {productsWithCompleteness.map((product) => {
-                    const defaultVariant = product.variants?.find(v => v.is_default) || product.variants?.[0];
+                    const defaultVariant = getDefaultVariant(product.variants);
                     const minPrice = product.variants?.length
                         ? Math.min(...product.variants.map(v => v.price))
                         : defaultVariant?.price ?? 0;
                     const maxPrice = product.variants?.length
                         ? Math.max(...product.variants.map(v => v.price))
                         : defaultVariant?.price ?? 0;
-                    const stock = product.variants?.reduce((sum, v) => sum + (v.stock ?? 0), 0) ?? 0;
+                    const stock = getTotalStock(product.variants);
                     const image = product.gallery_images?.[0] || defaultVariant?.variant_image || '';
                     const catLabel = getCategoryLabel(t, product.category ?? '');
                     return (

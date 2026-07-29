@@ -11,6 +11,7 @@ import ShopContact from '../../components/product/ShopContact.astro';
 import { supabase } from '../../lib/core/supabase';
 import { createSupabaseAuthClient } from '../../lib/core/auth';
 import { isProductComplete, formatShippingDisplay } from '../../lib/products/productValidation';
+import { sortVariants } from '../../lib/products/variants';
 import { formatCurrency } from '../../lib/core/formatCurrency';
 
 import { getMergedWishlistIds } from '../../lib/wishlist/wishlist';
@@ -68,9 +69,7 @@ const isWished = mergedWishlist.has(product.id);
 const images = product.gallery_images?.length > 0 ? product.gallery_images : ['/placeholder.svg'];
 
 // Sort variants: default first
-const sortedVariants = [...(product.variants ?? [])].sort((a, b) =>
-  (b.is_default ? 1 : 0) - (a.is_default ? 1 : 0)
-);
+const sortedVariants = sortVariants(product.variants);
 const activeVariant = sortedVariants[0];
 const price = activeVariant?.price ?? 0;
 const shippingCost = activeVariant?.shipping_cost ?? 0;
