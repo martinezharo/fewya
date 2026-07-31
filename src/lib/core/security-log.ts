@@ -7,6 +7,8 @@ export type SecurityEventName =
     | 'security.transfer.failed'
     | 'security.csrf.origin_mismatch'
     | 'security.rate_limit.exceeded'
+    /** The limiter could not answer, so the request was denied rather than waved through. */
+    | 'security.rate_limit.unavailable'
     | 'security.cron.unauthorized';
 
 export function securityLog(event: SecurityEventName, context: Record<string, unknown> = {}): void {

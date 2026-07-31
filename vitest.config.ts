@@ -5,6 +5,8 @@ export default defineConfig({
     resolve: {
         alias: {
             'astro:env/server': path.resolve(__dirname, 'tests/mocks/astro-env-server.ts'),
+            'astro:middleware': path.resolve(__dirname, 'tests/mocks/astro-middleware.ts'),
+            'cloudflare:workers': path.resolve(__dirname, 'tests/mocks/cloudflare-workers.ts'),
         },
     },
     test: {
@@ -24,7 +26,6 @@ export default defineConfig({
                 'src/pages/**',
                 'src/layouts/**',
                 'src/components/**',
-                'src/middleware.ts',
                 'src/styles/**',
                 'src/types/**',
             ],
