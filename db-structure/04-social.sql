@@ -43,12 +43,21 @@ ALTER TABLE public.reviews ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.wishlist ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Allow public read access to reviews" ON public.reviews FOR SELECT TO public USING (true);
-CREATE POLICY "Allow inserting reviews if product was purchased" ON public.reviews FOR INSERT TO authenticated WITH CHECK (EXISTS (
-  SELECT 1 FROM public.orders o
-  JOIN public.order_items oi ON o.id = oi.order_id
-  JOIN public.product_variants pv ON oi.variant_id = pv.id
-  WHERE o.buyer_id = auth.uid() AND pv.product_id = public.reviews.product_id
-));
+-- The `profile_id = auth.uid()` half is not redundant with the purchase check.
+-- Without it, anyone who bought the product could file a review *attributed to
+-- someone else*: the EXISTS clause only asks whether the caller purchased it,
+-- never whose name goes on the review. Reviews are public and permanent, and
+-- only their named author can edit or delete one, so the victim could not take
+-- it down. Matches the rule wishlist and push_subscriptions already apply.
+CREATE POLICY "Allow inserting reviews if product was purchased" ON public.reviews FOR INSERT TO authenticated WITH CHECK (
+  profile_id = auth.uid()
+  AND EXISTS (
+    SELECT 1 FROM public.orders o
+    JOIN public.order_items oi ON o.id = oi.order_id
+    JOIN public.product_variants pv ON oi.variant_id = pv.id
+    WHERE o.buyer_id = auth.uid() AND pv.product_id = public.reviews.product_id
+  )
+);
 CREATE POLICY "Users can update own reviews" ON public.reviews FOR UPDATE TO authenticated USING ((auth.uid() = profile_id)) WITH CHECK ((auth.uid() = profile_id));
 CREATE POLICY "Users can delete own reviews" ON public.reviews FOR DELETE TO authenticated USING ((auth.uid() = profile_id));
 CREATE POLICY "Users can view own wishlist" ON public.wishlist FOR SELECT TO authenticated USING ((auth.uid() = profile_id));
