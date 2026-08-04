@@ -4,6 +4,8 @@ dev-dist/
 
 # test coverage
 coverage/
+playwright-report/
+test-results/
 
 # generated types
 .astro/

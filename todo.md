@@ -120,18 +120,16 @@ performance/DB/testing). Items are grouped by area and roughly ordered by urgenc
 The middleware, `core/rate-limit.ts` and the ERP/OC items from that pass are
 done (PRs #23 here, erp#3, octopus-control#3). Still open, roughly by value:
 
-- [ ] **Storage RLS.** The 16 policies in `db-structure/06-storage.sql` have no
-      tests. `tests/db/bootstrap.sql` already stubs `storage.objects`,
-      `storage.buckets` and `storage.foldername`, so this is a new file in
-      `tests/rls/` and nothing else — the harness is ready for it.
-- [ ] **E2E for checkout and seller sign-up.** Playwright is available. Only
+- [x] **Storage RLS.** The 16 policies in `db-structure/06-storage.sql` are
+      covered against real Postgres using the existing storage stubs.
+- [x] **E2E for checkout and seller sign-up.** Playwright covers only
       those two flows; they are the ones where a break costs money directly.
-- [ ] **Contract test for `/api/public/shops/[shopSlug]/catalog.json`.** This is
+- [x] **Contract test for `/api/public/shops/[shopSlug]/catalog.json`.** This is
       the boundary with Octopus Control, which mirrors the feed and now shares
       one validator for it (octopus-control#3). A change to the shape here
-      unlists that whole site, and nothing on this side would notice.
-- [ ] `lib/shops/shopStatus.ts` and `lib/notifications/scan.ts` have no tests.
-- [ ] Zero test coverage on: `lib/notifications/scan.ts`, `lib/shipping/syncTracking.ts`, `lib/orders/autoConfirm.ts`,
+      now fails on the producer side too.
+- [x] `lib/core/shopStatus.ts` and `lib/notifications/scan.ts` have focused tests.
+- [ ] Zero test coverage on: `lib/shipping/syncTracking.ts`, `lib/orders/autoConfirm.ts`,
       `lib/orders/autoReview.ts`, `lib/orders/payoutFlow.ts`, `lib/payments/payoutValidation.ts`,
       `lib/products/pricingEnforcement.ts`, `lib/products/productUtils.ts`, `lib/products/search.ts`,
       `lib/shipping/shipmentStatus.ts`, `lib/shipping/shippingLabelPdf.ts`, `lib/wishlist/*`. Also very low coverage:
