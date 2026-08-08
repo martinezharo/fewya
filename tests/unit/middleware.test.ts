@@ -12,7 +12,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
  */
 
 const exchangeAuthCodeForSession = vi.fn(async () => null as string | null);
-vi.mock('../../src/lib/core/auth', () => ({ exchangeAuthCodeForSession }));
+vi.mock('../../src/lib/core/auth', () => ({
+    exchangeAuthCodeForSession,
+    hasRequestAuthUser: () => false,
+}));
 
 // Same file the `cloudflare:workers` alias resolves to, so mutating this `env`
 // is what the middleware sees when it looks for its rate limiter binding.
@@ -267,12 +270,15 @@ describe('middleware', () => {
             // and should not pass unnoticed in a diff.
             const { response } = await call('https://fewya.com/');
             const csp = response.headers.get('Content-Security-Policy') ?? '';
-            expect(csp).toContain('script-src \'self\' \'unsafe-inline\' https://js.stripe.com data:');
+            expect(csp).toContain('script-src \'self\' \'unsafe-inline\' https://js.stripe.com');
+            expect(csp).toContain('https://*.clerk.accounts.dev https://*.protect.clerk.com https://challenges.cloudflare.com');
+            expect(csp).toContain("worker-src 'self' blob:");
             expect(csp).toContain('frame-src https://js.stripe.com https://hooks.stripe.com');
+            expect(csp).toContain('https://*.protect.clerk.com https://challenges.cloudflare.com');
             expect(csp).toContain('font-src \'self\' https://fonts.gstatic.com');
-            expect(csp).toContain(
-                "connect-src 'self' https://*.supabase.co https://api.stripe.com https://panel.sendcloud.sc",
-            );
+            expect(csp).toContain("connect-src 'self' http://127.0.0.1:3210 http://localhost:3210");
+            expect(csp).toContain('https://*.clerk.accounts.dev https://*.protect.clerk.com https://challenges.cloudflare.com');
+            expect(csp).toContain('https://api.stripe.com https://panel.sendcloud.sc');
         });
 
         it('does not put a CSP on non-HTML responses', async () => {

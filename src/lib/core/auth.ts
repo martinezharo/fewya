@@ -1,10 +1,64 @@
 import { createServerClient, parseCookieHeader } from '@supabase/ssr';
 import type { AstroCookies } from 'astro';
 import { SUPABASE_URL, SUPABASE_KEY } from 'astro:env/server';
-import type { User } from '@supabase/supabase-js';
+import type { Session, SupabaseClient, User } from '@supabase/supabase-js';
+import { createSupabaseAdminClient } from './supabase-admin';
 
 const AUTH_REDIRECT_BASE = 'fewya-auth-redirect';
 const AUTH_ROLE_BASE = 'fewya-auth-role';
+
+// Clerk authentication is established by the request middleware before any
+// page or API handler creates its Supabase-compatible client. A WeakMap keeps
+// that bridge request-scoped without putting identity data in a cookie.
+const requestUsers = new WeakMap<Request, User>();
+const requestConvexTokens = new WeakMap<Request, string>();
+
+export function setRequestAuthUser(request: Request, user: User, convexToken?: string) {
+    requestUsers.set(request, user);
+    if (convexToken) requestConvexTokens.set(request, convexToken);
+}
+
+function getRequestAuthUser(request: Request) {
+    return requestUsers.get(request);
+}
+
+export function hasRequestAuthUser(request: Request) {
+    return requestUsers.has(request);
+}
+
+export function getRequestConvexToken(request: Request) {
+    return requestConvexTokens.get(request) ?? null;
+}
+
+function createClerkCompatibilityClient(user: User): SupabaseClient {
+    const admin = createSupabaseAdminClient();
+    const compatibilityAuth = new Proxy(admin.auth, {
+        get(target, property, receiver) {
+            if (property === 'getUser') {
+                return async () => ({ data: { user }, error: null });
+            }
+            if (property === 'getSession') {
+                const session: Session = {
+                    access_token: '',
+                    token_type: 'bearer',
+                    expires_in: 3600,
+                    expires_at: Math.floor(Date.now() / 1000) + 3600,
+                    refresh_token: '',
+                    user,
+                };
+                return async () => ({ data: { session }, error: null });
+            }
+            return Reflect.get(target, property, receiver);
+        },
+    });
+
+    return new Proxy(admin, {
+        get(target, property, receiver) {
+            if (property === 'auth') return compatibilityAuth;
+            return Reflect.get(target, property, receiver);
+        },
+    });
+}
 
 /**
  * Returns the cookie name with __Host- prefix when on HTTPS.
@@ -19,6 +73,11 @@ function authCookieName(base: string, url: URL): string {
  * Pass Astro.cookies and Astro.request from any page or API route.
  */
 export function createSupabaseAuthClient(cookies: AstroCookies, request: Request) {
+    const requestUser = getRequestAuthUser(request);
+    if (requestUser) {
+        return createClerkCompatibilityClient(requestUser);
+    }
+
     if (!SUPABASE_URL || !SUPABASE_KEY) {
         throw new Error('SUPABASE_URL or SUPABASE_KEY environment variables are not configured');
     }

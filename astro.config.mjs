@@ -4,6 +4,8 @@ import { defineConfig, envField } from 'astro/config';
 import tailwindcss from '@tailwindcss/vite';
 import cloudflare from '@astrojs/cloudflare';
 import AstroPWA from '@vite-pwa/astro';
+import clerk from '@clerk/astro';
+import { clerkAppearance } from './src/lib/core/clerkAppearance';
 
 // https://astro.build/config
 export default defineConfig({
@@ -16,6 +18,13 @@ export default defineConfig({
       SUPABASE_URL: envField.string({ context: 'server', access: 'public' }),
       SUPABASE_KEY: envField.string({ context: 'server', access: 'public' }),
       SUPABASE_SECRET_KEY: envField.string({ context: 'server', access: 'secret', optional: true }),
+      // Public deployment URL; Convex functions enforce authorization for
+      // private reads and writes. Optional while Supabase/Convex dual-read is
+      // being rolled out.
+      CONVEX_URL: envField.string({ context: 'server', access: 'public', optional: true }),
+      CLERK_SECRET_KEY: envField.string({ context: 'server', access: 'secret', optional: true }),
+      CLERK_JWT_ISSUER_DOMAIN: envField.string({ context: 'server', access: 'public', optional: true }),
+      CLERK_JWT_TEMPLATE: envField.string({ context: 'server', access: 'secret', optional: true }),
       APP_MODE: envField.enum({
         context: 'server',
         access: 'public',
@@ -45,6 +54,10 @@ export default defineConfig({
   // vite.plugins, Astro's multi-phase build never runs the generateSW step and
   // the built site ships without sw.js, breaking offline caching and web push.
   integrations: [
+    // The integration must always be installed because the Astro components
+    // resolve its virtual config module at build time. Runtime auth remains
+    // conditional on the publishable key in middleware and pages.
+    clerk({ appearance: clerkAppearance }),
     AstroPWA({
       injectRegister: false,
       registerType: 'autoUpdate',

@@ -2,7 +2,7 @@
 import '../styles/global.css';
 import '../styles/pwa.css';
 import { ClientRouter } from 'astro:transitions';
-import { SUPABASE_URL } from 'astro:env/server';
+import { SUPABASE_URL, CONVEX_URL } from 'astro:env/server';
 
 interface Props {
   title?: string;
@@ -25,6 +25,7 @@ const {
 } = Astro.props;
 
 const supabaseHost = typeof SUPABASE_URL === 'string' ? new URL(SUPABASE_URL).host : '';
+const convexHost = typeof CONVEX_URL === 'string' ? new URL(CONVEX_URL).host : '';
 const siteUrl = Astro.site?.toString() ?? `${Astro.url.protocol}//${Astro.url.host}`;
 const canonicalUrl = canonical ?? new URL(Astro.url.pathname, siteUrl).toString();
 const ogImage = image ?? new URL('/og-image.svg', siteUrl).toString();
@@ -64,6 +65,12 @@ const ogLocale = locale === 'es' ? 'es_ES' : 'en_US';
       <>
         <link rel="dns-prefetch" href={`https://${supabaseHost}`} />
         <link rel="preconnect" href={`https://${supabaseHost}`} crossorigin />
+      </>
+    )}
+    {convexHost && convexHost !== supabaseHost && (
+      <>
+        <link rel="dns-prefetch" href={`https://${convexHost}`} />
+        <link rel="preconnect" href={`https://${convexHost}`} crossorigin />
       </>
     )}
     <link rel="dns-prefetch" href="https://images.unsplash.com" />

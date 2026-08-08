@@ -1,7 +1,15 @@
 import { defineMiddleware } from 'astro:middleware';
+import type { MiddlewareHandler } from 'astro';
 import { env } from 'cloudflare:workers';
 import { parseCookieHeader } from '@supabase/ssr';
-import { exchangeAuthCodeForSession } from './lib/core/auth';
+import { createClerkClient, type SessionAuthObject } from '@clerk/backend';
+import type { APIContext } from 'astro';
+import { CLERK_JWT_TEMPLATE, CLERK_SECRET_KEY } from 'astro:env/server';
+import type { User } from '@supabase/supabase-js';
+import { api } from '../convex/_generated/api';
+import { createConvexClient } from './lib/core/convex';
+import { createSupabaseAdminClient } from './lib/core/supabase-admin';
+import { exchangeAuthCodeForSession, hasRequestAuthUser, setRequestAuthUser } from './lib/core/auth';
 import { securityLog } from './lib/core/security-log';
 import { checkRateLimit, rateLimitResponse, type RateLimitBinding } from './lib/core/rate-limit';
 import { getT, resolveLocale } from './lib/core/i18n';
@@ -24,18 +32,100 @@ const CSP = [
     // and astro:page-load never fires — event handlers stop re-binding on
     // SPA navigation. The XSS surface is essentially unchanged because
     // 'unsafe-inline' already permits inline script execution.
-    "script-src 'self' 'unsafe-inline' https://js.stripe.com data:",
-    "frame-src https://js.stripe.com https://hooks.stripe.com",
-    "img-src 'self' data: blob: https://*.supabase.co https://imagedelivery.net",
+    "script-src 'self' 'unsafe-inline' https://js.stripe.com https://*.clerk.com https://*.clerk.accounts.dev https://*.protect.clerk.com https://challenges.cloudflare.com https://clerk-telemetry.com https://*.clerk-telemetry.com data:",
+    "script-src-elem 'self' 'unsafe-inline' https://js.stripe.com https://*.clerk.com https://*.clerk.accounts.dev https://*.protect.clerk.com https://challenges.cloudflare.com data:",
+    "worker-src 'self' blob:",
+    "frame-src https://js.stripe.com https://hooks.stripe.com https://*.clerk.com https://*.clerk.accounts.dev https://*.protect.clerk.com https://challenges.cloudflare.com",
+    "img-src 'self' data: blob: http://127.0.0.1:3210 http://localhost:3210 https://*.supabase.co https://*.convex.cloud https://*.convex.site https://*.clerk.com https://*.clerk.accounts.dev https://img.clerk.com https://imagedelivery.net",
     // style-src: Google Fonts stylesheet loaded via <link> in Layout.astro
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "connect-src 'self' https://*.supabase.co https://api.stripe.com https://panel.sendcloud.sc",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://*.clerk.com https://*.clerk.accounts.dev",
+    "connect-src 'self' http://127.0.0.1:3210 http://localhost:3210 https://*.supabase.co https://*.convex.cloud https://*.convex.site https://*.clerk.com https://*.clerk.accounts.dev https://*.protect.clerk.com https://challenges.cloudflare.com https://clerk-telemetry.com https://*.clerk-telemetry.com https://img.clerk.com https://api.stripe.com https://panel.sendcloud.sc",
     // font-src: Google Fonts serves .woff2 files from fonts.gstatic.com
     "font-src 'self' https://fonts.gstatic.com",
     "object-src 'none'",
 ].join('; ');
 
-export const onRequest = defineMiddleware(async (context, next) => {
+const clerkPublishableKey = import.meta.env.PUBLIC_CLERK_PUBLISHABLE_KEY as string | undefined;
+const clerkBackendClient = CLERK_SECRET_KEY
+    ? createClerkClient({ secretKey: CLERK_SECRET_KEY, publishableKey: clerkPublishableKey })
+    : null;
+type ClerkSessionAuth = SessionAuthObject;
+
+async function hydrateClerkUser(auth: () => ClerkSessionAuth, context: APIContext) {
+    const clerkAuth = auth();
+    if (!clerkAuth.userId) return;
+
+    const token = await clerkAuth.getToken({ template: CLERK_JWT_TEMPLATE || 'convex' });
+    if (!token) return;
+
+    const claims = (clerkAuth.sessionClaims ?? {}) as Record<string, unknown>;
+    const stringClaim = (...keys: string[]) => {
+        for (const key of keys) {
+            const value = claims[key];
+            if (typeof value === 'string' && value.trim()) return value.trim();
+        }
+        return undefined;
+    };
+
+    const email = stringClaim('email', 'email_address');
+    const fullName = stringClaim('name', 'full_name');
+    const firstName = stringClaim('given_name', 'first_name');
+    const lastName = stringClaim('family_name', 'last_name');
+    const pictureUrl = stringClaim('picture_url', 'image_url');
+    const legacyIdCandidate = crypto.randomUUID();
+
+    const convex = createConvexClient(token);
+    if (!convex) return;
+
+    try {
+        const linked = await convex.mutation(api.users.ensureCurrent, { legacyId: legacyIdCandidate });
+
+        // Keep the old Supabase-backed routes usable during the staged cutover.
+        // New Clerk users receive the same UUID in both stores; existing users
+        // retain their imported Supabase UUID and are linked by verified email.
+        if (linked.created) {
+            const admin = createSupabaseAdminClient();
+            const { error } = await admin.from('profiles').insert({
+                id: linked.legacyId,
+                email: email ?? `clerk-${clerkAuth.userId}@invalid.local`,
+                full_name: fullName ?? null,
+                first_name: firstName ?? null,
+                last_name: lastName ?? null,
+                avatar_url: pictureUrl ?? null,
+                address_country: 'ES',
+                is_seller: false,
+                email_marketing_opt_in: false,
+            });
+            if (error && !error.message.toLowerCase().includes('duplicate')) {
+                console.error(JSON.stringify({ event: 'clerk.supabase_profile_bridge_failed', error: error.message }));
+            }
+        }
+
+        const user = {
+            id: linked.legacyId,
+            aud: 'authenticated',
+            role: 'authenticated',
+            email: email ?? `clerk-${clerkAuth.userId}@invalid.local`,
+            user_metadata: {
+                full_name: fullName,
+                first_name: firstName,
+                last_name: lastName,
+                avatar_url: pictureUrl,
+            },
+            app_metadata: { provider: 'clerk', providers: ['clerk'] },
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+        } as unknown as User;
+        setRequestAuthUser(context.request, user, token);
+    } catch (error) {
+        console.error(JSON.stringify({
+            event: 'clerk.identity_bridge_failed',
+            error: error instanceof Error ? error.message : String(error),
+        }));
+    }
+}
+
+const legacyMiddleware: MiddlewareHandler = async (context, next) => {
     const { method } = context.request;
     const { pathname } = context.url;
 
@@ -121,7 +211,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
         // M1: parse cookies properly to avoid false positives on cookie values
         const cookieHeader = context.request.headers.get('Cookie') ?? '';
         const parsed = parseCookieHeader(cookieHeader);
-        const hasSession = parsed.some(
+        const hasSession = hasRequestAuthUser(context.request) || parsed.some(
             c => c.name.startsWith('sb-') && c.name.includes('auth-token'),
         );
         response.headers.set(
@@ -133,4 +223,31 @@ export const onRequest = defineMiddleware(async (context, next) => {
     }
 
     return response;
+};
+
+export const onRequest: MiddlewareHandler = defineMiddleware((context, next) => {
+    if (!clerkBackendClient) {
+        return legacyMiddleware(context, next);
+    }
+
+    return (async () => {
+        const requestState = await clerkBackendClient.authenticateRequest(context.request, {
+            acceptsToken: 'session_token',
+        });
+        const location = requestState.headers.get('location');
+        if (location) {
+            return new Response(null, { status: 307, headers: requestState.headers });
+        }
+
+        const authObject = requestState.toAuth();
+        if (!authObject) {
+            return new Response(null, { status: 401 });
+        }
+        (context.locals as unknown as Record<string, unknown>).auth = () => authObject;
+        await hydrateClerkUser(() => authObject, context);
+
+        const response = (await legacyMiddleware(context, next)) ?? new Response(null, { status: 204 });
+        requestState.headers.forEach((value, key) => response.headers.append(key, value));
+        return response;
+    })();
 });
