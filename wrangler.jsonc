@@ -51,6 +51,9 @@
 				"APP_MODE": "development",
 				"WORKER_BASE_URL": "https://fewya-test.olma.workers.dev",
 				"APP_BASE_URL": "https://fewya-test.olma.workers.dev",
+				// Staging-only Convex development deployment. Production receives its
+				// own URL after auth and write-path cutover validation.
+				"CONVEX_URL": "https://tremendous-fennec-292.convex.cloud",
 				"VAPID_PUBLIC_KEY": "BNm6TUaJ9ehIHedtrIIp41Pp5oyHdLgKDRlFTAadOck2fovY4oRlrEP4O7KKKYysQFJFXHkk3ecHX10GSuXtzcY"
 			},
 			// Bindings are not inherited by environments — redeclare the rate limiter.
