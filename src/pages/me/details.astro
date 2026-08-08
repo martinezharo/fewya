@@ -1,8 +1,10 @@
 ---
 import BuyerAppLayout from "../../layouts/BuyerAppLayout.astro";
 import Icon from "../../components/icons/Icon.astro";
+import { api } from '../../../convex/_generated/api';
 
-import { createSupabaseAuthClient } from "../../lib/core/auth";
+import { createSupabaseAuthClient, getRequestConvexToken } from "../../lib/core/auth";
+import { createConvexClient } from '../../lib/core/convex';
 import { getAllCountries } from "../../lib/shipping/countries";
 import { spainProvinces } from "../../lib/shipping/spain-provinces";
 import { isProfileComplete } from "../../lib/core/validation";
@@ -15,11 +17,59 @@ if (!user) {
     return Astro.redirect('/login?redirect_to=/me/details');
 }
 
-const { data: profile } = await supabase
-    .from('profiles')
-    .select('first_name, last_name, email, avatar_url, phone, phone_prefix, address_street, address_number, address_floor, address_postal_code, address_city, address_province, address_country, email_marketing_opt_in')
-    .eq('id', user.id)
-    .single();
+let profile: {
+    first_name?: string | null;
+    last_name?: string | null;
+    email?: string | null;
+    avatar_url?: string | null;
+    phone?: string | null;
+    phone_prefix?: string | null;
+    address_street?: string | null;
+    address_number?: string | null;
+    address_floor?: string | null;
+    address_postal_code?: string | null;
+    address_city?: string | null;
+    address_province?: string | null;
+    address_country?: string | null;
+    email_marketing_opt_in?: boolean | null;
+} | null = null;
+
+const convexToken = getRequestConvexToken(Astro.request);
+const convex = convexToken ? createConvexClient(convexToken) : null;
+if (convex) {
+    try {
+        const current = await convex.query(api.users.current, {});
+        if (current) {
+            profile = {
+                first_name: current.firstName,
+                last_name: current.lastName,
+                email: current.email,
+                avatar_url: current.avatarUrl,
+                phone: current.phone,
+                phone_prefix: current.phonePrefix,
+                address_street: current.addressStreet,
+                address_number: current.addressNumber,
+                address_floor: current.addressFloor,
+                address_postal_code: current.addressPostalCode,
+                address_city: current.addressCity,
+                address_province: current.addressProvince,
+                address_country: current.addressCountry,
+                email_marketing_opt_in: current.emailMarketingOptIn,
+            };
+        }
+    } catch (error) {
+        console.error('Convex profile unavailable:', error);
+    }
+}
+
+if (!profile && !convexToken) {
+    const { data } = await supabase
+        .from('profiles')
+        .select('first_name, last_name, email, avatar_url, phone, phone_prefix, address_street, address_number, address_floor, address_postal_code, address_city, address_province, address_country, email_marketing_opt_in')
+        .eq('id', user.id)
+        .single();
+    profile = data;
+}
 
 const returnTo = Astro.url.searchParams.get('return_to');
 const fromCheckout = Astro.url.searchParams.get('checkout') === '1' && returnTo === '/cart';

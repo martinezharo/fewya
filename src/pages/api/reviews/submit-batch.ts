@@ -1,5 +1,7 @@
 import type { APIRoute } from 'astro';
-import { createSupabaseAuthClient } from '../../../lib/core/auth';
+import { api } from '../../../../convex/_generated/api';
+import { createConvexClient } from '../../../lib/core/convex';
+import { createSupabaseAuthClient, getRequestConvexToken } from '../../../lib/core/auth';
 import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
 
 import { ORDER_STATUS } from '../../../lib/orders/orderStatus';
@@ -41,6 +43,30 @@ export const POST: APIRoute = async ({ locals, request, cookies  }) => {
         // A4: limit comment length
         if (r.comment !== undefined && (typeof r.comment !== 'string' || r.comment.length > 2000)) {
             return jsonResponse({ error: t.apiInvalidBody }, 400);
+        }
+    }
+
+    const convexToken = getRequestConvexToken(request);
+    if (convexToken) {
+        const convex = createConvexClient(convexToken);
+        if (convex) {
+            try {
+                await convex.mutation(api.reviews.submitBatch, {
+                    reviews: reviews.map((review) => ({
+                        productId: review.productId,
+                        rating: review.rating,
+                        comment: review.comment?.trim() || undefined,
+                    })),
+                });
+                return jsonResponse({ success: true }, 200);
+            } catch (error) {
+                // Keep the Supabase path as a rollback during the staged
+                // migration. Both paths independently verify the purchase.
+                console.error(JSON.stringify({
+                    event: 'reviews.convex_submit_failed',
+                    error: error instanceof Error ? error.message : String(error),
+                }));
+            }
         }
     }
 

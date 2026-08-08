@@ -7,6 +7,7 @@ import { isProductComplete } from "../../lib/products/productValidation";
 import { getMergedWishlistIds } from "../../lib/wishlist/wishlist";
 import type { Product } from "../../lib/core/types";
 import { SHOP_STATUS } from "../../lib/core/shopStatus";
+import { getConvexHomeProducts } from "../../lib/products/convexCatalog";
 
 interface Props {
     userId?: string | null;
@@ -24,23 +25,27 @@ const productsQuery = supabase
 
 // Products and auth in parallel (userId may come from the parent page)
 const authClient = createSupabaseAuthClient(Astro.cookies, Astro.request);
-const [productsResult, resolvedUserId] = await Promise.all([
-    productsQuery,
+const [convexProducts, resolvedUserId] = await Promise.all([
+    getConvexHomeProducts(80),
     userId !== null
         ? Promise.resolve(userId)
         : authClient.auth.getUser().then(r => r.data.user?.id ?? null),
 ]);
 
-if (productsResult.error) {
-    console.error("Error al obtener productos:", productsResult.error);
+let products: Product[];
+if (convexProducts) {
+    products = convexProducts;
+} else {
+    // Temporary fallback while the Convex deployment is being rolled out.
+    const productsResult = await productsQuery;
+    if (productsResult.error) console.error("Error al obtener productos:", productsResult.error);
+    const rawProducts: Product[] = (productsResult.data ?? []) as Product[];
+    products = rawProducts.filter(p => p.shop?.status === SHOP_STATUS.ACTIVE && p.shop?.payments_active && p.shop?.seller_details_complete && isProductComplete(p));
 }
-
-const rawProducts: Product[] = (productsResult.data ?? []) as Product[];
-const products = rawProducts.filter(p => p.shop?.status === SHOP_STATUS.ACTIVE && p.shop?.payments_active && p.shop?.seller_details_complete && isProductComplete(p));
 
 // Ratings enrichment and wishlist lookup in parallel
 const [, wishedProductIds] = await Promise.all([
-    enrichProductsWithRatings(products, supabase),
+    convexProducts ? Promise.resolve(products) : enrichProductsWithRatings(products, supabase),
     getMergedWishlistIds(authClient, Astro.cookies, resolvedUserId),
 ]);
 ---

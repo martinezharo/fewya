@@ -4,6 +4,7 @@ import { supabase } from '../../../../../lib/core/supabase';
 import { SHOP_STATUS } from '../../../../../lib/core/shopStatus';
 import { buildPublicCatalog, isShopPubliclyVisible } from '../../../../../lib/products/publicCatalog';
 import type { Product, Shop } from '../../../../../lib/core/types';
+import { getConvexShopCatalog } from '../../../../../lib/products/convexCatalog';
 
 /**
  * Public, read-only catalog feed for a single shop.
@@ -35,6 +36,13 @@ export const GET: APIRoute = async ({ params, url }) => {
     const shopSlug = params.shopSlug;
     if (!shopSlug) return jsonResponse({ error: 'shop_not_found' }, 404, false);
 
+    const origin = (APP_BASE_URL ?? new URL(url).origin).replace(/\/+$/, '');
+    const convexCatalog = await getConvexShopCatalog(shopSlug);
+    if (convexCatalog) {
+        const catalog = buildPublicCatalog(convexCatalog.shop, convexCatalog.products, origin);
+        return jsonResponse(catalog, 200, true);
+    }
+
     const { data: shopData } = await supabase
         .from('shops')
         .select('id, slug, name, is_active, status, payments_active, seller_details_complete')
@@ -60,7 +68,6 @@ export const GET: APIRoute = async ({ params, url }) => {
 
     // Product URLs must be the canonical public ones, not whatever host the
     // request happened to hit (preview domains, workers.dev, custom proxies).
-    const origin = (APP_BASE_URL ?? new URL(url).origin).replace(/\/+$/, '');
     const catalog = buildPublicCatalog(shop, (productsData ?? []) as unknown as Product[], origin);
 
     return jsonResponse(catalog, 200, true);

@@ -3,6 +3,9 @@ import BuyerAppLayout from "../../layouts/BuyerAppLayout.astro";
 import ProductGrid from "../../components/ProductGrid.astro";
 import Icon from "../../components/icons/Icon.astro";
 import { createSupabaseAuthClient } from "../../lib/core/auth";
+import { api } from '../../../convex/_generated/api';
+import { createConvexClient } from '../../lib/core/convex';
+import { getRequestConvexToken } from '../../lib/core/auth';
 import { supabase } from "../../lib/core/supabase";
 import { enrichProductsWithRatings } from "../../lib/products/productUtils";
 import { isProductComplete } from "../../lib/products/productValidation";
@@ -18,12 +21,24 @@ const localIds = [...getWishlistIdsFromCookie(Astro.cookies)].reverse(); // newe
 
 let dbIds: string[] = [];
 if (user) {
-    const { data: wishlistData } = await authClient
-        .from('wishlist')
-        .select('product_id')
-        .eq('profile_id', user.id)
-        .order('created_at', { ascending: false });
-    dbIds = (wishlistData ?? []).map((w: any) => w.product_id);
+    const convexToken = getRequestConvexToken(Astro.request);
+    const convex = convexToken ? createConvexClient(convexToken) : null;
+    if (convex) {
+        try {
+            dbIds = await convex.query(api.wishlist.mine, {});
+        } catch (error) {
+            console.error('Convex wishlist unavailable:', error);
+        }
+    }
+
+    if (dbIds.length === 0 && !convexToken) {
+        const { data: wishlistData } = await authClient
+            .from('wishlist')
+            .select('product_id')
+            .eq('profile_id', user.id)
+            .order('created_at', { ascending: false });
+        dbIds = (wishlistData ?? []).map((w: any) => w.product_id);
+    }
 }
 
 // Build ordered unique list: DB first (newest), then locals not already in DB

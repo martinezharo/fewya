@@ -1,6 +1,9 @@
 import type { AstroCookies } from 'astro';
-import { createSupabaseAuthClient } from '../core/auth';
+import { api } from '../../../convex/_generated/api';
+import { createSupabaseAuthClient, getRequestConvexToken } from '../core/auth';
+import { createConvexClient } from '../core/convex';
 import { getMergedWishlistCount } from '../wishlist/wishlist';
+import { getWishlistIdsFromCookie } from '../wishlist/wishlist';
 import { isProfileComplete } from '../core/validation';
 
 export interface BuyerShellState {
@@ -13,7 +16,20 @@ export async function getBuyerShellState(cookies: AstroCookies, request: Request
     const authClient = createSupabaseAuthClient(cookies, request);
     const { data: { user } } = await authClient.auth.getUser();
 
-    const wishlistCount = await getMergedWishlistCount(authClient, cookies, user?.id ?? null);
+    const convexToken = getRequestConvexToken(request);
+    let wishlistCount: number;
+    if (convexToken) {
+        const convex = createConvexClient(convexToken);
+        try {
+            const ids = convex ? await convex.query(api.wishlist.mine, {}) : [];
+            wishlistCount = new Set([...ids, ...getWishlistIdsFromCookie(cookies)]).size;
+        } catch (error) {
+            console.error('Convex wishlist count unavailable:', error);
+            wishlistCount = await getMergedWishlistCount(authClient, cookies, user?.id ?? null);
+        }
+    } else {
+        wishlistCount = await getMergedWishlistCount(authClient, cookies, user?.id ?? null);
+    }
 
     let profileIncomplete = false;
     if (user) {

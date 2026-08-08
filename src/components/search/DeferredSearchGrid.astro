@@ -5,6 +5,7 @@ import { createSupabaseAuthClient } from "../../lib/core/auth";
 import { enrichProductsWithRatings } from "../../lib/products/productUtils";
 import type { SearchParams } from "../../lib/products/search";
 import { getMergedWishlistIds } from "../../lib/wishlist/wishlist";
+import { getConvexSearchProducts } from "../../lib/products/convexCatalog";
 
 import type { Product } from "../../lib/core/types";
 const { t } = Astro.locals;
@@ -22,10 +23,19 @@ const maxPrice = params.maxPrice !== null && params.maxPrice < 500 ? params.maxP
 
 const authClient = createSupabaseAuthClient(Astro.cookies, Astro.request);
 
-// Relevance-ranked search: text matching, shop visibility, price/stock filtering,
-// ordering and pagination all happen DB-side in the search_products RPC.
-const [dataResult, authResult] = await Promise.all([
-    supabase.rpc("search_products", {
+// Relevance-ranked search, visibility and stock filtering now run in Convex.
+// The Supabase RPC remains as a rollout fallback until the cloud deployment is
+// configured.
+const [convexProducts, authResult] = await Promise.all([
+    getConvexSearchProducts(params),
+    authClient.auth.getUser(),
+]);
+
+let products: Product[];
+if (convexProducts) {
+    products = convexProducts;
+} else {
+    const dataResult = await supabase.rpc("search_products", {
         p_query: params.q,
         p_min_price: params.minPrice,
         p_max_price: maxPrice,
@@ -34,15 +44,13 @@ const [dataResult, authResult] = await Promise.all([
         p_dir: params.dir,
         p_limit: 80,
         p_offset: 0,
-    }),
-    authClient.auth.getUser(),
-]);
-
-const products: Product[] = (dataResult.data ?? []) as Product[];
+    });
+    products = (dataResult.data ?? []) as Product[];
+}
 
 // Ratings enrichment and wishlist lookup in parallel
 const [, wishedProductIds] = await Promise.all([
-    enrichProductsWithRatings(products, supabase),
+    convexProducts ? Promise.resolve(products) : enrichProductsWithRatings(products, supabase),
     getMergedWishlistIds(authClient, Astro.cookies, authResult.data.user?.id ?? null),
 ]);
 ---

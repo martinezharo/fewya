@@ -1,8 +1,10 @@
 ---
 import BuyerAppLayout from "../../layouts/BuyerAppLayout.astro";
 import Icon from "../../components/icons/Icon.astro";
+import { api } from '../../../convex/_generated/api';
 
-import { createSupabaseAuthClient } from "../../lib/core/auth";
+import { createSupabaseAuthClient, getRequestConvexToken } from "../../lib/core/auth";
+import { createConvexClient } from '../../lib/core/convex';
 import { getOrderStatusLabels, ORDER_STATUS } from "../../lib/orders/orderStatus";
 import { isProfileComplete } from "../../lib/core/validation";
 const { t } = Astro.locals;
@@ -27,40 +29,106 @@ if (!user) {
 }
 
 // Fetch profile for completeness check
-const { data: profile } = await supabase
-    .from('profiles')
-    .select('first_name, last_name, phone, address_street, address_number, address_postal_code, address_city, address_province, address_country')
-    .eq('id', user.id)
-    .single();
+let profile: Record<string, unknown> | null = null;
+const convexToken = getRequestConvexToken(Astro.request);
+const convex = convexToken ? createConvexClient(convexToken) : null;
+if (convex) {
+    try {
+        const current = await convex.query(api.users.current, {});
+        profile = current ? {
+            first_name: current.firstName,
+            last_name: current.lastName,
+            phone: current.phone,
+            address_street: current.addressStreet,
+            address_number: current.addressNumber,
+            address_postal_code: current.addressPostalCode,
+            address_city: current.addressCity,
+            address_province: current.addressProvince,
+            address_country: current.addressCountry,
+        } : null;
+    } catch (error) {
+        console.error('Convex profile unavailable:', error);
+    }
+}
+if (!profile && !convexToken) {
+    const { data } = await supabase
+        .from('profiles')
+        .select('first_name, last_name, phone, address_street, address_number, address_postal_code, address_city, address_province, address_country')
+        .eq('id', user.id)
+        .single();
+    profile = data;
+}
 
 const profileCheck = isProfileComplete(profile ?? {});
 const profileIncomplete = !profileCheck.complete;
 
-// Fetch real orders data
-const { data: ordersData } = await supabase
-    .from('orders')
-    .select(`
-        id,
-        created_at,
-        status,
-        order_items (
-            quantity,
-            product_variants (
-                variant_image,
-                products (
-                    title,
-                    gallery_images,
-                    shops (
-                        id,
-                        name
+// Fetch real orders data. Clerk sessions use the authorized Convex query;
+// Supabase remains the read fallback for legacy sessions during the soak period.
+let ordersData: any[] | null = null;
+let usedConvexOrders = false;
+if (convex) {
+    try {
+        const convexOrders = await convex.query(api.orders.listMine, {}) as unknown as Array<{
+            orderId: string;
+            createdAt: string;
+            status: string;
+            items: Array<{
+                quantity: number;
+                imageUrl: string;
+                productTitle: string;
+                shopId: string;
+                shopName: string;
+            }>;
+        }>;
+        ordersData = convexOrders.map((order) => ({
+            id: order.orderId,
+            created_at: order.createdAt,
+            status: order.status,
+            order_items: order.items.map((item) => ({
+                quantity: item.quantity,
+                product_variants: {
+                    variant_image: item.imageUrl,
+                    products: {
+                        title: item.productTitle,
+                        gallery_images: [item.imageUrl],
+                        shops: { id: item.shopId, name: item.shopName },
+                    },
+                },
+            })),
+        }));
+        usedConvexOrders = true;
+    } catch (error) {
+        console.error('Convex overview orders unavailable; using Supabase fallback:', error);
+    }
+}
+
+if (!usedConvexOrders) {
+    const { data } = await supabase
+        .from('orders')
+        .select(`
+            id,
+            created_at,
+            status,
+            order_items (
+                quantity,
+                product_variants (
+                    variant_image,
+                    products (
+                        title,
+                        gallery_images,
+                        shops (
+                            id,
+                            name
+                        )
                     )
                 )
             )
-        )
-    `)
-    .eq('buyer_id', user.id)
-    .is('buyer_hidden_at', null)
-    .order('created_at', { ascending: false });
+        `)
+        .eq('buyer_id', user.id)
+        .is('buyer_hidden_at', null)
+        .order('created_at', { ascending: false });
+    ordersData = data as any[] | null;
+}
 
 const statusColorMap: Record<string, string> = {
     pending: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",

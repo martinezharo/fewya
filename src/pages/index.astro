@@ -7,6 +7,7 @@ import SkeletonProductGrid from "../components/ui/SkeletonProductGrid.astro";
 import { createSupabaseAuthClient } from "../lib/core/auth";
 import { supabase } from "../lib/core/supabase";
 import { optimizeImageUrl } from "../lib/ui/imageOptimize";
+import { getConvexHomeProducts } from "../lib/products/convexCatalog";
 
 const authClient = createSupabaseAuthClient(Astro.cookies, Astro.request);
 const { data: { user } } = await authClient.auth.getUser();
@@ -14,12 +15,13 @@ const isLoggedIn = !!user;
 
 // Eagerly fetch the first 2 product images so we can preload them in <head>.
 // This cuts the LCP resource-load delay even though the grid itself is deferred.
-const { data: topProducts } = await supabase
+const convexTopProducts = await getConvexHomeProducts(2);
+const topProducts = convexTopProducts ?? (await supabase
     .from("products")
     .select("gallery_images")
     .eq("is_active", true)
     .order("created_at", { ascending: false })
-    .limit(2);
+    .limit(2)).data ?? [];
 
 const preloadImageUrls: string[] = (topProducts ?? [])
     .map((p: { gallery_images?: string[] }) => optimizeImageUrl(p.gallery_images?.[0] ?? '', 400))

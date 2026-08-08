@@ -1,5 +1,7 @@
 import type { APIRoute } from 'astro';
-import { createSupabaseAuthClient } from '../../../lib/core/auth';
+import { api } from '../../../../convex/_generated/api';
+import { createConvexClient } from '../../../lib/core/convex';
+import { createSupabaseAuthClient, getRequestConvexToken } from '../../../lib/core/auth';
 import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
 import { getWishlistIdsFromCookie } from '../../../lib/wishlist/wishlist';
 
@@ -21,6 +23,26 @@ export const POST: APIRoute = async ({ locals, cookies, request  }) => {
 
     if (!productId || typeof productId !== 'string') {
         return new Response(JSON.stringify({ error: 'missing productId' }), { status: 400 });
+    }
+
+    const convexToken = getRequestConvexToken(request);
+    if (convexToken) {
+        const convex = createConvexClient(convexToken);
+        if (!convex) {
+            return new Response(JSON.stringify({ error: t.apiProductNotFound }), { status: 503 });
+        }
+
+        try {
+            const result = await convex.mutation(api.wishlist.toggle, { productLegacyId: productId });
+            return new Response(JSON.stringify({ wishlisted: result.wished }), { status: 200 });
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            if (message.toLowerCase().includes('product not found')) {
+                return new Response(JSON.stringify({ error: t.apiProductNotFound }), { status: 404 });
+            }
+            console.error(JSON.stringify({ event: 'wishlist.convex_toggle_failed', error: message }));
+            return new Response(JSON.stringify({ error: 'wishlist unavailable' }), { status: 503 });
+        }
     }
 
     // A5: verify product exists and is active before inserting into wishlist

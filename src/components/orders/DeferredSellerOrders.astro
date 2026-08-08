@@ -2,7 +2,9 @@
 import SellerOrderCard from './SellerOrderCard.astro';
 import type { SellerOrderCardData, SellerOrderItem } from './SellerOrderCard.astro';
 import Icon from '../icons/Icon.astro';
-import { createSupabaseAuthClient } from '../../lib/core/auth';
+import { api } from '../../../convex/_generated/api';
+import { createConvexClient } from '../../lib/core/convex';
+import { createSupabaseAuthClient, getRequestConvexToken } from '../../lib/core/auth';
 
 import { ORDER_STATUS, ORDER_STATUSES, getOrderStatusLabels } from '../../lib/orders/orderStatus';
 const { t } = Astro.locals;
@@ -17,55 +19,149 @@ const { shopId, shopSlug } = Astro.props;
 
 const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
 
-const { data: ordersData } = await supabase
-    .from('orders')
-    .select(`
-        id,
-        public_id,
-        status,
-        payment_status,
-        total_amount,
-        created_at,
-        delivered_at,
-        cancellation_reason,
-        buyer_email,
-        shipping_full_name,
-        shipping_phone,
-        shipping_address,
-        delivery_type,
-        pickup_point_carrier,
-        pickup_point_name,
-        order_items (
-            quantity,
-            price_at_purchase,
-            product_variants (
-                variant_name,
-                variant_image,
-                shipping_cost,
-                products (
-                    title,
-                    slug,
-                    gallery_images
-                )
-            )
-        ),
-        shipments (
+let ordersData: any[] | null = null;
+let usedConvexOrders = false;
+const convexToken = getRequestConvexToken(Astro.request);
+const convex = convexToken ? createConvexClient(convexToken) : null;
+
+if (convex) {
+    try {
+        const convexOrders = await convex.query(api.orders.listForShop, { shopLegacyId: shopId }) as unknown as Array<{
+            orderId: string;
+            publicId: string;
+            status: string;
+            paymentStatus: string;
+            totalAmount: number;
+            createdAt: string;
+            deliveredAt: string | null;
+            cancellationReason: string | null;
+            buyerEmail: string | null;
+            shippingFullName: string | null;
+            shippingPhone: string | null;
+            shippingAddress: string | null;
+            deliveryType: string | null;
+            pickupPointCarrier: string | null;
+            pickupPointName: string | null;
+            items: Array<{
+                quantity: number;
+                unitPrice: number;
+                shippingCost: number;
+                variantName: string | null;
+                imageUrl: string;
+                productTitle: string;
+                productSlug: string;
+            }>;
+            hasShipment: boolean;
+            shipmentId: string | null;
+            trackingNumber: string | null;
+            trackingUrl: string | null;
+            labelUrl: string | null;
+            carrierName: string | null;
+            serviceName: string | null;
+            labelCost: number | null;
+            refundedAmount: number | null;
+        }>;
+        ordersData = convexOrders.map((order) => ({
+            id: order.orderId,
+            public_id: order.publicId,
+            status: order.status,
+            payment_status: order.paymentStatus,
+            total_amount: order.totalAmount,
+            created_at: order.createdAt,
+            delivered_at: order.deliveredAt,
+            cancellation_reason: order.cancellationReason,
+            buyer_email: order.buyerEmail,
+            shipping_full_name: order.shippingFullName,
+            shipping_phone: order.shippingPhone,
+            shipping_address: order.shippingAddress,
+            delivery_type: order.deliveryType,
+            pickup_point_carrier: order.pickupPointCarrier,
+            pickup_point_name: order.pickupPointName,
+            order_items: order.items.map((item) => ({
+                quantity: item.quantity,
+                price_at_purchase: item.unitPrice,
+                product_variants: {
+                    variant_name: item.variantName,
+                    variant_image: item.imageUrl,
+                    shipping_cost: item.shippingCost,
+                    products: {
+                        title: item.productTitle,
+                        slug: item.productSlug,
+                        gallery_images: [item.imageUrl],
+                    },
+                },
+            })),
+            shipments: order.hasShipment ? [{
+                id: order.shipmentId,
+                sendcloud_shipment_id: null,
+                carrier_name: order.carrierName,
+                service_name: order.serviceName,
+                status: null,
+                tracking_number: order.trackingNumber,
+                tracking_url: order.trackingUrl,
+                label_url: order.labelUrl,
+                price: order.labelCost,
+            }] : [],
+            refunds: order.refundedAmount == null ? [] : [{ amount: order.refundedAmount }],
+        }));
+        usedConvexOrders = true;
+    } catch (error) {
+        console.error('Convex seller orders unavailable; using Supabase fallback:', error);
+    }
+}
+
+if (!usedConvexOrders) {
+    const { data } = await supabase
+        .from('orders')
+        .select(`
             id,
-            sendcloud_shipment_id,
-            carrier_name,
-            service_name,
+            public_id,
             status,
-            tracking_number,
-            tracking_url,
-            label_url,
-            price
-        ),
-        refunds (
-            amount
-        )
-    `)
-    .eq('shop_id', shopId)
-    .order('created_at', { ascending: false });
+            payment_status,
+            total_amount,
+            created_at,
+            delivered_at,
+            cancellation_reason,
+            buyer_email,
+            shipping_full_name,
+            shipping_phone,
+            shipping_address,
+            delivery_type,
+            pickup_point_carrier,
+            pickup_point_name,
+            order_items (
+                quantity,
+                price_at_purchase,
+                product_variants (
+                    variant_name,
+                    variant_image,
+                    shipping_cost,
+                    products (
+                        title,
+                        slug,
+                        gallery_images
+                    )
+                )
+            ),
+            shipments (
+                id,
+                sendcloud_shipment_id,
+                carrier_name,
+                service_name,
+                status,
+                tracking_number,
+                tracking_url,
+                label_url,
+                price
+            ),
+            refunds (
+                amount
+            )
+        `)
+        .eq('shop_id', shopId)
+        .order('created_at', { ascending: false });
+    ordersData = data as any[] | null;
+}
 
 const orders: SellerOrderCardData[] = (ordersData ?? []).map((order: any) => {
     const rawItems = order.order_items ?? [];
@@ -135,7 +231,7 @@ const orders: SellerOrderCardData[] = (ordersData ?? []).map((order: any) => {
         shipmentId: shipment?.id,
         trackingNumber: shipment?.tracking_number ?? null,
         trackingUrl: shipment?.tracking_url ?? null,
-        labelUrl: shipment?.sendcloud_shipment_id ? `/api/sendcloud/label?shipmentId=${encodeURIComponent(shipment.sendcloud_shipment_id)}` : undefined,
+        labelUrl: shipment?.label_url ?? (shipment?.sendcloud_shipment_id ? `/api/sendcloud/label?shipmentId=${encodeURIComponent(shipment.sendcloud_shipment_id)}` : undefined),
         carrierName: shipment?.carrier_name ?? null,
         serviceName: shipment?.service_name ?? null,
         labelCost: shipment?.price != null ? Number(shipment.price) : null,
