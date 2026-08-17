@@ -43,7 +43,7 @@ Fewya empowers small businesses to sell products online with a professional stor
 ## Getting Started
 
 ```bash
-git clone https://github.com/your-org/fewya.git
+git clone https://github.com/martinezharo/fewya.git
 cd fewya
 bun install
 cp .env.example .env   # fill in your values
@@ -66,13 +66,13 @@ See [`.env.example`](.env.example) for all required variables.
 
 ## Deployment
 
-Deploy to Cloudflare Workers. Set secrets via `wrangler secret put <NAME>`, then:
+Deploy to Cloudflare Workers. Set secrets via `bunx wrangler secret put <NAME>`, then:
 
 ```bash
-CLOUDFLARE_ENV=production bun run build && wrangler deploy
+CLOUDFLARE_ENV=production bun run build && bunx wrangler deploy
 ```
 
-See [`wrangler.jsonc`](wrangler.jsonc) for bindings and environments. The test worker (`fewya-test`) runs on `*.workers.dev` with mocked shipping and Stripe test keys.
+See [`wrangler.jsonc`](wrangler.jsonc) for bindings and environments. The test worker (`fewya-test`) runs on `*.workers.dev` with mocked shipping and Stripe test keys, and has no scheduled cron trigger.
 
 ## Public catalog feed
 
