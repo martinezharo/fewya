@@ -30,8 +30,8 @@ Fewya empowers small businesses to sell products online with a professional stor
 | **Framework** | [Astro](https://astro.build) (SSR) |
 | **Language** | [TypeScript](https://www.typescriptlang.org) (strict) |
 | **Styling** | [Tailwind CSS](https://tailwindcss.com) v4 |
-| **Database** | [Supabase](https://supabase.com) (production compatibility path) + [Convex](https://convex.dev) (staged migration) |
-| **Auth** | [Clerk](https://clerk.com) + Convex JWTs (staged migration; Supabase Auth remains the production compatibility path) |
+| **Database** | [Supabase](https://supabase.com) (PostgreSQL) |
+| **Auth** | [Supabase Auth](https://supabase.com/auth) (Google OAuth) |
 | **Payments** | [Stripe Connect](https://stripe.com) |
 | **Shipping** | [Sendcloud](https://www.sendcloud.com) |
 | **Email** | [Resend](https://resend.com) |
@@ -72,7 +72,7 @@ Deploy to Cloudflare Workers. Set secrets via `bunx wrangler secret put <NAME>`,
 CLOUDFLARE_ENV=production bun run build && bunx wrangler deploy
 ```
 
-See [`wrangler.jsonc`](wrangler.jsonc) for bindings and environments. The isolated test worker (`fewya-test`) uses Convex-only with Clerk authentication, test payment keys and mocked shipping, and has no scheduled cron trigger.
+See [`wrangler.jsonc`](wrangler.jsonc) for bindings and environments. The test worker (`fewya-test`) runs on `*.workers.dev` with mocked shipping and Stripe test keys, and has no scheduled cron trigger.
 
 ## Public catalog feed
 
