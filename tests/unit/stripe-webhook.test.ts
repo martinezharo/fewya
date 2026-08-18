@@ -19,6 +19,8 @@ vi.mock('astro:env/server', () => ({
     STRIPE_WEBHOOK_SECRET_LIVE: 'whsec_test_secret',
     STRIPE_SECRET_KEY_TEST: 'sk_test_key_test',
     STRIPE_SECRET_KEY_LIVE: 'sk_test_key',
+    CONVEX_WEBHOOK_SECRET: undefined,
+    CONVEX_ONLY: 'false',
     SUPABASE_URL: 'https://test.supabase.co',
     SUPABASE_KEY: 'test-key',
     SUPABASE_SECRET_KEY: 'test-secret-key',

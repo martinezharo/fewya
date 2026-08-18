@@ -1,6 +1,10 @@
 import type { APIRoute } from 'astro';
 import { createSupabaseAuthClient } from '../../../../lib/core/auth';
 import { createSupabaseAdminClient } from '../../../../lib/core/supabase-admin';
+import { getRequestConvexToken } from '../../../../lib/core/auth';
+import { createConvexClient } from '../../../../lib/core/convex';
+import { api } from '../../../../../convex/_generated/api';
+import { convexOnly } from '../../../../lib/core/env';
 
 function jsonResponse(payload: Record<string, unknown>, status: number) {
     return new Response(JSON.stringify(payload), {
@@ -30,6 +34,19 @@ export const POST: APIRoute = async ({ locals, request, cookies  }) => {
     const { reviewId, reply } = body;
     if (!reviewId || typeof reply !== 'string') {
         return jsonResponse({ error: t.apiInvalidBody }, 400);
+    }
+
+    if (convexOnly) {
+        const token = getRequestConvexToken(request);
+        const convex = token ? createConvexClient(token) : null;
+        if (!convex) return jsonResponse({ error: t.apiUnauthorized }, 401);
+        try {
+            await convex.mutation(api.seller.replyReview, { reviewId, reply });
+            return jsonResponse({ success: true }, 200);
+        } catch (error) {
+            console.error(JSON.stringify({ event: 'seller_review_reply.convex_failed', error: error instanceof Error ? error.message : String(error) }));
+            return jsonResponse({ error: t.sellerReviewsReplyError }, 500);
+        }
     }
 
     const adminClient = createSupabaseAdminClient();

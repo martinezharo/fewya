@@ -1,5 +1,9 @@
 import type { APIRoute } from 'astro';
 import { createSupabaseAuthClient } from '../../../../lib/core/auth';
+import { getRequestConvexToken } from '../../../../lib/core/auth';
+import { createConvexClient } from '../../../../lib/core/convex';
+import { api } from '../../../../../convex/_generated/api';
+import { convexOnly } from '../../../../lib/core/env';
 
 import { validateProductCompleteness } from '../../../../lib/products/productValidation';
 import { enforceVariantPricing, type PricingCheckVariant } from '../../../../lib/products/pricingEnforcement';
@@ -37,6 +41,31 @@ function slugify(text: string): string {
         .replace(/(^-|-$)+/g, '');
 }
 
+function toConvexVariants(variants: VariantInput[] | undefined) {
+    return (variants ?? []).map((variant, index) => ({
+        id: variant.id,
+        variantName: variant.variant_name?.trim() || null,
+        priceCents: Math.round(Number(variant.price ?? 0) * 100),
+        stock: Number(variant.stock ?? 0),
+        isDefault: variant.is_default ?? index === 0,
+        variantImage: variant.variant_image ?? null,
+        weightKg: variant.weight_kg ?? null,
+        lengthCm: variant.length_cm ?? null,
+        widthCm: variant.width_cm ?? null,
+        heightCm: variant.height_cm ?? null,
+        shippingCostCents: variant.shipping_cost == null ? null : Math.round(Number(variant.shipping_cost) * 100),
+    }));
+}
+
+function convexError(error: unknown, t: any): Response {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes('slug already in use')) return new Response(JSON.stringify({ error: t.sellerProductSlugInUse }), { status: 409 });
+    if (message.includes('access denied')) return new Response(JSON.stringify({ error: t.apiForbidden }), { status: 403 });
+    if (message.includes('has orders')) return new Response(JSON.stringify({ error: t.sellerProductDeleteHasOrders }), { status: 409 });
+    console.error(JSON.stringify({ event: 'seller_product.convex_failed', error: message }));
+    return new Response(JSON.stringify({ error: t.apiInternalError }), { status: 500 });
+}
+
 export const POST: APIRoute = async ({ locals, cookies, request  }) => {
     const { t, locale } = locals;
     const supabase = createSupabaseAuthClient(cookies, request);
@@ -44,6 +73,34 @@ export const POST: APIRoute = async ({ locals, cookies, request  }) => {
 
     if (!user) {
         return new Response(JSON.stringify({ error: t.apiUnauthorized }), { status: 401 });
+    }
+
+    if (convexOnly) {
+        const token = getRequestConvexToken(request);
+        const convex = token ? createConvexClient(token) : null;
+        if (!convex) return new Response(JSON.stringify({ error: t.apiUnauthorized }), { status: 401 });
+        let body: ProductPayload;
+        try { body = await request.json(); } catch { return new Response(JSON.stringify({ error: t.apiInvalidBody }), { status: 400 }); }
+        if (!body.title?.trim()) return new Response(JSON.stringify({ error: t.sellerProductTitleRequired }), { status: 400 });
+        if (!body.category?.trim()) return new Response(JSON.stringify({ error: t.sellerProductCategoryRequired }), { status: 400 });
+        const completeness = validateProductCompleteness(body, body.variants ?? []);
+        if (!completeness.complete) return new Response(JSON.stringify({ error: t.sellerProductIncompleteError.replace('{fields}', completeness.missing.join(', ')) }), { status: 400 });
+        try {
+            const result = await convex.mutation(api.seller.createProduct, {
+                title: body.title.trim(),
+                slug: body.slug?.trim() || slugify(body.title),
+                description: body.description?.trim() || null,
+                category: body.category.trim(),
+                brand: body.brand?.trim() || null,
+                specifications: body.specifications ?? {},
+                galleryImages: body.gallery_images ?? [],
+                isActive: body.is_active !== false,
+                variants: toConvexVariants(body.variants),
+            });
+            return new Response(JSON.stringify({ product: result.product, variants: result.product?.variants ?? [] }), { status: 201 });
+        } catch (error) {
+            return convexError(error, t);
+        }
     }
 
     const { data: shop } = await supabase
@@ -206,6 +263,33 @@ export const PATCH: APIRoute = async ({ locals, cookies, request, url  }) => {
     const productId = url.searchParams.get('id');
     if (!productId) {
         return new Response(JSON.stringify({ error: t.apiInvalidBody }), { status: 400 });
+    }
+
+    if (convexOnly) {
+        const token = getRequestConvexToken(request);
+        const convex = token ? createConvexClient(token) : null;
+        if (!convex) return new Response(JSON.stringify({ error: t.apiUnauthorized }), { status: 401 });
+        let body: ProductPayload;
+        try { body = await request.json(); } catch { return new Response(JSON.stringify({ error: t.apiInvalidBody }), { status: 400 }); }
+        if (body.title !== undefined && !body.title?.trim()) return new Response(JSON.stringify({ error: t.sellerProductTitleRequired }), { status: 400 });
+        if (body.category !== undefined && !body.category?.trim()) return new Response(JSON.stringify({ error: t.sellerProductCategoryRequired }), { status: 400 });
+        try {
+            const result = await convex.mutation(api.seller.updateProduct, {
+                productId,
+                title: body.title === undefined ? undefined : body.title.trim(),
+                slug: body.slug === undefined ? undefined : body.slug.trim(),
+                description: body.description === undefined ? undefined : body.description.trim() || null,
+                category: body.category === undefined ? undefined : body.category.trim(),
+                brand: body.brand === undefined ? undefined : body.brand.trim() || null,
+                specifications: body.specifications,
+                galleryImages: body.gallery_images,
+                isActive: body.is_active,
+                variants: body.variants === undefined ? undefined : toConvexVariants(body.variants),
+            });
+            return new Response(JSON.stringify({ product: result.product }), { status: 200 });
+        } catch (error) {
+            return convexError(error, t);
+        }
     }
 
     const { data: shop } = await supabase
@@ -399,6 +483,18 @@ export const DELETE: APIRoute = async ({ locals, cookies, request, url  }) => {
     const productId = url.searchParams.get('id');
     if (!productId) {
         return new Response(JSON.stringify({ error: t.apiInvalidBody }), { status: 400 });
+    }
+
+    if (convexOnly) {
+        const token = getRequestConvexToken(request);
+        const convex = token ? createConvexClient(token) : null;
+        if (!convex) return new Response(JSON.stringify({ error: t.apiUnauthorized }), { status: 401 });
+        try {
+            await convex.mutation(api.seller.deleteProduct, { productId });
+            return new Response(JSON.stringify({ ok: true }), { status: 200 });
+        } catch (error) {
+            return convexError(error, t);
+        }
     }
 
     const { data: shop } = await supabase

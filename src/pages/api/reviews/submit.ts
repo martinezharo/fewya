@@ -1,6 +1,9 @@
 import type { APIRoute } from 'astro';
-import { createSupabaseAuthClient } from '../../../lib/core/auth';
+import { api } from '../../../../convex/_generated/api';
+import { createSupabaseAuthClient, getRequestConvexToken } from '../../../lib/core/auth';
 import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
+import { createConvexClient } from '../../../lib/core/convex';
+import { convexOnly } from '../../../lib/core/env';
 
 import { ORDER_STATUS } from '../../../lib/orders/orderStatus';
 
@@ -37,6 +40,25 @@ export const POST: APIRoute = async ({ locals, request, cookies  }) => {
     // A4: limit comment length to prevent storage abuse
     if (comment !== undefined && (typeof comment !== 'string' || comment.length > 2000)) {
         return jsonResponse({ error: t.apiInvalidBody }, 400);
+    }
+
+    const convexToken = getRequestConvexToken(request);
+    if (convexToken) {
+        const convex = createConvexClient(convexToken);
+        if (convex) {
+            try {
+                await convex.mutation(api.reviews.submitBatch, {
+                    reviews: [{ productId, rating, ...(comment?.trim() ? { comment: comment.trim() } : {}) }],
+                });
+                return jsonResponse({ success: true }, 200);
+            } catch (error) {
+                console.error(JSON.stringify({ event: 'reviews.convex_submit_failed', error: error instanceof Error ? error.message : String(error) }));
+            }
+        }
+    }
+
+    if (convexOnly) {
+        return jsonResponse({ error: t.apiInternalError }, 503);
     }
 
     const adminClient = createSupabaseAdminClient();

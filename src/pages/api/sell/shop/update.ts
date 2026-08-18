@@ -1,5 +1,9 @@
 import type { APIRoute } from 'astro';
 import { createSupabaseAuthClient } from '../../../../lib/core/auth';
+import { getRequestConvexToken } from '../../../../lib/core/auth';
+import { createConvexClient } from '../../../../lib/core/convex';
+import { api } from '../../../../../convex/_generated/api';
+import { convexOnly } from '../../../../lib/core/env';
 
 export const PATCH: APIRoute = async ({ locals, cookies, request  }) => {
     const { t } = locals;
@@ -28,6 +32,22 @@ export const PATCH: APIRoute = async ({ locals, cookies, request  }) => {
 
     if (Object.keys(updates).length === 0) {
         return new Response(JSON.stringify({ error: t.apiInvalidBody }), { status: 400 });
+    }
+
+    if (convexOnly) {
+        const token = getRequestConvexToken(request);
+        const convex = token ? createConvexClient(token) : null;
+        if (!convex) return new Response(JSON.stringify({ error: t.apiUnauthorized }), { status: 401 });
+        try {
+            await convex.mutation(api.seller.updateShop, {
+                profileImg: updates.profile_img,
+                bannerImg: updates.banner_img,
+            });
+            return new Response(JSON.stringify({ success: true }), { status: 200 });
+        } catch (error) {
+            console.error(JSON.stringify({ event: 'seller_shop_update.convex_failed', error: error instanceof Error ? error.message : String(error) }));
+            return new Response(JSON.stringify({ error: t.apiInternalError }), { status: 500 });
+        }
     }
 
     const { error } = await supabase

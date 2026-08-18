@@ -1,6 +1,10 @@
 import type { APIRoute } from 'astro';
-import { createSupabaseAuthClient } from '../../../lib/core/auth';
+import { api } from '../../../../convex/_generated/api';
+import { createSupabaseAuthClient, getRequestConvexToken } from '../../../lib/core/auth';
+import { createConvexClient } from '../../../lib/core/convex';
 import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
+import { uploadConvexFile } from '../../../lib/core/convexStorage';
+import { convexOnly } from '../../../lib/core/env';
 
 import { detectImageMimeType, ALLOWED_IMAGE_TYPES } from '../../../lib/core/file-validation';
 import { securityLog } from '../../../lib/core/security-log';
@@ -34,6 +38,32 @@ export const POST: APIRoute = async ({ locals, cookies, request  }) => {
 
     if (file.size > MAX_SIZE) {
         return new Response(JSON.stringify({ error: 'File too large. Max 5MB.' }), { status: 400 });
+    }
+
+    if (orderId.startsWith('convex:')) {
+        const token = getRequestConvexToken(request);
+        const convex = token ? createConvexClient(token) : null;
+        if (!convex) return new Response(JSON.stringify({ error: t.apiUnauthorized }), { status: 401 });
+        try {
+            const order = await convex.query(api.orders.getIncidentUploadContext, { orderId });
+            if (!([ORDER_STATUS.DELIVERED, ORDER_STATUS.CONFIRMED] as string[]).includes(order.status)) {
+                return new Response(JSON.stringify({ error: 'Order cannot be reported at this stage' }), { status: 400 });
+            }
+        } catch {
+            return new Response(JSON.stringify({ error: 'Order not found' }), { status: 404 });
+        }
+
+        try {
+            const uploaded = await uploadConvexFile(request, file, detectedType);
+            return new Response(JSON.stringify(uploaded), { status: 200 });
+        } catch (error) {
+            console.error(JSON.stringify({ event: 'incident_upload.convex_failed', error: error instanceof Error ? error.message : String(error) }));
+            return new Response(JSON.stringify({ error: t.apiInternalError }), { status: 500 });
+        }
+    }
+
+    if (convexOnly) {
+        return new Response(JSON.stringify({ error: 'Order not found' }), { status: 404 });
     }
 
     const adminClient = createSupabaseAdminClient();

@@ -3,6 +3,8 @@ import DeferredSellerOrders from '../../components/orders/DeferredSellerOrders.a
 import SkeletonOrderList from '../../components/ui/SkeletonOrderList.astro';
 import SellerLayout from '../../layouts/SellerLayout.astro';
 import { createSupabaseAuthClient } from '../../lib/core/auth';
+import { convexOnly } from '../../lib/core/env';
+import { getConvexSeller } from '../../lib/seller/convexSeller';
 const { t } = Astro.locals;
 
 const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
@@ -14,21 +16,25 @@ if (!user) {
     return Astro.redirect('/sell');
 }
 
-const { data: profile } = await supabase
-    .from('profiles')
-    .select('is_seller')
-    .eq('id', user.id)
-    .single();
-
-if (!profile?.is_seller) {
-    return Astro.redirect('/sell');
+let shop: any;
+if (convexOnly) {
+    const seller = await getConvexSeller(Astro.request);
+    if (!seller?.shop) return Astro.redirect('/sell');
+    shop = seller.shop;
+} else {
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('is_seller')
+        .eq('id', user.id)
+        .single();
+    if (!profile?.is_seller) return Astro.redirect('/sell');
+    const { data: legacyShop } = await supabase
+        .from('shops')
+        .select('id, name, slug')
+        .eq('owner_id', user.id)
+        .maybeSingle();
+    shop = legacyShop;
 }
-
-const { data: shop } = await supabase
-    .from('shops')
-    .select('id, name, slug')
-    .eq('owner_id', user.id)
-    .maybeSingle();
 
 if (!shop) {
     return Astro.redirect('/sell/onboarding');

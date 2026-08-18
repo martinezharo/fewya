@@ -3,6 +3,7 @@ import type { AstroCookies } from 'astro';
 import { SUPABASE_URL, SUPABASE_KEY } from 'astro:env/server';
 import type { Session, SupabaseClient, User } from '@supabase/supabase-js';
 import { createSupabaseAdminClient } from './supabase-admin';
+import { convexOnly } from './env';
 
 const AUTH_REDIRECT_BASE = 'fewya-auth-redirect';
 const AUTH_ROLE_BASE = 'fewya-auth-role';
@@ -30,9 +31,38 @@ export function getRequestConvexToken(request: Request) {
     return requestConvexTokens.get(request) ?? null;
 }
 
+function createCompatibilityAuth(user: User | null) {
+    const session: Session | null = user ? {
+        access_token: '',
+        token_type: 'bearer',
+        expires_in: 3600,
+        expires_at: Math.floor(Date.now() / 1000) + 3600,
+        refresh_token: '',
+        user,
+    } : null;
+
+    return {
+        getUser: async () => ({ data: { user }, error: null }),
+        getSession: async () => ({ data: { session }, error: null }),
+        // Clerk owns the browser session in Convex-only mode. Keeping this a
+        // no-op makes legacy UI links harmless while the Clerk client signs out.
+        signOut: async () => ({ error: null }),
+    };
+}
+
 function createClerkCompatibilityClient(user: User): SupabaseClient {
+    if (convexOnly) {
+        const compatibilityAuth = createCompatibilityAuth(user);
+        return new Proxy({ auth: compatibilityAuth } as unknown as SupabaseClient, {
+            get(_target, property, _receiver) {
+                if (property === 'auth') return compatibilityAuth;
+                throw new Error(`Supabase compatibility is disabled in Convex-only mode (accessed ${String(property)})`);
+            },
+        });
+    }
+
     const admin = createSupabaseAdminClient();
-    const compatibilityAuth = new Proxy(admin.auth, {
+    const clerkAuthProxy = new Proxy(admin.auth, {
         get(target, property, receiver) {
             if (property === 'getUser') {
                 return async () => ({ data: { user }, error: null });
@@ -54,7 +84,7 @@ function createClerkCompatibilityClient(user: User): SupabaseClient {
 
     return new Proxy(admin, {
         get(target, property, receiver) {
-            if (property === 'auth') return compatibilityAuth;
+            if (property === 'auth') return clerkAuthProxy;
             return Reflect.get(target, property, receiver);
         },
     });
@@ -76,6 +106,17 @@ export function createSupabaseAuthClient(cookies: AstroCookies, request: Request
     const requestUser = getRequestAuthUser(request);
     if (requestUser) {
         return createClerkCompatibilityClient(requestUser);
+    }
+
+    if (convexOnly) {
+        // Public pages still ask the compatibility client for auth state. Give
+        // them an anonymous, read-only auth facade without opening Supabase.
+        return new Proxy({ auth: createCompatibilityAuth(null) } as unknown as SupabaseClient, {
+            get(_target, property, _receiver) {
+                if (property === 'auth') return createCompatibilityAuth(null);
+                throw new Error(`Supabase compatibility is disabled in Convex-only mode (accessed ${String(property)})`);
+            },
+        });
     }
 
     if (!SUPABASE_URL || !SUPABASE_KEY) {
@@ -190,6 +231,14 @@ export async function exchangeAuthCodeForSession(cookies: AstroCookies, request:
         url.searchParams.get('redirect_to') ?? cookies.get(redirectCookieName)?.value,
     );
     const role = url.searchParams.get('role') ?? cookies.get(roleCookieName)?.value ?? null;
+
+    if (convexOnly) {
+        // Clerk handles the OAuth/session exchange. Never send a callback code
+        // to Supabase when the deployment is isolated on Convex.
+        clearPendingAuthFlowState(cookies, url);
+        return redirectTo;
+    }
+
     const supabase = createSupabaseAuthClient(cookies, request);
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 

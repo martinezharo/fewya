@@ -1,6 +1,7 @@
 import { query } from './_generated/server';
-import type { QueryCtx } from './_generated/server';
+import type { MutationCtx, QueryCtx } from './_generated/server';
 import type { Doc } from './_generated/dataModel';
+import type { Id } from './_generated/dataModel';
 import { v } from 'convex/values';
 
 const sortOption = v.union(
@@ -40,6 +41,19 @@ function productIsComplete(product: ProductDoc, variants: VariantDoc[]): boolean
     );
 }
 
+async function shopByLegacyId(ctx: QueryCtx, legacyId: string | undefined): Promise<ShopDoc | null> {
+    if (!legacyId) return null;
+    return await ctx.db.query('shops').withIndex('by_legacy_id', (q) => q.eq('legacyId', legacyId)).unique();
+}
+
+async function paymentReadyForShop(ctx: QueryCtx, shop: ShopDoc): Promise<boolean> {
+    const account = await ctx.db
+        .query('shopPaymentAccounts')
+        .withIndex('by_shop_id', (q) => q.eq('shopId', shop._id))
+        .unique();
+    return Boolean(account?.stripeAccountId && account.chargesEnabled && account.payoutsEnabled && account.detailsSubmitted);
+}
+
 function legacyStoragePath(value: string | null | undefined): { bucket: string; path: string } | null {
     if (!value) return null;
     try {
@@ -52,8 +66,12 @@ function legacyStoragePath(value: string | null | undefined): { bucket: string; 
     }
 }
 
-export async function storageUrl(ctx: QueryCtx, value: string | null | undefined): Promise<string | null> {
+export async function storageUrl(ctx: QueryCtx | MutationCtx, value: string | null | undefined): Promise<string | null> {
     if (!value) return null;
+    if (value.startsWith('convex-storage:')) {
+        const storageId = value.slice('convex-storage:'.length) as Id<'_storage'>;
+        return await ctx.storage.getUrl(storageId) ?? value;
+    }
     const legacy = legacyStoragePath(value);
     if (!legacy) return value;
     const object = await ctx.db
@@ -175,7 +193,7 @@ async function publicReviews(ctx: QueryCtx, product: ProductDoc) {
             is_auto: review.isAuto,
             profile: profile ? {
                 full_name: profile.fullName ?? null,
-                avatar_url: profile.avatarUrl ?? null,
+                avatar_url: await storageUrl(ctx, profile.avatarUrl),
             } : undefined,
         };
     }));
@@ -331,5 +349,92 @@ export const getProduct = query({
         const serialized = await publicProduct(ctx, product, shop);
         if (!serialized) return null;
         return { ...serialized, reviews: await publicReviews(ctx, product) };
+    },
+});
+
+/** Resolve wishlist IDs to public products while preserving the requested order. */
+export const getProductsByLegacyIds = query({
+    args: { ids: v.array(v.string()) },
+    handler: async (ctx, args) => {
+        const products = [] as Awaited<ReturnType<typeof publicProduct>>[];
+        for (const legacyId of args.ids.slice(0, 200)) {
+            const product = await ctx.db.query('products').withIndex('by_legacy_id', (q) => q.eq('legacyId', legacyId)).unique();
+            if (!product || !product.isActive) continue;
+            const shop = product.shopId ? await ctx.db.get(product.shopId) : await shopByLegacyId(ctx, product.shopLegacyId);
+            if (!isPublicShop(shop)) continue;
+            const serialized = await publicProduct(ctx, product, shop);
+            if (serialized) products.push(serialized);
+        }
+        return products;
+    },
+});
+
+/** Cart-only variant data used by freshness, delivery and Sendcloud quoting. */
+export const getCartVariants = query({
+    args: { ids: v.array(v.string()) },
+    handler: async (ctx, args) => {
+        const rows = [];
+        for (const id of args.ids.slice(0, 100)) {
+            const variant = await ctx.db.query('productVariants').withIndex('by_legacy_id', (q) => q.eq('legacyId', id)).unique();
+            if (!variant) continue;
+            const product = variant.productId ? await ctx.db.get(variant.productId) : await ctx.db.query('products').withIndex('by_legacy_id', (q) => q.eq('legacyId', variant.productLegacyId)).unique();
+            const shop = product?.shopId ? await ctx.db.get(product.shopId) : product ? await shopByLegacyId(ctx, product.shopLegacyId) : null;
+            if (!product || !shop) continue;
+            rows.push({
+                id: variant.legacyId,
+                price: variant.priceCents / 100,
+                stock: variant.stock,
+                variant_name: variant.variantName ?? null,
+                variant_image: await storageUrl(ctx, variant.variantImage),
+                shipping_cost: variant.shippingCostCents == null ? null : variant.shippingCostCents / 100,
+                weight_kg: variant.weightKg ?? null,
+                length_cm: variant.lengthCm ?? null,
+                width_cm: variant.widthCm ?? null,
+                height_cm: variant.heightCm ?? null,
+                product: {
+                    id: product.legacyId,
+                    title: product.title,
+                    slug: product.slug,
+                    gallery_images: await Promise.all(product.galleryImages.map((image) => storageUrl(ctx, image))),
+                    is_active: product.isActive,
+                    shop: {
+                        id: shop.legacyId,
+                        name: shop.name,
+                        slug: shop.slug,
+                        is_active: shop.isActive,
+                        seller_details_complete: shop.sellerDetailsComplete,
+                        shipping_carriers: shop.shippingCarriers,
+                        payment_ready: await paymentReadyForShop(ctx, shop),
+                    },
+                },
+            });
+        }
+        return rows;
+    },
+});
+
+export const sitemapEntries = query({
+    args: {},
+    handler: async (ctx) => {
+        const shops = (await ctx.db.query('shops').withIndex('by_status', (q) => q.eq('status', 'active')).collect())
+            .filter(isPublicShop)
+            .map((shop) => ({ slug: shop.slug, created_at: new Date(shop.createdAt).toISOString() }));
+        const products = [] as Array<{ slug: string; created_at: string; shop: { slug: string; is_active: boolean; payments_active: boolean; seller_details_complete: boolean } }>;
+        for (const shop of shops) {
+            const shopDoc = await ctx.db.query('shops').withIndex('by_slug', (q) => q.eq('slug', shop.slug)).unique();
+            if (!shopDoc) continue;
+            const rows = await ctx.db.query('products').withIndex('by_shop_id', (q) => q.eq('shopId', shopDoc._id)).collect();
+            for (const product of rows) if (product.isActive) products.push({
+                slug: product.slug,
+                created_at: new Date(product.createdAt).toISOString(),
+                shop: {
+                    slug: shopDoc.slug,
+                    is_active: shopDoc.isActive,
+                    payments_active: shopDoc.paymentsActive,
+                    seller_details_complete: shopDoc.sellerDetailsComplete,
+                },
+            });
+        }
+        return { shops, products };
     },
 });

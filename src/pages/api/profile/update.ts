@@ -2,6 +2,7 @@ import type { APIRoute } from 'astro';
 import { api } from '../../../../convex/_generated/api';
 import { createConvexClient } from '../../../lib/core/convex';
 import { createSupabaseAuthClient, getRequestConvexToken } from '../../../lib/core/auth';
+import { convexOnly } from '../../../lib/core/env';
 
 // A4: field length limits to prevent storage DoS and stored-XSS from oversized values
 const FIELD_LIMITS: Record<string, number> = {
@@ -171,6 +172,14 @@ export const POST: APIRoute = async ({ locals, cookies, request  }) => {
             }));
             return new Response(JSON.stringify({ error: t.apiInternalError }), { status: 503 });
         }
+
+        if (convexOnly) {
+            return new Response(JSON.stringify({ ok: true }), { status: 200 });
+        }
+    }
+
+    if (convexOnly) {
+        return new Response(JSON.stringify({ error: t.apiInternalError }), { status: 503 });
     }
 
     const { error } = await authClient

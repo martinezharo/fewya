@@ -1,8 +1,12 @@
 import type { APIRoute } from 'astro';
+import { api } from '../../../../convex/_generated/api';
 import { downloadSendcloudLabelPdf } from '../../../lib/shipping/sendcloud';
-import { createSupabaseAuthClient } from '../../../lib/core/auth';
+import { createSupabaseAuthClient, getRequestConvexToken } from '../../../lib/core/auth';
+import { createConvexClient } from '../../../lib/core/convex';
 import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
 import { LABELS_BUCKET, uploadLabelPdf } from '../../../lib/shipping/labelStorage';
+import { convexOnly } from '../../../lib/core/env';
+import type { Id } from '../../../../convex/_generated/dataModel';
 
 function jsonResponse(payload: Record<string, unknown>, status: number) {
     return new Response(JSON.stringify(payload), {
@@ -12,6 +16,7 @@ function jsonResponse(payload: Record<string, unknown>, status: number) {
 }
 
 const LABELS_MARKER_PREFIX = `${LABELS_BUCKET}:`;
+const CONVEX_STORAGE_MARKER_PREFIX = 'convex-storage:';
 
 async function signAndRedirect(storagePath: string): Promise<Response> {
     const adminClient = createSupabaseAdminClient();
@@ -25,6 +30,16 @@ async function signAndRedirect(storagePath: string): Promise<Response> {
     }
 
     return Response.redirect(data.signedUrl, 302);
+}
+
+async function redirectConvexStorage(
+    convex: NonNullable<ReturnType<typeof createConvexClient>>,
+    marker: string,
+): Promise<Response> {
+    const storageId = marker.slice(CONVEX_STORAGE_MARKER_PREFIX.length) as Id<'_storage'>;
+    const url = await convex.query(api.storage.getUrl, { storageId });
+    if (!url) return jsonResponse({ error: 'Label not found' }, 404);
+    return Response.redirect(url, 302);
 }
 
 export const GET: APIRoute = async ({ request, cookies }) => {
@@ -41,6 +56,54 @@ export const GET: APIRoute = async ({ request, cookies }) => {
 
         if (!user) {
             return jsonResponse({ error: 'Unauthorized' }, 401);
+        }
+
+        // Post-cutover shipments are authorized by Convex. The label bytes are
+        // still served from the existing private Storage bucket until the
+        // storage-object migration is complete.
+        const convexToken = getRequestConvexToken(request);
+        const convex = convexToken ? createConvexClient(convexToken) : null;
+        if (convex) {
+            try {
+                const convexShipment = await convex.query(api.orders.getShipmentForAccess, { shipmentId });
+                if (convexShipment) {
+                    if (convexShipment.labelUrl?.startsWith(CONVEX_STORAGE_MARKER_PREFIX)) {
+                        return redirectConvexStorage(convex, convexShipment.labelUrl);
+                    }
+                    if (convexShipment.labelUrl) {
+                        const migratedUrl = await convex.query(api.storage.resolveLegacyUrl, { url: convexShipment.labelUrl });
+                        if (migratedUrl) return Response.redirect(migratedUrl, 302);
+                    }
+                    if (convexShipment.labelUrl?.startsWith(LABELS_MARKER_PREFIX)) {
+                        if (convexOnly) return jsonResponse({ error: 'Label not found' }, 404);
+                        return signAndRedirect(convexShipment.labelUrl.slice(LABELS_MARKER_PREFIX.length));
+                    }
+                    if (!convexShipment.labelUrl) return jsonResponse({ error: 'Label not found' }, 404);
+
+                    try {
+                        const pdfBytes = await downloadSendcloudLabelPdf(convexShipment.labelUrl);
+                        const newMarker = await uploadLabelPdf(convexShipment.publicId, pdfBytes, request);
+                        await convex.mutation(api.orders.updateShipmentLabelUrl, {
+                            shipmentId,
+                            labelUrl: newMarker,
+                        });
+                        return newMarker.startsWith(CONVEX_STORAGE_MARKER_PREFIX)
+                            ? redirectConvexStorage(convex, newMarker)
+                            : signAndRedirect(newMarker.slice(LABELS_MARKER_PREFIX.length));
+                    } catch (migrationErr) {
+                        console.error('Convex label migration failed:', migrationErr);
+                        return jsonResponse({ error: 'No se pudo descargar la etiqueta de Sendcloud' }, 500);
+                    }
+                }
+            } catch (convexErr) {
+                // A non-Convex shipment (historical Supabase order) continues
+                // through the compatibility query below.
+                console.warn('Convex label lookup skipped:', convexErr);
+            }
+        }
+
+        if (convexOnly) {
+            return jsonResponse({ error: 'Shipment not found' }, 404);
         }
 
         // RLS on `shipments` ensures buyer or seller of the parent order is allowed.

@@ -1,5 +1,9 @@
 import type { APIRoute } from 'astro';
 import { createSupabaseAuthClient } from '../../../../lib/core/auth';
+import { getRequestConvexToken } from '../../../../lib/core/auth';
+import { createConvexClient } from '../../../../lib/core/convex';
+import { api } from '../../../../../convex/_generated/api';
+import { convexOnly } from '../../../../lib/core/env';
 
 import { enforceVariantPricing, type PricingCheckVariant } from '../../../../lib/products/pricingEnforcement';
 
@@ -22,6 +26,19 @@ export const PATCH: APIRoute = async ({ locals, cookies, request, url  }) => {
         body = await request.json();
     } catch {
         return new Response(JSON.stringify({ error: t.apiInvalidBody }), { status: 400 });
+    }
+
+    if (convexOnly) {
+        const token = getRequestConvexToken(request);
+        const convex = token ? createConvexClient(token) : null;
+        if (!convex) return new Response(JSON.stringify({ error: t.apiUnauthorized }), { status: 401 });
+        try {
+            const result = await convex.mutation(api.seller.toggleProduct, { productId, isActive: body.is_active });
+            return new Response(JSON.stringify({ product: result.product }), { status: 200 });
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            return new Response(JSON.stringify({ error: message.includes('access') ? t.apiForbidden : t.apiInternalError }), { status: message.includes('access') ? 403 : 500 });
+        }
     }
 
     const { data: shop } = await supabase

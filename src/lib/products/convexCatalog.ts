@@ -247,3 +247,16 @@ export async function getConvexProduct(shopSlug: string, productSlug: string): P
         return null;
     }
 }
+
+export async function getConvexProductsByIds(ids: string[]): Promise<Product[]> {
+    if (ids.length === 0) return [];
+    const client = createConvexClient();
+    if (!client) return [];
+    try {
+        const rows = await client.query(api.catalog.getProductsByLegacyIds, { ids }) as unknown as ConvexProduct[];
+        return rows.map(toProduct);
+    } catch (error) {
+        console.error('Convex wishlist products unavailable:', error);
+        return [];
+    }
+}

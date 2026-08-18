@@ -7,6 +7,7 @@ import { createSupabaseAuthClient, getRequestConvexToken } from "../../lib/core/
 import { createConvexClient } from '../../lib/core/convex';
 import { getOrderStatusLabels, ORDER_STATUS } from "../../lib/orders/orderStatus";
 import { isProfileComplete } from "../../lib/core/validation";
+import { convexOnly } from "../../lib/core/env";
 const { t } = Astro.locals;
 const orderStatusLabels = getOrderStatusLabels(t);
 
@@ -50,7 +51,7 @@ if (convex) {
         console.error('Convex profile unavailable:', error);
     }
 }
-if (!profile && !convexToken) {
+if (!profile && !convexToken && !convexOnly) {
     const { data } = await supabase
         .from('profiles')
         .select('first_name, last_name, phone, address_street, address_number, address_postal_code, address_city, address_province, address_country')
@@ -102,7 +103,7 @@ if (convex) {
     }
 }
 
-if (!usedConvexOrders) {
+if (!usedConvexOrders && !convexOnly) {
     const { data } = await supabase
         .from('orders')
         .select(`

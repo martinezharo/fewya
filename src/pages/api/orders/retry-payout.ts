@@ -1,10 +1,15 @@
 import type { APIRoute } from 'astro';
-import { createSupabaseAuthClient } from '../../../lib/core/auth';
+import { CONVEX_WEBHOOK_SECRET } from 'astro:env/server';
+import { api } from '../../../../convex/_generated/api';
+import { createSupabaseAuthClient, getRequestConvexToken } from '../../../lib/core/auth';
 import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
+import { createConvexClient } from '../../../lib/core/convex';
 
 import { getStripeClient } from '../../../lib/payments/stripe';
 import { FUNDS_RELEASE_STATUS, type FundsReleaseStatus } from '../../../lib/orders/orderStatus';
 import { fetchAndReleaseFunds } from '../../../lib/orders/payoutFlow';
+import { releaseOrderFunds } from '../../../lib/cart/checkout';
+import { convexOnly } from '../../../lib/core/env';
 
 function jsonResponse(payload: Record<string, unknown>, status: number) {
     return new Response(JSON.stringify(payload), {
@@ -33,6 +38,40 @@ export const POST: APIRoute = async ({ locals, request, cookies  }) => {
     if (!orderId) {
         return jsonResponse({ error: t.apiInvalidBody }, 400);
     }
+
+    if (orderId.startsWith('convex:')) {
+        const token = getRequestConvexToken(request);
+        const convex = token ? createConvexClient(token) : null;
+        if (!convex || !CONVEX_WEBHOOK_SECRET) return jsonResponse({ error: t.apiUnauthorized }, 401);
+        try {
+            const payout = await convex.query(api.orders.getPayoutContextForCurrentUser, { orderId });
+            if (payout.fundsReleaseStatus !== FUNDS_RELEASE_STATUS.FAILED || !payout.stripePaymentIntentId) {
+                return jsonResponse({ error: t.apiInvalidBody }, 400);
+            }
+            const stripe = getStripeClient();
+            const result = await releaseOrderFunds({
+                stripe,
+                orderId: payout.id,
+                publicId: payout.publicId,
+                paymentIntentId: payout.stripePaymentIntentId,
+                items: payout.items,
+                labelCostByShop: payout.labelCostByShop,
+            });
+            await convex.mutation(api.orders.recordFundsRelease, {
+                secret: CONVEX_WEBHOOK_SECRET,
+                orderId,
+                success: result.success,
+                ...(result.error ? { error: result.error } : {}),
+            });
+            if (!result.success) return jsonResponse({ error: t.apiInternalError }, 500);
+            return jsonResponse({ success: true }, 200);
+        } catch (error) {
+            console.error('Convex payout retry failed', error);
+            return jsonResponse({ error: t.apiInternalError }, 500);
+        }
+    }
+
+    if (convexOnly) return jsonResponse({ error: t.apiInvalidBody }, 404);
 
     const adminClient = createSupabaseAdminClient();
 

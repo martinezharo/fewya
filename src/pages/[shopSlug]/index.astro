@@ -12,6 +12,7 @@ import { getConvexShopCatalog } from '../../lib/products/convexCatalog';
 
 import type { Shop, Product } from '../../lib/core/types';
 import { SHOP_STATUS } from '../../lib/core/shopStatus';
+import { convexOnly } from '../../lib/core/env';
 const { t } = Astro.locals;
 
 const { shopSlug } = Astro.params;
@@ -28,6 +29,7 @@ if (convexCatalog) {
   avgRating = convexCatalog.averageRating;
   totalReviews = convexCatalog.totalReviews;
 } else {
+  if (convexOnly) return Astro.redirect('/');
   // Temporary fallback while the Convex deployment is being rolled out.
   const { data: shopData } = await supabase
     .from('shops')
@@ -66,7 +68,7 @@ const profileImg = shop.profile_img || '/placeholder.svg';
 
 const authClient = createSupabaseAuthClient(Astro.cookies, Astro.request);
 const { data: { user } } = await authClient.auth.getUser();
-const wishedProductIds = await getMergedWishlistIds(authClient, Astro.cookies, user?.id ?? null);
+const wishedProductIds = await getMergedWishlistIds(authClient, Astro.cookies, user?.id ?? null, Astro.request);
 
 const siteOrigin = (Astro.site ?? new URL(`${Astro.url.protocol}//${Astro.url.host}`)).origin;
 const shopUrl = `${siteOrigin}/${shop.slug}`;

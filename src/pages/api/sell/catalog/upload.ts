@@ -1,5 +1,7 @@
 import type { APIRoute } from 'astro';
 import { createSupabaseAuthClient } from '../../../../lib/core/auth';
+import { convexOnly } from '../../../../lib/core/env';
+import { uploadConvexFile, deleteConvexFile } from '../../../../lib/core/convexStorage';
 
 import { detectImageMimeType, ALLOWED_IMAGE_TYPES } from '../../../../lib/core/file-validation';
 import { securityLog } from '../../../../lib/core/security-log';
@@ -11,6 +13,25 @@ export const POST: APIRoute = async ({ locals, cookies, request  }) => {
 
     if (!user) {
         return new Response(JSON.stringify({ error: t.apiUnauthorized }), { status: 401 });
+    }
+
+    if (convexOnly) {
+        const formData = await request.formData();
+        const file = formData.get('file') as File | null;
+        if (!file) return new Response(JSON.stringify({ error: 'No file provided' }), { status: 400 });
+        const detectedType = await detectImageMimeType(file);
+        if (!detectedType || !ALLOWED_IMAGE_TYPES.includes(detectedType)) {
+            securityLog('security.upload.invalid_magic_bytes', { userId: user.id, context: 'catalog' });
+            return new Response(JSON.stringify({ error: t.apiFileInvalid }), { status: 400 });
+        }
+        if (file.size > 5 * 1024 * 1024) return new Response(JSON.stringify({ error: 'File too large. Max 5MB.' }), { status: 400 });
+        try {
+            const uploaded = await uploadConvexFile(request, file, detectedType);
+            return new Response(JSON.stringify(uploaded), { status: 200 });
+        } catch (error) {
+            console.error(JSON.stringify({ event: 'catalog_upload.convex_failed', error: error instanceof Error ? error.message : String(error) }));
+            return new Response(JSON.stringify({ error: t.apiInternalError }), { status: 500 });
+        }
     }
 
     const { data: shop } = await supabase
@@ -79,6 +100,18 @@ export const DELETE: APIRoute = async ({ locals, cookies, request, url  }) => {
 
     if (!user) {
         return new Response(JSON.stringify({ error: t.apiUnauthorized }), { status: 401 });
+    }
+
+    if (convexOnly) {
+        const path = url.searchParams.get('path');
+        if (!path) return new Response(JSON.stringify({ error: 'No path provided' }), { status: 400 });
+        try {
+            await deleteConvexFile(request, path);
+            return new Response(JSON.stringify({ ok: true }), { status: 200 });
+        } catch (error) {
+            console.error(JSON.stringify({ event: 'catalog_delete.convex_failed', error: error instanceof Error ? error.message : String(error) }));
+            return new Response(JSON.stringify({ error: t.apiInternalError }), { status: 500 });
+        }
     }
 
     // Load the seller's shop to validate path ownership

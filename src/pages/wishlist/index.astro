@@ -10,6 +10,8 @@ import { supabase } from "../../lib/core/supabase";
 import { enrichProductsWithRatings } from "../../lib/products/productUtils";
 import { isProductComplete } from "../../lib/products/productValidation";
 import { getWishlistIdsFromCookie } from "../../lib/wishlist/wishlist";
+import { getConvexProductsByIds } from "../../lib/products/convexCatalog";
+import { convexOnly } from "../../lib/core/env";
 
 import type { Product } from "../../lib/core/types";
 const { t } = Astro.locals;
@@ -31,7 +33,7 @@ if (user) {
         }
     }
 
-    if (dbIds.length === 0 && !convexToken) {
+    if (dbIds.length === 0 && !convexToken && !convexOnly) {
         const { data: wishlistData } = await authClient
             .from('wishlist')
             .select('product_id')
@@ -48,6 +50,9 @@ const wishedProductIds = new Set(orderedIds);
 
 let products: Product[] = [];
 if (orderedIds.length > 0) {
+    if (convexOnly) {
+        products = await getConvexProductsByIds(orderedIds);
+    } else {
     const { data: productsData } = await supabase
         .from('products')
         .select('*, shop:shops(*), variants:product_variants(*)')
@@ -58,6 +63,7 @@ if (orderedIds.length > 0) {
     const byId = Object.fromEntries((productsData ?? []).map((p: any) => [p.id, p]));
     products = orderedIds.map((id: string) => byId[id]).filter(Boolean).filter(isProductComplete) as Product[];
     await enrichProductsWithRatings(products, supabase);
+    }
 }
 ---
 

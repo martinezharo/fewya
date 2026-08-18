@@ -3,6 +3,11 @@ import Layout from '../../layouts/Layout.astro';
 import Logo from '../../components/Logo.astro';
 import Icon from '../../components/icons/Icon.astro';
 import { createSupabaseAuthClient } from '../../lib/core/auth';
+import { convexOnly } from '../../lib/core/env';
+import { getRequestConvexToken } from '../../lib/core/auth';
+import { createConvexClient } from '../../lib/core/convex';
+import { getConvexSeller } from '../../lib/seller/convexSeller';
+import { api } from '../../../convex/_generated/api';
 const { t } = Astro.locals;
 
 const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
@@ -12,7 +17,15 @@ const user = sessionData?.session?.user;
 let isSeller = false;
 let hasShop = false;
 
-if (user) {
+if (user && convexOnly) {
+    const token = getRequestConvexToken(Astro.request);
+    const convex = token ? createConvexClient(token) : null;
+    if (convex) {
+        const profile = await convex.query(api.users.current, {});
+        isSeller = Boolean(profile?.isSeller);
+        if (isSeller) hasShop = Boolean((await getConvexSeller(Astro.request))?.shop);
+    }
+} else if (user) {
     const { data: profile } = await supabase
         .from('profiles')
         .select('is_seller')

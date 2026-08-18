@@ -1,7 +1,10 @@
 import type { APIRoute } from 'astro';
-import { SENDCLOUD_API_SECRET } from 'astro:env/server';
+import { CONVEX_WEBHOOK_SECRET, SENDCLOUD_API_SECRET } from 'astro:env/server';
+import { api } from '../../../../convex/_generated/api';
+import { createConvexClient } from '../../../lib/core/convex';
 import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
 import { securityLog } from '../../../lib/core/security-log';
+import { convexOnly } from '../../../lib/core/env';
 
 const MAX_TIMESTAMP_DRIFT_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -101,11 +104,45 @@ export const POST: APIRoute = async ({ request }) => {
         return jsonResponse({ received: true }, 200);
     }
 
+    // Convex owns post-cutover shipments. A provider event that does not match
+    // a Convex shipment is acknowledged in the isolated Worker without touching
+    // the legacy database.
+    const eventId = `sendcloud:${parcel.id}:${action ?? ''}:${timestamp ?? ''}`;
+    // Prefer parcel.status.message (the actual carrier state, e.g. "Delivered",
+    // "Sorted") over `action` — Sendcloud actions describe the event type, not
+    // the carrier state used by the order transition rules.
+    const normalizedStatus = parcel.status?.message || action || 'unknown';
+    const description = `Sendcloud status: ${normalizedStatus}`;
+
+    const convex = CONVEX_WEBHOOK_SECRET ? createConvexClient() : null;
+    if (convex && CONVEX_WEBHOOK_SECRET) {
+        try {
+            const result = await convex.mutation(api.orders.processShipmentTrackingEvent, {
+                secret: CONVEX_WEBHOOK_SECRET,
+                eventId,
+                sendcloudShipmentId: String(parcel.id),
+                status: normalizedStatus,
+                description,
+                location: '',
+                eventTimestamp: timestampMs ?? Date.now(),
+                ...(parcel.tracking_number ? { trackingNumber: parcel.tracking_number } : {}),
+                ...(parcel.tracking_url ? { trackingUrl: parcel.tracking_url } : {}),
+                rawData: body as Record<string, unknown>,
+            });
+            if (result.handled) return jsonResponse({ received: true }, 200);
+        } catch (error) {
+            console.error(JSON.stringify({ event: 'sendcloud_webhook.convex_handler_failed', error: error instanceof Error ? error.message : String(error) }));
+            return jsonResponse({ error: 'Failed to update tracking' }, 500);
+        }
+    }
+
+    if (convexOnly) return jsonResponse({ received: true }, 200);
+
     const supabase = createSupabaseAdminClient();
 
     // Idempotency: skip replays. The event is recorded only AFTER the update
     // succeeds (below), so a transient failure is retried instead of being lost.
-    const eventId = `sendcloud:${parcel.id}:${action ?? ''}:${timestamp ?? ''}`;
+
     const { data: alreadyProcessed } = await supabase
         .from('processed_webhook_events')
         .select('event_id')
@@ -127,11 +164,6 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     const shipment = shipmentRow as { id: string; order_id: string };
-    // Prefer parcel.status.message (the actual carrier state, e.g. "Delivered",
-    // "Sorted") over `action` — Sendcloud actions like "parcel_status_changed"
-    // describe the event type, not the state, and won't match the SQL branches.
-    const normalizedStatus = parcel.status?.message || action || 'unknown';
-    const description = `Sendcloud status: ${normalizedStatus}`;
     const eventTimestamp = timestampMs ? new Date(timestampMs) : new Date();
 
     try {

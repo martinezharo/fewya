@@ -1,10 +1,13 @@
 import type { APIRoute } from 'astro';
-import { createSupabaseAuthClient } from '../../../lib/core/auth';
+import { api } from '../../../../convex/_generated/api';
+import { createSupabaseAuthClient, getRequestConvexToken } from '../../../lib/core/auth';
 import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
+import { createConvexClient } from '../../../lib/core/convex';
 
 import { getStripeClient } from '../../../lib/payments/stripe';
 import { toMinorUnits } from '../../../lib/cart/checkout';
 import { ORDER_STATUS } from '../../../lib/orders/orderStatus';
+import { convexOnly } from '../../../lib/core/env';
 
 function jsonResponse(payload: Record<string, unknown>, status: number) {
     return new Response(JSON.stringify(payload), {
@@ -37,6 +40,42 @@ export const POST: APIRoute = async ({ locals, request, cookies  }) => {
     }
 
     const cancellationReason = body.cancellationReason?.trim();
+
+    if (orderId.startsWith('convex:')) {
+        const token = getRequestConvexToken(request);
+        const convex = token ? createConvexClient(token) : null;
+        if (!convex) return jsonResponse({ error: t.apiUnauthorized }, 401);
+        try {
+            const payout = await convex.query(api.orders.getPayoutContextForCurrentUser, { orderId });
+            if (!([ORDER_STATUS.PAID, ORDER_STATUS.PROCESSING] as string[]).includes(payout.status)) {
+                return jsonResponse({ error: t.apiOrderCannotBeCancelled }, 400);
+            }
+            const stripe = getStripeClient();
+            let stripeRefundId: string | undefined;
+            if (payout.stripePaymentIntentId && payout.totalAmount > 0) {
+                const refund = await stripe.refunds.create({
+                    payment_intent: payout.stripePaymentIntentId,
+                    amount: toMinorUnits(payout.totalAmount),
+                    reason: 'requested_by_customer',
+                    metadata: { orderId: payout.id, publicId: payout.publicId, cancelledBy: user.id },
+                }, { idempotencyKey: `cancel-refund:${payout.id}` });
+                stripeRefundId = refund.id;
+            }
+            const cancelled = await convex.mutation(api.orders.cancelForSeller, {
+                orderId,
+                ...(cancellationReason ? { cancellationReason } : {}),
+                refundAmountCents: toMinorUnits(payout.totalAmount),
+                currency: 'eur',
+                ...(stripeRefundId ? { stripeRefundId } : {}),
+            });
+            return jsonResponse(cancelled, 200);
+        } catch (error) {
+            console.error('Convex seller cancellation failed', error);
+            return jsonResponse({ error: t.sellerOrderRefundError }, 500);
+        }
+    }
+
+    if (convexOnly) return jsonResponse({ error: t.sellerOrderRefundError }, 404);
 
     // Verify seller owns this order
     const { data: hasAccess } = await authClient.rpc('order_belongs_to_seller', {

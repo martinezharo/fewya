@@ -6,6 +6,7 @@ import { enrichProductsWithRatings } from "../../lib/products/productUtils";
 import type { SearchParams } from "../../lib/products/search";
 import { getMergedWishlistIds } from "../../lib/wishlist/wishlist";
 import { getConvexSearchProducts } from "../../lib/products/convexCatalog";
+import { convexOnly } from "../../lib/core/env";
 
 import type { Product } from "../../lib/core/types";
 const { t } = Astro.locals;
@@ -34,6 +35,8 @@ const [convexProducts, authResult] = await Promise.all([
 let products: Product[];
 if (convexProducts) {
     products = convexProducts;
+} else if (convexOnly) {
+    products = [];
 } else {
     const dataResult = await supabase.rpc("search_products", {
         p_query: params.q,
@@ -50,8 +53,8 @@ if (convexProducts) {
 
 // Ratings enrichment and wishlist lookup in parallel
 const [, wishedProductIds] = await Promise.all([
-    convexProducts ? Promise.resolve(products) : enrichProductsWithRatings(products, supabase),
-    getMergedWishlistIds(authClient, Astro.cookies, authResult.data.user?.id ?? null),
+    convexProducts || convexOnly ? Promise.resolve(products) : enrichProductsWithRatings(products, supabase),
+    getMergedWishlistIds(authClient, Astro.cookies, authResult.data.user?.id ?? null, Astro.request),
 ]);
 ---
 

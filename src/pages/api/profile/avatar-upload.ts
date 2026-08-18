@@ -1,5 +1,10 @@
 import type { APIRoute } from 'astro';
 import { createSupabaseAuthClient } from '../../../lib/core/auth';
+import { getRequestConvexToken } from '../../../lib/core/auth';
+import { api } from '../../../../convex/_generated/api';
+import { createConvexClient } from '../../../lib/core/convex';
+import { convexOnly } from '../../../lib/core/env';
+import type { Id } from '../../../../convex/_generated/dataModel';
 
 import { detectImageMimeType, ALLOWED_IMAGE_TYPES } from '../../../lib/core/file-validation';
 import { securityLog } from '../../../lib/core/security-log';
@@ -29,6 +34,33 @@ export const POST: APIRoute = async ({ locals, cookies, request  }) => {
 
     if (file.size > 2 * 1024 * 1024) {
         return new Response(JSON.stringify({ error: 'File too large. Max 2MB.' }), { status: 400 });
+    }
+
+    if (convexOnly) {
+        const token = getRequestConvexToken(request);
+        const convex = token ? createConvexClient(token) : null;
+        if (!convex) return new Response(JSON.stringify({ error: t.apiUnauthorized }), { status: 401 });
+
+        try {
+            const uploadUrl = await convex.mutation(api.storage.generateUploadUrl, {});
+            const upload = await fetch(uploadUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': detectedType },
+                body: await file.arrayBuffer(),
+            });
+            if (!upload.ok) throw new Error(`Convex upload failed (${upload.status})`);
+            const payload = await upload.json() as { storageId?: string };
+            if (!payload.storageId) throw new Error('Convex upload did not return a storage ID');
+            const storageId = payload.storageId as Id<'_storage'>;
+            await convex.mutation(api.users.setAvatarStorage, { storageId });
+            const url = await convex.query(api.storage.getUrl, { storageId });
+            if (!url) throw new Error('Convex upload URL unavailable');
+            const path = `convex-storage:${payload.storageId}`;
+            return new Response(JSON.stringify({ url, path }), { status: 200 });
+        } catch (error) {
+            console.error(JSON.stringify({ event: 'avatar_upload.convex_failed', error: error instanceof Error ? error.message : String(error) }));
+            return new Response(JSON.stringify({ error: t.apiInternalError }), { status: 500 });
+        }
     }
 
     const extMap: Record<string, string> = {
@@ -69,6 +101,19 @@ export const DELETE: APIRoute = async ({ locals, cookies, request, url  }) => {
 
     if (!user) {
         return new Response(JSON.stringify({ error: t.apiUnauthorized }), { status: 401 });
+    }
+
+    if (convexOnly) {
+        const token = getRequestConvexToken(request);
+        const convex = token ? createConvexClient(token) : null;
+        if (!convex) return new Response(JSON.stringify({ error: t.apiUnauthorized }), { status: 401 });
+        try {
+            await convex.mutation(api.users.deleteAvatarStorage, {});
+            return new Response(JSON.stringify({ ok: true }), { status: 200 });
+        } catch (error) {
+            console.error(JSON.stringify({ event: 'avatar_delete.convex_failed', error: error instanceof Error ? error.message : String(error) }));
+            return new Response(JSON.stringify({ error: t.apiInternalError }), { status: 500 });
+        }
     }
 
     const path = url.searchParams.get('path');

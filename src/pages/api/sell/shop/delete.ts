@@ -1,5 +1,9 @@
 import type { APIRoute } from 'astro';
 import { createSupabaseAuthClient } from '../../../../lib/core/auth';
+import { getRequestConvexToken } from '../../../../lib/core/auth';
+import { createConvexClient } from '../../../../lib/core/convex';
+import { api } from '../../../../../convex/_generated/api';
+import { convexOnly } from '../../../../lib/core/env';
 
 import { SHOP_STATUS } from '../../../../lib/core/shopStatus';
 
@@ -14,6 +18,19 @@ export const DELETE: APIRoute = async ({ locals, cookies, request  }) => {
             status: 401,
             headers: { 'Content-Type': 'application/json' },
         });
+    }
+
+    if (convexOnly) {
+        const token = getRequestConvexToken(request);
+        const convex = token ? createConvexClient(token) : null;
+        if (!convex) return new Response(JSON.stringify({ error: t.apiUnauthorized }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+        try {
+            await convex.mutation(api.seller.deleteShop, {});
+            return new Response(JSON.stringify({ success: true }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+        } catch (error) {
+            console.error(JSON.stringify({ event: 'seller_shop_delete.convex_failed', error: error instanceof Error ? error.message : String(error) }));
+            return new Response(JSON.stringify({ error: t.apiInternalError }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+        }
     }
 
     const { data: shop, error: shopError } = await supabase

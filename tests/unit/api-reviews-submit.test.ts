@@ -28,6 +28,7 @@ function ordersChain() {
 
 vi.mock('../../src/lib/core/auth', () => ({
     createSupabaseAuthClient: () => ({ auth: { getUser: mockGetUser } }),
+    getRequestConvexToken: () => null,
 }));
 
 vi.mock('../../src/lib/core/supabase-admin', () => ({

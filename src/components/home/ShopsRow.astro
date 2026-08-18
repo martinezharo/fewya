@@ -2,6 +2,7 @@
 import { supabase } from "../../lib/core/supabase";
 import { SHOP_STATUS } from "../../lib/core/shopStatus";
 import { getConvexPublicShops } from "../../lib/products/convexCatalog";
+import { convexOnly } from "../../lib/core/env";
 
 const { t } = Astro.locals;
 
@@ -14,15 +15,18 @@ interface ShopLink {
 // Server-rendered shop links: the product grid below is deferred (server:defer),
 // so this row is the only crawlable internal linking in the initial home HTML.
 const convexShops = await getConvexPublicShops(12);
-const shops = convexShops ?? (await supabase
-    .from("shops")
-    .select("slug, name, profile_img")
-    .eq("is_active", true)
-    .eq("status", SHOP_STATUS.ACTIVE)
-    .eq("payments_active", true)
-    .eq("seller_details_complete", true)
-    .order("created_at", { ascending: false })
-    .limit(12)).data as ShopLink[] ?? [];
+let shops: ShopLink[] = convexShops ?? [];
+if (!convexShops && !convexOnly) {
+    shops = (await supabase
+        .from("shops")
+        .select("slug, name, profile_img")
+        .eq("is_active", true)
+        .eq("status", SHOP_STATUS.ACTIVE)
+        .eq("payments_active", true)
+        .eq("seller_details_complete", true)
+        .order("created_at", { ascending: false })
+        .limit(12)).data as ShopLink[] ?? [];
+}
 ---
 
 {shops.length > 0 && (

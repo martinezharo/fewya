@@ -8,8 +8,8 @@ import { CLERK_JWT_TEMPLATE, CLERK_SECRET_KEY } from 'astro:env/server';
 import type { User } from '@supabase/supabase-js';
 import { api } from '../convex/_generated/api';
 import { createConvexClient } from './lib/core/convex';
-import { createSupabaseAdminClient } from './lib/core/supabase-admin';
 import { exchangeAuthCodeForSession, hasRequestAuthUser, setRequestAuthUser } from './lib/core/auth';
+import { convexOnly } from './lib/core/env';
 import { securityLog } from './lib/core/security-log';
 import { checkRateLimit, rateLimitResponse, type RateLimitBinding } from './lib/core/rate-limit';
 import { getT, resolveLocale } from './lib/core/i18n';
@@ -17,6 +17,7 @@ import { getT, resolveLocale } from './lib/core/i18n';
 const PRIVATE_PREFIXES = ['/me', '/sell', '/cart', '/profile', '/wishlist', '/api'];
 const PUBLIC_MAX_AGE = 60;
 const PUBLIC_SWR = 300;
+const supabaseCspOrigins = convexOnly ? '' : ' https://*.supabase.co';
 
 // Webhook routes that must not have CSRF or auth checks
 const WEBHOOK_PATHS = new Set(['/api/webhooks/stripe', '/api/sendcloud/webhook']);
@@ -36,19 +37,24 @@ const CSP = [
     "script-src-elem 'self' 'unsafe-inline' https://js.stripe.com https://*.clerk.com https://*.clerk.accounts.dev https://*.protect.clerk.com https://challenges.cloudflare.com data:",
     "worker-src 'self' blob:",
     "frame-src https://js.stripe.com https://hooks.stripe.com https://*.clerk.com https://*.clerk.accounts.dev https://*.protect.clerk.com https://challenges.cloudflare.com",
-    "img-src 'self' data: blob: http://127.0.0.1:3210 http://localhost:3210 https://*.supabase.co https://*.convex.cloud https://*.convex.site https://*.clerk.com https://*.clerk.accounts.dev https://img.clerk.com https://imagedelivery.net",
+    `img-src 'self' data: blob: http://127.0.0.1:3210 http://localhost:3210${supabaseCspOrigins} https://*.convex.cloud https://*.convex.site https://*.clerk.com https://*.clerk.accounts.dev https://img.clerk.com https://imagedelivery.net`,
     // style-src: Google Fonts stylesheet loaded via <link> in Layout.astro
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://*.clerk.com https://*.clerk.accounts.dev",
-    "connect-src 'self' http://127.0.0.1:3210 http://localhost:3210 https://*.supabase.co https://*.convex.cloud https://*.convex.site https://*.clerk.com https://*.clerk.accounts.dev https://*.protect.clerk.com https://challenges.cloudflare.com https://clerk-telemetry.com https://*.clerk-telemetry.com https://img.clerk.com https://api.stripe.com https://panel.sendcloud.sc",
+    `connect-src 'self' http://127.0.0.1:3210 http://localhost:3210${supabaseCspOrigins} https://*.convex.cloud https://*.convex.site https://*.clerk.com https://*.clerk.accounts.dev https://*.protect.clerk.com https://challenges.cloudflare.com https://clerk-telemetry.com https://*.clerk-telemetry.com https://img.clerk.com https://api.stripe.com https://panel.sendcloud.sc`,
     // font-src: Google Fonts serves .woff2 files from fonts.gstatic.com
     "font-src 'self' https://fonts.gstatic.com",
     "object-src 'none'",
 ].join('; ');
 
 const clerkPublishableKey = import.meta.env.PUBLIC_CLERK_PUBLISHABLE_KEY as string | undefined;
-const clerkBackendClient = CLERK_SECRET_KEY
-    ? createClerkClient({ secretKey: CLERK_SECRET_KEY, publishableKey: clerkPublishableKey })
-    : null;
+function getClerkBackendClient() {
+    // Secret env bindings are populated by the Worker adapter after module
+    // evaluation, so construct the client at request time rather than taking
+    // a stale module-scope snapshot.
+    return CLERK_SECRET_KEY
+        ? createClerkClient({ secretKey: CLERK_SECRET_KEY, publishableKey: clerkPublishableKey })
+        : null;
+}
 type ClerkSessionAuth = SessionAuthObject;
 
 async function hydrateClerkUser(auth: () => ClerkSessionAuth, context: APIContext) {
@@ -80,10 +86,13 @@ async function hydrateClerkUser(auth: () => ClerkSessionAuth, context: APIContex
     try {
         const linked = await convex.mutation(api.users.ensureCurrent, { legacyId: legacyIdCandidate });
 
-        // Keep the old Supabase-backed routes usable during the staged cutover.
-        // New Clerk users receive the same UUID in both stores; existing users
-        // retain their imported Supabase UUID and are linked by verified email.
-        if (linked.created) {
+        // During the staged production rollout this bridge keeps legacy routes
+        // usable. The isolated test Worker must never write the current
+        // Supabase project, so Convex is its sole identity store.
+        if (linked.created && !convexOnly) {
+            // Lazy import keeps the Convex-only deployment from even
+            // constructing a Supabase admin client.
+            const { createSupabaseAdminClient } = await import('./lib/core/supabase-admin');
             const admin = createSupabaseAdminClient();
             const { error } = await admin.from('profiles').insert({
                 id: linked.legacyId,
@@ -226,6 +235,7 @@ const legacyMiddleware: MiddlewareHandler = async (context, next) => {
 };
 
 export const onRequest: MiddlewareHandler = defineMiddleware((context, next) => {
+    const clerkBackendClient = getClerkBackendClient();
     if (!clerkBackendClient) {
         return legacyMiddleware(context, next);
     }

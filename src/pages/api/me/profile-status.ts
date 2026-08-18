@@ -3,6 +3,7 @@ import { api } from '../../../../convex/_generated/api';
 import { createConvexClient } from '../../../lib/core/convex';
 import { createSupabaseAuthClient, getRequestConvexToken } from '../../../lib/core/auth';
 import { isProfileComplete } from '../../../lib/core/validation';
+import { convexOnly } from '../../../lib/core/env';
 
 export const GET: APIRoute = async ({ cookies, request }) => {
     const authClient = createSupabaseAuthClient(cookies, request);
@@ -34,7 +35,7 @@ export const GET: APIRoute = async ({ cookies, request }) => {
             address_country: current.addressCountry,
         } : null;
     }
-    if (!profile && !convexToken) {
+    if (!profile && !convexToken && !convexOnly) {
         const { data } = await authClient
             .from('profiles')
             .select('first_name, last_name, phone, address_street, address_number, address_postal_code, address_city, address_province, address_country')

@@ -2,6 +2,7 @@ import type { APIRoute } from 'astro';
 import { api } from '../../../../convex/_generated/api';
 import { createConvexClient } from '../../../lib/core/convex';
 import { createSupabaseAuthClient, getRequestConvexToken } from '../../../lib/core/auth';
+import { convexOnly } from '../../../lib/core/env';
 
 export const GET: APIRoute = async ({ cookies, request }) => {
     const authClient = createSupabaseAuthClient(cookies, request);
@@ -42,7 +43,7 @@ export const GET: APIRoute = async ({ cookies, request }) => {
             };
         }
     }
-    if (!profile && !convexToken) {
+    if (!profile && !convexToken && !convexOnly) {
         const { data } = await authClient
             .from('profiles')
             .select('address_street, address_number, address_floor, address_postal_code, address_city, address_province, address_country')

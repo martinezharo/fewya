@@ -3,6 +3,11 @@ import SellerLayout from '../../../layouts/SellerLayout.astro';
 import { createSupabaseAuthClient } from '../../../lib/core/auth';
 import ShopForm from '../../../components/seller/ShopForm.astro';
 import Icon from '../../../components/icons/Icon.astro';
+import { convexOnly } from '../../../lib/core/env';
+import { getConvexSeller } from '../../../lib/seller/convexSeller';
+import { getRequestConvexToken } from '../../../lib/core/auth';
+import { createConvexClient } from '../../../lib/core/convex';
+import { api } from '../../../../convex/_generated/api';
 
 const { t } = Astro.locals;
 const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
@@ -13,14 +18,19 @@ if (!user) {
     return Astro.redirect('/sell');
 }
 
-// Get the shop of the current seller
-const { data: shop } = await supabase
-    .from('shops')
-    .select(`
-        *
-    `)
-    .eq('owner_id', user.id)
-    .single();
+let shop: any;
+if (convexOnly) {
+    const seller = await getConvexSeller(Astro.request);
+    shop = seller?.shop;
+} else {
+    // Get the shop of the current seller
+    const { data: legacyShop } = await supabase
+        .from('shops')
+        .select(`*`)
+        .eq('owner_id', user.id)
+        .single();
+    shop = legacyShop;
+}
 
 if (!shop) {
     return Astro.redirect('/sell/onboarding');
@@ -35,6 +45,27 @@ if (Astro.request.method === 'POST') {
     const contact_email = formData.get('contact_email')?.toString() || '';
     const whatsapp = formData.get('whatsapp')?.toString() || '';
     const location = formData.get('location')?.toString() || '';
+
+    if (convexOnly) {
+        const token = getRequestConvexToken(Astro.request);
+        const convex = token ? createConvexClient(token) : null;
+        if (!convex) return new Response(JSON.stringify({ error: t.apiUnauthorized }), { status: 401 });
+        try {
+            await convex.mutation(api.seller.updateShop, {
+                name,
+                slug,
+                description,
+                accentColor: accent_color,
+                contactEmail: contact_email,
+                whatsapp,
+                location,
+            });
+            return new Response(JSON.stringify({ success: true }), { status: 200 });
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            return new Response(JSON.stringify({ error: message.includes('slug') ? t.sellerOnboardingUrlInUse : t.apiInternalError }), { status: message.includes('slug') ? 400 : 500 });
+        }
+    }
 
     // Check slug uniqueness if it changed
     if (slug !== shop.slug) {

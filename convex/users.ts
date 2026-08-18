@@ -2,6 +2,8 @@ import { mutation, query } from './_generated/server';
 import { v } from 'convex/values';
 import { identity, profileForIdentity } from './lib/auth';
 
+const storageMarker = (storageId: string) => `convex-storage:${storageId}`;
+
 /** Returns the profile linked to the authenticated Clerk subject, if any. */
 export const current = query({
     args: {},
@@ -89,5 +91,58 @@ export const updateCurrent = mutation({
             await ctx.db.patch(profile._id, patch as never);
         }
         return { id: String(profile._id), legacyId: profile.legacyId };
+    },
+});
+
+/** Attach an uploaded Convex Storage object to the authenticated profile. */
+export const setAvatarStorage = mutation({
+    args: { storageId: v.id('_storage') },
+    handler: async (ctx, args) => {
+        const user = await identity(ctx);
+        const profile = await profileForIdentity(ctx, user);
+        if (!profile) throw new Error('Profile is not linked to this account');
+
+        const previous = profile.avatarUrl;
+        await ctx.db.patch(profile._id, { avatarUrl: storageMarker(String(args.storageId)) });
+        if (previous?.startsWith('convex-storage:')) {
+            try {
+                await ctx.storage.delete(previous.slice('convex-storage:'.length) as never);
+            } catch {
+                // An already removed object must not make the profile update fail.
+            }
+        }
+        return { avatarUrl: storageMarker(String(args.storageId)) };
+    },
+});
+
+/** Remove the current profile avatar and its Convex Storage object. */
+export const deleteAvatarStorage = mutation({
+    args: {},
+    handler: async (ctx) => {
+        const user = await identity(ctx);
+        const profile = await profileForIdentity(ctx, user);
+        if (!profile) throw new Error('Profile is not linked to this account');
+        const previous = profile.avatarUrl;
+        await ctx.db.patch(profile._id, { avatarUrl: undefined });
+        if (previous?.startsWith('convex-storage:')) {
+            try {
+                await ctx.storage.delete(previous.slice('convex-storage:'.length) as never);
+            } catch {
+                // Ignore a missing object; the profile is already cleared.
+            }
+        }
+        return { ok: true };
+    },
+});
+
+/** Mark an authenticated profile as a seller before the first shop exists. */
+export const markSeller = mutation({
+    args: {},
+    handler: async (ctx) => {
+        const user = await identity(ctx);
+        const profile = await profileForIdentity(ctx, user);
+        if (!profile) throw new Error('Profile is not linked to this account');
+        if (!profile.isSeller) await ctx.db.patch(profile._id, { isSeller: true });
+        return { ok: true };
     },
 });

@@ -1,6 +1,9 @@
 import { createSupabaseAdminClient } from '../core/supabase-admin';
+import { createConvexClient } from '../core/convex';
+import { api } from '../../../convex/_generated/api';
 import { getShipment } from './sendcloud';
 import { SHIPMENT_STATUS } from './shipmentStatus';
+import { convexOnly } from '../core/env';
 
 // Max number of Sendcloud requests allowed in flight at once. Keeps outbound API
 // call volume bounded as shipment counts grow, instead of firing one request per
@@ -33,7 +36,44 @@ async function mapWithConcurrencyLimit<T, R>(
  * Shared by the cron `scheduled()` handler and the HTTP endpoint. Reads env via
  * astro:env at call time, so it is safe to invoke from the scheduled context.
  */
-export async function syncAllTracking(): Promise<{ synced: number; errors: number }> {
+export async function syncAllTracking(convexSecret?: string): Promise<{ synced: number; errors: number }> {
+    let convexSynced = 0;
+    let convexErrors = 0;
+    const convex = convexSecret ? createConvexClient() : null;
+
+    if (convex && convexSecret) {
+        try {
+            const candidates = await convex.query(api.orders.listTrackingCandidates, { secret: convexSecret });
+            const convexResults = await mapWithConcurrencyLimit(candidates, SYNC_CONCURRENCY_LIMIT, async (shipment) => {
+                const { status, trackingNumber, trackingUrl } = await getShipment(shipment.sendcloudShipmentId);
+                await convex.mutation(api.orders.applyShipmentTracking, {
+                    secret: convexSecret,
+                    shipmentLegacyId: shipment.id,
+                    status,
+                    description: `Sendcloud status: ${status}`,
+                    location: '',
+                    eventTimestamp: Date.now(),
+                    ...(trackingNumber ? { trackingNumber } : {}),
+                    ...(trackingUrl ? { trackingUrl } : {}),
+                    rawData: { status, trackingNumber, trackingUrl, polled: true },
+                });
+            });
+            convexErrors = convexResults.filter((result) => result.status === 'rejected').length;
+            convexSynced = convexResults.length - convexErrors;
+            if (convexErrors > 0) {
+                console.error(JSON.stringify({ event: 'sync_tracking.convex_partial_errors', total: convexResults.length, errors: convexErrors }));
+            }
+        } catch (error) {
+            convexErrors = 1;
+            console.error(JSON.stringify({
+                event: 'sync_tracking.convex_fetch_error',
+                error: error instanceof Error ? error.message : String(error),
+            }));
+        }
+    }
+
+    if (convexOnly) return { synced: convexSynced, errors: convexErrors };
+
     const supabase = createSupabaseAdminClient();
 
     const { data: shipments, error } = await supabase
@@ -48,7 +88,7 @@ export async function syncAllTracking(): Promise<{ synced: number; errors: numbe
     }
 
     if (!shipments?.length) {
-        return { synced: 0, errors: 0 };
+        return { synced: convexSynced, errors: convexErrors };
     }
 
     const results = await mapWithConcurrencyLimit(shipments, SYNC_CONCURRENCY_LIMIT, async (shipment) => {
@@ -75,5 +115,5 @@ export async function syncAllTracking(): Promise<{ synced: number; errors: numbe
         console.error(JSON.stringify({ event: 'sync_tracking.partial_errors', total: results.length, errors }));
     }
 
-    return { synced, errors };
+    return { synced: convexSynced + synced, errors: convexErrors + errors };
 }

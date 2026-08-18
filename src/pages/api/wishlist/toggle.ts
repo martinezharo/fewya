@@ -4,6 +4,7 @@ import { createConvexClient } from '../../../lib/core/convex';
 import { createSupabaseAuthClient, getRequestConvexToken } from '../../../lib/core/auth';
 import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
 import { getWishlistIdsFromCookie } from '../../../lib/wishlist/wishlist';
+import { convexOnly } from '../../../lib/core/env';
 
 type WishlistToggleBody = {
     productId?: unknown;
@@ -43,6 +44,10 @@ export const POST: APIRoute = async ({ locals, cookies, request  }) => {
             console.error(JSON.stringify({ event: 'wishlist.convex_toggle_failed', error: message }));
             return new Response(JSON.stringify({ error: 'wishlist unavailable' }), { status: 503 });
         }
+    }
+
+    if (convexOnly) {
+        return new Response(JSON.stringify({ error: 'wishlist unavailable' }), { status: 503 });
     }
 
     // A5: verify product exists and is active before inserting into wishlist

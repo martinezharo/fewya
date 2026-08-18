@@ -1,7 +1,11 @@
 import { createSupabaseAdminClient } from '../core/supabase-admin';
+import { createConvexClient } from '../core/convex';
+import { api } from '../../../convex/_generated/api';
 import { getStripeClient } from '../payments/stripe';
+import { releaseOrderFunds } from '../cart/checkout';
 import { ORDER_STATUS, FUNDS_RELEASE_STATUS } from './orderStatus';
 import { fetchAndReleaseFunds } from './payoutFlow';
+import { convexOnly } from '../core/env';
 
 const FUND_HOLD_HOURS = 48;
 
@@ -14,6 +18,110 @@ interface AutoConfirmReport {
     retriedFailed: string[];
 }
 
+async function runConvexAutoConfirm(secret: string, stripe: ReturnType<typeof getStripeClient>): Promise<AutoConfirmReport> {
+    const empty: AutoConfirmReport = {
+        autoConfirmed: 0,
+        released: [],
+        failed: [],
+        retried: 0,
+        retriedReleased: [],
+        retriedFailed: [],
+    };
+    const convex = createConvexClient();
+    if (!convex) return empty;
+
+    const cutoff = Date.now() - FUND_HOLD_HOURS * 60 * 60 * 1000;
+    let eligible;
+    try {
+        eligible = await convex.query(api.orders.listAutoConfirmCandidates, { secret, cutoff });
+    } catch (error) {
+        console.error(JSON.stringify({ event: 'auto_confirm.convex_fetch_failed', error: error instanceof Error ? error.message : String(error) }));
+        return empty;
+    }
+
+    const report: AutoConfirmReport = { ...empty, autoConfirmed: eligible.length };
+    await Promise.allSettled(eligible.map(async (candidate) => {
+        try {
+            const confirmed = await convex.mutation(api.orders.autoConfirmDelivered, {
+                secret,
+                orderId: candidate.orderId,
+                cutoff,
+            });
+            if (!confirmed.confirmed) return;
+            if (!candidate.stripePaymentIntentId) {
+                report.failed.push(candidate.publicId);
+                await convex.mutation(api.orders.recordFundsRelease, {
+                    secret,
+                    orderId: candidate.orderId,
+                    success: false,
+                    error: 'Missing stripe_payment_intent_id',
+                });
+                return;
+            }
+
+            const payout = await convex.query(api.orders.getPayoutOrder, { secret, orderId: candidate.orderId });
+            const result = await releaseOrderFunds({
+                stripe,
+                orderId: payout.id,
+                publicId: payout.publicId,
+                paymentIntentId: candidate.stripePaymentIntentId,
+                items: payout.items,
+                labelCostByShop: payout.labelCostByShop,
+            });
+            await convex.mutation(api.orders.recordFundsRelease, {
+                secret,
+                orderId: candidate.orderId,
+                success: result.success,
+                ...(result.success ? {} : { error: result.error ?? 'fund_release_failed' }),
+            });
+            if (result.success) report.released.push(candidate.publicId);
+            else report.failed.push(candidate.publicId);
+        } catch (error) {
+            report.failed.push(candidate.publicId);
+            console.error(JSON.stringify({ event: 'auto_confirm.convex_fund_release_failed', publicId: candidate.publicId, error: error instanceof Error ? error.message : String(error) }));
+        }
+    }));
+
+    let retries;
+    try {
+        retries = await convex.query(api.orders.listFailedFundReleaseCandidates, { secret });
+    } catch (error) {
+        console.error(JSON.stringify({ event: 'auto_confirm.convex_retry_fetch_failed', error: error instanceof Error ? error.message : String(error) }));
+        return report;
+    }
+    report.retried = retries.length;
+    await Promise.allSettled(retries.map(async (candidate) => {
+        try {
+            if (!candidate.stripePaymentIntentId) {
+                report.retriedFailed.push(candidate.publicId);
+                return;
+            }
+            const payout = await convex.query(api.orders.getPayoutOrder, { secret, orderId: candidate.orderId });
+            const result = await releaseOrderFunds({
+                stripe,
+                orderId: payout.id,
+                publicId: payout.publicId,
+                paymentIntentId: candidate.stripePaymentIntentId,
+                items: payout.items,
+                labelCostByShop: payout.labelCostByShop,
+            });
+            await convex.mutation(api.orders.recordFundsRelease, {
+                secret,
+                orderId: candidate.orderId,
+                success: result.success,
+                ...(result.success ? {} : { error: result.error ?? 'fund_release_failed' }),
+            });
+            if (result.success) report.retriedReleased.push(candidate.publicId);
+            else report.retriedFailed.push(candidate.publicId);
+        } catch (error) {
+            report.retriedFailed.push(candidate.publicId);
+            console.error(JSON.stringify({ event: 'auto_confirm.convex_retry_failed', publicId: candidate.publicId, error: error instanceof Error ? error.message : String(error) }));
+        }
+    }));
+
+    return report;
+}
+
 /**
  * Confirms delivered orders past the 48h hold and releases their funds.
  * Also retries any previously-failed releases (transfer_group keys make the
@@ -22,9 +130,20 @@ interface AutoConfirmReport {
  * Shared by the cron `scheduled()` handler and the HTTP endpoint. Reads env via
  * astro:env at call time, so it is safe to invoke from the scheduled context.
  */
-export async function runAutoConfirm(): Promise<AutoConfirmReport> {
-    const adminClient = createSupabaseAdminClient();
+export async function runAutoConfirm(convexSecret?: string): Promise<AutoConfirmReport> {
     const stripe = getStripeClient();
+    const convexReport = convexSecret ? await runConvexAutoConfirm(convexSecret, stripe) : {
+        autoConfirmed: 0,
+        released: [],
+        failed: [],
+        retried: 0,
+        retriedReleased: [],
+        retriedFailed: [],
+    } satisfies AutoConfirmReport;
+
+    if (convexOnly) return convexReport;
+
+    const adminClient = createSupabaseAdminClient();
 
     // ----- Phase 1: auto-confirm newly-eligible orders -----
 
@@ -141,11 +260,11 @@ export async function runAutoConfirm(): Promise<AutoConfirmReport> {
     }
 
     return {
-        autoConfirmed: eligibleOrders?.length ?? 0,
-        released,
-        failed,
-        retried: retryOrders?.length ?? 0,
-        retriedReleased,
-        retriedFailed,
+        autoConfirmed: convexReport.autoConfirmed + (eligibleOrders?.length ?? 0),
+        released: [...convexReport.released, ...released],
+        failed: [...convexReport.failed, ...failed],
+        retried: convexReport.retried + (retryOrders?.length ?? 0),
+        retriedReleased: [...convexReport.retriedReleased, ...retriedReleased],
+        retriedFailed: [...convexReport.retriedFailed, ...retriedFailed],
     };
 }

@@ -2,6 +2,10 @@ import type { APIRoute } from 'astro';
 import { getShippingQuotes, getConfig, type SendcloudShippingQuote } from '../../../lib/shipping/sendcloud';
 import { categorize, CARRIER_META, type CarrierKey } from '../../../lib/shipping/carrierKey';
 import { carrierKeyToPlatform, normalizeShippingPlatforms } from '../../../lib/shipping/shippingPlatform';
+import { api } from '../../../../convex/_generated/api';
+import { createConvexClient } from '../../../lib/core/convex';
+import { getRequestConvexToken } from '../../../lib/core/auth';
+import { convexOnly } from '../../../lib/core/env';
 
 export type { CarrierKey };
 
@@ -31,12 +35,27 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     if (!user) return jsonResponse({ error: 'Unauthorized' }, 401);
 
     // Only preview platforms this seller actually ships with.
-    const { data: shopRow } = await authClient
-        .from('shops')
-        .select('shipping_carriers')
-        .eq('owner_id', user.id)
-        .maybeSingle();
-    const enabledPlatforms = normalizeShippingPlatforms(shopRow?.shipping_carriers);
+    let enabledPlatforms: ReturnType<typeof normalizeShippingPlatforms>;
+    if (convexOnly) {
+        const token = getRequestConvexToken(request);
+        const convex = token ? createConvexClient(token) : null;
+        if (!convex) return jsonResponse({ error: 'Convex authentication unavailable' }, 503);
+        try {
+            const seller = await convex.query(api.seller.current, {});
+            if (!seller?.shop) return jsonResponse({ error: 'Shop not found' }, 404);
+            enabledPlatforms = normalizeShippingPlatforms(seller.shop.shipping_carriers);
+        } catch (error) {
+            console.error('Convex preview shop lookup failed:', error);
+            return jsonResponse({ error: 'Shop not found' }, 404);
+        }
+    } else {
+        const { data: shopRow } = await authClient
+            .from('shops')
+            .select('shipping_carriers')
+            .eq('owner_id', user.id)
+            .maybeSingle();
+        enabledPlatforms = normalizeShippingPlatforms(shopRow?.shipping_carriers);
+    }
 
     let body: {
         weight_kg: number;

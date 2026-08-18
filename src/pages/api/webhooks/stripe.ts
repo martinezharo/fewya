@@ -1,6 +1,9 @@
 import type { APIRoute } from 'astro';
-import { getStripeWebhookSecret } from '../../../lib/core/env';
+import { CONVEX_WEBHOOK_SECRET } from 'astro:env/server';
+import { api } from '../../../../convex/_generated/api';
+import { getStripeWebhookSecret, convexOnly } from '../../../lib/core/env';
 import { getStripeClient } from '../../../lib/payments/stripe';
+import { createConvexClient } from '../../../lib/core/convex';
 import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
 import { securityLog } from '../../../lib/core/security-log';
 import { PAYMENT_STATUS } from '../../../lib/orders/orderStatus';
@@ -46,6 +49,67 @@ export const POST: APIRoute = async ({ request }) => {
         securityLog('security.webhook.invalid_signature', { source: 'stripe', error: msg });
         return err('Invalid signature', 401);
     }
+
+    // Convex orders are processed first. If no post-cutover order matches the
+    // Stripe reference, fall through to the Supabase compatibility handler so
+    // historical orders remain payable during the staged migration.
+    const convex = CONVEX_WEBHOOK_SECRET ? createConvexClient() : null;
+    if (convex && CONVEX_WEBHOOK_SECRET && (event.type === 'checkout.session.completed' || event.type === 'payment_intent.succeeded')) {
+        let sessionId: string | undefined;
+        let paymentIntentId: string | undefined;
+        if (event.type === 'checkout.session.completed') {
+            const session = event.data.object as import('stripe').Stripe.Checkout.Session;
+            sessionId = session.id;
+            paymentIntentId = typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id;
+        } else {
+            paymentIntentId = (event.data.object as import('stripe').Stripe.PaymentIntent).id;
+        }
+
+        try {
+            const result = await convex.mutation(api.orders.processStripePayment, {
+                secret: CONVEX_WEBHOOK_SECRET,
+                eventId: event.id,
+                ...(sessionId ? { sessionId } : {}),
+                ...(paymentIntentId ? { paymentIntentId } : {}),
+            });
+
+            if (result.handled) {
+                if (result.requiresRefund) {
+                    await refundStripePayment({
+                        stripe,
+                        sessionId: sessionId ?? 'unknown',
+                        paymentIntentId: paymentIntentId ?? null,
+                        failureReason: result.failureReason ?? 'payment_confirmation_failed',
+                    });
+                } else {
+                    // Convex has already committed payment and stock in the same
+                    // transaction. Delivery of the seller sale notification is
+                    // deliberately best-effort and deduplicated in Convex so a
+                    // Stripe retry cannot send it twice.
+                    await Promise.allSettled(result.orders.map((order) => notify({
+                        type: NOTIFICATION_TYPE.SELLER_NEW_SALE,
+                        orderId: order.id,
+                        recipient: 'seller',
+                        convexSecret: CONVEX_WEBHOOK_SECRET,
+                    })));
+                }
+                return ok();
+            }
+        } catch (e) {
+            // A Convex transport/deployment failure must be retried by Stripe;
+            // falling through would leave a Convex order pending forever.
+            console.error(JSON.stringify({
+                event: 'stripe_webhook.convex_handler_error',
+                type: event.type,
+                error: e instanceof Error ? e.message : String(e),
+            }));
+            return err('handler error', 500);
+        }
+    }
+
+    // The isolated Worker has no legacy order store. Unknown/legacy Stripe
+    // events are acknowledged without opening a Supabase client.
+    if (convexOnly) return ok();
 
     const adminClient = createSupabaseAdminClient();
 
@@ -194,29 +258,7 @@ async function refundAndCancelUnfulfillableOrders({
     paymentIntentId: string | null;
     failureReason: string;
 }) {
-    if (paymentIntentId) {
-        try {
-            await stripe.refunds.create({
-                payment_intent: paymentIntentId,
-                reason: 'requested_by_customer',
-                metadata: { sessionId, reason: failureReason },
-            }, {
-                // Keyed on the session, not the event id, so a Stripe webhook retry
-                // of the same event (or a retry of a different event for the same
-                // session) can't trigger a second refund.
-                idempotencyKey: `mark-paid-failure-refund:${sessionId}`,
-            });
-        } catch (e) {
-            console.error(JSON.stringify({
-                event: 'stripe_webhook.refund_failed',
-                sessionId,
-                paymentIntentId,
-                error: e instanceof Error ? e.message : String(e),
-            }));
-        }
-    } else {
-        console.error(JSON.stringify({ event: 'stripe_webhook.refund_skipped_no_payment_intent', sessionId }));
-    }
+    await refundStripePayment({ stripe, sessionId, paymentIntentId, failureReason });
 
     if (orderIds.length === 0) return;
 
@@ -231,6 +273,43 @@ async function refundAndCancelUnfulfillableOrders({
             sessionId,
             orderIds,
             error: cancelError.message,
+        }));
+    }
+}
+
+async function refundStripePayment({
+    stripe,
+    sessionId,
+    paymentIntentId,
+    failureReason,
+}: {
+    stripe: import('stripe').default;
+    sessionId: string;
+    paymentIntentId: string | null;
+    failureReason: string;
+}) {
+    if (!paymentIntentId) {
+        console.error(JSON.stringify({ event: 'stripe_webhook.refund_skipped_no_payment_intent', sessionId }));
+        return;
+    }
+
+    try {
+        await stripe.refunds.create({
+            payment_intent: paymentIntentId,
+            reason: 'requested_by_customer',
+            metadata: { sessionId, reason: failureReason },
+        }, {
+            // Keyed on the session, not the event id, so a Stripe webhook retry
+            // of the same event (or a retry of a different event for the same
+            // session) can't trigger a second refund.
+            idempotencyKey: `mark-paid-failure-refund:${sessionId}`,
+        });
+    } catch (e) {
+        console.error(JSON.stringify({
+            event: 'stripe_webhook.refund_failed',
+            sessionId,
+            paymentIntentId,
+            error: e instanceof Error ? e.message : String(e),
         }));
     }
 }

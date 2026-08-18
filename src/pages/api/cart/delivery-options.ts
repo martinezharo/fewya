@@ -1,5 +1,8 @@
 import type { APIRoute } from 'astro';
 import { supabase } from '../../../lib/core/supabase';
+import { convexOnly } from '../../../lib/core/env';
+import { createConvexClient } from '../../../lib/core/convex';
+import { api } from '../../../../convex/_generated/api';
 import {
     normalizeShippingPlatforms,
     intersectShippingPlatforms,
@@ -48,6 +51,22 @@ export const POST: APIRoute = async ({ locals, request  }) => {
             pickupAvailable: true,
             pickupCarriers: servicePointCarriersForPlatforms(all),
         }, 200);
+    }
+
+    if (convexOnly) {
+        const convex = createConvexClient();
+        if (!convex) return jsonResponse({ error: t.apiCheckoutProductUnavailable }, 503);
+        try {
+            const data = await convex.query(api.catalog.getCartVariants, { ids: variantIds });
+            const perShop = new Map<string, ShippingPlatform[]>();
+            for (const row of data) perShop.set(row.product.shop.id, normalizeShippingPlatforms(row.product.shop.shipping_carriers));
+            const platforms = intersectShippingPlatforms(Array.from(perShop.values()));
+            const pickupCarriers = servicePointCarriersForPlatforms(platforms);
+            return jsonResponse({ platforms, homeAvailable: platforms.includes('correos'), pickupAvailable: pickupCarriers.length > 0, pickupCarriers }, 200);
+        } catch (error) {
+            console.error(JSON.stringify({ event: 'cart_delivery.convex_failed', error: error instanceof Error ? error.message : String(error) }));
+            return jsonResponse({ error: t.apiCheckoutProductUnavailable }, 500);
+        }
     }
 
     const { data, error } = await supabase

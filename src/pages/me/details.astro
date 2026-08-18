@@ -8,6 +8,7 @@ import { createConvexClient } from '../../lib/core/convex';
 import { getAllCountries } from "../../lib/shipping/countries";
 import { spainProvinces } from "../../lib/shipping/spain-provinces";
 import { isProfileComplete } from "../../lib/core/validation";
+import { convexOnly } from "../../lib/core/env";
 const { t } = Astro.locals;
 
 const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
@@ -62,7 +63,7 @@ if (convex) {
     }
 }
 
-if (!profile && !convexToken) {
+if (!profile && !convexToken && !convexOnly) {
     const { data } = await supabase
         .from('profiles')
         .select('first_name, last_name, email, avatar_url, phone, phone_prefix, address_street, address_number, address_floor, address_postal_code, address_city, address_province, address_country, email_marketing_opt_in')

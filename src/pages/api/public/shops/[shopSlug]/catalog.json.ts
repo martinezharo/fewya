@@ -5,6 +5,7 @@ import { SHOP_STATUS } from '../../../../../lib/core/shopStatus';
 import { buildPublicCatalog, isShopPubliclyVisible } from '../../../../../lib/products/publicCatalog';
 import type { Product, Shop } from '../../../../../lib/core/types';
 import { getConvexShopCatalog } from '../../../../../lib/products/convexCatalog';
+import { convexOnly } from '../../../../../lib/core/env';
 
 /**
  * Public, read-only catalog feed for a single shop.
@@ -42,6 +43,8 @@ export const GET: APIRoute = async ({ params, url }) => {
         const catalog = buildPublicCatalog(convexCatalog.shop, convexCatalog.products, origin);
         return jsonResponse(catalog, 200, true);
     }
+
+    if (convexOnly) return jsonResponse({ error: 'shop_not_found' }, 404, false);
 
     const { data: shopData } = await supabase
         .from('shops')

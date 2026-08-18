@@ -5,8 +5,11 @@ import {
     type CheckoutResolvedItem,
     normalizeCheckoutItems,
 } from '../../../lib/cart/checkout';
-import { createSupabaseAuthClient } from '../../../lib/core/auth';
+import { createSupabaseAuthClient, getRequestConvexToken } from '../../../lib/core/auth';
 import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
+import { api } from '../../../../convex/_generated/api';
+import { createConvexClient } from '../../../lib/core/convex';
+import { convexOnly } from '../../../lib/core/env';
 
 import { validateCheckoutReadiness } from '../../../lib/products/productValidation';
 import { buildAbsoluteUrl, getStripeClient } from '../../../lib/payments/stripe';
@@ -49,6 +52,9 @@ export const POST: APIRoute = async ({ locals, request, cookies  }) => {
         return jsonResponse({ error: t.apiUnauthorized }, 401);
     }
 
+    const convexToken = getRequestConvexToken(request);
+    const convex = convexToken ? createConvexClient(convexToken) : null;
+
     let body: { items: CheckoutItemPayload[]; delivery?: DeliveryPayload };
     try {
         body = await request.json();
@@ -65,11 +71,125 @@ export const POST: APIRoute = async ({ locals, request, cookies  }) => {
         return jsonResponse({ error: t.apiInvalidProductData }, 400);
     }
 
-    const { data: profile } = await authClient
-        .from('profiles')
-        .select('first_name, last_name, email, phone, phone_prefix, address_street, address_number, address_floor, address_postal_code, address_city, address_province, address_country')
-        .eq('id', user.id)
-        .single();
+    type CheckoutProfile = {
+        first_name: string | null;
+        last_name: string | null;
+        email: string | null;
+        phone: string | null;
+        phone_prefix: string | null;
+        address_street: string | null;
+        address_number: string | null;
+        address_floor: string | null;
+        address_postal_code: string | null;
+        address_city: string | null;
+        address_province: string | null;
+        address_country: string | null;
+    };
+    type CheckoutVariantRow = JoinedVariant & { id: string };
+
+    let profile: CheckoutProfile | null = null;
+    let variantRows: CheckoutVariantRow[] = [];
+    let variantsError: { message: string } | null = null;
+
+    if (convexOnly) {
+        if (!convex) return jsonResponse({ error: t.apiInternalError }, 503);
+        try {
+            const current = await convex.query(api.users.current, {});
+            if (!current) return jsonResponse({ error: t.apiUnauthorized }, 401);
+            profile = {
+                first_name: current.firstName ?? null,
+                last_name: current.lastName ?? null,
+                email: current.email ?? null,
+                phone: current.phone ?? null,
+                phone_prefix: current.phonePrefix ?? null,
+                address_street: current.addressStreet ?? null,
+                address_number: current.addressNumber ?? null,
+                address_floor: current.addressFloor ?? null,
+                address_postal_code: current.addressPostalCode ?? null,
+                address_city: current.addressCity ?? null,
+                address_province: current.addressProvince ?? null,
+                address_country: current.addressCountry ?? null,
+            };
+            const rows = await convex.query(api.catalog.getCartVariants, {
+                ids: normalizedItems.map((item) => item.variantId),
+            });
+            variantRows = (rows as Array<any>).map((row) => ({
+                id: row.id,
+                price: row.price,
+                stock: row.stock,
+                variant_name: row.variant_name,
+                variant_image: row.variant_image,
+                shipping_cost: row.shipping_cost,
+                products: {
+                    id: row.product.id,
+                    title: row.product.title,
+                    slug: row.product.slug,
+                    is_active: row.product.is_active,
+                    gallery_images: row.product.gallery_images,
+                    shops: {
+                        id: row.product.shop.id,
+                        name: row.product.shop.name,
+                        slug: row.product.shop.slug,
+                        is_active: row.product.shop.is_active,
+                        seller_details_complete: row.product.shop.seller_details_complete,
+                        shipping_carriers: row.product.shop.shipping_carriers,
+                        shop_payment_accounts: row.product.shop.payment_ready
+                            ? {
+                                stripe_account_id: 'convex:payment-ready',
+                                charges_enabled: true,
+                                payouts_enabled: true,
+                                details_submitted: true,
+                            }
+                            : null,
+                    },
+                },
+            } as CheckoutVariantRow));
+        } catch (error) {
+            variantsError = { message: error instanceof Error ? error.message : String(error) };
+        }
+    } else {
+        const result = await authClient
+            .from('profiles')
+            .select('first_name, last_name, email, phone, phone_prefix, address_street, address_number, address_floor, address_postal_code, address_city, address_province, address_country')
+            .eq('id', user.id)
+            .single();
+        profile = result.data as CheckoutProfile | null;
+
+        const variantResult = await authClient
+            .from('product_variants')
+            .select(`
+                id,
+                price,
+                stock,
+                variant_name,
+                variant_image,
+                shipping_cost,
+                products!inner (
+                    id,
+                    title,
+                    slug,
+                    is_active,
+                    gallery_images,
+                    shops!inner (
+                        id,
+                        name,
+                        slug,
+                        is_active,
+                        seller_details_complete,
+                        shipping_carriers,
+                        shop_payment_accounts (
+                            stripe_account_id,
+                            charges_enabled,
+                            payouts_enabled,
+                            details_submitted
+                        )
+                    )
+                )
+            `)
+            .in('id', normalizedItems.map((item) => item.variantId));
+        variantRows = (variantResult.data ?? []) as unknown as CheckoutVariantRow[];
+        variantsError = variantResult.error ? { message: variantResult.error.message } : null;
+    }
 
     const profileCheck = isProfileComplete(profile ?? {});
 
@@ -111,40 +231,6 @@ export const POST: APIRoute = async ({ locals, request, cookies  }) => {
     const shippingAddress = addressParts.length > 0 ? addressParts.join(', ') : null;
     const buyerEmail = user.email || profile?.email || null;
 
-    const variantIds = normalizedItems.map((item) => item.variantId);
-    const { data: variantRows, error: variantsError } = await authClient
-        .from('product_variants')
-        .select(`
-            id,
-            price,
-            stock,
-            variant_name,
-            variant_image,
-            shipping_cost,
-            products!inner (
-                id,
-                title,
-                slug,
-                is_active,
-                gallery_images,
-                shops!inner (
-                    id,
-                    name,
-                    slug,
-                    is_active,
-                    seller_details_complete,
-                    shipping_carriers,
-                    shop_payment_accounts (
-                        stripe_account_id,
-                        charges_enabled,
-                        payouts_enabled,
-                        details_submitted
-                    )
-                )
-            )
-        `)
-        .in('id', variantIds);
-
     if (variantsError) {
         console.error(JSON.stringify({
             event: 'checkout.variant_lookup_failed',
@@ -153,7 +239,6 @@ export const POST: APIRoute = async ({ locals, request, cookies  }) => {
         return jsonResponse({ error: t.apiCheckoutProductUnavailable }, 500);
     }
 
-    type CheckoutVariantRow = JoinedVariant & { id: string };
     const variantMap = new Map<string, CheckoutVariantRow>(
         (variantRows ?? []).map((variant) => [variant.id as string, variant as unknown as CheckoutVariantRow])
     );
@@ -336,49 +421,55 @@ export const POST: APIRoute = async ({ locals, request, cookies  }) => {
 
     const createdOrders: Array<{ id: string; publicId: string; shopId: string }> = [];
 
-    for (const group of shopGroups.values()) {
-        const shopPublicId = `ORD-${Date.now()}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
-        const shopTotal = group.subtotal + group.shipping;
-
-        const delivery = body.delivery;
-        const isPickup = delivery?.type === DELIVERY_TYPE.PICKUP_POINT;
-
-        const adminClient = createSupabaseAdminClient();
-        const { data: orderData, error: orderError } = await adminClient.rpc('create_checkout_order', {
-            p_buyer_id: user.id,
-            p_public_id: shopPublicId,
-            p_checkout_group_id: checkoutGroupId,
-            p_shop_id: group.shopId,
-            p_total_amount: shopTotal,
-            p_currency: CHECKOUT_CURRENCY,
-            p_stripe_checkout_session_id: session.id,
-            p_buyer_email: buyerEmail,
-            p_shipping_full_name: shippingFullName,
-            p_shipping_phone: shippingPhone,
-            p_shipping_address: isPickup && delivery?.pickupPointAddress
-                ? delivery.pickupPointAddress
-                : shippingAddress,
-            p_items: group.items.map((item) => ({
-                variant_id: item.variantId,
-                quantity: item.quantity,
-                price_at_purchase: item.unitPrice,
-                shipping_cost_at_purchase: item.shippingCost,
-            })),
-            p_delivery_type: delivery?.type || DELIVERY_TYPE.HOME,
-            p_pickup_point_id: delivery?.pickupPointId || null,
-            p_pickup_point_name: delivery?.pickupPointName || null,
-            p_pickup_point_address: delivery?.pickupPointAddress || null,
-            p_pickup_point_postal_code: delivery?.pickupPointPostalCode || null,
-            p_pickup_point_city: delivery?.pickupPointCity || null,
-            p_pickup_point_carrier: delivery?.pickupPointCarrier || null,
-        });
-
-        if (orderError) {
-            console.error(JSON.stringify({
-                event: 'checkout.order_creation_failed',
-                shopId: group.shopId,
+    const delivery = body.delivery;
+    if (convex) {
+        try {
+            const result = await convex.mutation(api.orders.createCheckoutOrders, {
                 checkoutGroupId,
-                error: orderError.message,
+                stripeCheckoutSessionId: session.id,
+                currency: CHECKOUT_CURRENCY,
+                orders: Array.from(shopGroups.values()).map((group) => {
+                    const shopPublicId = `ORD-${Date.now()}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
+                    const isPickup = delivery?.type === DELIVERY_TYPE.PICKUP_POINT;
+                    return {
+                        publicId: shopPublicId,
+                        shopLegacyId: group.shopId,
+                        totalAmountCents: Math.round((group.subtotal + group.shipping) * 100),
+                        ...(buyerEmail ? { buyerEmail } : {}),
+                        ...(shippingFullName ? { shippingFullName } : {}),
+                        ...(shippingPhone ? { shippingPhone } : {}),
+                        ...((isPickup && delivery?.pickupPointAddress) || shippingAddress
+                            ? { shippingAddress: isPickup && delivery?.pickupPointAddress ? delivery.pickupPointAddress : shippingAddress! }
+                            : {}),
+                        deliveryType: delivery?.type || DELIVERY_TYPE.HOME,
+                        ...(delivery?.pickupPointId ? { pickupPointId: delivery.pickupPointId } : {}),
+                        ...(delivery?.pickupPointName ? { pickupPointName: delivery.pickupPointName } : {}),
+                        ...(delivery?.pickupPointAddress ? { pickupPointAddress: delivery.pickupPointAddress } : {}),
+                        ...(delivery?.pickupPointPostalCode ? { pickupPointPostalCode: delivery.pickupPointPostalCode } : {}),
+                        ...(delivery?.pickupPointCity ? { pickupPointCity: delivery.pickupPointCity } : {}),
+                        ...(delivery?.pickupPointCarrier ? { pickupPointCarrier: delivery.pickupPointCarrier } : {}),
+                        items: group.items.map((item) => ({
+                            variantLegacyId: item.variantId,
+                            quantity: item.quantity,
+                            priceAtPurchaseCents: Math.round(item.unitPrice * 100),
+                            shippingCostAtPurchaseCents: Math.round(item.shippingCost * 100),
+                        })),
+                    };
+                }),
+            });
+
+            for (const order of result.orders) {
+                createdOrders.push({
+                    id: order.id,
+                    publicId: order.public_id,
+                    shopId: order.shop_id ?? '',
+                });
+            }
+        } catch (error) {
+            console.error(JSON.stringify({
+                event: 'checkout.convex_order_creation_failed',
+                checkoutGroupId,
+                error: error instanceof Error ? error.message : String(error),
             }));
             await stripe.checkout.sessions.expire(session.id).catch((expireError) => {
                 console.error(JSON.stringify({
@@ -387,37 +478,91 @@ export const POST: APIRoute = async ({ locals, request, cookies  }) => {
                     error: expireError instanceof Error ? expireError.message : String(expireError),
                 }));
             });
-
-            // Orders already created for other shops in this same checkout attempt
-            // point at the now-expired session and can never be paid — cancel them
-            // instead of leaving them stuck as "pending" forever.
-            if (createdOrders.length > 0) {
-                const rollbackClient = createSupabaseAdminClient();
-                const { error: rollbackError } = await rollbackClient
-                    .from('orders')
-                    .update({ status: 'cancelled', cancellation_reason: 'checkout_failed' })
-                    .in('id', createdOrders.map((created) => created.id));
-
-                if (rollbackError) {
-                    console.error(JSON.stringify({
-                        event: 'checkout.order_rollback_failed',
-                        checkoutGroupId,
-                        orderIds: createdOrders.map((created) => created.id),
-                        error: rollbackError.message,
-                    }));
-                }
-            }
-
             return jsonResponse({ error: t.apiOrderCreateError }, 500);
         }
+    } else {
+        for (const group of shopGroups.values()) {
+            const shopPublicId = `ORD-${Date.now()}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
+            const shopTotal = group.subtotal + group.shipping;
 
-        const order = Array.isArray(orderData) ? orderData[0] : orderData;
-        if (order?.id) {
-            createdOrders.push({
-                id: order.id,
-                publicId: shopPublicId,
-                shopId: group.shopId,
+            const isPickup = delivery?.type === DELIVERY_TYPE.PICKUP_POINT;
+
+            const adminClient = createSupabaseAdminClient();
+            const { data: orderData, error: orderError } = await adminClient.rpc('create_checkout_order', {
+                p_buyer_id: user.id,
+                p_public_id: shopPublicId,
+                p_checkout_group_id: checkoutGroupId,
+                p_shop_id: group.shopId,
+                p_total_amount: shopTotal,
+                p_currency: CHECKOUT_CURRENCY,
+                p_stripe_checkout_session_id: session.id,
+                p_buyer_email: buyerEmail,
+                p_shipping_full_name: shippingFullName,
+                p_shipping_phone: shippingPhone,
+                p_shipping_address: isPickup && delivery?.pickupPointAddress
+                    ? delivery.pickupPointAddress
+                    : shippingAddress,
+                p_items: group.items.map((item) => ({
+                    variant_id: item.variantId,
+                    quantity: item.quantity,
+                    price_at_purchase: item.unitPrice,
+                    shipping_cost_at_purchase: item.shippingCost,
+                })),
+                p_delivery_type: delivery?.type || DELIVERY_TYPE.HOME,
+                p_pickup_point_id: delivery?.pickupPointId || null,
+                p_pickup_point_name: delivery?.pickupPointName || null,
+                p_pickup_point_address: delivery?.pickupPointAddress || null,
+                p_pickup_point_postal_code: delivery?.pickupPointPostalCode || null,
+                p_pickup_point_city: delivery?.pickupPointCity || null,
+                p_pickup_point_carrier: delivery?.pickupPointCarrier || null,
             });
+
+            if (orderError) {
+                console.error(JSON.stringify({
+                    event: 'checkout.order_creation_failed',
+                    shopId: group.shopId,
+                    checkoutGroupId,
+                    error: orderError.message,
+                }));
+                await stripe.checkout.sessions.expire(session.id).catch((expireError) => {
+                    console.error(JSON.stringify({
+                        event: 'checkout.session_expire_failed',
+                        sessionId: session?.id,
+                        error: expireError instanceof Error ? expireError.message : String(expireError),
+                    }));
+                });
+
+                // Orders already created for other shops in this same checkout attempt
+                // point at the now-expired session and can never be paid — cancel them
+                // instead of leaving them stuck as "pending" forever.
+                if (createdOrders.length > 0) {
+                    const rollbackClient = createSupabaseAdminClient();
+                    const { error: rollbackError } = await rollbackClient
+                        .from('orders')
+                        .update({ status: 'cancelled', cancellation_reason: 'checkout_failed' })
+                        .in('id', createdOrders.map((created) => created.id));
+
+                    if (rollbackError) {
+                        console.error(JSON.stringify({
+                            event: 'checkout.order_rollback_failed',
+                            checkoutGroupId,
+                            orderIds: createdOrders.map((created) => created.id),
+                            error: rollbackError.message,
+                        }));
+                    }
+                }
+
+                return jsonResponse({ error: t.apiOrderCreateError }, 500);
+            }
+
+            const order = Array.isArray(orderData) ? orderData[0] : orderData;
+            if (order?.id) {
+                createdOrders.push({
+                    id: order.id,
+                    publicId: shopPublicId,
+                    shopId: group.shopId,
+                });
+            }
         }
     }
 

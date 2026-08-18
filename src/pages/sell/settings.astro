@@ -7,6 +7,8 @@ import LanguageSelector from '../../components/settings/LanguageSelector.astro';
 import Icon from '../../components/icons/Icon.astro';
 
 import { createSupabaseAuthClient } from '../../lib/core/auth';
+import { convexOnly } from '../../lib/core/env';
+import { getConvexSeller } from '../../lib/seller/convexSeller';
 const { t } = Astro.locals;
 
 const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
@@ -15,19 +17,25 @@ const user = sessionData?.session?.user;
 
 if (!user) return Astro.redirect('/sell');
 
-const { data: profile } = await supabase
-    .from('profiles')
-    .select('is_seller')
-    .eq('id', user.id)
-    .single();
-
-if (!profile?.is_seller) return Astro.redirect('/sell');
-
-const { data: shop } = await supabase
-    .from('shops')
-    .select('id, name, slug')
-    .eq('owner_id', user.id)
-    .maybeSingle();
+let shop: any;
+if (convexOnly) {
+    const seller = await getConvexSeller(Astro.request);
+    if (!seller?.shop) return Astro.redirect('/sell');
+    shop = seller.shop;
+} else {
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('is_seller')
+        .eq('id', user.id)
+        .single();
+    if (!profile?.is_seller) return Astro.redirect('/sell');
+    const { data: legacyShop } = await supabase
+        .from('shops')
+        .select('id, name, slug')
+        .eq('owner_id', user.id)
+        .maybeSingle();
+    shop = legacyShop;
+}
 
 if (!shop) return Astro.redirect('/sell/onboarding');
 ---

@@ -21,6 +21,7 @@ vi.mock('../../src/lib/core/auth', () => ({
             return { select: () => ({ in: mockVariantsIn }) };
         },
     }),
+    getRequestConvexToken: () => null,
 }));
 
 vi.mock('../../src/lib/core/supabase-admin', () => ({

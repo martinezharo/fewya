@@ -7,6 +7,7 @@ import { createConvexClient } from '../../lib/core/convex';
 import { createSupabaseAuthClient, getRequestConvexToken } from '../../lib/core/auth';
 
 import { ORDER_STATUS, ORDER_STATUSES, getOrderStatusLabels } from '../../lib/orders/orderStatus';
+import { convexOnly } from '../../lib/core/env';
 const { t } = Astro.locals;
 const orderStatusLabels = getOrderStatusLabels(t);
 
@@ -110,7 +111,7 @@ if (convex) {
     }
 }
 
-if (!usedConvexOrders) {
+if (!usedConvexOrders && !convexOnly) {
     const { data } = await supabase
         .from('orders')
         .select(`

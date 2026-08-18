@@ -8,6 +8,7 @@ import { getMergedWishlistIds } from "../../lib/wishlist/wishlist";
 import type { Product } from "../../lib/core/types";
 import { SHOP_STATUS } from "../../lib/core/shopStatus";
 import { getConvexHomeProducts } from "../../lib/products/convexCatalog";
+import { convexOnly } from "../../lib/core/env";
 
 interface Props {
     userId?: string | null;
@@ -16,7 +17,7 @@ const { userId = null } = Astro.props;
 
 // Explicit columns — excludes internal/admin fields while keeping all that
 // ProductCard and isProductComplete need (description + variant dimensions required for the filter)
-const productsQuery = supabase
+const productsQuery = convexOnly ? null : supabase
     .from("products")
     .select("id, slug, title, description, gallery_images, is_active, created_at, category, brand, shop:shops(id, slug, name, accent_color, payments_active, seller_details_complete, status), variants:product_variants(id, price, stock, shipping_cost, is_default, variant_name, weight_kg, length_cm, width_cm, height_cm)")
     .eq("is_active", true)
@@ -35,9 +36,11 @@ const [convexProducts, resolvedUserId] = await Promise.all([
 let products: Product[];
 if (convexProducts) {
     products = convexProducts;
+} else if (convexOnly) {
+    products = [];
 } else {
     // Temporary fallback while the Convex deployment is being rolled out.
-    const productsResult = await productsQuery;
+    const productsResult = await productsQuery!;
     if (productsResult.error) console.error("Error al obtener productos:", productsResult.error);
     const rawProducts: Product[] = (productsResult.data ?? []) as Product[];
     products = rawProducts.filter(p => p.shop?.status === SHOP_STATUS.ACTIVE && p.shop?.payments_active && p.shop?.seller_details_complete && isProductComplete(p));
@@ -45,8 +48,8 @@ if (convexProducts) {
 
 // Ratings enrichment and wishlist lookup in parallel
 const [, wishedProductIds] = await Promise.all([
-    convexProducts ? Promise.resolve(products) : enrichProductsWithRatings(products, supabase),
-    getMergedWishlistIds(authClient, Astro.cookies, resolvedUserId),
+    convexProducts || convexOnly ? Promise.resolve(products) : enrichProductsWithRatings(products, supabase),
+    getMergedWishlistIds(authClient, Astro.cookies, resolvedUserId, Astro.request),
 ]);
 ---
 

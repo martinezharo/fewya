@@ -18,16 +18,27 @@ export default defineConfig({
       SUPABASE_URL: envField.string({ context: 'server', access: 'public' }),
       SUPABASE_KEY: envField.string({ context: 'server', access: 'public' }),
       SUPABASE_SECRET_KEY: envField.string({ context: 'server', access: 'secret', optional: true }),
-      // Public deployment URL; Convex functions enforce authorization for
-      // private reads and writes. Optional while Supabase/Convex dual-read is
-      // being rolled out.
-      CONVEX_URL: envField.string({ context: 'server', access: 'public', optional: true }),
+      // Runtime-only deployment URL; it is never bundled into browser code.
+      // Optional while Supabase/Convex dual-read is being rolled out.
+      CONVEX_URL: envField.string({ context: 'server', access: 'secret', optional: true }),
+      // Runtime-only flag. This hard-disables all Supabase compatibility
+      // fallbacks so an isolated deployment can never write production.
+      CONVEX_ONLY: envField.enum({
+        context: 'server',
+        access: 'secret',
+        values: ['true', 'false'],
+        default: 'false',
+        optional: true,
+      }),
+      // Shared secret used only by the verified Stripe webhook to authorize
+      // server-to-server payment mutations in Convex.
+      CONVEX_WEBHOOK_SECRET: envField.string({ context: 'server', access: 'secret', optional: true }),
       CLERK_SECRET_KEY: envField.string({ context: 'server', access: 'secret', optional: true }),
       CLERK_JWT_ISSUER_DOMAIN: envField.string({ context: 'server', access: 'public', optional: true }),
       CLERK_JWT_TEMPLATE: envField.string({ context: 'server', access: 'secret', optional: true }),
       APP_MODE: envField.enum({
         context: 'server',
-        access: 'public',
+        access: 'secret',
         values: ['development', 'production'],
         default: 'development',
         optional: true,
@@ -39,7 +50,7 @@ export default defineConfig({
       CRON_SECRET: envField.string({ context: 'server', access: 'secret', optional: true }),
       SENDCLOUD_API_KEY: envField.string({ context: 'server', access: 'secret', optional: true }),
       SENDCLOUD_API_SECRET: envField.string({ context: 'server', access: 'secret', optional: true }),
-      APP_BASE_URL: envField.string({ context: 'server', access: 'public', default: 'https://fewya.com', optional: true }),
+      APP_BASE_URL: envField.string({ context: 'server', access: 'secret', default: 'https://fewya.com', optional: true }),
       RESEND_API_KEY: envField.string({ context: 'server', access: 'secret', optional: true }),
       RESEND_FROM: envField.string({ context: 'server', access: 'public', default: 'Fewya <no-reply@fewya.com>', optional: true }),
       // access:'secret' (runtime lookup) on purpose: 'public' vars are inlined at build

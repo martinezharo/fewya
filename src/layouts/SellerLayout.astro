@@ -7,6 +7,8 @@ import { createSupabaseAuthClient } from '../lib/core/auth';
 import { validateProductCompleteness } from '../lib/products/productValidation';
 import { isProfileComplete } from '../lib/core/validation';
 import { ORDER_STATUS } from '../lib/orders/orderStatus';
+import { convexOnly } from '../lib/core/env';
+import { getConvexSeller } from '../lib/seller/convexSeller';
 
 interface Props {
     title?: string;
@@ -26,7 +28,21 @@ let deliveryFailedCount = 0;
 let incompleteProductsCount = 0;
 let sellerDetailsIncomplete = false;
 
-if (shopId) {
+if (shopId && convexOnly) {
+    const seller = await getConvexSeller(Astro.request);
+    if (seller) {
+        const profile = seller.profile ?? {};
+        sellerDetailsIncomplete = !isProfileComplete(profile).complete;
+        const paymentAccount = seller.paymentAccount;
+        if (paymentAccount?.stripe_account_id) {
+            stripeStatus = paymentAccount.charges_enabled && paymentAccount.payouts_enabled && paymentAccount.details_submitted ? 'ready' : 'pending';
+        }
+        activeIncidents = seller.metrics?.activeIncidents ?? 0;
+        pendingOrdersCount = seller.metrics?.pendingOrders ?? 0;
+        deliveryFailedCount = seller.metrics?.deliveryFailed ?? 0;
+        incompleteProductsCount = (seller.products ?? []).filter((product: any) => !product.isComplete).length;
+    }
+} else if (shopId) {
     const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
     const { data: { user } } = await supabase.auth.getUser();
 

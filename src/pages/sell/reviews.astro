@@ -3,6 +3,11 @@ import SellerLayout from '../../layouts/SellerLayout.astro';
 import Icon from '../../components/icons/Icon.astro';
 
 import { createSupabaseAuthClient } from '../../lib/core/auth';
+import { convexOnly } from '../../lib/core/env';
+import { getConvexSeller } from '../../lib/seller/convexSeller';
+import { getRequestConvexToken } from '../../lib/core/auth';
+import { createConvexClient } from '../../lib/core/convex';
+import { api } from '../../../convex/_generated/api';
 const { t } = Astro.locals;
 
 const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
@@ -14,32 +19,29 @@ if (!user) {
     return Astro.redirect('/sell');
 }
 
-const { data: profile } = await supabase
-    .from('profiles')
-    .select('is_seller')
-    .eq('id', user.id)
-    .single();
-
-if (!profile?.is_seller) {
-    return Astro.redirect('/sell');
+let shop: any;
+if (convexOnly) {
+    const seller = await getConvexSeller(Astro.request);
+    if (!seller?.shop) return Astro.redirect('/sell');
+    shop = seller.shop;
+} else {
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('is_seller')
+        .eq('id', user.id)
+        .single();
+    if (!profile?.is_seller) return Astro.redirect('/sell');
+    const { data: legacyShop } = await supabase
+        .from('shops')
+        .select('id, name, slug')
+        .eq('owner_id', user.id)
+        .maybeSingle();
+    shop = legacyShop;
 }
-
-const { data: shop } = await supabase
-    .from('shops')
-    .select('id, name, slug')
-    .eq('owner_id', user.id)
-    .maybeSingle();
 
 if (!shop) {
     return Astro.redirect('/sell/onboarding');
 }
-
-const { data: productsData } = await supabase
-    .from('products')
-    .select('id')
-    .eq('shop_id', shop.id);
-
-const productIds = (productsData ?? []).map((p: any) => p.id);
 
 interface ReviewData {
     id: string;
@@ -58,7 +60,34 @@ interface ReviewData {
 let reviews: ReviewData[] = [];
 let avgRating = 0;
 
-if (productIds.length > 0) {
+if (convexOnly) {
+    const token = getRequestConvexToken(Astro.request);
+    const convex = token ? createConvexClient(token) : null;
+    if (convex) {
+        const reviewsData = await convex.query(api.seller.listReviews, {});
+        reviews = (reviewsData as any[]).map((review) => ({
+            id: review.id,
+            rating: review.rating,
+            comment: review.comment,
+            sellerReply: review.sellerReply,
+            sellerReplyAt: review.sellerReplyAt,
+            createdAt: new Date(review.createdAt),
+            buyerName: review.buyerName,
+            productTitle: review.productTitle || t.fallbackProductName,
+            productImage: review.productImage,
+            productSlug: review.productSlug,
+            isAuto: review.isAuto,
+        }));
+        if (reviews.length > 0) avgRating = reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length;
+    }
+} else {
+    const { data: productsData } = await supabase
+        .from('products')
+        .select('id')
+        .eq('shop_id', shop.id);
+    const productIds = (productsData ?? []).map((p: any) => p.id);
+
+    if (productIds.length > 0) {
     const { data: reviewsData } = await supabase
         .from('reviews')
         .select(`
@@ -89,6 +118,7 @@ if (productIds.length > 0) {
 
     if (reviews.length > 0) {
         avgRating = reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
+    }
     }
 }
 

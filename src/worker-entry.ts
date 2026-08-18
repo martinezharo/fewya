@@ -1,4 +1,5 @@
 import astroServer from '@astrojs/cloudflare/entrypoints/server';
+import { CONVEX_WEBHOOK_SECRET } from 'astro:env/server';
 import { syncAllTracking } from './lib/shipping/syncTracking';
 import { runAutoConfirm } from './lib/orders/autoConfirm';
 import { runNotificationScan } from './lib/notifications/scan';
@@ -16,10 +17,10 @@ const entry: any = {
             // statuses before the notification scan reads them; auto-confirm is
             // independent and can run alongside.
             const trackingThenNotify = (async () => {
-                await syncAllTracking();
-                await runNotificationScan();
+                await syncAllTracking(CONVEX_WEBHOOK_SECRET);
+                await runNotificationScan(CONVEX_WEBHOOK_SECRET);
             })();
-            const results = await Promise.allSettled([trackingThenNotify, runAutoConfirm()]);
+            const results = await Promise.allSettled([trackingThenNotify, runAutoConfirm(CONVEX_WEBHOOK_SECRET)]);
             for (const r of results) {
                 if (r.status === 'rejected') {
                     console.error(JSON.stringify({

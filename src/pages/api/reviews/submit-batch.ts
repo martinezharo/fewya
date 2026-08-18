@@ -3,6 +3,7 @@ import { api } from '../../../../convex/_generated/api';
 import { createConvexClient } from '../../../lib/core/convex';
 import { createSupabaseAuthClient, getRequestConvexToken } from '../../../lib/core/auth';
 import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
+import { convexOnly } from '../../../lib/core/env';
 
 import { ORDER_STATUS } from '../../../lib/orders/orderStatus';
 
@@ -68,6 +69,10 @@ export const POST: APIRoute = async ({ locals, request, cookies  }) => {
                 }));
             }
         }
+    }
+
+    if (convexOnly) {
+        return jsonResponse({ error: t.apiInternalError }, 503);
     }
 
     const adminClient = createSupabaseAdminClient();

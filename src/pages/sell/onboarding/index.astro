@@ -5,6 +5,10 @@ import ShopForm from '../../../components/seller/ShopForm.astro';
 
 import { getStripeClient, getStripeAccountStatus } from '../../../lib/payments/stripe';
 import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
+import { convexOnly } from '../../../lib/core/env';
+import { getRequestConvexToken } from '../../../lib/core/auth';
+import { createConvexClient } from '../../../lib/core/convex';
+import { api } from '../../../../convex/_generated/api';
 const { t } = Astro.locals;
 
 const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
@@ -15,45 +19,56 @@ if (!user) {
     return Astro.redirect('/sell');
 }
 
-const { data: profile } = await supabase
-    .from('profiles')
-    .select('is_seller')
-    .eq('id', user.id)
-    .single();
-
-// Reaching onboarding while logged in IS the act of becoming a seller. A buyer
-// arriving here (is_seller=false) is promoted in place instead of being bounced
-// back to /sell, which made the "Configurar mi tienda" CTA appear to do nothing.
-if (!profile?.is_seller) {
-    const { error: promoteError } = await supabase
+let convex: ReturnType<typeof createConvexClient> = null;
+let profile: any;
+let existingShop: any;
+let existingPaymentAccount: any = null;
+if (convexOnly) {
+    const token = getRequestConvexToken(Astro.request);
+    convex = token ? createConvexClient(token) : null;
+    if (!convex) return Astro.redirect('/sell');
+    const onboarding = await convex.query(api.seller.onboarding, {});
+    if (!onboarding) return Astro.redirect('/sell');
+    profile = onboarding.profile;
+    existingShop = onboarding.shop;
+    existingPaymentAccount = onboarding.paymentAccount;
+    if (!profile.is_seller) await convex.mutation(api.users.markSeller, {});
+} else {
+    const { data: legacyProfile } = await supabase
         .from('profiles')
-        .update({ is_seller: true })
-        .eq('id', user.id);
-
-    if (promoteError) {
-        return Astro.redirect('/sell');
+        .select('is_seller')
+        .eq('id', user.id)
+        .single();
+    profile = legacyProfile;
+    // Reaching onboarding while logged in IS the act of becoming a seller.
+    if (!profile?.is_seller) {
+        const { error: promoteError } = await supabase
+            .from('profiles')
+            .update({ is_seller: true })
+            .eq('id', user.id);
+        if (promoteError) return Astro.redirect('/sell');
     }
+    const { data: legacyShop } = await supabase
+        .from('shops')
+        .select('id, contact_email')
+        .eq('owner_id', user.id)
+        .maybeSingle();
+    existingShop = legacyShop;
 }
 
 const stripeReturnParam = Astro.url.searchParams.get('stripe');
 
 // Check if they already have a shop
-const { data: existingShop } = await supabase
-    .from('shops')
-    .select('id, contact_email')
-    .eq('owner_id', user.id)
-    .maybeSingle();
-
 // If shop exists, check stripe status
 let stripeReady = false;
 let showStripeStep = false;
 
 if (existingShop) {
-    const { data: paymentAccount } = await supabase
+    const paymentAccount = convexOnly ? existingPaymentAccount : (await supabase
         .from('shop_payment_accounts')
         .select('charges_enabled, payouts_enabled, details_submitted, onboarding_completed_at')
         .eq('shop_id', existingShop.id)
-        .maybeSingle();
+        .maybeSingle()).data;
 
     stripeReady = paymentAccount?.charges_enabled === true
         && paymentAccount?.payouts_enabled === true
@@ -71,24 +86,33 @@ if (existingShop) {
     if (stripeReturnParam === 'return' || stripeReturnParam === 'refresh') {
         try {
             const stripe = getStripeClient();
-            const { data: existingAccount } = await supabase
+            const existingAccount = convexOnly ? existingPaymentAccount : (await supabase
                 .from('shop_payment_accounts')
                 .select('stripe_account_id')
                 .eq('shop_id', existingShop.id)
-                .maybeSingle();
+                .maybeSingle()).data;
 
             if (existingAccount?.stripe_account_id) {
                 const account = await stripe.accounts.retrieve(existingAccount.stripe_account_id);
                 const status = getStripeAccountStatus(account);
-                const adminClient = createSupabaseAdminClient();
-                await adminClient.rpc('upsert_shop_payment_account', {
-                    p_actor_id: user.id,
-                    p_shop_id: existingShop.id,
-                    p_stripe_account_id: status.stripeAccountId,
-                    p_charges_enabled: status.chargesEnabled,
-                    p_payouts_enabled: status.payoutsEnabled,
-                    p_details_submitted: status.detailsSubmitted,
-                });
+                if (convexOnly && convex) {
+                    await convex.mutation(api.seller.syncPaymentAccount, {
+                        stripeAccountId: status.stripeAccountId,
+                        chargesEnabled: status.chargesEnabled,
+                        payoutsEnabled: status.payoutsEnabled,
+                        detailsSubmitted: status.detailsSubmitted,
+                    });
+                } else {
+                    const adminClient = createSupabaseAdminClient();
+                    await adminClient.rpc('upsert_shop_payment_account', {
+                        p_actor_id: user.id,
+                        p_shop_id: existingShop.id,
+                        p_stripe_account_id: status.stripeAccountId,
+                        p_charges_enabled: status.chargesEnabled,
+                        p_payouts_enabled: status.payoutsEnabled,
+                        p_details_submitted: status.detailsSubmitted,
+                    });
+                }
                 stripeReady = status.isReady;
                 if (stripeReady) {
                     return Astro.redirect('/sell/shop');
@@ -111,6 +135,26 @@ if (Astro.request.method === 'POST') {
     const contact_email = formData.get('contact_email')?.toString() || user.email;
     const whatsapp = formData.get('whatsapp')?.toString() || null;
     const location = formData.get('location')?.toString() || null;
+
+    if (convexOnly && convex) {
+        try {
+            await convex.mutation(api.seller.createShop, {
+                name,
+                slug,
+                description: description ?? null,
+                profileImg: profile_img ?? null,
+                bannerImg: banner_img,
+                accentColor: accent_color,
+                contactEmail: contact_email ?? null,
+                whatsapp,
+                location,
+            });
+            return new Response(JSON.stringify({ success: true }), { status: 200 });
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            return new Response(JSON.stringify({ error: message.includes('slug') ? t.sellerOnboardingUrlInUse : t.apiInternalError }), { status: message.includes('slug') ? 400 : 500 });
+        }
+    }
 
     // Check slug uniqueness manually to give a proper response
     const { data: slugCheck } = await supabase.from('shops').select('id').eq('slug', slug).maybeSingle();

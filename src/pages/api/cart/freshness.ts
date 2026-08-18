@@ -1,5 +1,8 @@
 import type { APIRoute } from 'astro';
 import { supabase } from '../../../lib/core/supabase';
+import { convexOnly } from '../../../lib/core/env';
+import { createConvexClient } from '../../../lib/core/convex';
+import { api } from '../../../../convex/_generated/api';
 
 interface RequestBody {
     variantIds?: unknown;
@@ -37,6 +40,27 @@ export const POST: APIRoute = async ({ locals, request  }) => {
 
     if (variantIds.length === 0) {
         return jsonResponse({ items: [] }, 200);
+    }
+
+    if (convexOnly) {
+        const convex = createConvexClient();
+        if (!convex) return jsonResponse({ error: t.apiCheckoutProductUnavailable }, 503);
+        try {
+            const data = await convex.query(api.catalog.getCartVariants, { ids: variantIds });
+            const items: CartFreshnessItem[] = data.map((row) => ({
+                variantId: row.id,
+                stock: row.stock,
+                price: row.price,
+                shippingCost: row.shipping_cost ?? 0,
+                isAvailable: Boolean(row.product.is_active && row.product.shop.is_active && row.stock > 0),
+            }));
+            const found = new Set(items.map((item) => item.variantId));
+            for (const id of variantIds) if (!found.has(id)) items.push({ variantId: id, stock: 0, price: 0, shippingCost: 0, isAvailable: false });
+            return jsonResponse({ items }, 200);
+        } catch (error) {
+            console.error(JSON.stringify({ event: 'cart_freshness.convex_failed', error: error instanceof Error ? error.message : String(error) }));
+            return jsonResponse({ error: t.apiCheckoutProductUnavailable }, 500);
+        }
     }
 
     const { data, error } = await supabase

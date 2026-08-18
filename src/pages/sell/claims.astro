@@ -5,6 +5,11 @@ import RefundOrderModal from '../../components/orders/RefundOrderModal.astro';
 
 import { createSupabaseAuthClient } from '../../lib/core/auth';
 import { ORDER_STATUS } from '../../lib/orders/orderStatus';
+import { convexOnly } from '../../lib/core/env';
+import { getConvexSeller } from '../../lib/seller/convexSeller';
+import { getRequestConvexToken } from '../../lib/core/auth';
+import { createConvexClient } from '../../lib/core/convex';
+import { api } from '../../../convex/_generated/api';
 const { t } = Astro.locals;
 
 const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
@@ -16,26 +21,62 @@ if (!user) {
     return Astro.redirect('/sell');
 }
 
-const { data: profile } = await supabase
-    .from('profiles')
-    .select('is_seller')
-    .eq('id', user.id)
-    .single();
-
-if (!profile?.is_seller) {
-    return Astro.redirect('/sell');
+let shop: any;
+if (convexOnly) {
+    const seller = await getConvexSeller(Astro.request);
+    if (!seller?.shop) return Astro.redirect('/sell');
+    shop = seller.shop;
+} else {
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('is_seller')
+        .eq('id', user.id)
+        .single();
+    if (!profile?.is_seller) return Astro.redirect('/sell');
+    const { data: legacyShop } = await supabase
+        .from('shops')
+        .select('id, name, slug')
+        .eq('owner_id', user.id)
+        .maybeSingle();
+    shop = legacyShop;
 }
-
-const { data: shop } = await supabase
-    .from('shops')
-    .select('id, name, slug')
-    .eq('owner_id', user.id)
-    .maybeSingle();
 
 if (!shop) {
     return Astro.redirect('/sell/onboarding');
 }
 
+interface ClaimOrder {
+    orderId: string;
+    publicId: string;
+    createdAt: Date;
+    buyerEmail: string | null;
+    buyerName: string | null;
+    incidentDescription: string;
+    incidentPhotos: string[];
+    incidentCreatedAt: Date;
+    firstProductTitle: string;
+    firstProductImage: string;
+    itemCount: number;
+    totalAmount: number;
+    shippingAmount: number;
+    refundAmount: number;
+}
+
+let claims: ClaimOrder[] = [];
+if (convexOnly) {
+    const token = getRequestConvexToken(Astro.request);
+    const convex = token ? createConvexClient(token) : null;
+    if (convex) {
+        const data = await convex.query(api.seller.listClaims, {});
+        claims = (data as any[]).map((claim) => ({
+            ...claim,
+            createdAt: new Date(claim.createdAt),
+            incidentCreatedAt: new Date(claim.incidentCreatedAt),
+            firstProductTitle: claim.firstProductTitle || t.fallbackProductName,
+            incidentPhotos: (claim.incidentPhotos ?? []).filter(Boolean),
+        }));
+    }
+} else {
 const { data: ordersData } = await supabase
     .from('orders')
     .select(`
@@ -68,24 +109,7 @@ const { data: ordersData } = await supabase
     .eq('status', ORDER_STATUS.INCIDENT)
     .order('created_at', { ascending: false });
 
-interface ClaimOrder {
-    orderId: string;
-    publicId: string;
-    createdAt: Date;
-    buyerEmail: string | null;
-    buyerName: string | null;
-    incidentDescription: string;
-    incidentPhotos: string[];
-    incidentCreatedAt: Date;
-    firstProductTitle: string;
-    firstProductImage: string;
-    itemCount: number;
-    totalAmount: number;
-    shippingAmount: number;
-    refundAmount: number;
-}
-
-const claims: ClaimOrder[] = (ordersData ?? []).map((order: any) => {
+claims = (ordersData ?? []).map((order: any) => {
     const rawItems = order.order_items ?? [];
     let itemCount = 0;
     let firstProductTitle = t.fallbackProductName;
@@ -136,6 +160,7 @@ const claims: ClaimOrder[] = (ordersData ?? []).map((order: any) => {
         refundAmount,
     };
 });
+}
 
 const dateFormatter = new Intl.DateTimeFormat('es-ES', {
     day: 'numeric',

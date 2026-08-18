@@ -1,5 +1,9 @@
 import type { APIRoute } from 'astro';
 import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
+import { getRequestConvexToken } from '../../../lib/core/auth';
+import { createConvexClient } from '../../../lib/core/convex';
+import { convexOnly } from '../../../lib/core/env';
+import { api } from '../../../../convex/_generated/api';
 
 function jsonResponse(payload: Record<string, unknown>, status: number) {
     return new Response(JSON.stringify(payload), {
@@ -36,6 +40,24 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     const auth = body.keys?.auth;
     if (!endpoint || !p256dh || !auth) {
         return jsonResponse({ error: 'Invalid subscription' }, 400);
+    }
+
+    if (convexOnly) {
+        const token = getRequestConvexToken(request);
+        const convex = token ? createConvexClient(token) : null;
+        if (!convex) return jsonResponse({ error: 'Unauthorized' }, 401);
+        try {
+            await convex.mutation(api.notifications.subscribe, {
+                endpoint,
+                p256dh,
+                auth,
+                userAgent: request.headers.get('user-agent') ?? undefined,
+            });
+            return jsonResponse({ success: true }, 200);
+        } catch (error) {
+            console.error(JSON.stringify({ event: 'push_subscribe.convex_failed', error: error instanceof Error ? error.message : String(error) }));
+            return jsonResponse({ error: 'Could not save subscription' }, 500);
+        }
     }
 
     // Upsert by endpoint (re-subscribing the same device must not duplicate, and

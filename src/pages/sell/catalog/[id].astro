@@ -4,6 +4,8 @@ import ProductForm from '../../../components/seller/ProductForm.astro';
 import { createSupabaseAuthClient } from '../../../lib/core/auth';
 
 import type { ProductVariant } from '../../../lib/core/types';
+import { convexOnly } from '../../../lib/core/env';
+import { getConvexSeller, getConvexSellerProduct } from '../../../lib/seller/convexSeller';
 const { t } = Astro.locals;
 
 const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
@@ -12,31 +14,44 @@ const user = sessionData?.session?.user;
 
 if (!user) return Astro.redirect('/sell');
 
-const { data: profile } = await supabase
-    .from('profiles')
-    .select('is_seller')
-    .eq('id', user.id)
-    .single();
+let shop: any;
+let product: any;
+if (convexOnly) {
+    const seller = await getConvexSeller(Astro.request);
+    if (!seller?.shop) return Astro.redirect('/sell/onboarding');
+    shop = seller.shop;
+    const productResult = await getConvexSellerProduct(Astro.request, Astro.params.id ?? '');
+    product = productResult?.product;
+} else {
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('is_seller')
+        .eq('id', user.id)
+        .single();
+    if (!profile?.is_seller) return Astro.redirect('/sell');
+    const { data: legacyShop } = await supabase
+        .from('shops')
+        .select('id, name, slug, default_weight_kg, default_length_cm, default_width_cm, default_height_cm, default_shipping_cost')
+        .eq('owner_id', user.id)
+        .maybeSingle();
+    shop = legacyShop;
+    const productId = Astro.params.id;
+    if (productId) {
+        const { data: legacyProduct } = await supabase
+            .from('products')
+            .select('*, variants:product_variants(*)')
+            .eq('id', productId)
+            .eq('shop_id', shop?.id)
+            .maybeSingle();
+        product = legacyProduct;
+    }
 
-if (!profile?.is_seller) return Astro.redirect('/sell');
-
-const { data: shop } = await supabase
-    .from('shops')
-    .select('id, name, slug, default_weight_kg, default_length_cm, default_width_cm, default_height_cm, default_shipping_cost')
-    .eq('owner_id', user.id)
-    .maybeSingle();
+}
 
 if (!shop) return Astro.redirect('/sell/onboarding');
 
 const productId = Astro.params.id;
 if (!productId) return Astro.redirect('/sell/catalog');
-
-const { data: product } = await supabase
-    .from('products')
-    .select('*, variants:product_variants(*)')
-    .eq('id', productId)
-    .eq('shop_id', shop.id)
-    .maybeSingle();
 
 if (!product) return Astro.redirect('/sell/catalog');
 

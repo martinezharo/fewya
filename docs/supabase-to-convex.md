@@ -1,8 +1,8 @@
 # Supabase → Convex migration
 
-This migration is intentionally staged. Supabase remains the write authority
-until the Convex cloud deployment, Clerk identity mapping, and route-by-route
-verification are complete.
+This migration is intentionally staged. The isolated test Worker is Convex-only;
+production remains on the compatibility path until the production soak and
+cutover are explicitly approved.
 
 ## Current state
 
@@ -18,21 +18,32 @@ verification are complete.
   `https://tremendous-fennec-292.convex.cloud` and contains the imported
   snapshot (15 profiles, 3 shops, 12 products, 14 variants, 9 orders, 194
   tracking events, 82 processed webhook events, and 87 Storage objects).
+- The test Worker (`fewya-test`) points at that Convex dev deployment with
+  `CONVEX_ONLY=true`. It does not initialise a Supabase admin client, does not
+  issue Supabase queries, and has no cron triggers. It is not a separate
+  Supabase development database, and the production Supabase project is not
+  written by the test Worker.
 - Clerk development is connected to Convex with the `convex` JWT template and
   issuer configuration. The Astro middleware verifies Clerk sessions with
   `@clerk/backend` (Cloudflare-safe), links profiles by verified email, and
-  stores the Clerk subject in Convex. Profile updates and wishlist operations
-  use Convex for Clerk sessions while mirroring the legacy Supabase rows during
-  the soak period.
+  stores the Clerk subject in Convex. Profile updates, wishlist operations,
+  catalog management, seller settings, and uploads use Convex in the isolated
+  Worker; the Supabase compatibility implementation remains available only to
+  the staged production build.
 - Authenticated buyer profile/order overview, buyer order history, and seller
   order history now read through authorized Convex queries for Clerk sessions;
-  legacy sessions and query failures retain the Supabase fallback.
-- Buyer review submission now calls an authorized Convex mutation first. It
-  verifies a confirmed purchase and preserves the Supabase implementation as a
-  rollback fallback during the soak period.
+  in the isolated Worker a Convex error is surfaced without falling back to
+  Supabase. Legacy sessions keep the guarded rollback path in production.
+- Buyer and seller review operations now use authorized Convex mutations in the
+  isolated Worker. The Supabase implementation remains available only as a
+  rollback path during the production soak period.
 - The test Worker has been deployed and smoke-tested at
   `https://fewya-test.olma.workers.dev`; production secrets are prepared but
   production traffic has not been switched.
+- Checkout, Stripe payment processing, order lifecycle, Sendcloud
+  shipment/tracking, payouts, notifications, reviews, and scheduled-job helpers
+  use Convex in the isolated Worker. The production build still contains the
+  guarded Supabase rollback path until cutover.
 
 ## Local smoke test
 
@@ -57,11 +68,16 @@ production cutover instruction.
 3. ~~Configure Clerk and its Convex JWT template.~~ Done in the dev deployment.
    On first Clerk login, the middleware links the existing profile by verified
    email and persists the Clerk subject in `profiles.authSubject`.
-4. Move the remaining authenticated writes, seller dashboard reads, and background
-   jobs to Convex functions with server-side authorization. Do not expose the
-   migration functions after the import.
-5. Keep Supabase as a read-only rollback source during a soak period. Only
-   then remove the Supabase secrets and delete the temporary migration module.
+4. Complete the authenticated staging soak against the test Worker, including
+   Clerk login, buyer checkout/review, seller catalog/shipping flows, Stripe
+   test webhooks, and manual cron endpoints. Do not expose the migration
+   functions after the import.
+5. Create a separate Convex production deployment and import a fresh snapshot;
+   never repoint the test deployment at production data.
+6. Keep Supabase as a read-only rollback source during a production soak. Only
+   after explicit approval should the production Worker switch to
+   `CONVEX_ONLY=true`, production secrets be rotated, and the compatibility
+   code be removed.
 
 The migration module is deliberately not safe to leave public without a
 deployment secret. It must be made internal or removed before production

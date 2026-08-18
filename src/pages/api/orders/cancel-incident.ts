@@ -1,11 +1,16 @@
 import type { APIRoute } from 'astro';
-import { createSupabaseAuthClient } from '../../../lib/core/auth';
+import { CONVEX_WEBHOOK_SECRET } from 'astro:env/server';
+import { api } from '../../../../convex/_generated/api';
+import { createSupabaseAuthClient, getRequestConvexToken } from '../../../lib/core/auth';
+import { createConvexClient } from '../../../lib/core/convex';
 import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
 
 import { getStripeClient } from '../../../lib/payments/stripe';
 import { validatePayoutDestinations } from '../../../lib/payments/payoutValidation';
 import { createAutoReviewsForOrder } from '../../../lib/orders/autoReview';
 import { fetchPayoutItems, releaseAndRecord } from '../../../lib/orders/payoutFlow';
+import { releaseOrderFunds } from '../../../lib/cart/checkout';
+import { convexOnly } from '../../../lib/core/env';
 
 function jsonResponse(payload: Record<string, unknown>, status: number) {
     return new Response(JSON.stringify(payload), {
@@ -36,6 +41,54 @@ export const POST: APIRoute = async ({ locals, request, cookies  }) => {
     if (!orderId) {
         return jsonResponse({ error: t.apiInvalidBody }, 400);
     }
+
+    if (orderId.startsWith('convex:')) {
+        const token = getRequestConvexToken(request);
+        const convex = token ? createConvexClient(token) : null;
+        if (!convex || !CONVEX_WEBHOOK_SECRET) return jsonResponse({ error: t.apiUnauthorized }, 401);
+        try {
+            const payout = await convex.query(api.orders.getPayoutContextForCurrentUser, { orderId });
+            if (payout.status !== 'incident') return jsonResponse({ error: t.incidentCancelError }, 400);
+            const stripe = getStripeClient();
+            const destErrors = await validatePayoutDestinations(stripe, payout.items);
+            if (destErrors.length > 0) return jsonResponse({ error: t.orderPayoutDestinationUnavailable }, 400);
+            if (!payout.stripePaymentIntentId) return jsonResponse({ error: t.incidentCancelError }, 400);
+
+            const confirmed = await convex.mutation(api.orders.confirmDeliveryForBuyer, { orderId });
+            const releaseResult = await releaseOrderFunds({
+                stripe,
+                orderId: payout.id,
+                publicId: payout.publicId,
+                paymentIntentId: payout.stripePaymentIntentId,
+                items: payout.items,
+                labelCostByShop: payout.labelCostByShop,
+            });
+            await convex.mutation(api.orders.recordFundsRelease, {
+                secret: CONVEX_WEBHOOK_SECRET,
+                orderId,
+                success: releaseResult.success,
+                ...(releaseResult.error ? { error: releaseResult.error } : {}),
+            });
+            if (!releaseResult.success) {
+                return jsonResponse({ error: 'Incident cancelled but fund release failed. Our team will resolve this.', orderId }, 500);
+            }
+            try {
+                await convex.mutation(api.reviews.createAutoForOrder, {
+                    secret: CONVEX_WEBHOOK_SECRET,
+                    orderId,
+                    comment: t.autoReviewComment,
+                });
+            } catch (error) {
+                console.error('Convex auto-review creation failed', error);
+            }
+            return jsonResponse({ success: true, orderId: confirmed.orderId, publicId: confirmed.publicId }, 200);
+        } catch (error) {
+            console.error('Convex cancel incident failed', error);
+            return jsonResponse({ error: t.incidentCancelError }, 400);
+        }
+    }
+
+    if (convexOnly) return jsonResponse({ error: t.incidentCancelError }, 404);
 
     const adminClient = createSupabaseAdminClient();
 

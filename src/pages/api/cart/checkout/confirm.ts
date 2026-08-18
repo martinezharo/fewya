@@ -1,9 +1,12 @@
 import type { APIRoute } from 'astro';
-import { createSupabaseAuthClient } from '../../../../lib/core/auth';
+import { createSupabaseAuthClient, getRequestConvexToken } from '../../../../lib/core/auth';
 import { createSupabaseAdminClient } from '../../../../lib/core/supabase-admin';
+import { createConvexClient } from '../../../../lib/core/convex';
+import { api } from '../../../../../convex/_generated/api';
 
 import { getStripeClient } from '../../../../lib/payments/stripe';
 import { ORDER_STATUS, PAYMENT_STATUS } from '../../../../lib/orders/orderStatus';
+import { convexOnly } from '../../../../lib/core/env';
 
 function jsonResponse(payload: Record<string, unknown>, status: number) {
     return new Response(JSON.stringify(payload), {
@@ -26,6 +29,46 @@ export const GET: APIRoute = async ({ locals, url, request, cookies  }) => {
 
     if (!user) {
         return jsonResponse({ error: t.apiUnauthorized }, 401);
+    }
+
+    const convexToken = getRequestConvexToken(request);
+    const convex = convexToken ? createConvexClient(convexToken) : null;
+
+    if (convex) {
+        try {
+            const convexOrders = await convex.query(api.orders.listForCheckoutSession, { sessionId });
+            if (convexOrders.length > 0) {
+                const allPaid = convexOrders.every((order) => order.payment_status === PAYMENT_STATUS.PAID || order.status === ORDER_STATUS.PAID);
+                if (allPaid) {
+                    return jsonResponse({ success: true, orders: convexOrders }, 200);
+                }
+
+                const stripe = getStripeClient();
+                const session = await stripe.checkout.sessions.retrieve(sessionId);
+                if (session.payment_status !== 'paid') {
+                    return jsonResponse({ error: t.apiCheckoutSessionPending }, 409);
+                }
+
+                const paymentIntentId = typeof session.payment_intent === 'string'
+                    ? session.payment_intent
+                    : session.payment_intent?.id;
+                if (!paymentIntentId) {
+                    return jsonResponse({ error: t.apiCheckoutConfirmationError }, 500);
+                }
+
+                const marked = await convex.mutation(api.orders.markPaidForCurrentUser, {
+                    sessionId,
+                    paymentIntentId,
+                });
+                return jsonResponse({ success: true, orders: marked.orders }, 200);
+            }
+        } catch (error) {
+            console.error('Convex checkout confirmation failed; keeping Supabase compatibility path', error);
+        }
+    }
+
+    if (convexOnly) {
+        return jsonResponse({ error: t.apiCheckoutConfirmationError }, 503);
     }
 
     const { data: orders, error: orderLookupError } = await authClient

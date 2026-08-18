@@ -1,5 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { AstroCookies } from 'astro';
+import { api } from '../../../convex/_generated/api';
+import { createConvexClient } from '../core/convex';
+import { getRequestConvexToken } from '../core/auth';
+import { convexOnly } from '../core/env';
 
 export async function getWishlistCount(client: SupabaseClient, userId: string): Promise<number> {
     const { count } = await client
@@ -26,12 +30,27 @@ export function getWishlistIdsFromCookie(cookies: AstroCookies): string[] {
 export async function getMergedWishlistIds(
     client: SupabaseClient,
     cookies: AstroCookies,
-    userId?: string | null
+    userId?: string | null,
+    request?: Request,
 ): Promise<Set<string>> {
     const merged = new Set<string>();
 
     // Always include local wishlist
     getWishlistIdsFromCookie(cookies).forEach(id => merged.add(id));
+
+    if (userId && convexOnly) {
+        const token = request ? getRequestConvexToken(request) : null;
+        const convex = token ? createConvexClient(token) : null;
+        if (convex) {
+            try {
+                const ids = await convex.query(api.wishlist.mine, {});
+                ids.forEach((id) => merged.add(id));
+            } catch (error) {
+                console.error('Convex wishlist unavailable:', error);
+            }
+        }
+        return merged;
+    }
 
     if (userId) {
         const { data: wishData } = await client
@@ -48,8 +67,9 @@ export async function getMergedWishlistIds(
 export async function getMergedWishlistCount(
     client: SupabaseClient,
     cookies: AstroCookies,
-    userId?: string | null
+    userId?: string | null,
+    request?: Request,
 ): Promise<number> {
-    const ids = await getMergedWishlistIds(client, cookies, userId);
+    const ids = await getMergedWishlistIds(client, cookies, userId, request);
     return ids.size;
 }

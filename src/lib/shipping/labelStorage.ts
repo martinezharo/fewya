@@ -1,4 +1,6 @@
 import { createSupabaseAdminClient } from '../core/supabase-admin';
+import { convexOnly } from '../core/env';
+import { uploadConvexBytes } from '../core/convexStorage';
 
 export const LABELS_BUCKET = 'labels';
 
@@ -13,7 +15,13 @@ export function buildLabelUrlMarker(orderPublicId: string): string {
 export async function uploadLabelPdf(
     orderPublicId: string,
     pdfBytes: Uint8Array,
+    request?: Request,
 ): Promise<string> {
+    if (convexOnly) {
+        if (!request) throw new Error('Convex request is required for label uploads');
+        const uploaded = await uploadConvexBytes(request, pdfBytes, 'application/pdf');
+        return uploaded.path;
+    }
     const path = buildLabelPath(orderPublicId);
     const adminClient = createSupabaseAdminClient();
     const { error } = await adminClient.storage

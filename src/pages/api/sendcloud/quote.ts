@@ -4,6 +4,9 @@ import {
     calculateParcelFromItems,
     DEFAULT_SHOP_SHIPPING_EUR,
 } from '../../../lib/shipping/sendcloud';
+import { convexOnly } from '../../../lib/core/env';
+import { createConvexClient } from '../../../lib/core/convex';
+import { api } from '../../../../convex/_generated/api';
 
 interface QuoteItem {
     variantId: string;
@@ -53,14 +56,23 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     const variantIds = items.map((i) => i.variantId);
 
-    const { createClient } = await import('@supabase/supabase-js');
-    const { SUPABASE_URL, SUPABASE_KEY } = await import('astro:env/server');
-    const supabase = createClient(SUPABASE_URL as string, SUPABASE_KEY as string);
-
-    const { data: variants, error } = await supabase
-        .from('product_variants')
-        .select('id, weight_kg, length_cm, width_cm, height_cm')
-        .in('id', variantIds);
+    let variants: any[] | null;
+    let error: unknown = null;
+    if (convexOnly) {
+        const convex = createConvexClient();
+        if (!convex) return jsonResponse({ error: 'Convex is not configured' }, 503);
+        variants = await convex.query(api.catalog.getCartVariants, { ids: variantIds });
+    } else {
+        const { createClient } = await import('@supabase/supabase-js');
+        const { SUPABASE_URL, SUPABASE_KEY } = await import('astro:env/server');
+        const supabase = createClient(SUPABASE_URL as string, SUPABASE_KEY as string);
+        const result = await supabase
+            .from('product_variants')
+            .select('id, weight_kg, length_cm, width_cm, height_cm')
+            .in('id', variantIds);
+        variants = result.data;
+        error = result.error;
+    }
 
     if (error || !variants) {
         return jsonResponse({ error: 'Failed to fetch product dimensions' }, 500);

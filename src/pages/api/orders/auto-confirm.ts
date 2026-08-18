@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { CRON_SECRET } from 'astro:env/server';
+import { CONVEX_WEBHOOK_SECRET, CRON_SECRET } from 'astro:env/server';
 import { timingSafeEqual } from '../../../lib/core/timing-safe';
 import { securityLog } from '../../../lib/core/security-log';
 import { runAutoConfirm } from '../../../lib/orders/autoConfirm';
@@ -22,7 +22,7 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     try {
-        const result = await runAutoConfirm();
+        const result = await runAutoConfirm(CONVEX_WEBHOOK_SECRET);
         return jsonResponse({ success: true, ...result }, 200);
     } catch {
         return jsonResponse({ error: 'Failed to auto-confirm orders' }, 500);

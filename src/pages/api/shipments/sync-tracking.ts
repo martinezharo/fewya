@@ -1,8 +1,9 @@
 import type { APIRoute } from 'astro';
-import { CRON_SECRET } from 'astro:env/server';
+import { CRON_SECRET, CONVEX_WEBHOOK_SECRET } from 'astro:env/server';
 import { timingSafeEqual } from '../../../lib/core/timing-safe';
 import { securityLog } from '../../../lib/core/security-log';
 import { syncAllTracking } from '../../../lib/shipping/syncTracking';
+import { convexOnly } from '../../../lib/core/env';
 
 function jsonResponse(payload: Record<string, unknown>, status: number) {
     return new Response(JSON.stringify(payload), {
@@ -21,7 +22,7 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     try {
-        const result = await syncAllTracking();
+        const result = await syncAllTracking(convexOnly ? CONVEX_WEBHOOK_SECRET : undefined);
         return jsonResponse(result, 200);
     } catch {
         return jsonResponse({ error: 'Failed to sync tracking' }, 500);

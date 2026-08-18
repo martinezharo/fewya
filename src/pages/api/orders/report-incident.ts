@@ -1,6 +1,9 @@
 import type { APIRoute } from 'astro';
-import { createSupabaseAuthClient } from '../../../lib/core/auth';
+import { api } from '../../../../convex/_generated/api';
+import { createSupabaseAuthClient, getRequestConvexToken } from '../../../lib/core/auth';
+import { createConvexClient } from '../../../lib/core/convex';
 import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
+import { convexOnly } from '../../../lib/core/env';
 
 function jsonResponse(payload: Record<string, unknown>, status: number) {
     return new Response(JSON.stringify(payload), {
@@ -48,6 +51,25 @@ export const POST: APIRoute = async ({ locals, request, cookies  }) => {
     if (photos.length > 20) {
         return jsonResponse({ error: t.incidentMaxPhotosError }, 400);
     }
+
+    if (orderId.startsWith('convex:')) {
+        const token = getRequestConvexToken(request);
+        const convex = token ? createConvexClient(token) : null;
+        if (!convex) return jsonResponse({ error: t.apiUnauthorized }, 401);
+        try {
+            const result = await convex.mutation(api.orders.reportIncidentForBuyer, {
+                orderId,
+                description,
+                photos,
+            });
+            return jsonResponse(result, 200);
+        } catch (error) {
+            console.error('Convex report incident failed', error);
+            return jsonResponse({ error: t.apiCheckoutConfirmationError }, 400);
+        }
+    }
+
+    if (convexOnly) return jsonResponse({ error: 'Order not found' }, 404);
 
     const adminClient = createSupabaseAdminClient();
     const { data: updatedOrder, error } = await adminClient.rpc(

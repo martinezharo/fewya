@@ -1,8 +1,10 @@
 import { createSupabaseAdminClient } from '../core/supabase-admin';
 import type { Strings } from '../core/i18n';
 import { pickOne, type JoinedVariant } from './orderJoins';
+import { convexOnly } from '../core/env';
 
 export async function createAutoReviewsForOrder(orderId: string, t: Strings): Promise<void> {
+    if (convexOnly) return;
     try {
         const adminClient = createSupabaseAdminClient();
 

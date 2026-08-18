@@ -1,9 +1,12 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createSupabaseAdminClient } from '../core/supabase-admin';
+import { createConvexClient } from '../core/convex';
+import { api } from '../../../convex/_generated/api';
 import { ORDER_STATUS, DELIVERY_TYPE } from '../orders/orderStatus';
 import { notify } from './dispatch';
 import { NOTIFICATION_TYPE } from './types';
 import { workingDaysSince } from './workingDays';
+import { convexOnly } from '../core/env';
 
 export interface NotificationScanReport {
     outForDelivery: number;
@@ -45,15 +48,16 @@ function firstOrder(value: TrackingOrderRow['shipments']): { order_id: string | 
 }
 
 async function notifyOrderIds(
-    client: SupabaseClient,
+    client: SupabaseClient | undefined,
     orderIds: Iterable<string>,
     type: (typeof NOTIFICATION_TYPE)[keyof typeof NOTIFICATION_TYPE],
     recipient: 'buyer' | 'seller',
+    convexSecret?: string,
 ): Promise<number> {
     let sent = 0;
     await Promise.allSettled(
         [...orderIds].map(async (orderId) => {
-            const r = await notify({ type, orderId, recipient, client });
+            const r = await notify({ type, orderId, recipient, client, convexSecret });
             if (r.sent) sent += 1;
         }),
     );
@@ -65,9 +69,51 @@ async function notifyOrderIds(
  * notifications not yet sent. Designed to run from the 4-hour cron alongside
  * syncAllTracking/runAutoConfirm. All sends are idempotent via notification_log.
  */
-export async function runNotificationScan(): Promise<NotificationScanReport> {
-    const client = createSupabaseAdminClient();
+export async function runNotificationScan(convexSecret?: string): Promise<NotificationScanReport> {
+    const client = convexOnly ? undefined : createSupabaseAdminClient();
     const trackingCutoff = new Date(Date.now() - TRACKING_WINDOW_DAYS * 86400000).toISOString();
+
+    let convexReport: NotificationScanReport = { outForDelivery: 0, pickupReady: 0, pickupReminder: 0, labelReminder: 0, shipReminder: 0 };
+    const convex = convexSecret ? createConvexClient() : null;
+    if (convex && convexSecret) {
+        try {
+            const candidates = await convex.query(api.orders.notificationScanCandidates, {
+                secret: convexSecret,
+                trackingCutoff: Date.now() - TRACKING_WINDOW_DAYS * 86400000,
+                labelCutoff: Date.now() - LABEL_REMINDER_CALENDAR_DAYS * 86400000,
+            });
+            convexReport = {
+                outForDelivery: await notifyOrderIds(undefined, candidates.outForDelivery, NOTIFICATION_TYPE.BUYER_OUT_FOR_DELIVERY, 'buyer', convexSecret),
+                pickupReady: await notifyOrderIds(undefined, candidates.pickupReady, NOTIFICATION_TYPE.BUYER_PICKUP_READY, 'buyer', convexSecret),
+                pickupReminder: await notifyOrderIds(
+                    undefined,
+                    candidates.pickupReminder
+                        .filter((entry) => workingDaysSince(new Date(entry.createdAt)) >= PICKUP_REMINDER_WORKING_DAYS)
+                        .map((entry) => entry.orderId),
+                    NOTIFICATION_TYPE.BUYER_PICKUP_REMINDER,
+                    'buyer',
+                    convexSecret,
+                ),
+                labelReminder: await notifyOrderIds(undefined, candidates.labelReminder, NOTIFICATION_TYPE.SELLER_LABEL_REMINDER, 'seller', convexSecret),
+                shipReminder: await notifyOrderIds(
+                    undefined,
+                    candidates.shipReminder
+                        .filter((entry) => workingDaysSince(new Date(entry.paidAt)) >= SHIP_REMINDER_WORKING_DAYS)
+                        .map((entry) => entry.orderId),
+                    NOTIFICATION_TYPE.SELLER_SHIP_REMINDER,
+                    'seller',
+                    convexSecret,
+                ),
+            };
+        } catch (error) {
+            console.error(JSON.stringify({ event: 'notif_scan.convex_fetch_failed', error: error instanceof Error ? error.message : String(error) }));
+        }
+    }
+
+    // The isolated test Worker has no legacy scan path. Its Convex report is
+    // complete above; do not open the production Supabase project.
+    if (convexOnly) return convexReport;
+    if (!client) throw new Error('Supabase notification client unavailable');
 
     // ---- 1. Out for delivery (buyer) ----
     let outForDelivery = 0;
@@ -175,5 +221,11 @@ export async function runNotificationScan(): Promise<NotificationScanReport> {
         }
     }
 
-    return { outForDelivery, pickupReady, pickupReminder, labelReminder, shipReminder };
+    return {
+        outForDelivery: convexReport.outForDelivery + outForDelivery,
+        pickupReady: convexReport.pickupReady + pickupReady,
+        pickupReminder: convexReport.pickupReminder + pickupReminder,
+        labelReminder: convexReport.labelReminder + labelReminder,
+        shipReminder: convexReport.shipReminder + shipReminder,
+    };
 }

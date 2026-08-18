@@ -10,6 +10,51 @@ async function productByLegacyId(ctx: MutationCtx, legacyId: string) {
         .unique();
 }
 
+function assertWebhookSecret(secret: string): void {
+    const expected = process.env.CONVEX_WEBHOOK_SECRET;
+    if (!expected || secret !== expected) throw new Error('Webhook endpoint is not authorized');
+}
+
+/** Creates the same silent five-star fallback used by the legacy flow. */
+export const createAutoForOrder = mutation({
+    args: { secret: v.string(), orderId: v.string(), comment: v.string() },
+    handler: async (ctx, args) => {
+        assertWebhookSecret(args.secret);
+        const order = await ctx.db.query('orders').withIndex('by_legacy_id', (q) => q.eq('legacyId', args.orderId)).unique();
+        if (!order || !order.legacyId.startsWith('convex:')) return { created: 0 };
+
+        const items = await ctx.db.query('orderItems').withIndex('by_order_id', (q) => q.eq('orderId', order._id)).collect();
+        const productIds = new Set<string>();
+        for (const item of items) {
+            const variant = item.variantId
+                ? await ctx.db.get(item.variantId)
+                : item.variantLegacyId
+                    ? await ctx.db.query('productVariants').withIndex('by_legacy_id', (q) => q.eq('legacyId', item.variantLegacyId!)).unique()
+                    : null;
+            if (variant?.productLegacyId) productIds.add(variant.productLegacyId);
+        }
+
+        let created = 0;
+        for (const productLegacyId of productIds) {
+            const product = await productByLegacyId(ctx, productLegacyId);
+            if (!product) continue;
+            const existing = await ctx.db.query('reviews').withIndex('by_product_id', (q) => q.eq('productId', product._id)).collect();
+            if (existing.length > 0) continue;
+            await ctx.db.insert('reviews', {
+                legacyId: `convex:auto:${order.legacyId}:${product.legacyId}`,
+                productId: product._id,
+                productLegacyId: product.legacyId,
+                rating: 5,
+                comment: args.comment,
+                isAuto: true,
+                createdAt: Date.now(),
+            });
+            created += 1;
+        }
+        return { created };
+    },
+});
+
 /**
  * Persists buyer reviews after checking that every product was purchased in a
  * confirmed order belonging to the authenticated profile.
