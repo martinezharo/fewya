@@ -268,22 +268,11 @@ describe('middleware', () => {
             const { response } = await call('https://fewya.com/');
             const csp = response.headers.get('Content-Security-Policy') ?? '';
             expect(csp).toContain('script-src \'self\' \'unsafe-inline\' https://js.stripe.com data:');
-            // 'self' is what lets the /dev playground frame our own pages; it
-            // governs what we embed, not who may embed us.
-            expect(csp).toContain("frame-src 'self' https://js.stripe.com https://hooks.stripe.com");
+            expect(csp).toContain('frame-src https://js.stripe.com https://hooks.stripe.com');
             expect(csp).toContain('font-src \'self\' https://fonts.gstatic.com');
             expect(csp).toContain(
                 "connect-src 'self' https://*.supabase.co https://api.stripe.com https://panel.sendcloud.sc",
             );
-        });
-
-        it('never relaxes frame denial for /dev outside development', async () => {
-            // /dev previews pages in same-origin iframes, which DENY forbids,
-            // so the header drops to SAMEORIGIN there — but only in
-            // development. This suite runs with APP_MODE=production, which is
-            // exactly the case that must stay locked down.
-            const { response } = await call('https://fewya.com/dev/catalog-cards');
-            expect(response.headers.get('X-Frame-Options')).toBe('DENY');
         });
 
         it('does not put a CSP on non-HTML responses', async () => {

@@ -9,15 +9,17 @@ import type { Product, ProductVariant } from '../../lib/core/types';
 /**
  * A single catalog entry in the seller dashboard.
  *
- * One markup tree serves both breakpoints: on phones it renders as a square
- * tile (two per row, image kept at a 1:1 ratio so photos aren't cropped into
- * a letterbox), and from `sm` upwards the body collapses via `sm:contents`
- * into the dense scanning row that desktop sellers work with.
+ * One markup tree serves both breakpoints. From `sm` upwards it is the dense
+ * scanning row desktop sellers already had, icon strip included. On phones it
+ * becomes a tile in a two-up grid — square photo, then exactly two lines of
+ * text (name, and one meta line with price and stock) — because five stacked
+ * elements per tile is what made the previous grid feel cluttered. Everything
+ * else moves onto the photo: a dot for live/paused, a chip when buyers cannot
+ * see the product yet, and the actions menu.
  *
- * The desktop icon strip is unchanged; on phones those same actions collapse
- * into a dropdown (see `src/lib/ui/menu.ts`), because a row of four buttons
- * does not fit in a half-width tile. The whole card is a link to the editor
- * via the stretched title link.
+ * State is driven by `data-is-active` on the card rather than by classes the
+ * toggle script rewrites, so the dot, the labels and the dimming can never
+ * drift apart from each other.
  */
 interface Props {
     product: Product & { variants?: ProductVariant[]; isComplete: boolean };
@@ -57,38 +59,80 @@ const DELETE_CLASS = `${ACTION_LAYOUT} w-full hover:bg-red-50 hover:text-red-500
     class:list={[
         'group relative flex flex-col rounded-2xl border border-border bg-surface transition-colors',
         'hover:border-border-light focus-within:border-border-light',
-        // Lift the whole card while its menu is open so the panel is never
-        // painted under the cards that follow it in the grid.
-        'has-[[data-menu-open]]:z-20',
+        // Lift the card while its menu is open so the panel is never painted
+        // under the cards that follow it in the grid.
+        'data-[menu-open]:z-20',
         'sm:flex-row sm:items-center sm:gap-4 sm:p-4',
-        (!product.is_active || !product.isComplete) && 'opacity-60',
+        // Desktop dims the whole row, as it always has. On phones only the
+        // photo dims, so the name and price of a paused product stay readable.
+        'sm:data-[is-active=false]:opacity-60 sm:data-[is-complete=false]:opacity-60',
     ]}
+    data-menu
     data-product-id={product.id}
     data-is-active={String(product.is_active)}
     data-is-complete={String(product.isComplete)}
 >
-    <div class="w-full aspect-square shrink-0 overflow-hidden rounded-t-2xl bg-bg flex items-center justify-center sm:w-20 sm:h-20 sm:rounded-xl">
+    <div class="relative flex w-full aspect-square shrink-0 items-center justify-center overflow-hidden rounded-t-2xl bg-bg sm:h-20 sm:w-20 sm:rounded-xl">
         {image ? (
-            <img src={image} alt={product.title} class="w-full h-full object-cover" width="400" height="400" loading="lazy" decoding="async" />
+            <img
+                src={image}
+                alt={product.title}
+                class="h-full w-full object-cover max-sm:group-data-[is-active=false]:opacity-45"
+                width="400"
+                height="400"
+                loading="lazy"
+                decoding="async"
+            />
         ) : (
             <Icon name="image" size={28} class="text-text-tertiary" />
         )}
+
+        {/* Phone-only state, carried by the photo. Desktop says both in words:
+            the status pill and the badges next to the title. */}
+        <span
+            class="absolute left-2.5 top-2.5 h-2.5 w-2.5 rounded-full bg-slate-400 ring-2 ring-black/25 group-data-[is-active=true]:bg-green-500 sm:hidden"
+            aria-hidden="true"
+        ></span>
+
+        {!product.isComplete && (
+            <span
+                class="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-semibold text-amber-950 sm:hidden"
+                title={t.sellerCatalogIncompleteTooltip}
+            >
+                <Icon name="alert-triangle" size={11} />
+                {t.sellerCatalogIncompleteWarning}
+            </span>
+        )}
+
+        <button
+            type="button"
+            data-menu-button
+            aria-haspopup="true"
+            aria-expanded="false"
+            aria-controls={menuId}
+            aria-label={t.sellerCatalogMoreActions}
+            class="absolute right-1.5 top-1.5 z-10 inline-flex h-8 w-8 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur-sm transition-colors hover:bg-black/65 sm:hidden"
+        >
+            <Icon name="more-vertical" size={18} />
+        </button>
     </div>
 
-    {/* Phone: padded stack under the image. Desktop: `contents` hands the three
+    {/* Phone: padded stack under the photo. Desktop: `contents` hands the three
         blocks below straight to the card's flex row. */}
-    <div class="flex min-w-0 flex-1 flex-col gap-2 p-3 sm:contents">
+    <div class="flex min-w-0 flex-1 flex-col p-2.5 sm:contents">
         <div class="min-w-0 flex-1">
             <a
                 href={editUrl}
-                class="text-sm font-semibold text-text-primary no-underline line-clamp-2 sm:truncate sm:block after:absolute after:inset-0 after:rounded-2xl"
+                class="block truncate text-[13px] font-semibold text-text-primary no-underline after:absolute after:inset-0 after:rounded-2xl sm:text-sm"
             >
                 {product.title}
             </a>
-            <div class="mt-1.5 flex flex-wrap items-center gap-1.5">
+            {/* Desktop has the width for the full status line; on phones the
+                same information is on the photo or in the meta line. */}
+            <div class="mt-1.5 hidden flex-wrap items-center gap-1.5 sm:flex">
                 {!product.isComplete && (
                     <span
-                        class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 border border-amber-200 dark:border-amber-800"
+                        class="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-800 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-400"
                         title={t.sellerCatalogIncompleteTooltip}
                     >
                         <Icon name="alert-triangle" size={12} />
@@ -96,99 +140,90 @@ const DELETE_CLASS = `${ACTION_LAYOUT} w-full hover:bg-red-50 hover:text-red-500
                     </span>
                 )}
                 {stock === 0 && (
-                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800">
+                    <span class="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-100 px-2 py-0.5 text-[10px] font-medium text-red-700 dark:border-red-800 dark:bg-red-900/30 dark:text-red-400">
                         <Icon name="alert-triangle" size={12} />
                         {t.productOutOfStock}
                     </span>
                 )}
-                <span class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-bg text-text-secondary border border-border">
+                <span class="inline-flex items-center rounded-full border border-border bg-bg px-2 py-0.5 text-[11px] font-medium text-text-secondary">
                     {categoryLabel}
                 </span>
                 {variants.length > 1 && (
-                    <span class="hidden sm:inline text-[11px] text-text-tertiary">
+                    <span class="text-[11px] text-text-tertiary">
                         {variants.length} {t.sellerCatalogVariants}
                     </span>
                 )}
             </div>
         </div>
 
-        <div class="flex items-baseline justify-between gap-2 shrink-0 sm:flex-col sm:items-end sm:gap-0.5 sm:text-right">
-            <p class="text-sm font-semibold text-text-primary tabular-nums">{priceLabel}</p>
-            <p class:list={[
-                'text-[11px] tabular-nums',
-                stock === 0 ? 'text-red-500 dark:text-red-400 font-medium' : 'text-text-tertiary',
-            ]}>{stockLabel}</p>
-        </div>
+        <p class="mt-1 shrink-0 text-[12px] text-text-tertiary sm:mt-0 sm:flex sm:flex-col sm:items-end sm:gap-0.5 sm:text-right">
+            <span class="text-[13px] font-semibold tabular-nums text-text-primary sm:text-sm">{priceLabel}</span>
+            <span class="px-1 sm:hidden" aria-hidden="true">·</span>
+            <span class:list={[
+                'tabular-nums sm:text-[11px]',
+                stock === 0 && 'font-medium text-red-500 dark:text-red-400',
+            ]}>{stockLabel}</span>
+        </p>
 
-        <div class="relative z-10 flex items-center justify-between gap-1 shrink-0 sm:justify-end sm:gap-2">
+        {/* `contents` on phones so the dropdown below positions against the
+            card, not against this wrapper. */}
+        <div class="contents sm:relative sm:z-10 sm:flex sm:shrink-0 sm:items-center sm:justify-end sm:gap-2">
             <button
                 type="button"
-                class="toggle-active-btn flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-border-light hover:text-text-primary sm:px-3"
+                class="toggle-active-btn hidden items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-border-light hover:text-text-primary sm:flex"
                 data-product-id={product.id}
                 data-active={String(product.is_active)}
                 aria-label={t.sellerCatalogToggleActive}
             >
-                <span
-                    data-status-dot
-                    class:list={[
-                        'inline-block w-1.5 h-1.5 rounded-full shrink-0',
-                        product.is_active ? 'bg-green-500' : 'bg-text-tertiary',
-                    ]}
-                ></span>
-                <span data-status-label>{product.is_active ? t.sellerCatalogActive : t.sellerCatalogInactive}</span>
+                <span class="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-text-tertiary group-data-[is-active=true]:bg-green-500"></span>
+                <span class="group-data-[is-active=false]:hidden">{t.sellerCatalogActive}</span>
+                <span class="group-data-[is-active=true]:hidden">{t.sellerCatalogInactive}</span>
             </button>
 
-            {/* The same three actions render as an icon strip on desktop (where
-                there is room for it) and as a dropdown on phones, where a
-                four-button row would not fit next to the status pill. */}
-            <div class="relative" data-menu>
+            {/* The same actions render as a dropdown on phones and as the
+                desktop icon strip: absolute + panel chrome below `sm`, inline
+                and label-less above it. */}
+            <div
+                id={menuId}
+                data-menu-panel
+                class="hidden absolute right-1.5 top-11 z-30 w-40 rounded-xl border border-border bg-surface p-1 shadow-lg
+                       sm:static sm:flex sm:w-auto sm:items-center sm:gap-1 sm:rounded-none sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none"
+            >
                 <button
                     type="button"
-                    class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-text-secondary transition-colors hover:bg-border-light hover:text-text-primary sm:hidden"
-                    data-menu-button
-                    aria-haspopup="true"
-                    aria-expanded="false"
-                    aria-controls={menuId}
-                    aria-label={t.sellerCatalogMoreActions}
+                    class={`toggle-active-btn ${ACTION_CLASS} w-full sm:hidden`}
+                    data-product-id={product.id}
+                    data-active={String(product.is_active)}
                 >
-                    <Icon name="more-vertical" size={18} />
+                    <span class="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-text-tertiary group-data-[is-active=true]:bg-green-500"></span>
+                    <span class="group-data-[is-active=false]:hidden">{t.sellerCatalogDeactivate}</span>
+                    <span class="group-data-[is-active=true]:hidden">{t.sellerCatalogActivate}</span>
                 </button>
-                <div
-                    id={menuId}
-                    data-menu-panel
-                    class="hidden absolute right-0 top-full z-30 mt-1 w-40 origin-top-right rounded-xl border border-border bg-surface p-1 shadow-lg
-                           sm:static sm:mt-0 sm:flex sm:w-auto sm:items-center sm:gap-1 sm:rounded-none sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none"
-                >
+                <a href={editUrl} aria-label={t.sellerCatalogEdit} class={ACTION_CLASS}>
+                    <Icon name="pencil" size={16} />
+                    <span class="sm:hidden">{t.sellerCatalogEdit}</span>
+                </a>
+                {publicUrl && (
                     <a
-                        href={editUrl}
-                        aria-label={t.sellerCatalogEdit}
+                        href={publicUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={t.sellerCatalogViewPublic}
                         class={ACTION_CLASS}
                     >
-                        <Icon name="pencil" size={16} />
-                        <span class="sm:hidden">{t.sellerCatalogEdit}</span>
+                        <Icon name="external-link" size={16} />
+                        <span class="sm:hidden">{t.sellerCatalogViewPublic}</span>
                     </a>
-                    {publicUrl && (
-                        <a
-                            href={publicUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            aria-label={t.sellerCatalogViewPublic}
-                            class={ACTION_CLASS}
-                        >
-                            <Icon name="external-link" size={16} />
-                            <span class="sm:hidden">{t.sellerCatalogViewPublic}</span>
-                        </a>
-                    )}
-                    <button
-                        type="button"
-                        data-product-id={product.id}
-                        aria-label={t.sellerCatalogDelete}
-                        class={`delete-product-btn ${DELETE_CLASS}`}
-                    >
-                        <Icon name="trash-2" size={16} />
-                        <span class="sm:hidden">{t.sellerCatalogDelete}</span>
-                    </button>
-                </div>
+                )}
+                <button
+                    type="button"
+                    data-product-id={product.id}
+                    aria-label={t.sellerCatalogDelete}
+                    class={`delete-product-btn ${DELETE_CLASS}`}
+                >
+                    <Icon name="trash-2" size={16} />
+                    <span class="sm:hidden">{t.sellerCatalogDelete}</span>
+                </button>
             </div>
         </div>
     </div>

@@ -738,6 +738,8 @@ export const en: Strings = {
     sellerCatalogStock: 'Stock',
     sellerCatalogNoImage: 'No image',
     sellerCatalogMoreActions: 'More actions',
+    sellerCatalogActivate: 'Activate',
+    sellerCatalogDeactivate: 'Deactivate',
 
     // Seller Product Form
     sellerProductNewTitle: 'New product',

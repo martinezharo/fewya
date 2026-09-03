@@ -124,19 +124,14 @@ const stats = [
 
     const t = getClientT();
 
-    function paintActiveState(btn: HTMLButtonElement, isActive: boolean) {
-        btn.dataset.active = String(isActive);
-        const dot = btn.querySelector<HTMLElement>('[data-status-dot]');
-        const label = btn.querySelector<HTMLElement>('[data-status-label]');
-        if (dot) {
-            dot.className = `inline-block w-1.5 h-1.5 rounded-full shrink-0 ${isActive ? 'bg-green-500' : 'bg-text-tertiary'}`;
-        }
-        if (label) label.textContent = isActive ? t.sellerCatalogActive : t.sellerCatalogInactive;
-
-        const card = btn.closest('article');
-        // Incomplete products stay dimmed regardless of their active flag.
-        if (card && card.dataset.isComplete !== 'false') card.classList.toggle('opacity-60', !isActive);
-        if (card) card.dataset.isActive = String(isActive);
+    /** `data-is-active` on the card drives the dot, the labels and the dimming,
+        so every affordance moves together instead of being repainted one by
+        one (the phone tile has two toggles: the menu item and the status dot). */
+    function paintActiveState(card: HTMLElement, isActive: boolean) {
+        card.dataset.isActive = String(isActive);
+        card.querySelectorAll<HTMLButtonElement>('.toggle-active-btn').forEach(btn => {
+            btn.dataset.active = String(isActive);
+        });
     }
 
     function initCatalogPage() {
@@ -159,12 +154,14 @@ const stats = [
 
         list.querySelectorAll<HTMLButtonElement>('.toggle-active-btn').forEach(btn => {
             btn.addEventListener('click', async () => {
+                const card = btn.closest('article');
+                if (!card) return;
                 const productId = btn.dataset.productId!;
                 const wasActive = btn.dataset.active === 'true';
                 const newActive = !wasActive;
 
                 // Optimistic UI update
-                paintActiveState(btn, newActive);
+                paintActiveState(card, newActive);
                 setBusy(btn, true);
 
                 try {
@@ -175,11 +172,11 @@ const stats = [
                     });
 
                     if (!res.ok) {
-                        paintActiveState(btn, wasActive);
+                        paintActiveState(card, wasActive);
                         toast.error(t.toastErrorGeneric);
                     }
                 } catch {
-                    paintActiveState(btn, wasActive);
+                    paintActiveState(card, wasActive);
                     toast.error(t.toastErrorNetwork);
                 } finally {
                     setBusy(btn, false);

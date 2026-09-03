@@ -736,6 +736,8 @@ export interface Strings {
     sellerCatalogStock: string;
     sellerCatalogNoImage: string;
     sellerCatalogMoreActions: string;
+    sellerCatalogActivate: string;
+    sellerCatalogDeactivate: string;
 
     // Seller Product Form
     sellerProductNewTitle: string;
