@@ -737,6 +737,7 @@ export const es: Strings = {
     sellerCatalogPriceFrom: 'Desde',
     sellerCatalogStock: 'Stock',
     sellerCatalogNoImage: 'Sin imagen',
+    sellerCatalogMoreActions: 'Más acciones',
 
     // Seller Product Form
     sellerProductNewTitle: 'Nuevo producto',
