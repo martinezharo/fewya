@@ -50,7 +50,9 @@ const asProduct = mockProducts.map(p => ({
 
 <Layout title={`Dev · Tarjeta ${variant}`} noindex>
     <main class="min-h-dvh bg-bg p-4">
-        <div class="grid grid-cols-2 gap-3">
+        {/* The shipped card switches to the desktop row at `sm`, so its grid
+            has to match the real page instead of forcing two columns. */}
+        <div class:list={['grid gap-3 grid-cols-2', variant === 'current' && 'sm:grid-cols-1']}>
             {variant === 'current' && asProduct.map((product) => (
                 <CatalogProductCard product={product} shopSlug="octopus" />
             ))}
