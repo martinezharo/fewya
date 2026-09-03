@@ -89,11 +89,21 @@ const DELETE_CLASS = `${ACTION_LAYOUT} w-full hover:bg-red-50 hover:text-red-500
         )}
 
         {/* Phone-only state, carried by the photo. Desktop says both in words:
-            the status pill and the badges next to the title. */}
-        <span
-            class="absolute left-2.5 top-2.5 h-2.5 w-2.5 rounded-full bg-slate-400 ring-2 ring-black/25 group-data-[is-active=true]:bg-green-500 sm:hidden"
-            aria-hidden="true"
-        ></span>
+            the status pill and the badges next to the title.
+
+            The dot alone is decorative, so the status also ships as text: on
+            phones the desktop status button is hidden and the menu only offers
+            an action, which would leave a screen reader with no way to tell a
+            paused product from a live one. Both labels render and CSS picks
+            one, so this tracks `data-is-active` like every other affordance. */}
+        <span class="absolute left-2.5 top-2.5 sm:hidden">
+            <span
+                class="block h-2.5 w-2.5 rounded-full bg-slate-400 ring-2 ring-black/25 group-data-[is-active=true]:bg-green-500"
+                aria-hidden="true"
+            ></span>
+            <span class="sr-only group-data-[is-active=false]:hidden">{t.sellerCatalogActive}</span>
+            <span class="sr-only group-data-[is-active=true]:hidden">{t.sellerCatalogInactive}</span>
+        </span>
 
         {!product.isComplete && (
             <span
