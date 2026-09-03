@@ -71,6 +71,7 @@ const DELETE_CLASS = `${ACTION_LAYOUT} w-full hover:bg-red-50 hover:text-red-500
     data-product-id={product.id}
     data-is-active={String(product.is_active)}
     data-is-complete={String(product.isComplete)}
+    data-stock={String(stock)}
 >
     <div class="relative flex w-full aspect-square shrink-0 items-center justify-center overflow-hidden rounded-t-2xl bg-bg sm:h-20 sm:w-20 sm:rounded-xl">
         {image ? (

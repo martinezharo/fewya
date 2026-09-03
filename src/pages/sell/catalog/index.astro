@@ -46,10 +46,12 @@ const productsWithCompleteness = allProducts.map(p => {
 const activeCount = productsWithCompleteness.filter(p => p.is_active).length;
 const totalStock = productsWithCompleteness.reduce((sum, p) => sum + getTotalStock(p.variants), 0);
 
+// `key` pairs each tile with the value the client recomputes from the cards
+// after a toggle or a delete, so the summary never drifts from the list.
 const stats = [
-    { label: t.sellerCatalogTotalProducts, value: allProducts.length },
-    { label: t.sellerCatalogActiveProducts, value: activeCount },
-    { label: t.sellerCatalogStock, value: totalStock },
+    { key: 'total', label: t.sellerCatalogTotalProducts, value: allProducts.length },
+    { key: 'active', label: t.sellerCatalogActiveProducts, value: activeCount },
+    { key: 'stock', label: t.sellerCatalogStock, value: totalStock },
 ];
 ---
 
@@ -75,7 +77,7 @@ const stats = [
                     <p class="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-tertiary sm:text-[11px] sm:tracking-[0.16em]">
                         {stat.label}
                     </p>
-                    <p class="mt-auto pt-1.5 text-xl font-semibold tracking-tight text-text-primary tabular-nums sm:pt-3 sm:text-2xl">{stat.value}</p>
+                    <p data-stat={stat.key} class="mt-auto pt-1.5 text-xl font-semibold tracking-tight text-text-primary tabular-nums sm:pt-3 sm:text-2xl">{stat.value}</p>
                 </section>
             ))}
         </div>
@@ -124,14 +126,34 @@ const stats = [
 
     const t = getClientT();
 
+    /** The tiles summarise the cards, so recompute them from the cards rather
+        than patching each counter at every call site — a hand-patched counter
+        drifts the moment another mutation is added. */
+    function refreshStats() {
+        const cards = Array.from(
+            document.querySelectorAll<HTMLElement>('#product-list article[data-product-id]'),
+        );
+        const values: Record<string, number> = {
+            total: cards.length,
+            active: cards.filter(card => card.dataset.isActive === 'true').length,
+            stock: cards.reduce((sum, card) => sum + Number(card.dataset.stock ?? 0), 0),
+        };
+        for (const [key, value] of Object.entries(values)) {
+            const tile = document.querySelector(`[data-stat="${key}"]`);
+            if (tile) tile.textContent = String(value);
+        }
+    }
+
     /** `data-is-active` on the card drives the dot, the labels and the dimming,
         so every affordance moves together instead of being repainted one by
-        one (the phone tile has two toggles: the menu item and the status dot). */
+        one (the phone tile has two toggles: the menu item and the status dot).
+        The "active products" tile counts the same attribute, so it follows. */
     function paintActiveState(card: HTMLElement, isActive: boolean) {
         card.dataset.isActive = String(isActive);
         card.querySelectorAll<HTMLButtonElement>('.toggle-active-btn').forEach(btn => {
             btn.dataset.active = String(isActive);
         });
+        refreshStats();
     }
 
     function initCatalogPage() {
@@ -213,6 +235,7 @@ const stats = [
             if (result.ok) {
                 closeAllMenus();
                 list.querySelector(`article[data-product-id="${deleteId}"]`)?.remove();
+                refreshStats();
                 closeDialog();
                 if (list.children.length === 0) window.location.reload();
             }
