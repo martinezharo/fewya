@@ -1,0 +1,62 @@
+---
+import Icon from '../../../components/icons/Icon.astro';
+import MockMenu from './MockMenu.astro';
+import { price, type MockProduct } from './mock';
+
+/**
+ * Design B — "Ficha".
+ *
+ * Keeps the card surface (it groups the product and gives the tap target an
+ * edge) but cuts the body down to exactly two lines: name, then one meta line
+ * where price and stock live together. Status is a single dot on the photo
+ * instead of a pill, so nothing competes with the title.
+ */
+interface Props { product: MockProduct }
+const { product } = Astro.props;
+---
+
+<article class="relative flex flex-col overflow-hidden rounded-2xl border border-border bg-surface">
+    <div class="relative aspect-square bg-bg">
+        {product.image ? (
+            <img
+                src={product.image}
+                alt={product.title}
+                class:list={['h-full w-full object-cover', !product.isActive && 'opacity-45']}
+            />
+        ) : (
+            <div class="flex h-full w-full items-center justify-center text-text-tertiary">
+                <Icon name="image" size={28} />
+            </div>
+        )}
+
+        <span
+            class:list={[
+                'absolute left-2.5 top-2.5 h-2.5 w-2.5 rounded-full ring-2 ring-black/25',
+                product.isActive ? 'bg-green-500' : 'bg-slate-400',
+            ]}
+            title={product.isActive ? 'Activo' : 'Inactivo'}
+        ></span>
+
+        {!product.isComplete && (
+            <span class="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-semibold text-amber-950">
+                <Icon name="alert-triangle" size={11} />
+                Incompleto
+            </span>
+        )}
+
+        <div class="absolute right-1.5 top-1.5">
+            <MockMenu id={`b-${product.id}`} overlay active={product.isActive} />
+        </div>
+    </div>
+
+    <div class="p-2.5">
+        <p class="truncate text-[13px] font-semibold leading-tight text-text-primary">{product.title}</p>
+        <p class="mt-1 text-[12px] text-text-tertiary">
+            <span class="font-semibold tabular-nums text-text-primary">{price(product)}</span>
+            <span class="px-1">·</span>
+            <span class:list={['tabular-nums', product.stock === 0 && 'font-medium text-red-500 dark:text-red-400']}>
+                {product.stock} uds
+            </span>
+        </p>
+    </div>
+</article>

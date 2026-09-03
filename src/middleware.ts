@@ -2,6 +2,7 @@ import { defineMiddleware } from 'astro:middleware';
 import { env } from 'cloudflare:workers';
 import { parseCookieHeader } from '@supabase/ssr';
 import { exchangeAuthCodeForSession } from './lib/core/auth';
+import { isDevelopment } from './lib/core/env';
 import { securityLog } from './lib/core/security-log';
 import { checkRateLimit, rateLimitResponse, type RateLimitBinding } from './lib/core/rate-limit';
 import { getT, resolveLocale } from './lib/core/i18n';
@@ -25,7 +26,10 @@ const CSP = [
     // SPA navigation. The XSS surface is essentially unchanged because
     // 'unsafe-inline' already permits inline script execution.
     "script-src 'self' 'unsafe-inline' https://js.stripe.com data:",
-    "frame-src https://js.stripe.com https://hooks.stripe.com",
+    // 'self' governs what *we* may embed, not who may embed us: the /dev design
+    // playground compares phone layouts in 390px iframes of our own pages.
+    // Protection against being framed stays with X-Frame-Options below.
+    "frame-src 'self' https://js.stripe.com https://hooks.stripe.com",
     "img-src 'self' data: blob: https://*.supabase.co https://imagedelivery.net",
     // style-src: Google Fonts stylesheet loaded via <link> in Layout.astro
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
@@ -106,7 +110,11 @@ export const onRequest = defineMiddleware(async (context, next) => {
     const contentType = response.headers.get('Content-Type') ?? '';
     if (contentType.includes('text/html')) {
         response.headers.set('Content-Security-Policy', CSP);
-        response.headers.set('X-Frame-Options', 'DENY');
+        // DENY blocks same-origin framing too, so the local-only /dev
+        // playground (which previews pages in iframes) relaxes it to
+        // SAMEORIGIN. Those routes 404 outside development anyway.
+        const isDevPlayground = isDevelopment && pathname.startsWith('/dev');
+        response.headers.set('X-Frame-Options', isDevPlayground ? 'SAMEORIGIN' : 'DENY');
     }
 
     // Cache-Control (only when not already set by the handler)

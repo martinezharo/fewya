@@ -1,0 +1,53 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import { CARD_VARIANTS } from '../_cards/variants';
+import { isDevelopment } from '../../../lib/core/env';
+
+// Design playground: never reachable from a production deployment.
+if (!isDevelopment) return new Response(null, { status: 404 });
+
+// Each column is a 390px iframe on purpose: media queries resolve against the
+// iframe's own viewport, so the real component renders its phone layout even
+// though the comparison page itself is open on a desktop screen.
+---
+
+<Layout title="Dev · Catálogo — diseños de tarjeta" noindex>
+    <main class="min-h-dvh bg-bg p-6">
+        <header class="mb-6">
+            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-text-tertiary">Playground</p>
+            <h1 class="mt-1 text-2xl font-semibold tracking-tight text-text-primary">Tarjeta de catálogo en móvil</h1>
+            <p class="mt-2 max-w-2xl text-sm leading-relaxed text-text-secondary">
+                Cada columna es un móvil de 390&nbsp;px con los mismos cuatro productos: uno normal, uno pausado,
+                uno incompleto y sin stock, y uno sin foto. El menú de los tres puntos funciona; cada diseño se
+                puede abrir suelto para verlo en el teléfono.
+            </p>
+        </header>
+
+        <div class="flex gap-5 overflow-x-auto pb-6">
+            {CARD_VARIANTS.map((variant) => (
+                <section class="w-[390px] shrink-0">
+                    <div class="mb-3 flex min-h-[96px] flex-col">
+                        <div class="flex items-baseline justify-between gap-2">
+                            <h2 class="text-sm font-semibold text-text-primary">{variant.name}</h2>
+                            <a
+                                href={`/dev/catalog-cards/${variant.key}`}
+                                class="text-[11px] font-medium text-accent no-underline hover:underline"
+                            >
+                                abrir
+                            </a>
+                        </div>
+                        <p class="mt-1 text-xs leading-relaxed text-text-secondary">{variant.note}</p>
+                    </div>
+                    <iframe
+                        src={`/dev/catalog-cards/${variant.key}`}
+                        title={variant.name}
+                        width="390"
+                        height="760"
+                        loading="lazy"
+                        class="w-[390px] rounded-3xl border border-border bg-bg"
+                    ></iframe>
+                </section>
+            ))}
+        </div>
+    </main>
+</Layout>
