@@ -14,9 +14,10 @@ import type { Product, ProductVariant } from '../../lib/core/types';
  * a letterbox), and from `sm` upwards the body collapses via `sm:contents`
  * into the dense scanning row that desktop sellers work with.
  *
- * Secondary actions live behind a menu (see `src/lib/ui/menu.ts`) instead of
- * an icon strip, which is what keeps the phone tile readable; the whole card
- * is a link to the editor via the stretched title link.
+ * The desktop icon strip is unchanged; on phones those same actions collapse
+ * into a dropdown (see `src/lib/ui/menu.ts`), because a row of four buttons
+ * does not fit in a half-width tile. The whole card is a link to the editor
+ * via the stretched title link.
  */
 interface Props {
     product: Product & { variants?: ProductVariant[]; isComplete: boolean };
@@ -45,6 +46,11 @@ const categoryLabel = getCategoryLabel(t, product.category ?? '');
 const editUrl = `/sell/catalog/${product.id}`;
 const publicUrl = shopSlug && product.slug && product.isComplete ? `/${shopSlug}/${product.slug}` : null;
 const menuId = `catalog-menu-${product.id}`;
+
+/** Menu row on phones, icon button in the desktop strip. */
+const ACTION_LAYOUT = 'flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium text-text-secondary no-underline transition-colors sm:h-8 sm:w-8 sm:justify-center sm:gap-0 sm:px-0 sm:py-0';
+const ACTION_CLASS = `${ACTION_LAYOUT} hover:bg-border-light hover:text-text-primary`;
+const DELETE_CLASS = `${ACTION_LAYOUT} w-full hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20 dark:hover:text-red-400`;
 ---
 
 <article
@@ -132,10 +138,13 @@ const menuId = `catalog-menu-${product.id}`;
                 <span data-status-label>{product.is_active ? t.sellerCatalogActive : t.sellerCatalogInactive}</span>
             </button>
 
+            {/* The same three actions render as an icon strip on desktop (where
+                there is room for it) and as a dropdown on phones, where a
+                four-button row would not fit next to the status pill. */}
             <div class="relative" data-menu>
                 <button
                     type="button"
-                    class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-text-secondary transition-colors hover:bg-border-light hover:text-text-primary"
+                    class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-text-secondary transition-colors hover:bg-border-light hover:text-text-primary sm:hidden"
                     data-menu-button
                     aria-haspopup="true"
                     aria-expanded="false"
@@ -147,38 +156,37 @@ const menuId = `catalog-menu-${product.id}`;
                 <div
                     id={menuId}
                     data-menu-panel
-                    hidden
-                    role="menu"
-                    class="absolute right-0 top-full z-30 mt-1 w-40 origin-top-right rounded-xl border border-border bg-surface p-1 shadow-lg"
+                    class="hidden absolute right-0 top-full z-30 mt-1 w-40 origin-top-right rounded-xl border border-border bg-surface p-1 shadow-lg
+                           sm:static sm:mt-0 sm:flex sm:w-auto sm:items-center sm:gap-1 sm:rounded-none sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none"
                 >
                     <a
                         href={editUrl}
-                        role="menuitem"
-                        class="flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium text-text-secondary no-underline transition-colors hover:bg-border-light hover:text-text-primary"
+                        aria-label={t.sellerCatalogEdit}
+                        class={ACTION_CLASS}
                     >
-                        <Icon name="pencil" size={15} />
-                        {t.sellerCatalogEdit}
+                        <Icon name="pencil" size={16} />
+                        <span class="sm:hidden">{t.sellerCatalogEdit}</span>
                     </a>
                     {publicUrl && (
                         <a
                             href={publicUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            role="menuitem"
-                            class="flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium text-text-secondary no-underline transition-colors hover:bg-border-light hover:text-text-primary"
+                            aria-label={t.sellerCatalogViewPublic}
+                            class={ACTION_CLASS}
                         >
-                            <Icon name="external-link" size={15} />
-                            {t.sellerCatalogViewPublic}
+                            <Icon name="external-link" size={16} />
+                            <span class="sm:hidden">{t.sellerCatalogViewPublic}</span>
                         </a>
                     )}
                     <button
                         type="button"
-                        role="menuitem"
-                        class="delete-product-btn flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium text-red-500 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
                         data-product-id={product.id}
+                        aria-label={t.sellerCatalogDelete}
+                        class={`delete-product-btn ${DELETE_CLASS}`}
                     >
-                        <Icon name="trash-2" size={15} />
-                        {t.sellerCatalogDelete}
+                        <Icon name="trash-2" size={16} />
+                        <span class="sm:hidden">{t.sellerCatalogDelete}</span>
                     </button>
                 </div>
             </div>

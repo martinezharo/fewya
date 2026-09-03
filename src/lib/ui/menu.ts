@@ -5,8 +5,12 @@
  *
  *   <div data-menu class="relative">
  *     <button data-menu-button aria-haspopup="true" aria-expanded="false" aria-controls="…">…</button>
- *     <div data-menu-panel id="…" role="menu" hidden class="absolute …">…</div>
+ *     <div data-menu-panel id="…" class="hidden absolute …">…</div>
  *   </div>
+ *
+ * Visibility is the `hidden` *class*, not the attribute, so a panel can opt
+ * out of being a dropdown at a breakpoint (`sm:flex`) and render inline
+ * instead — the seller catalog does exactly that on desktop.
  *
  * Behaviour is delegated from `document`, so any number of menus (including
  * ones added after init) share a single pair of listeners: opening one closes
@@ -23,7 +27,7 @@ function openMenu(menu: HTMLElement): void {
     const panel = menu.querySelector<HTMLElement>('[data-menu-panel]');
     menu.setAttribute(OPEN_ATTR, '');
     button?.setAttribute('aria-expanded', 'true');
-    if (panel) panel.hidden = false;
+    panel?.classList.remove('hidden');
 }
 
 function closeMenu(menu: HTMLElement, restoreFocus = false): void {
@@ -31,7 +35,7 @@ function closeMenu(menu: HTMLElement, restoreFocus = false): void {
     const panel = menu.querySelector<HTMLElement>('[data-menu-panel]');
     menu.removeAttribute(OPEN_ATTR);
     button?.setAttribute('aria-expanded', 'false');
-    if (panel) panel.hidden = true;
+    panel?.classList.add('hidden');
     if (restoreFocus) button?.focus();
 }
 
