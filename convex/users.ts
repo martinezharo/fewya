@@ -1,9 +1,52 @@
 import { mutation, query } from './_generated/server';
+import type { MutationCtx } from './_generated/server';
+import type { Id } from './_generated/dataModel';
 import { v } from 'convex/values';
 import { identity, profileByEmail, profileForIdentity } from './lib/auth';
 import { mayAdoptProfileByEmail } from './lib/identityLink';
+import { isStorageMarker, storageIdFromMarker, storageMarker } from './lib/storageMarker';
 
-const storageMarker = (storageId: string) => `convex-storage:${storageId}`;
+/**
+ * A profile field the buyer can fill in or clear.
+ *
+ * `null` is how the forms say "empty this": the checkout address inputs post
+ * every field they own, so leaving the floor blank has to be distinguishable
+ * from not touching it. The stored column is an optional string, and Convex
+ * clears an optional field with `undefined`, so the two are translated at the
+ * edge rather than widening the schema to accept nulls it would then have to
+ * read back everywhere.
+ */
+const clearableText = v.optional(v.union(v.string(), v.null()));
+
+/** Trims a submitted value, treating null and an all-space string as cleared. */
+function textPatch(value: string | null | undefined): string | undefined {
+    if (value == null) return undefined;
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+}
+
+/**
+ * Drops the Storage object an avatar field used to point at.
+ *
+ * A missing object must never fail the profile write that already succeeded:
+ * the file may have been removed by an earlier attempt, or never have existed
+ * because the field held an imported URL rather than a marker.
+ */
+async function discardAvatarObject(ctx: MutationCtx, previous: string | undefined): Promise<void> {
+    if (!isStorageMarker(previous)) return;
+    const storageId = storageIdFromMarker(previous);
+    if (!storageId) return;
+    try {
+        const upload = await ctx.db
+            .query('storageUploads')
+            .withIndex('by_storage_id', (q) => q.eq('storageId', storageId as Id<'_storage'>))
+            .unique();
+        if (upload) await ctx.db.delete(upload._id);
+        await ctx.storage.delete(storageId as Id<'_storage'>);
+    } catch {
+        // Already gone, or never a Convex object. The profile is what matters.
+    }
+}
 
 /** Returns the profile linked to the authenticated Clerk subject, if any. */
 export const current = query({
@@ -73,18 +116,18 @@ export const ensureCurrent = mutation({
 /** Update the authenticated profile while preserving the imported field names. */
 export const updateCurrent = mutation({
     args: {
-        firstName: v.optional(v.union(v.string(), v.null())),
-        lastName: v.optional(v.union(v.string(), v.null())),
-        avatarUrl: v.optional(v.union(v.string(), v.null())),
-        phone: v.optional(v.union(v.string(), v.null())),
-        phonePrefix: v.optional(v.union(v.string(), v.null())),
-        addressStreet: v.optional(v.union(v.string(), v.null())),
-        addressNumber: v.optional(v.union(v.string(), v.null())),
-        addressFloor: v.optional(v.union(v.string(), v.null())),
-        addressPostalCode: v.optional(v.union(v.string(), v.null())),
-        addressCity: v.optional(v.union(v.string(), v.null())),
-        addressProvince: v.optional(v.union(v.string(), v.null())),
-        addressCountry: v.optional(v.union(v.string(), v.null())),
+        firstName: clearableText,
+        lastName: clearableText,
+        avatarUrl: clearableText,
+        phone: clearableText,
+        phonePrefix: clearableText,
+        addressStreet: clearableText,
+        addressNumber: clearableText,
+        addressFloor: clearableText,
+        addressPostalCode: clearableText,
+        addressCity: clearableText,
+        addressProvince: clearableText,
+        addressCountry: clearableText,
         emailMarketingOptIn: v.optional(v.boolean()),
     },
     handler: async (ctx, args) => {
@@ -93,18 +136,16 @@ export const updateCurrent = mutation({
         if (!profile) throw new Error('Profile is not linked to this account');
 
         const patch: Record<string, unknown> = {};
-        if (args.firstName !== undefined) patch.firstName = args.firstName;
-        if (args.lastName !== undefined) patch.lastName = args.lastName;
-        if (args.avatarUrl !== undefined) patch.avatarUrl = args.avatarUrl;
-        if (args.phone !== undefined) patch.phone = args.phone;
-        if (args.phonePrefix !== undefined) patch.phonePrefix = args.phonePrefix;
-        if (args.addressStreet !== undefined) patch.addressStreet = args.addressStreet;
-        if (args.addressNumber !== undefined) patch.addressNumber = args.addressNumber;
-        if (args.addressFloor !== undefined) patch.addressFloor = args.addressFloor;
-        if (args.addressPostalCode !== undefined) patch.addressPostalCode = args.addressPostalCode;
-        if (args.addressCity !== undefined) patch.addressCity = args.addressCity;
-        if (args.addressProvince !== undefined) patch.addressProvince = args.addressProvince;
-        if (args.addressCountry !== undefined) patch.addressCountry = args.addressCountry;
+        const textFields = [
+            'firstName', 'lastName', 'avatarUrl', 'phone', 'phonePrefix',
+            'addressStreet', 'addressNumber', 'addressFloor', 'addressPostalCode',
+            'addressCity', 'addressProvince', 'addressCountry',
+        ] as const;
+        for (const field of textFields) {
+            // Only a field the caller actually submitted is touched; `null`
+            // and blank submissions clear it, which Convex spells `undefined`.
+            if (args[field] !== undefined) patch[field] = textPatch(args[field]);
+        }
         if (args.emailMarketingOptIn !== undefined) patch.emailMarketingOptIn = args.emailMarketingOptIn;
 
         if (Object.keys(patch).length > 0) {
@@ -123,15 +164,13 @@ export const setAvatarStorage = mutation({
         if (!profile) throw new Error('Profile is not linked to this account');
 
         const previous = profile.avatarUrl;
-        await ctx.db.patch(profile._id, { avatarUrl: storageMarker(String(args.storageId)) });
-        if (previous?.startsWith('convex-storage:')) {
-            try {
-                await ctx.storage.delete(previous.slice('convex-storage:'.length) as never);
-            } catch {
-                // An already removed object must not make the profile update fail.
-            }
-        }
-        return { avatarUrl: storageMarker(String(args.storageId)) };
+        const marker = storageMarker(String(args.storageId));
+        await ctx.db.patch(profile._id, { avatarUrl: marker });
+        await discardAvatarObject(ctx, previous);
+
+        const url = await ctx.storage.getUrl(args.storageId);
+        if (!url) throw new Error('Storage object not found');
+        return { avatarUrl: marker, url };
     },
 });
 
@@ -144,13 +183,7 @@ export const deleteAvatarStorage = mutation({
         if (!profile) throw new Error('Profile is not linked to this account');
         const previous = profile.avatarUrl;
         await ctx.db.patch(profile._id, { avatarUrl: undefined });
-        if (previous?.startsWith('convex-storage:')) {
-            try {
-                await ctx.storage.delete(previous.slice('convex-storage:'.length) as never);
-            } catch {
-                // Ignore a missing object; the profile is already cleared.
-            }
-        }
+        await discardAvatarObject(ctx, previous);
         return { ok: true };
     },
 });

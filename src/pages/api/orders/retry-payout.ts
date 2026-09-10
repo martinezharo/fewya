@@ -37,7 +37,13 @@ export const POST: APIRoute = async ({ locals, request }) => {
         // The buyer of an order can read this context too, but retrying a
         // payout is the seller's action: it moves money to their account.
         if (!payout.viewerIsSeller) return jsonResponse({ error: t.apiForbidden }, 403);
-        if (payout.fundsReleaseStatus !== FUNDS_RELEASE_STATUS.FAILED || !payout.stripePaymentIntentId) {
+        // Retryable while the payout was asked for and no transfer has been
+        // recorded — a release that never ran leaves the status at `pending`,
+        // and the seller is just as unpaid as after a recorded failure.
+        const outstanding = payout.fundsReleasedAt == null
+            && payout.fundsReleaseStatus !== FUNDS_RELEASE_STATUS.RELEASED
+            && payout.fundsReleaseRequestedAt != null;
+        if (!outstanding || !payout.stripePaymentIntentId) {
             return jsonResponse({ error: t.apiInvalidBody }, 400);
         }
 

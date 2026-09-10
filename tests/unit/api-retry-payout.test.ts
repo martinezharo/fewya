@@ -24,6 +24,8 @@ const payout = {
     publicId: 'ORD-1',
     viewerIsSeller: true,
     fundsReleaseStatus: 'failed',
+    fundsReleaseRequestedAt: 1_760_000_000_000,
+    fundsReleasedAt: null,
     stripePaymentIntentId: 'pi_1',
     items: [{ shopId: 'shop-1' }],
     labelCostByShop: {},
@@ -65,10 +67,33 @@ describe('POST /api/orders/retry-payout', () => {
         expect(mockReleaseAndRecordFunds).not.toHaveBeenCalled();
     });
 
-    it('refuses when the release did not previously fail', async () => {
-        convex.query.mockResolvedValueOnce({ ...payout, fundsReleaseStatus: 'released' });
+    it('refuses when the funds have already been transferred', async () => {
+        convex.query.mockResolvedValueOnce({
+            ...payout,
+            fundsReleaseStatus: 'released',
+            fundsReleasedAt: 1_760_000_000_001,
+        });
         expect((await call({ orderId: 'convex:ORD-1' })).status).toBe(400);
         expect(mockReleaseAndRecordFunds).not.toHaveBeenCalled();
+    });
+
+    // Nothing asked for a payout yet: the order has not been confirmed.
+    it('refuses when no payout has been requested', async () => {
+        convex.query.mockResolvedValueOnce({
+            ...payout,
+            fundsReleaseStatus: 'pending',
+            fundsReleaseRequestedAt: null,
+        });
+        expect((await call({ orderId: 'convex:ORD-1' })).status).toBe(400);
+        expect(mockReleaseAndRecordFunds).not.toHaveBeenCalled();
+    });
+
+    // A confirmation whose transfer never ran leaves the status at `pending`.
+    // The seller is exactly as unpaid as after a recorded failure.
+    it('retries a confirmed order whose release never ran', async () => {
+        convex.query.mockResolvedValueOnce({ ...payout, fundsReleaseStatus: 'pending' });
+        expect((await call({ orderId: 'convex:ORD-1' })).status).toBe(200);
+        expect(mockReleaseAndRecordFunds).toHaveBeenCalledTimes(1);
     });
 
     it('retries the release for the seller on the happy path', async () => {

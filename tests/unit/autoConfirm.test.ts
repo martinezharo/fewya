@@ -38,7 +38,7 @@ function stubReads({ eligible = [], retries = [] }: { eligible?: unknown[]; retr
     mockQuery.mockImplementation(async (fn: any) => {
         const name = getFunctionName(fn);
         if (name === getFunctionName(api.orders.listAutoConfirmCandidates)) return eligible;
-        if (name === getFunctionName(api.orders.listFailedFundReleaseCandidates)) return retries;
+        if (name === getFunctionName(api.orders.listPendingFundReleaseCandidates)) return retries;
         if (name === getFunctionName(api.orders.getPayoutOrder)) {
             return { id: 'convex:ORD-1', publicId: 'ORD-1', stripePaymentIntentId: 'pi_1', items: [], labelCostByShop: {} };
         }

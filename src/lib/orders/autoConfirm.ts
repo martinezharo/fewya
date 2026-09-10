@@ -6,6 +6,14 @@ import { releaseAndRecordFunds } from './convexPayout';
 
 const FUND_HOLD_HOURS = 48;
 
+/**
+ * How long a confirmation is left alone before the retry scan claims it.
+ *
+ * A buyer confirmation releases the funds in the same request, so sweeping one
+ * up seconds later would only duplicate work already in flight.
+ */
+const RELEASE_IN_FLIGHT_GRACE_MS = 10 * 60 * 1000;
+
 interface AutoConfirmReport {
     autoConfirmed: number;
     released: string[];
@@ -116,12 +124,17 @@ export async function runAutoConfirm(convexSecret?: string): Promise<AutoConfirm
         }
     }));
 
-    // ----- Phase 2: retry orders whose previous release failed -----
-    // These are orders already flipped to a paying status (confirmed) but where
-    // the Stripe transfer step blew up (transient issue, deleted account, etc).
+    // ----- Phase 2: retry orders that asked for a payout and never got one -----
+    // Orders already flipped to a paying status (confirmed) where the Stripe
+    // transfer never completed: it blew up (transient issue, deleted account),
+    // or it never ran at all because the confirmation did not go through the
+    // Worker. Both leave the seller unpaid with nothing else watching.
     let retries: ReleaseCandidate[];
     try {
-        retries = await convex.query(api.orders.listFailedFundReleaseCandidates, { secret: convexSecret });
+        retries = await convex.query(api.orders.listPendingFundReleaseCandidates, {
+            secret: convexSecret,
+            grace: RELEASE_IN_FLIGHT_GRACE_MS,
+        });
     } catch (error) {
         console.error(JSON.stringify({
             event: 'auto_confirm.retry_fetch_failed',

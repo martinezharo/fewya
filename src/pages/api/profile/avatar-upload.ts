@@ -1,8 +1,8 @@
 import type { APIRoute } from 'astro';
 import { createRequestConvexClient, getRequestUser } from '../../../lib/core/auth';
 import { api } from '../../../../convex/_generated/api';
-import type { Id } from '../../../../convex/_generated/dataModel';
 
+import { uploadConvexFile } from '../../../lib/core/convexStorage';
 import { detectImageMimeType, ALLOWED_IMAGE_TYPES } from '../../../lib/core/file-validation';
 import { securityLog } from '../../../lib/core/security-log';
 
@@ -34,21 +34,11 @@ export const POST: APIRoute = async ({ locals, request }) => {
     }
 
     try {
-        const uploadUrl = await convex.mutation(api.storage.generateUploadUrl, {});
-        const upload = await fetch(uploadUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': detectedType },
-            body: await file.arrayBuffer(),
-        });
-        if (!upload.ok) throw new Error(`Convex upload failed (${upload.status})`);
-        const payload = await upload.json() as { storageId?: string };
-        if (!payload.storageId) throw new Error('Convex upload did not return a storage ID');
-        const storageId = payload.storageId as Id<'_storage'>;
-        await convex.mutation(api.users.setAvatarStorage, { storageId });
-        const url = await convex.query(api.storage.getUrl, { storageId });
-        if (!url) throw new Error('Convex upload URL unavailable');
-        const path = `convex-storage:${payload.storageId}`;
-        return new Response(JSON.stringify({ url, path }), { status: 200 });
+        // The upload records the caller as the file's owner, and attaching it
+        // to the profile hands back the URL, so no separate resolve is needed.
+        const { storageId } = await uploadConvexFile(request, file, detectedType);
+        const { avatarUrl, url } = await convex.mutation(api.users.setAvatarStorage, { storageId });
+        return new Response(JSON.stringify({ url, path: avatarUrl }), { status: 200 });
     } catch (error) {
         console.error(JSON.stringify({
             event: 'avatar_upload.failed',

@@ -306,7 +306,7 @@ async function shipmentContextForSeller(ctx: QueryCtx | MutationCtx, orderId: st
         .query('orders')
         .withIndex('by_legacy_id', (q) => q.eq('legacyId', orderId))
         .unique();
-    if (!order || !isNewConvexOrder(order)) throw new Error('Order not found');
+    if (!order) throw new Error('Order not found');
 
     const shop = order.shopId
         ? await ctx.db.get(order.shopId)
@@ -546,7 +546,7 @@ export const updateShipmentLabelUrl = mutation({
         const order = shipment.orderId
             ? await ctx.db.get(shipment.orderId)
             : await ctx.db.query('orders').withIndex('by_legacy_id', (q) => q.eq('legacyId', shipment.orderLegacyId)).unique();
-        if (!order || !isNewConvexOrder(order)) throw new Error('Order not found');
+        if (!order) throw new Error('Order not found');
         const shop = order.shopId
             ? await ctx.db.get(order.shopId)
             : order.shopLegacyId ? await shopByLegacyId(ctx, order.shopLegacyId) : null;
@@ -568,7 +568,7 @@ async function sellerOrderForIdentity(ctx: MutationCtx, orderId: string) {
     const profile = await profileForIdentity(ctx, user);
     if (!profile?.isSeller) throw new Error('Seller access required');
     const order = await orderByLegacyId(ctx, orderId);
-    if (!order || !isNewConvexOrder(order)) throw new Error('Order not found');
+    if (!order) throw new Error('Order not found');
     const shop = order.shopId
         ? await ctx.db.get(order.shopId)
         : order.shopLegacyId ? await shopByLegacyId(ctx, order.shopLegacyId) : null;
@@ -583,7 +583,7 @@ async function buyerOrderForIdentity(ctx: MutationCtx, orderId: string) {
     const profile = await profileForIdentity(ctx, user);
     if (!profile) throw new Error('Authentication required');
     const order = await orderByLegacyId(ctx, orderId);
-    if (!order || !isNewConvexOrder(order)) throw new Error('Order not found');
+    if (!order) throw new Error('Order not found');
     if (order.buyerId !== profile._id && order.buyerLegacyId !== profile.legacyId) {
         throw new Error('Buyer access required');
     }
@@ -647,6 +647,9 @@ export const cancelForSeller = mutation({
     },
     handler: async (ctx, args) => {
         const { order, profile } = await sellerOrderForIdentity(ctx, args.orderId);
+        // Restores stock and records a refund; both already happened in the
+        // old stack for an imported order.
+        assertConvexManagedOrder(order);
         if (order.status === 'cancelled') return { success: true, orderId: order.legacyId, publicId: order.publicId };
         if (!['paid', 'processing'].includes(order.status)) throw new Error('Order cannot be cancelled');
         await restoreOrderStock(ctx, order);
@@ -661,13 +664,22 @@ export const cancelForSeller = mutation({
     },
 });
 
-/** Confirms delivered/incident order delivery for its buyer. */
+/**
+ * Confirms delivered/incident order delivery for its buyer.
+ *
+ * Confirming asks for the payout; it does not perform it. Only
+ * `recordFundsRelease` writes `fundsReleasedAt`, and only after Stripe has
+ * moved the money, so an order confirmed here — through the Worker or by
+ * calling this function straight with a Clerk token — stays visible to the
+ * retry scan until its seller has actually been paid.
+ */
 export const confirmDeliveryForBuyer = mutation({
     args: { orderId: v.string() },
     handler: async (ctx, args) => {
         const { order } = await buyerOrderForIdentity(ctx, args.orderId);
+        assertConvexManagedOrder(order);
         if (!['delivered', 'incident'].includes(order.status)) throw new Error('Order cannot be confirmed');
-        await ctx.db.patch(order._id, { status: 'confirmed', fundsReleasedAt: Date.now() });
+        await ctx.db.patch(order._id, { status: 'confirmed', fundsReleaseRequestedAt: order.fundsReleaseRequestedAt ?? Date.now() });
         return { success: true, orderId: order.legacyId, publicId: order.publicId, stripePaymentIntentId: order.stripePaymentIntentId ?? null };
     },
 });
@@ -677,11 +689,12 @@ export const confirmDeliveryForSeller = mutation({
     args: { orderId: v.string(), cutoff: v.number() },
     handler: async (ctx, args) => {
         const { order } = await sellerOrderForIdentity(ctx, args.orderId);
+        assertConvexManagedOrder(order);
         if (order.status === 'confirmed') return { success: true, orderId: order.legacyId, publicId: order.publicId, stripePaymentIntentId: order.stripePaymentIntentId ?? null };
         if (order.status !== 'delivered' || order.deliveredAt == null || order.deliveredAt >= args.cutoff || order.fundsReleasedAt != null) {
             throw new Error('Order cannot be confirmed yet');
         }
-        await ctx.db.patch(order._id, { status: 'confirmed', fundsReleasedAt: Date.now() });
+        await ctx.db.patch(order._id, { status: 'confirmed', fundsReleaseRequestedAt: order.fundsReleaseRequestedAt ?? Date.now() });
         return { success: true, orderId: order.legacyId, publicId: order.publicId, stripePaymentIntentId: order.stripePaymentIntentId ?? null };
     },
 });
@@ -691,6 +704,9 @@ export const reportIncidentForBuyer = mutation({
     args: { orderId: v.string(), description: v.string(), photos: v.array(v.string()) },
     handler: async (ctx, args) => {
         const { order } = await buyerOrderForIdentity(ctx, args.orderId);
+        // An incident is the first step of a refund, which only Convex-managed
+        // orders can be given.
+        assertConvexManagedOrder(order);
         if (args.description.replace(/\s/g, '').length < 50) throw new Error('Description too short');
         if (args.photos.length < 3 || args.photos.length > 20) throw new Error('Invalid incident photos');
         if (!['delivered', 'confirmed'].includes(order.status)) throw new Error('Order cannot be reported');
@@ -716,7 +732,7 @@ export const getIncidentUploadContext = query({
         const profile = await profileForIdentity(ctx, user);
         if (!profile) throw new Error('Authentication required');
         const order = await orderByLegacyId(ctx, args.orderId);
-        if (!order || !isNewConvexOrder(order)) throw new Error('Order not found');
+        if (!order || !isConvexManagedOrder(order)) throw new Error('Order not found');
         if (order.buyerId !== profile._id && order.buyerLegacyId !== profile.legacyId) throw new Error('Buyer access required');
         return { orderId: order.legacyId, status: order.status };
     },
@@ -748,7 +764,7 @@ export const getPayoutContextForCurrentUser = query({
         const profile = await profileForIdentity(ctx, user);
         if (!profile) throw new Error('Authentication required');
         const order = await orderByLegacyId(ctx, args.orderId);
-        if (!order || !isNewConvexOrder(order)) throw new Error('Order not found');
+        if (!order || !isConvexManagedOrder(order)) throw new Error('Order not found');
         const shop = order.shopId
             ? await ctx.db.get(order.shopId)
             : order.shopLegacyId ? await shopByLegacyId(ctx, order.shopLegacyId) : null;
@@ -771,6 +787,10 @@ export const getPayoutContextForCurrentUser = query({
             totalAmount: order.totalAmountCents / 100,
             deliveredAt: order.deliveredAt ?? null,
             fundsReleaseStatus: order.fundsReleaseStatus,
+            // A payout is outstanding while a confirmation has asked for one
+            // and no transfer has been recorded, whatever the status field says.
+            fundsReleaseRequestedAt: order.fundsReleaseRequestedAt ?? null,
+            fundsReleasedAt: order.fundsReleasedAt ?? null,
             stripePaymentIntentId: order.stripePaymentIntentId ?? null,
             items: await payoutItemsForOrder(ctx, order),
             labelCostByShop,
@@ -826,11 +846,28 @@ type CheckoutOrderInput = {
     }>;
 };
 
-function isNewConvexOrder(order: OrderDoc): boolean {
-    // Imported orders retain their Supabase UUID as legacyId. Keeping payment
-    // writes scoped to orders created after the cutover prevents a historical
-    // pending order from reserving stock a second time in Convex.
+/**
+ * Whether this order's money and stock are Convex's to move.
+ *
+ * Orders created after the cutover carry a `convex:` legacyId; imported ones
+ * keep their Supabase UUID. An imported order's lifecycle already ran to
+ * completion in the old stack — its payment was captured, its stock decremented
+ * and its payout transferred there — and none of that is replayable here, so
+ * paying, refunding, restocking and paying out an imported order are refused.
+ *
+ * It is deliberately not an access rule. Reading an imported order, opening its
+ * label, tracking its shipment, being notified about it or hiding an abandoned
+ * checkout are things its buyer and seller may still do, and those authorize on
+ * ownership like every other order.
+ */
+function isConvexManagedOrder(order: OrderDoc): boolean {
     return order.legacyId.startsWith('convex:');
+}
+
+function assertConvexManagedOrder(order: OrderDoc): void {
+    if (!isConvexManagedOrder(order)) {
+        throw new Error('This order was imported from the previous system and is settled there');
+    }
 }
 
 async function paymentAccountForShop(ctx: ReadCtx, shop: ShopDoc) {
@@ -895,7 +932,6 @@ export const listForCheckoutSession = query({
 
         const orders = await ordersForSession(ctx, args.sessionId);
         return orders
-            .filter((order) => isNewConvexOrder(order))
             .filter((order) => order.buyerId === profile._id || order.buyerLegacyId === profile.legacyId)
             .sort((a, b) => a.createdAt - b.createdAt)
             .map(checkoutOrderResponse);
@@ -936,7 +972,7 @@ export const createCheckoutOrders = mutation({
             }
 
             const existing = existingSessionOrders.find((order) =>
-                isNewConvexOrder(order)
+                isConvexManagedOrder(order)
                 && (order.buyerId === profile._id || order.buyerLegacyId === profile.legacyId)
                 && (order.shopId === shop._id || order.shopLegacyId === shop.legacyId),
             );
@@ -1118,7 +1154,7 @@ export const markPaidForCurrentUser = mutation({
         if (!profile) throw new Error('Profile is not linked to this account');
 
         const orders = (await ordersForSession(ctx, args.sessionId))
-            .filter((order) => isNewConvexOrder(order))
+            .filter((order) => isConvexManagedOrder(order))
             .filter((order) => order.buyerId === profile._id || order.buyerLegacyId === profile.legacyId);
         if (orders.length === 0) throw new Error('Checkout orders not found');
 
@@ -1160,8 +1196,31 @@ export const processStripePayment = mutation({
                     .withIndex('by_stripe_payment_intent_id', (q) => q.eq('stripePaymentIntentId', args.paymentIntentId))
                     .collect()
                 : [];
-        const orders = matching.filter(isNewConvexOrder);
-        if (orders.length === 0) return { handled: false, alreadyProcessed: false, requiresRefund: false, orders: [] as PaymentOrderSummary[] };
+        const orders = matching.filter(isConvexManagedOrder);
+        if (orders.length === 0) {
+            // A session that matches only imported orders is a payment for
+            // something this system cannot fulfil: the checkout was created in
+            // the old stack, and marking it paid here would decrement stock a
+            // second time. Silently acknowledging it would keep the money with
+            // nothing shipped, so ask for a refund the same way a failed
+            // confirmation does.
+            if (matching.length > 0) {
+                await ctx.db.insert('processedWebhookEvents', {
+                    legacyId: `stripe:${args.eventId}`,
+                    eventId: args.eventId,
+                    source: 'stripe',
+                    createdAt: Date.now(),
+                });
+                return {
+                    handled: true,
+                    alreadyProcessed: false,
+                    requiresRefund: true,
+                    failureReason: 'imported_order_not_payable',
+                    orders: matching.map(checkoutOrderResponse),
+                };
+            }
+            return { handled: false, alreadyProcessed: false, requiresRefund: false, orders: [] as PaymentOrderSummary[] };
+        }
 
         let summaries: PaymentOrderSummary[];
         try {
@@ -1248,7 +1307,7 @@ export const listTrackingCandidates = query({
                     .query('orders')
                     .withIndex('by_legacy_id', (q) => q.eq('legacyId', shipment.orderLegacyId))
                     .unique();
-            if (!order || !isNewConvexOrder(order)) continue;
+            if (!order) continue;
             candidates.push({
                 id: shipment.legacyId,
                 sendcloudShipmentId: shipment.sendcloudShipmentId,
@@ -1285,7 +1344,7 @@ export const applyShipmentTracking = mutation({
                 .query('orders')
                 .withIndex('by_legacy_id', (q) => q.eq('legacyId', shipment.orderLegacyId))
                 .unique();
-        if (!order || !isNewConvexOrder(order)) throw new Error('Shipment is not a Convex order');
+        if (!order) throw new Error('Shipment order not found');
 
         const mappedStatus = carrierShipmentStatus(args.status, shipment.status);
         const now = Date.now();
@@ -1360,7 +1419,7 @@ export const processShipmentTrackingEvent = mutation({
         const order = shipment.orderId
             ? await ctx.db.get(shipment.orderId)
             : await ctx.db.query('orders').withIndex('by_legacy_id', (q) => q.eq('legacyId', shipment.orderLegacyId)).unique();
-        if (!order || !isNewConvexOrder(order)) return { handled: false, alreadyProcessed: false };
+        if (!order) return { handled: false, alreadyProcessed: false };
 
         const mappedStatus = carrierShipmentStatus(args.status, shipment.status);
         const now = Date.now();
@@ -1444,17 +1503,32 @@ export const listAutoConfirmCandidates = query({
             .withIndex('by_status_delivered_at', (q) => q.eq('status', 'delivered'))
             .collect();
         return orders
-            .filter((order) => isNewConvexOrder(order) && order.deliveredAt != null && order.deliveredAt < args.cutoff && order.fundsReleasedAt == null)
+            .filter((order) => isConvexManagedOrder(order) && order.deliveredAt != null && order.deliveredAt < args.cutoff && order.fundsReleasedAt == null)
             .map((order) => ({ orderId: order.legacyId, publicId: order.publicId, stripePaymentIntentId: order.stripePaymentIntentId ?? null }));
     },
 });
 
-export const listFailedFundReleaseCandidates = query({
-    args: { secret: v.string() },
+/**
+ * Orders whose payout was asked for but never completed.
+ *
+ * Covers more than a recorded failure: a confirmation that never reached the
+ * transfer — the Worker died mid-request, or the mutation was called directly
+ * with a Clerk token — leaves the release status at `pending`, and nothing
+ * else would ever look at it again. `grace` keeps a release that is still in
+ * flight out of the scan; Stripe's per-shop idempotency key is what makes a
+ * genuine overlap harmless.
+ */
+export const listPendingFundReleaseCandidates = query({
+    args: { secret: v.string(), grace: v.optional(v.number()) },
     handler: async (ctx, args) => {
         assertWebhookSecret(args.secret);
+        const settledBefore = Date.now() - (args.grace ?? 0);
         return (await ctx.db.query('orders').collect())
-            .filter((order) => isNewConvexOrder(order) && order.fundsReleaseStatus === 'failed')
+            .filter((order) => isConvexManagedOrder(order)
+                && order.fundsReleasedAt == null
+                && order.fundsReleaseStatus !== 'released'
+                && order.fundsReleaseRequestedAt != null
+                && (order.fundsReleaseStatus === 'failed' || order.fundsReleaseRequestedAt <= settledBefore))
             .map((order) => ({ orderId: order.legacyId, publicId: order.publicId, stripePaymentIntentId: order.stripePaymentIntentId ?? null }));
     },
 });
@@ -1467,7 +1541,7 @@ export const getPayoutOrder = query({
             .query('orders')
             .withIndex('by_legacy_id', (q) => q.eq('legacyId', args.orderId))
             .unique();
-        if (!order || !isNewConvexOrder(order)) throw new Error('Payout order not found');
+        if (!order || !isConvexManagedOrder(order)) throw new Error('Payout order not found');
         const shipments = await ctx.db.query('shipments').withIndex('by_order_id', (q) => q.eq('orderId', order._id)).collect();
         const labelCostByShop: Record<string, number> = {};
         if (order.shopLegacyId && shipments[0]?.priceCents != null) {
@@ -1491,11 +1565,11 @@ export const autoConfirmDelivered = mutation({
             .query('orders')
             .withIndex('by_legacy_id', (q) => q.eq('legacyId', args.orderId))
             .unique();
-        if (!order || !isNewConvexOrder(order)) throw new Error('Order not found');
+        if (!order || !isConvexManagedOrder(order)) throw new Error('Order not found');
         if (order.status !== 'delivered' || order.deliveredAt == null || order.deliveredAt >= args.cutoff || order.fundsReleasedAt != null) {
             return { confirmed: false, orderId: order.legacyId, publicId: order.publicId };
         }
-        await ctx.db.patch(order._id, { status: 'confirmed', fundsReleasedAt: Date.now() });
+        await ctx.db.patch(order._id, { status: 'confirmed', fundsReleaseRequestedAt: order.fundsReleaseRequestedAt ?? Date.now() });
         return { confirmed: true, orderId: order.legacyId, publicId: order.publicId };
     },
 });
@@ -1513,10 +1587,13 @@ export const recordFundsRelease = mutation({
             .query('orders')
             .withIndex('by_legacy_id', (q) => q.eq('legacyId', args.orderId))
             .unique();
-        if (!order || !isNewConvexOrder(order)) throw new Error('Order not found');
+        if (!order || !isConvexManagedOrder(order)) throw new Error('Order not found');
         if (args.success) {
+            // The only place the money-moved marker is written. Everything that
+            // decides whether a seller is still owed reads it.
             await ctx.db.patch(order._id, {
                 fundsReleaseStatus: 'released',
+                fundsReleasedAt: order.fundsReleasedAt ?? Date.now(),
                 fundsReleaseLastError: '',
             });
         } else {
@@ -1534,7 +1611,7 @@ async function notificationContext(ctx: ReadCtx, orderId: string) {
         .query('orders')
         .withIndex('by_legacy_id', (q) => q.eq('legacyId', orderId))
         .unique();
-    if (!order || !isNewConvexOrder(order)) return null;
+    if (!order) return null;
 
     const shop = order.shopId
         ? await ctx.db.get(order.shopId)
@@ -1674,7 +1751,7 @@ export const notificationScanCandidates = query({
             const order = shipment.orderId
                 ? await ctx.db.get(shipment.orderId)
                 : await ctx.db.query('orders').withIndex('by_legacy_id', (q) => q.eq('legacyId', shipment.orderLegacyId)).unique();
-            if (!order || !isNewConvexOrder(order)) continue;
+            if (!order) continue;
             const status = event.status.toLowerCase();
             if (status.includes('out for delivery')) outForDelivery.push(order.legacyId);
             if (isPickupReadyStatus(event.status) && order.deliveryType === 'pickup_point') pickupReady.push(order.legacyId);
@@ -1696,7 +1773,6 @@ export const notificationScanCandidates = query({
         const labelReminder: string[] = [];
         const shipReminder: Array<{ orderId: string; paidAt: number }> = [];
         for (const order of orders) {
-            if (!isNewConvexOrder(order)) continue;
             if (order.status === 'paid' && order.paidAt != null && order.paidAt < args.labelCutoff) labelReminder.push(order.legacyId);
             if (order.status === 'processing' && order.paidAt != null) shipReminder.push({ orderId: order.legacyId, paidAt: order.paidAt });
         }

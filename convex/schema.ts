@@ -174,6 +174,10 @@ export default defineSchema({
         paidAt: v.optional(v.number()),
         shippedAt: v.optional(v.number()),
         deliveredAt: v.optional(v.number()),
+        /** Set when a confirmation asks for the payout. `fundsReleasedAt` is
+         * written only once Stripe has actually moved the money, so an order
+         * with a request and no release is one the retry scan must pick up. */
+        fundsReleaseRequestedAt: v.optional(v.number()),
         fundsReleasedAt: v.optional(v.number()),
         cancellationReason: v.optional(v.string()),
         buyerHiddenAt: v.optional(v.number()),
