@@ -19,7 +19,7 @@ test('checkout sends the selected delivery method and reaches Stripe', async ({ 
     }));
     await page.route('**/api/me/profile-status', (route) => route.fulfill({ json: { complete: true } }));
     await page.route('**/api/cart/delivery-options', (route) => route.fulfill({
-        json: { homeAvailable: true, pickupAvailable: true, pickupCarriers: ['correos'] },
+        json: { homeAvailable: true, pickupAvailable: true, platforms: ['correos'] },
     }));
 
     let checkoutBody: unknown;

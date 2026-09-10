@@ -3,7 +3,6 @@ import { supabase } from '../../../lib/core/supabase';
 import {
     normalizeShippingPlatforms,
     intersectShippingPlatforms,
-    servicePointCarriersForPlatforms,
     type ShippingPlatform,
 } from '../../../lib/shipping/shippingPlatform';
 
@@ -25,8 +24,9 @@ function jsonResponse(payload: unknown, status: number) {
  * Returns the shipping options compatible with EVERY shop in the cart. Because
  * the buyer picks a single delivery method that is applied to all shops, an
  * option is only offered when all shops enable the underlying platform.
+ *   - platforms       → shipping platforms all shops support
  *   - homeAvailable   → 'correos' enabled by all shops (home delivery)
- *   - pickupCarriers  → service-point carriers all shops support
+ *   - pickupAvailable → at least one platform left to search pickup points on
  */
 export const POST: APIRoute = async ({ locals, request  }) => {
     const { t } = locals;
@@ -45,8 +45,7 @@ export const POST: APIRoute = async ({ locals, request  }) => {
         return jsonResponse({
             platforms: all,
             homeAvailable: all.includes('correos'),
-            pickupAvailable: true,
-            pickupCarriers: servicePointCarriersForPlatforms(all),
+            pickupAvailable: all.length > 0,
         }, 200);
     }
 
@@ -77,12 +76,10 @@ export const POST: APIRoute = async ({ locals, request  }) => {
     }
 
     const platforms = intersectShippingPlatforms(Array.from(perShop.values()));
-    const pickupCarriers = servicePointCarriersForPlatforms(platforms);
 
     return jsonResponse({
         platforms,
         homeAvailable: platforms.includes('correos'),
-        pickupAvailable: pickupCarriers.length > 0,
-        pickupCarriers,
+        pickupAvailable: platforms.length > 0,
     }, 200);
 };

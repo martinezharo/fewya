@@ -85,9 +85,16 @@ export interface SendcloudLabelResult {
 }
 
 import { SENDCLOUD_API_KEY, SENDCLOUD_API_SECRET } from 'astro:env/server';
+import {
+    platformForServicePointCarrier,
+    servicePointCarriersForPlatforms,
+    type ShippingPlatform,
+} from './shippingPlatform';
 
 const SENDCLOUD_API_BASE = 'https://panel.sendcloud.sc/api/v2';
 const SENDCLOUD_API_V3_BASE = 'https://panel.sendcloud.sc/api/v3';
+// Search radius around the buyer's address, in metres.
+const SERVICE_POINT_RADIUS_METERS = 5000;
 
 function envVar(key: string): string | undefined {
     return (import.meta.env as Record<string, string | undefined>)?.[key];
@@ -558,18 +565,21 @@ export interface SendcloudServicePoint {
 export async function getServicePoints(
     address: string,
     country: string,
-    carriers: string[]
+    platforms: ShippingPlatform[]
 ): Promise<SendcloudServicePoint[]> {
     const config = getConfig();
     const token = Buffer.from(`${config.apiKey}:${config.apiSecret}`).toString('base64');
 
     async function doRequest(requestedCarriers: string[]): Promise<SendcloudServicePoint[]> {
-        const url = new URL('https://servicepoints.sendcloud.sc/api/v2/service-points');
+        const url = new URL('https://servicepoints.sendcloud.sc/api/v2/service-points/');
         url.searchParams.set('country', country);
         url.searchParams.set('address', address);
-        url.searchParams.set('radius', '5000');
-        for (const carrier of requestedCarriers) {
-            url.searchParams.append('carrier', carrier);
+        url.searchParams.set('radius', String(SERVICE_POINT_RADIUS_METERS));
+        // Sendcloud expects ONE comma-separated `carrier` param. Repeating the
+        // param silently keeps only the last value, which would drop every
+        // other carrier's points from the results.
+        if (requestedCarriers.length > 0) {
+            url.searchParams.set('carrier', requestedCarriers.join(','));
         }
 
         const response = await fetch(url.toString(), {
@@ -608,30 +618,45 @@ export async function getServicePoints(
     // Keep only points whose carrier maps to one of the requested platforms.
     // Sendcloud's own carrier filter can be bypassed (see the fallback below),
     // and we never want to surface a carrier the seller hasn't enabled — those
-    // would otherwise be rejected later at checkout. An empty `carriers` list
+    // would otherwise be rejected later at checkout. An empty `platforms` list
     // means "no restriction".
-    const allowed = carriers.map((c) => c.toLowerCase());
-    function filterByCarrier(points: SendcloudServicePoint[]): SendcloudServicePoint[] {
-        if (allowed.length === 0) return points;
+    function filterByPlatform(points: SendcloudServicePoint[]): SendcloudServicePoint[] {
+        if (platforms.length === 0) return points;
         return points.filter((sp) => {
-            const code = (sp.carrier || '').toLowerCase();
-            const platform = code.includes('inpost') ? 'inpost' : 'correos';
-            return allowed.includes(platform);
+            const platform = platformForServicePointCarrier(sp.carrier);
+            return platform !== null && platforms.includes(platform);
         });
     }
 
+    const carriers = servicePointCarriersForPlatforms(platforms);
+
     try {
-        return filterByCarrier(await doRequest(carriers));
+        return filterByPlatform(await doRequest(carriers));
     } catch (err) {
-        const msg = err instanceof Error ? err.message : '';
-        // If some carriers aren't activated, retry without carrier filter and
-        // drop the disallowed carriers ourselves, rather than showing points
-        // the seller can't actually ship with.
-        if (msg.includes('haven\'t been activated')) {
-            return filterByCarrier(await doRequest([]));
+        // Sendcloud rejects the WHOLE request when any requested carrier is not
+        // usable for service points on this account (not activated, or without
+        // service point delivery at all). Retry unfiltered and drop the
+        // disallowed carriers ourselves, so one bad carrier never costs the
+        // buyer every pickup point.
+        if (isCarrierRejection(err)) {
+            return filterByPlatform(await doRequest([]));
         }
         throw err;
     }
+}
+
+// Sendcloud has no error code for this: the carrier filter being unusable is
+// only distinguishable by the message it returns with its 400 / 401.
+const CARRIER_REJECTION_HINTS = [
+    "haven't been activated",
+    'have not been activated',
+    'do not support service point delivery',
+    'does not support service point delivery',
+];
+
+function isCarrierRejection(err: unknown): boolean {
+    const message = (err instanceof Error ? err.message : '').toLowerCase();
+    return CARRIER_REJECTION_HINTS.some((hint) => message.includes(hint));
 }
 
 export function parseSpanishAddress(
