@@ -24,6 +24,9 @@ const WEBHOOK_PATHS = new Set(['/api/webhooks/stripe', '/api/sendcloud/webhook']
 // service-point lookups, and Stripe checkout sessions.
 const RATE_LIMITED_PREFIXES = ['/api/sendcloud/', '/api/cart/'];
 
+// Clerk serves production assets and authentication from the custom domain.
+const CLERK_CSP_SOURCES = "https://clerk.fewya.com https://*.clerk.com https://*.clerk.accounts.dev";
+
 const CSP = [
     "default-src 'self'",
     // script-src includes `data:` because Astro's ClientRouter re-executes
@@ -32,14 +35,14 @@ const CSP = [
     // and astro:page-load never fires — event handlers stop re-binding on
     // SPA navigation. The XSS surface is essentially unchanged because
     // 'unsafe-inline' already permits inline script execution.
-    "script-src 'self' 'unsafe-inline' https://js.stripe.com https://*.clerk.com https://*.clerk.accounts.dev https://*.protect.clerk.com https://challenges.cloudflare.com https://clerk-telemetry.com https://*.clerk-telemetry.com data:",
-    "script-src-elem 'self' 'unsafe-inline' https://js.stripe.com https://*.clerk.com https://*.clerk.accounts.dev https://*.protect.clerk.com https://challenges.cloudflare.com data:",
+    `script-src 'self' 'unsafe-inline' https://js.stripe.com ${CLERK_CSP_SOURCES} https://*.protect.clerk.com https://challenges.cloudflare.com https://clerk-telemetry.com https://*.clerk-telemetry.com data:`,
+    `script-src-elem 'self' 'unsafe-inline' https://js.stripe.com ${CLERK_CSP_SOURCES} https://*.protect.clerk.com https://challenges.cloudflare.com data:`,
     "worker-src 'self' blob:",
-    "frame-src https://js.stripe.com https://hooks.stripe.com https://*.clerk.com https://*.clerk.accounts.dev https://*.protect.clerk.com https://challenges.cloudflare.com",
-    `img-src 'self' data: blob: http://127.0.0.1:3210 http://localhost:3210 https://*.convex.cloud https://*.convex.site https://*.clerk.com https://*.clerk.accounts.dev https://img.clerk.com https://imagedelivery.net`,
+    `frame-src https://js.stripe.com https://hooks.stripe.com ${CLERK_CSP_SOURCES} https://*.protect.clerk.com https://challenges.cloudflare.com`,
+    `img-src 'self' data: blob: http://127.0.0.1:3210 http://localhost:3210 https://*.convex.cloud https://*.convex.site ${CLERK_CSP_SOURCES} https://img.clerk.com https://imagedelivery.net`,
     // style-src: Google Fonts stylesheet loaded via <link> in Layout.astro
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://*.clerk.com https://*.clerk.accounts.dev",
-    `connect-src 'self' http://127.0.0.1:3210 http://localhost:3210 https://*.convex.cloud https://*.convex.site https://*.clerk.com https://*.clerk.accounts.dev https://*.protect.clerk.com https://challenges.cloudflare.com https://clerk-telemetry.com https://*.clerk-telemetry.com https://img.clerk.com https://api.stripe.com https://panel.sendcloud.sc`,
+    `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com ${CLERK_CSP_SOURCES}`,
+    `connect-src 'self' http://127.0.0.1:3210 http://localhost:3210 https://*.convex.cloud https://*.convex.site ${CLERK_CSP_SOURCES} https://*.protect.clerk.com https://challenges.cloudflare.com https://clerk-telemetry.com https://*.clerk-telemetry.com https://img.clerk.com https://api.stripe.com https://panel.sendcloud.sc`,
     // font-src: Google Fonts serves .woff2 files from fonts.gstatic.com
     "font-src 'self' https://fonts.gstatic.com",
     "object-src 'none'",

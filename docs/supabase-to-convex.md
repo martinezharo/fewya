@@ -2,8 +2,8 @@
 
 Convex is the only database the application code knows about. Supabase is gone
 from the repository: there is no client, no compatibility path and no fallback.
-What remains is a deployment decision — pointing `fewya.com` at the new stack —
-and that is deliberately a manual step, described under **Cutover** below.
+Production traffic on `fewya.com` was switched to Convex and Clerk production
+on 2026-09-10. The cutover status and reproducible procedure are recorded below.
 
 ## Where the data lives
 
@@ -33,11 +33,17 @@ Checks that were run against the exported production snapshot:
   have a shipment, 88/88 storage objects have an uploaded file.
 - Money matches to the cent: orders total 6672 cents and refunds 350 cents in
   both Supabase and Convex.
-- Every order in the snapshot is in a terminal state (7 confirmed and paid out,
-  1 cancelled, 8 abandoned before payment). No in-flight order is stranded by
-  the cutover, which matters because Convex mutations deliberately refuse to
-  act on imported orders — only orders created after the cutover, whose
-  `legacyId` starts with `convex:`, can be paid, shipped or refunded.
+- Provider checks on 2026-09-10 found 8 complete/paid Stripe sessions,
+  7 expired/unpaid sessions, and **1 open/unpaid session**. Sendcloud reports
+  all 7 shipments delivered. The open session is a test checkout created by the
+  owner; a payment arriving on it is refunded and reported rather than
+  acknowledged, because an imported order cannot be fulfilled from here.
+
+Imported orders keep their Supabase UUID as `legacyId`, and that prefix decides
+one thing only: whether Convex may move their money or stock. It never decides
+who may read them. Their buyers and sellers keep every other operation —
+reading the order, opening its label, tracking its shipment, hiding an
+abandoned checkout — authorized on ownership like any other order.
 
 ## How authorization works now
 
@@ -71,9 +77,45 @@ through. That suite replaces the Postgres RLS tests.
 
 ## Cutover
 
+Production cutover performed on 2026-09-10:
+
+- Clerk production instance `ins_3J9626kyJEa8blSGsd2xfiA7Glf` is configured
+  for `fewya.com`. Clerk reports DNS, SSL, email DNS and Google OAuth complete.
+  The `convex` JWT template emits `"email_verified": "{{user.email_verified}}"`.
+- Production Convex trusts `https://clerk.fewya.com`; its functions and auth
+  configuration were deployed after setting the issuer.
+- Final snapshot `.migrations/supabase-export/2026-09-10T17-34-03-395Z`
+  matches the previous exported table contents, so no delta import was needed.
+- Worker build `7488c4e2-a46d-4668-8893-cfd82deb7b1b` was deployed to
+  `fewya` with production Clerk keys and `CONVEX_WEBHOOK_SECRET`. A subsequent
+  secret-only version removes `SUPABASE_SECRET_KEY` from both `fewya` and
+  `fewya-test`.
+- All 631 tests passed before cutover; the 38 middleware tests and production
+  build passed after fixing CSP to allow `https://clerk.fewya.com`.
+  Browser checks confirm the public catalog and the Clerk sign-in form load
+  without JavaScript errors. The sign-in form displays Continue with Google.
+- Signed synthetic Stripe and Sendcloud probes using nonexistent payment and
+  shipment references returned HTTP 200, exercising Worker-to-Convex auth
+  without modifying orders. Unsigned probes were rejected. Stripe's live
+  endpoint is enabled at `https://fewya.com/api/webhooks/stripe`.
+- Google redirect rechecked successfully: the button reaches Google's sign-in
+  page for `fewya.com`, without `redirect_uri_mismatch`.
+- A successful user sign-in/account-linking check and actual provider-originated
+  webhook deliveries remain pending. Synthetic probes are not evidence
+  of a provider delivery. Keep Supabase available and retain the snapshots
+  until these final checks are satisfactory.
+
+Production keys are saved in ignored, mode-0600 `.env.clerk-production`.
+That file also contains DNS and Google credentials: do not bulk-upload it to
+Workers. Only Clerk keys belong in Worker bindings. Use the existing Wrangler
+OAuth login for deployments; the DNS-only token cannot deploy Workers.
+The five production DNS records are in [the zone file](clerk-production-dns.txt).
+Google's existing web client uses `https://clerk.fewya.com/v1/oauth_callback`;
+retain the Supabase callback until the old stack is retired.
+
 Merging this branch does not move production traffic: there is no deploy
 pipeline, and the live Worker keeps running its current build until someone
-deploys. To complete the switch:
+deploys. The following procedure documents how to reproduce the switch:
 
 1. **Create a Clerk production instance** for `fewya.com` and add its DNS
    records. Then:
@@ -81,8 +123,8 @@ deploys. To complete the switch:
    - `bunx wrangler secret put PUBLIC_CLERK_PUBLISHABLE_KEY --name fewya`
    - `bunx wrangler secret put CLERK_SECRET_KEY --name fewya`
 
-   Until this is done the production Convex deployment trusts the Clerk
-   *development* instance, which is fine for staging and not for real traffic.
+   Run `bunx convex deploy` after changing the issuer to synchronize the auth
+   configuration. Production must trust the production Clerk issuer.
 2. **Give the Worker the deployment secret** so webhooks and cron can write:
    `bunx wrangler secret put CONVEX_WEBHOOK_SECRET --name fewya` — the same
    value as `bunx convex env list --prod`.
@@ -91,13 +133,66 @@ deploys. To complete the switch:
    `bunx convex env set MIGRATION_SECRET <random> --prod`, then
    `bun run migration:export && CONVEX_URL=<prod url> MIGRATION_SECRET=<same> bun run migration:import`,
    then `bunx convex env remove MIGRATION_SECRET --prod`.
-4. **Deploy** the Worker: `CLOUDFLARE_ENV=production bun run build && bunx wrangler deploy`.
+4. **Deploy** the Worker:
+   `env -u CLOUDFLARE_ENV bun --env-file=.env.clerk-production run build && bunx wrangler deploy`.
+   The production publishable key must be present during the build because
+   the Clerk integration and middleware read it through `import.meta.env`.
+   Worker secrets alone do not replace a development key embedded in a build.
+   Production uses the root Wrangler configuration; there is no named
+   `production` environment. Setting `CLOUDFLARE_ENV=production` fails during
+   type generation. Check that `dist/server/wrangler.json` names `fewya` and
+   points at `quirky-puffin-695` before deploying.
 5. **Point Stripe and Sendcloud webhooks** at the deployed Worker (the URLs do
    not change) and confirm one event of each arrives.
 6. **Remove the leftovers**: `bunx wrangler secret delete SUPABASE_SECRET_KEY --name fewya`
    (and the same on `fewya-test`), then pause or delete the Supabase project
    once you are satisfied — keep the exported snapshot under `.migrations/`
    until then.
+
+## Merge readiness audit (2026-09-10)
+
+Four regressions were found auditing the deployed migration against production
+data. All four are fixed, and `tests/convex/readiness.audit.test.ts` keeps
+them fixed:
+
+1. **`users.updateCurrent` could not clear a field.** It accepted `null` while
+   the stored columns are optional strings, so emptying an address line — the
+   profile form posts every field it owns — failed the schema and returned a
+   503. `null` and a blank submission now both clear the field, which Convex
+   spells `undefined`.
+2. **`orders.confirmDeliveryForBuyer` marked the funds released before the
+   transfer.** Called directly with a Clerk token it left the order confirmed,
+   `fundsReleasedAt` set and `fundsReleaseStatus` at `pending` — outside the
+   delivered-order scan and outside the failed-release retry, with the seller
+   never paid. Confirming now only records a *request* for the payout
+   (`fundsReleaseRequestedAt`); `recordFundsRelease`, which needs the
+   deployment secret, is the one place that writes `fundsReleasedAt`, and the
+   retry scan sweeps anything requested and not released.
+3. **`storage.getUrl` handed a private file to any signed-in caller.** A
+   session is not permission: shipping labels carry the buyer's name and
+   address. Resolution is now authorized against the documents that tie the
+   object to the caller — the upload it claimed, its own avatar, its shop's
+   images, or an order it is party to. `resolveLegacyUrl` is gone; a label is
+   resolved inside `orders.getShipmentForAccess`, behind the buyer/seller check
+   that endpoint already runs.
+4. **The `convex:` prefix was being used as an access rule.** It blocked
+   imported orders from operations their owners are entitled to, such as hiding
+   an abandoned checkout or opening a delivered order's label. The prefix now
+   guards only what it was meant to guard — paying, refunding, restocking and
+   paying out — and everything else authorizes on ownership like any other
+   order.
+
+The open Stripe session against an imported order (a test checkout created by
+the owner) no longer resolves into a silent acknowledgement: a payment matching
+only imported orders is refunded and reported, instead of being kept with
+nothing to ship.
+
+The production Convex export was compared with the final Supabase snapshot:
+all 3,512 transformed source fields match, all checked relationships resolve,
+and all 88 stored files match their original SHA-256 hashes. Order and refund
+amounts remain 6,672 and 350 cents respectively. Data preservation does not
+establish equivalent behavior or authorization, which is what the audit suite
+is for.
 
 ## The migration tooling
 
