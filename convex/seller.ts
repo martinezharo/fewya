@@ -458,6 +458,46 @@ export const updateProduct = mutation({
     },
 });
 
+/**
+ * Loss-protection inputs for the seller Worker routes.
+ *
+ * The check itself needs a live Sendcloud quote, which Convex cannot make, so
+ * the route runs it. This returns the two things the route cannot know on its
+ * own: whether the shop opted out of the check, and the variants already
+ * stored for a product (used when activating one without resending them).
+ */
+export const pricingContext = query({
+    args: { productId: v.optional(v.string()) },
+    handler: async (ctx, args) => {
+        const { shop } = await sellerContext(ctx);
+        if (!args.productId) return { allowLoss: shop.allowLoss, variants: [] };
+
+        const product = await ctx.db
+            .query('products')
+            .withIndex('by_legacy_id', (q) => q.eq('legacyId', args.productId!))
+            .unique();
+        if (!product || (product.shopId !== shop._id && product.shopLegacyId !== shop.legacyId)) {
+            throw new Error('Product access denied');
+        }
+        const variants = await ctx.db
+            .query('productVariants')
+            .withIndex('by_product_id', (q) => q.eq('productId', product._id))
+            .collect();
+        return {
+            allowLoss: shop.allowLoss,
+            variants: variants.map((variant) => ({
+                variant_name: variant.variantName ?? null,
+                price: variant.priceCents / 100,
+                shipping_cost: variant.shippingCostCents == null ? null : variant.shippingCostCents / 100,
+                weight_kg: variant.weightKg ?? null,
+                length_cm: variant.lengthCm ?? null,
+                width_cm: variant.widthCm ?? null,
+                height_cm: variant.heightCm ?? null,
+            })),
+        };
+    },
+});
+
 export const toggleProduct = mutation({
     args: { productId: v.string(), isActive: v.boolean() },
     handler: async (ctx, args) => {

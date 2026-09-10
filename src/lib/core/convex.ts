@@ -4,8 +4,9 @@ import { CONVEX_URL } from 'astro:env/server';
 /**
  * Creates a request-scoped Convex client for Astro server code.
  *
- * The URL is optional while the migration is in dual-read mode: callers can
- * fall back to Supabase until the Convex staging deployment is configured.
+ * Returns null when the deployment URL is not configured, which is the only
+ * state in which the app has no data source at all — callers answer that with
+ * a 503 rather than pretending the catalog is empty.
  */
 export function createConvexClient(token?: string | null): ConvexHttpClient | null {
     if (!CONVEX_URL) return null;
@@ -14,7 +15,7 @@ export function createConvexClient(token?: string | null): ConvexHttpClient | nu
     return client;
 }
 
-/** Attach a Clerk/JWT token once authentication is migrated. */
+/** Attach the caller's Clerk JWT so Convex authorizes as them. */
 export function setConvexAuth(client: ConvexHttpClient, token: string | null | undefined): void {
     if (token) client.setAuth(token);
 }

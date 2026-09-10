@@ -1,49 +1,24 @@
 ---
+import { getRequestUser } from '../../../lib/core/auth';
 import SellerLayout from '../../../layouts/SellerLayout.astro';
 import Icon from '../../../components/icons/Icon.astro';
 import CatalogProductCard from '../../../components/seller/CatalogProductCard.astro';
-import { createSupabaseAuthClient } from '../../../lib/core/auth';
 import { validateProductCompleteness } from '../../../lib/products/productValidation';
 import { getTotalStock } from '../../../lib/products/variants';
 import type { Product, ProductVariant } from '../../../lib/core/types';
-import { convexOnly } from '../../../lib/core/env';
 import { getConvexSeller } from '../../../lib/seller/convexSeller';
 const { t } = Astro.locals;
 
-const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
-const { data: sessionData } = await supabase.auth.getSession();
-const user = sessionData?.session?.user;
+const user = getRequestUser(Astro.request);
 
 if (!user) return Astro.redirect('/sell');
 
 let shop: any;
 let allProducts: (Product & { variants?: ProductVariant[] })[];
-if (convexOnly) {
-    const seller = await getConvexSeller(Astro.request);
-    if (!seller?.shop) return Astro.redirect('/sell/onboarding');
-    shop = seller.shop;
-    allProducts = (seller.products ?? []) as any;
-} else {
-    const { data: profile } = await supabase
-        .from('profiles')
-        .select('is_seller')
-        .eq('id', user.id)
-        .single();
-    if (!profile?.is_seller) return Astro.redirect('/sell');
-    const { data: legacyShop } = await supabase
-        .from('shops')
-        .select('id, name, slug')
-        .eq('owner_id', user.id)
-        .maybeSingle();
-    if (!legacyShop) return Astro.redirect('/sell/onboarding');
-    shop = legacyShop;
-    const { data: products } = await supabase
-        .from('products')
-        .select('*, variants:product_variants(*)')
-        .eq('shop_id', shop.id)
-        .order('created_at', { ascending: false });
-    allProducts = (products ?? []) as any;
-}
+const seller = await getConvexSeller(Astro.request);
+if (!seller?.shop) return Astro.redirect('/sell/onboarding');
+shop = seller.shop;
+allProducts = (seller.products ?? []) as any;
 
 const productsWithCompleteness = allProducts.map(p => {
     const complete = validateProductCompleteness(p, p.variants ?? []);

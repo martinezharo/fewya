@@ -3,11 +3,7 @@ import Layout from './Layout.astro';
 import SellerSidebar from '../components/seller/SellerSidebar.astro';
 import PushPrompt from '../components/notifications/PushPrompt.astro';
 import Icon from '../components/icons/Icon.astro';
-import { createSupabaseAuthClient } from '../lib/core/auth';
-import { validateProductCompleteness } from '../lib/products/productValidation';
 import { isProfileComplete } from '../lib/core/validation';
-import { ORDER_STATUS } from '../lib/orders/orderStatus';
-import { convexOnly } from '../lib/core/env';
 import { getConvexSeller } from '../lib/seller/convexSeller';
 
 interface Props {
@@ -28,7 +24,7 @@ let deliveryFailedCount = 0;
 let incompleteProductsCount = 0;
 let sellerDetailsIncomplete = false;
 
-if (shopId && convexOnly) {
+if (shopId) {
     const seller = await getConvexSeller(Astro.request);
     if (seller) {
         const profile = seller.profile ?? {};
@@ -42,74 +38,6 @@ if (shopId && convexOnly) {
         deliveryFailedCount = seller.metrics?.deliveryFailed ?? 0;
         incompleteProductsCount = (seller.products ?? []).filter((product: any) => !product.isComplete).length;
     }
-} else if (shopId) {
-    const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (user) {
-        const { data: profile } = await supabase
-            .from('profiles')
-            .select('first_name, last_name, phone, address_street, address_number, address_postal_code, address_city, address_province, address_country')
-            .eq('id', user.id)
-            .maybeSingle();
-        sellerDetailsIncomplete = !isProfileComplete(profile ?? {}).complete;
-    }
-
-    const { data: paymentAccount } = await supabase
-        .from('shop_payment_accounts')
-        .select('stripe_account_id, charges_enabled, payouts_enabled, details_submitted')
-        .eq('shop_id', shopId)
-        .maybeSingle();
-
-    if (paymentAccount?.stripe_account_id) {
-        if (paymentAccount.charges_enabled && paymentAccount.payouts_enabled && paymentAccount.details_submitted) {
-            stripeStatus = 'ready';
-        } else {
-            stripeStatus = 'pending';
-        }
-    }
-
-    const { count: incidentsCount } = await supabase
-        .from('orders')
-        .select('id', { count: 'exact', head: true })
-        .eq('shop_id', shopId)
-        .eq('status', ORDER_STATUS.INCIDENT);
-
-    activeIncidents = incidentsCount ?? 0;
-
-    const { count: pendingCount } = await supabase
-        .from('orders')
-        .select('id', { count: 'exact', head: true })
-        .eq('shop_id', shopId)
-        .in('status', [ORDER_STATUS.PAID, ORDER_STATUS.PROCESSING]);
-
-    pendingOrdersCount = pendingCount ?? 0;
-
-    const { count: failedCount } = await supabase
-        .from('orders')
-        .select('id', { count: 'exact', head: true })
-        .eq('shop_id', shopId)
-        .eq('status', ORDER_STATUS.DELIVERY_FAILED);
-
-    deliveryFailedCount = failedCount ?? 0;
-
-    const { data: allProducts } = await supabase
-        .from('products')
-        .select('id, gallery_images, slug, title, description, category')
-        .eq('shop_id', shopId);
-
-    const { data: allVariants } = await supabase
-        .from('product_variants')
-        .select('id, price, stock, weight_kg, length_cm, width_cm, height_cm, shipping_cost, product_id')
-        .in('product_id', (allProducts ?? []).map((p: any) => p.id));
-
-    let incompleteCount = 0;
-    for (const product of (allProducts ?? []) as any[]) {
-        const productVariants = (allVariants ?? []).filter((v: any) => v.product_id === product.id);
-        const complete = validateProductCompleteness(product, productVariants).complete;
-        if (!complete) incompleteCount++;
-    }
-    incompleteProductsCount = incompleteCount;
 }
 ---
 

@@ -3,7 +3,6 @@ import { CRON_SECRET, CONVEX_WEBHOOK_SECRET } from 'astro:env/server';
 import { timingSafeEqual } from '../../../lib/core/timing-safe';
 import { securityLog } from '../../../lib/core/security-log';
 import { runNotificationScan } from '../../../lib/notifications/scan';
-import { convexOnly } from '../../../lib/core/env';
 
 function jsonResponse(payload: Record<string, unknown>, status: number) {
     return new Response(JSON.stringify(payload), {
@@ -24,7 +23,7 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     try {
-        const result = await runNotificationScan(convexOnly ? CONVEX_WEBHOOK_SECRET : undefined);
+        const result = await runNotificationScan(CONVEX_WEBHOOK_SECRET);
         return jsonResponse({ ...result }, 200);
     } catch (e) {
         console.error(JSON.stringify({ event: 'notifications_run.failed', error: e instanceof Error ? e.message : String(e) }));

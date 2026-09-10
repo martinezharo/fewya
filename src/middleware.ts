@@ -1,15 +1,12 @@
 import { defineMiddleware } from 'astro:middleware';
 import type { MiddlewareHandler } from 'astro';
 import { env } from 'cloudflare:workers';
-import { parseCookieHeader } from '@supabase/ssr';
 import { createClerkClient, type SessionAuthObject } from '@clerk/backend';
 import type { APIContext } from 'astro';
 import { CLERK_JWT_TEMPLATE, CLERK_SECRET_KEY } from 'astro:env/server';
-import type { User } from '@supabase/supabase-js';
 import { api } from '../convex/_generated/api';
 import { createConvexClient } from './lib/core/convex';
-import { exchangeAuthCodeForSession, hasRequestAuthUser, setRequestAuthUser } from './lib/core/auth';
-import { convexOnly } from './lib/core/env';
+import { hasRequestAuthUser, setRequestAuthUser, type AuthUser } from './lib/core/auth';
 import { securityLog } from './lib/core/security-log';
 import { checkRateLimit, rateLimitResponse, type RateLimitBinding } from './lib/core/rate-limit';
 import { getT, resolveLocale } from './lib/core/i18n';
@@ -17,13 +14,15 @@ import { getT, resolveLocale } from './lib/core/i18n';
 const PRIVATE_PREFIXES = ['/me', '/sell', '/cart', '/profile', '/wishlist', '/api'];
 const PUBLIC_MAX_AGE = 60;
 const PUBLIC_SWR = 300;
-const supabaseCspOrigins = convexOnly ? '' : ' https://*.supabase.co';
 
 // Webhook routes that must not have CSRF or auth checks
 const WEBHOOK_PATHS = new Set(['/api/webhooks/stripe', '/api/sendcloud/webhook']);
 
-// Routes subject to strict rate limiting (auth endpoints)
-const AUTH_RATE_PATHS = ['/api/auth/'];
+// Routes subject to strict rate limiting. Clerk now absorbs the sign-in
+// traffic that used to live under /api/auth/, so what is left worth limiting
+// is the surface that spends money on every call: Sendcloud quotes and
+// service-point lookups, and Stripe checkout sessions.
+const RATE_LIMITED_PREFIXES = ['/api/sendcloud/', '/api/cart/'];
 
 const CSP = [
     "default-src 'self'",
@@ -37,10 +36,10 @@ const CSP = [
     "script-src-elem 'self' 'unsafe-inline' https://js.stripe.com https://*.clerk.com https://*.clerk.accounts.dev https://*.protect.clerk.com https://challenges.cloudflare.com data:",
     "worker-src 'self' blob:",
     "frame-src https://js.stripe.com https://hooks.stripe.com https://*.clerk.com https://*.clerk.accounts.dev https://*.protect.clerk.com https://challenges.cloudflare.com",
-    `img-src 'self' data: blob: http://127.0.0.1:3210 http://localhost:3210${supabaseCspOrigins} https://*.convex.cloud https://*.convex.site https://*.clerk.com https://*.clerk.accounts.dev https://img.clerk.com https://imagedelivery.net`,
+    `img-src 'self' data: blob: http://127.0.0.1:3210 http://localhost:3210 https://*.convex.cloud https://*.convex.site https://*.clerk.com https://*.clerk.accounts.dev https://img.clerk.com https://imagedelivery.net`,
     // style-src: Google Fonts stylesheet loaded via <link> in Layout.astro
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://*.clerk.com https://*.clerk.accounts.dev",
-    `connect-src 'self' http://127.0.0.1:3210 http://localhost:3210${supabaseCspOrigins} https://*.convex.cloud https://*.convex.site https://*.clerk.com https://*.clerk.accounts.dev https://*.protect.clerk.com https://challenges.cloudflare.com https://clerk-telemetry.com https://*.clerk-telemetry.com https://img.clerk.com https://api.stripe.com https://panel.sendcloud.sc`,
+    `connect-src 'self' http://127.0.0.1:3210 http://localhost:3210 https://*.convex.cloud https://*.convex.site https://*.clerk.com https://*.clerk.accounts.dev https://*.protect.clerk.com https://challenges.cloudflare.com https://clerk-telemetry.com https://*.clerk-telemetry.com https://img.clerk.com https://api.stripe.com https://panel.sendcloud.sc`,
     // font-src: Google Fonts serves .woff2 files from fonts.gstatic.com
     "font-src 'self' https://fonts.gstatic.com",
     "object-src 'none'",
@@ -56,6 +55,24 @@ function getClerkBackendClient() {
         : null;
 }
 type ClerkSessionAuth = SessionAuthObject;
+
+/**
+ * True when the browser carries a Clerk session cookie. `__client_uat` is 0
+ * for a signed-out client, so anything else means the visitor is (or was just)
+ * signed in. Parsed by name to avoid false positives on cookie values.
+ */
+function hasClerkSessionCookie(request: Request): boolean {
+    const header = request.headers.get('Cookie') ?? '';
+    for (const part of header.split(';')) {
+        const index = part.indexOf('=');
+        if (index < 0) continue;
+        const name = part.slice(0, index).trim();
+        const value = part.slice(index + 1).trim();
+        if (name === '__session' && value) return true;
+        if (name === '__client_uat' && value && value !== '0') return true;
+    }
+    return false;
+}
 
 async function hydrateClerkUser(auth: () => ClerkSessionAuth, context: APIContext) {
     const clerkAuth = auth();
@@ -85,45 +102,14 @@ async function hydrateClerkUser(auth: () => ClerkSessionAuth, context: APIContex
     try {
         const linked = await convex.mutation(api.users.ensureCurrent, {});
 
-        // During the staged production rollout this bridge keeps legacy routes
-        // usable. The isolated test Worker must never write the current
-        // Supabase project, so Convex is its sole identity store.
-        if (linked.created && !convexOnly) {
-            // Lazy import keeps the Convex-only deployment from even
-            // constructing a Supabase admin client.
-            const { createSupabaseAdminClient } = await import('./lib/core/supabase-admin');
-            const admin = createSupabaseAdminClient();
-            const { error } = await admin.from('profiles').insert({
-                id: linked.legacyId,
-                email: email ?? `clerk-${clerkAuth.userId}@invalid.local`,
-                full_name: fullName ?? null,
-                first_name: firstName ?? null,
-                last_name: lastName ?? null,
-                avatar_url: pictureUrl ?? null,
-                address_country: 'ES',
-                is_seller: false,
-                email_marketing_opt_in: false,
-            });
-            if (error && !error.message.toLowerCase().includes('duplicate')) {
-                console.error(JSON.stringify({ event: 'clerk.supabase_profile_bridge_failed', error: error.message }));
-            }
-        }
-
-        const user = {
+        const user: AuthUser = {
             id: linked.legacyId,
-            aud: 'authenticated',
-            role: 'authenticated',
             email: email ?? `clerk-${clerkAuth.userId}@invalid.local`,
-            user_metadata: {
-                full_name: fullName,
-                first_name: firstName,
-                last_name: lastName,
-                avatar_url: pictureUrl,
-            },
-            app_metadata: { provider: 'clerk', providers: ['clerk'] },
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-        } as unknown as User;
+            fullName,
+            firstName,
+            lastName,
+            avatarUrl: pictureUrl,
+        };
         setRequestAuthUser(context.request, user, token);
     } catch (error) {
         console.error(JSON.stringify({
@@ -146,18 +132,13 @@ const legacyMiddleware: MiddlewareHandler = async (context, next) => {
     context.locals.locale = locale;
     context.locals.t = getT(locale);
 
-    // Auth code exchange — only for GET requests (except the callback itself)
-    if (method === 'GET' && pathname !== '/api/auth/callback') {
-        const redirectTo = await exchangeAuthCodeForSession(context.cookies, context.request, context.url);
-        if (redirectTo) {
-            return context.redirect(redirectTo);
-        }
-    }
-
-    // Rate limiting for auth endpoints
-    const isAuthPath = AUTH_RATE_PATHS.some(p => pathname.startsWith(p));
-    if (isAuthPath) {
-        const rateLimiter = (env as unknown as Record<string, unknown>)?.['RATE_LIMITER_AUTH'] as RateLimitBinding | undefined;
+    // Rate limiting for the endpoints that call paid third-party APIs
+    // Webhooks are authenticated by signature and arrive from a handful of
+    // provider IPs; limiting them by IP would drop real events.
+    const isRateLimited = !WEBHOOK_PATHS.has(pathname)
+        && RATE_LIMITED_PREFIXES.some(p => pathname.startsWith(p));
+    if (isRateLimited) {
+        const rateLimiter = (env as unknown as Record<string, unknown>)?.['RATE_LIMITER'] as RateLimitBinding | undefined;
         const ip = context.request.headers.get('CF-Connecting-IP') ?? 'unknown';
         const allowed = await checkRateLimit(rateLimiter, ip);
         if (!allowed) {
@@ -216,12 +197,11 @@ const legacyMiddleware: MiddlewareHandler = async (context, next) => {
     if (isPrivate) {
         response.headers.set('Cache-Control', 'private, no-store');
     } else {
-        // M1: parse cookies properly to avoid false positives on cookie values
-        const cookieHeader = context.request.headers.get('Cookie') ?? '';
-        const parsed = parseCookieHeader(cookieHeader);
-        const hasSession = hasRequestAuthUser(context.request) || parsed.some(
-            c => c.name.startsWith('sb-') && c.name.includes('auth-token'),
-        );
+        // Never hand a signed-in visitor a shared cache entry. The Clerk
+        // cookie is checked as well as the resolved identity so that a failed
+        // identity hydration cannot downgrade the response to a public one.
+        const hasSession = hasRequestAuthUser(context.request)
+            || hasClerkSessionCookie(context.request);
         response.headers.set(
             'Cache-Control',
             hasSession

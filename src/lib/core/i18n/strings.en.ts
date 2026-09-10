@@ -96,11 +96,10 @@ export const en: Strings = {
     shopNoDescription: 'No description available.',
 
     // Auth / Login
-    heroGoogleSignIn: 'Continue with Google',
+    heroSignIn: 'Sign in',
     loginPageTitle: 'Sign in — Fewya',
     loginPageDescription: 'Sign in to Fewya to continue.',
     loginSubtitle: 'Sign in to shop, sell, and manage your orders.',
-    loginGoogleCta: 'Continue with Google',
     loginTermsHint: 'By continuing, you accept our',
     loginTermsHintTerms: 'terms of service',
     loginTermsHintAnd: 'and the',
@@ -589,8 +588,6 @@ export const en: Strings = {
     sellerReviewsReplyError: 'Couldn\'t save the reply',
 
     // Auth / API / errors
-    authGoogleLoginError: 'Error signing in with Google',
-    authMissingSupabaseEnv: 'Environment variables SUPABASE_URL or SUPABASE_KEY are not configured',
     authMissingStripeEnv: 'Environment variable STRIPE_SECRET_KEY_TEST/STRIPE_SECRET_KEY_LIVE not configured for the current mode',
     apiUnauthorized: 'Not authenticated',
     apiForbidden: 'Not authorized',

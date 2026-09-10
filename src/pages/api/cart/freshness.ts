@@ -1,6 +1,4 @@
 import type { APIRoute } from 'astro';
-import { supabase } from '../../../lib/core/supabase';
-import { convexOnly } from '../../../lib/core/env';
 import { createConvexClient } from '../../../lib/core/convex';
 import { api } from '../../../../convex/_generated/api';
 
@@ -42,70 +40,22 @@ export const POST: APIRoute = async ({ locals, request  }) => {
         return jsonResponse({ items: [] }, 200);
     }
 
-    if (convexOnly) {
-        const convex = createConvexClient();
-        if (!convex) return jsonResponse({ error: t.apiCheckoutProductUnavailable }, 503);
-        try {
-            const data = await convex.query(api.catalog.getCartVariants, { ids: variantIds });
-            const items: CartFreshnessItem[] = data.map((row) => ({
-                variantId: row.id,
-                stock: row.stock,
-                price: row.price,
-                shippingCost: row.shipping_cost ?? 0,
-                isAvailable: Boolean(row.product.is_active && row.product.shop.is_active && row.stock > 0),
-            }));
-            const found = new Set(items.map((item) => item.variantId));
-            for (const id of variantIds) if (!found.has(id)) items.push({ variantId: id, stock: 0, price: 0, shippingCost: 0, isAvailable: false });
-            return jsonResponse({ items }, 200);
-        } catch (error) {
-            console.error(JSON.stringify({ event: 'cart_freshness.convex_failed', error: error instanceof Error ? error.message : String(error) }));
-            return jsonResponse({ error: t.apiCheckoutProductUnavailable }, 500);
-        }
-    }
-
-    const { data, error } = await supabase
-        .from('product_variants')
-        .select(`
-            id,
-            price,
-            stock,
-            shipping_cost,
-            products!inner ( is_active, shops!inner ( is_active ) )
-        `)
-        .in('id', variantIds);
-
-    if (error) {
+    const convex = createConvexClient();
+    if (!convex) return jsonResponse({ error: t.apiCheckoutProductUnavailable }, 503);
+    try {
+        const data = await convex.query(api.catalog.getCartVariants, { ids: variantIds });
+        const items: CartFreshnessItem[] = data.map((row) => ({
+            variantId: row.id,
+            stock: row.stock,
+            price: row.price,
+            shippingCost: row.shipping_cost ?? 0,
+            isAvailable: Boolean(row.product.is_active && row.product.shop.is_active && row.stock > 0),
+        }));
+        const found = new Set(items.map((item) => item.variantId));
+        for (const id of variantIds) if (!found.has(id)) items.push({ variantId: id, stock: 0, price: 0, shippingCost: 0, isAvailable: false });
+        return jsonResponse({ items }, 200);
+    } catch (error) {
+        console.error(JSON.stringify({ event: 'cart_freshness.failed', error: error instanceof Error ? error.message : String(error) }));
         return jsonResponse({ error: t.apiCheckoutProductUnavailable }, 500);
     }
-
-    type FreshnessRow = {
-        id: string;
-        price: number | null;
-        stock: number | null;
-        shipping_cost: number | null;
-        products: { is_active: boolean | null; shops: { is_active: boolean | null } | { is_active: boolean | null }[] | null } | { is_active: boolean | null; shops: { is_active: boolean | null } | { is_active: boolean | null }[] | null }[] | null;
-    };
-
-    const items: CartFreshnessItem[] = ((data ?? []) as FreshnessRow[]).map((row) => {
-        const product = Array.isArray(row.products) ? row.products[0] : row.products;
-        const shop = product && (Array.isArray(product.shops) ? product.shops[0] : product.shops);
-        const isAvailable = Boolean(product?.is_active && shop?.is_active && Number(row.stock ?? 0) > 0);
-        return {
-            variantId: row.id as string,
-            stock: Number(row.stock ?? 0),
-            price: Number(row.price ?? 0),
-            shippingCost: Number(row.shipping_cost ?? 0),
-            isAvailable,
-        };
-    });
-
-    // Variants missing from DB → mark explicitly as unavailable
-    const found = new Set(items.map((i) => i.variantId));
-    for (const id of variantIds) {
-        if (!found.has(id)) {
-            items.push({ variantId: id, stock: 0, price: 0, shippingCost: 0, isAvailable: false });
-        }
-    }
-
-    return jsonResponse({ items }, 200);
 };

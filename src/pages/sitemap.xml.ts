@@ -1,7 +1,4 @@
 import type { APIRoute } from 'astro';
-import { createSupabaseAuthClient } from '../lib/core/auth';
-import { SHOP_STATUS } from '../lib/core/shopStatus';
-import { convexOnly } from '../lib/core/env';
 import { createConvexClient } from '../lib/core/convex';
 import { api } from '../../convex/_generated/api';
 
@@ -34,7 +31,7 @@ function renderSitemap(entries: SitemapEntry[]): string {
     return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`;
 }
 
-export const GET: APIRoute = async ({ url, site, cookies, request }) => {
+export const GET: APIRoute = async ({ url, site }) => {
     // Always emit canonical-domain URLs, even when the Worker is reached via
     // an alternate host (e.g. *.workers.dev), to avoid duplicate-URL signals.
     const origin = site ? site.origin : `${url.protocol}//${url.host}`;
@@ -45,39 +42,11 @@ export const GET: APIRoute = async ({ url, site, cookies, request }) => {
     ];
 
     try {
-        let shops: Array<{ slug: string; created_at: string }> = [];
-        let products: Array<{ slug: string; created_at: string; shop: { slug: string; is_active: boolean; payments_active: boolean; seller_details_complete: boolean } }> = [];
-        if (convexOnly) {
-            const convex = createConvexClient();
-            if (!convex) throw new Error('Convex is not configured');
-            const data = await convex.query(api.catalog.sitemapEntries, {});
-            shops = data.shops;
-            products = data.products;
-        } else {
-            // Public data only (active shops/products); RLS public-read policies
-            // already permit this for anon, so use the RLS-respecting client.
-            const authClient = createSupabaseAuthClient(cookies, request);
-            const [shopsRes, productsRes] = await Promise.all([
-                authClient
-                    .from('shops')
-                    .select('slug, created_at')
-                    .eq('is_active', true)
-                    .eq('status', SHOP_STATUS.ACTIVE)
-                    .eq('payments_active', true)
-                    .eq('seller_details_complete', true)
-                    .limit(5000),
-                authClient
-                    .from('products')
-                    .select('slug, created_at, shops!inner(slug, is_active, payments_active, seller_details_complete)')
-                    .eq('is_active', true)
-                    .limit(20000),
-            ]);
-            shops = (shopsRes.data ?? []) as typeof shops;
-            products = (productsRes.data ?? []).map((product: any) => {
-                const shop = Array.isArray(product.shops) ? product.shops[0] : product.shops;
-                return { slug: product.slug, created_at: product.created_at, shop };
-            }).filter((product) => product.shop);
-        }
+        const convex = createConvexClient();
+        if (!convex) throw new Error('Convex is not configured');
+        const data = await convex.query(api.catalog.sitemapEntries, {});
+        const shops = data.shops;
+        const products = data.products;
 
         for (const shop of shops) {
             entries.push({

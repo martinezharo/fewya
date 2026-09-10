@@ -1,9 +1,5 @@
 import type { APIRoute } from 'astro';
-import { createSupabaseAuthClient, normalizeAuthRedirectPath } from '../../../../lib/core/auth';
-import { createSupabaseAdminClient } from '../../../../lib/core/supabase-admin';
-import { convexOnly } from '../../../../lib/core/env';
-import { getRequestConvexToken } from '../../../../lib/core/auth';
-import { createConvexClient } from '../../../../lib/core/convex';
+import { createRequestConvexClient, getRequestUser, normalizeAuthRedirectPath } from '../../../../lib/core/auth';
 import { api } from '../../../../../convex/_generated/api';
 import {
     buildAbsoluteUrl,
@@ -19,54 +15,19 @@ function jsonResponse(payload: Record<string, unknown>, status: number) {
     });
 }
 
-function one<T>(value: T | T[] | null | undefined): T | null {
-    if (Array.isArray(value)) {
-        return value[0] ?? null;
-    }
-
-    return value ?? null;
-}
-
-export const POST: APIRoute = async ({ locals, request, cookies  }) => {
+export const POST: APIRoute = async ({ locals, request }) => {
     const { t } = locals;
-    const authClient = createSupabaseAuthClient(cookies, request);
-    const {
-        data: { user },
-    } = await authClient.auth.getUser();
+    const user = getRequestUser(request);
+    const convex = createRequestConvexClient(request);
 
-    if (!user) {
+    if (!user || !convex) {
         return jsonResponse({ error: t.apiUnauthorized }, 401);
     }
 
-    let convex: ReturnType<typeof createConvexClient> = null;
-    let shop: any;
-    let paymentAccount: any;
-    if (convexOnly) {
-        const token = getRequestConvexToken(request);
-        convex = token ? createConvexClient(token) : null;
-        const onboarding = convex ? await convex.query(api.seller.onboarding, {}) : null;
-        if (!onboarding?.profile?.is_seller) return jsonResponse({ error: t.apiForbidden }, 403);
-        shop = onboarding.shop;
-        paymentAccount = onboarding.paymentAccount;
-    } else {
-        const { data: profile } = await authClient
-            .from('profiles')
-            .select('is_seller')
-            .eq('id', user.id)
-            .single();
-        if (!profile?.is_seller) return jsonResponse({ error: t.apiForbidden }, 403);
-        const { data: legacyShop, error: shopError } = await authClient
-            .from('shops')
-            .select(`id, name, slug, contact_email, shop_payment_accounts (stripe_account_id, charges_enabled, payouts_enabled, details_submitted)`)
-            .eq('owner_id', user.id)
-            .maybeSingle();
-        if (shopError) {
-            console.error('stripe connect shop lookup failed', shopError);
-            return jsonResponse({ error: t.apiStripeConnectError }, 500);
-        }
-        shop = legacyShop;
-        paymentAccount = one((shop as any)?.shop_payment_accounts);
-    }
+    const onboarding = await convex.query(api.seller.onboarding, {});
+    if (!onboarding?.profile?.is_seller) return jsonResponse({ error: t.apiForbidden }, 403);
+    const shop = onboarding.shop;
+    const paymentAccount = onboarding.paymentAccount;
 
     if (!shop) {
         return jsonResponse({ error: t.apiShopNotFound }, 404);
@@ -112,28 +73,12 @@ export const POST: APIRoute = async ({ locals, request, cookies  }) => {
         const account = await stripe.accounts.retrieve(stripeAccountId);
         const accountStatus = getStripeAccountStatus(account);
 
-        if (convexOnly && convex) {
-            await convex.mutation(api.seller.syncPaymentAccount, {
-                stripeAccountId: accountStatus.stripeAccountId,
-                chargesEnabled: accountStatus.chargesEnabled,
-                payoutsEnabled: accountStatus.payoutsEnabled,
-                detailsSubmitted: accountStatus.detailsSubmitted,
-            });
-        } else {
-            const adminClient = createSupabaseAdminClient();
-            const { error: syncError } = await adminClient.rpc('upsert_shop_payment_account', {
-                p_actor_id: user.id,
-                p_shop_id: shop.id,
-                p_stripe_account_id: accountStatus.stripeAccountId,
-                p_charges_enabled: accountStatus.chargesEnabled,
-                p_payouts_enabled: accountStatus.payoutsEnabled,
-                p_details_submitted: accountStatus.detailsSubmitted,
-            });
-            if (syncError) {
-                console.error('stripe account sync failed', syncError);
-                return jsonResponse({ error: t.apiStripeConnectError }, 500);
-            }
-        }
+        await convex.mutation(api.seller.syncPaymentAccount, {
+            stripeAccountId: accountStatus.stripeAccountId,
+            chargesEnabled: accountStatus.chargesEnabled,
+            payoutsEnabled: accountStatus.payoutsEnabled,
+            detailsSubmitted: accountStatus.detailsSubmitted,
+        });
 
         if (action === 'dashboard') {
             if (!accountStatus.isReady) {

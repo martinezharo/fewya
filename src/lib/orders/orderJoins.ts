@@ -1,4 +1,9 @@
-import type { CheckoutPricedItem } from '../cart/checkout';
+/**
+ * The nested shapes the checkout route hands to the shared product/pricing
+ * validators. Convex returns them in this form so those validators, and the
+ * UI components that consume the same objects, did not have to change with
+ * the database underneath.
+ */
 
 export interface JoinedPaymentAccount {
     stripe_account_id: string | null;
@@ -38,69 +43,9 @@ export interface JoinedVariant {
     products?: JoinedProduct | JoinedProduct[] | null;
 }
 
-export interface JoinedOrderItem {
-    order_id?: string;
-    quantity?: number | null;
-    price_at_purchase?: number | null;
-    shipping_cost_at_purchase?: number | null;
-    product_variants?: JoinedVariant | JoinedVariant[] | null;
-}
-
 export function pickOne<T>(value: T | T[] | null | undefined): T | null {
     if (Array.isArray(value)) {
         return value[0] ?? null;
     }
     return value ?? null;
-}
-
-export interface PayoutExtractContext {
-    quantity: number;
-    unitPrice: number;
-    shippingCost: number;
-    shop: JoinedShop | null;
-    paymentAccount: JoinedPaymentAccount | null;
-    variant: JoinedVariant | null;
-    product: JoinedProduct | null;
-}
-
-export function extractPayoutContext(item: JoinedOrderItem): PayoutExtractContext {
-    const variant = pickOne(item.product_variants);
-    const product = pickOne(variant?.products ?? null);
-    const shop = pickOne(product?.shops ?? null);
-    const paymentAccount = pickOne(shop?.shop_payment_accounts ?? null);
-    // Prefer the shipping cost frozen at checkout time; fall back to the
-    // live variant value only for orders placed before that column existed.
-    const shippingCost = item.shipping_cost_at_purchase ?? variant?.shipping_cost ?? 0;
-
-    return {
-        quantity: Number(item.quantity ?? 0),
-        unitPrice: Number(item.price_at_purchase ?? 0),
-        shippingCost: Number(shippingCost),
-        shop,
-        paymentAccount,
-        variant,
-        product,
-    };
-}
-
-/**
- * Build the payout list (one entry per order item) used by releaseOrderFunds.
- * Items without a payable shop or Stripe account are skipped.
- */
-export function buildPayoutItemsFromJoins(items: JoinedOrderItem[]): CheckoutPricedItem[] {
-    const result: CheckoutPricedItem[] = [];
-    for (const item of items) {
-        const ctx = extractPayoutContext(item);
-        if (!ctx.shop || !ctx.paymentAccount?.stripe_account_id) continue;
-        result.push({
-            shopId: ctx.shop.id,
-            shopName: ctx.shop.name,
-            shopSlug: ctx.shop.slug,
-            stripeAccountId: ctx.paymentAccount.stripe_account_id,
-            quantity: ctx.quantity,
-            unitPrice: ctx.unitPrice,
-            shippingCost: ctx.shippingCost,
-        });
-    }
-    return result;
 }

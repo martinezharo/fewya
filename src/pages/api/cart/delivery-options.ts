@@ -1,6 +1,4 @@
 import type { APIRoute } from 'astro';
-import { supabase } from '../../../lib/core/supabase';
-import { convexOnly } from '../../../lib/core/env';
 import { createConvexClient } from '../../../lib/core/convex';
 import { api } from '../../../../convex/_generated/api';
 import {
@@ -14,9 +12,8 @@ interface RequestBody {
 }
 
 /**
- * The delivery options payload. Both the Convex and the legacy Supabase path
- * build it from here so the two can never drift apart — the cart reads
- * `platforms` and passes them straight to the service-point search.
+ * The delivery options payload. The cart reads `platforms` and passes them
+ * straight to the service-point search.
  */
 function deliveryOptions(platforms: ShippingPlatform[]) {
     return {
@@ -60,45 +57,15 @@ export const POST: APIRoute = async ({ locals, request  }) => {
         return jsonResponse(deliveryOptions(normalizeShippingPlatforms(null)), 200);
     }
 
-    if (convexOnly) {
-        const convex = createConvexClient();
-        if (!convex) return jsonResponse({ error: t.apiCheckoutProductUnavailable }, 503);
-        try {
-            const data = await convex.query(api.catalog.getCartVariants, { ids: variantIds });
-            const perShop = new Map<string, ShippingPlatform[]>();
-            for (const row of data) perShop.set(row.product.shop.id, normalizeShippingPlatforms(row.product.shop.shipping_carriers));
-            return jsonResponse(deliveryOptions(intersectShippingPlatforms(Array.from(perShop.values()))), 200);
-        } catch (error) {
-            console.error(JSON.stringify({ event: 'cart_delivery.convex_failed', error: error instanceof Error ? error.message : String(error) }));
-            return jsonResponse({ error: t.apiCheckoutProductUnavailable }, 500);
-        }
-    }
-
-    const { data, error } = await supabase
-        .from('product_variants')
-        .select(`
-            id,
-            products!inner ( shops!inner ( id, shipping_carriers ) )
-        `)
-        .in('id', variantIds);
-
-    if (error) {
+    const convex = createConvexClient();
+    if (!convex) return jsonResponse({ error: t.apiCheckoutProductUnavailable }, 503);
+    try {
+        const data = await convex.query(api.catalog.getCartVariants, { ids: variantIds });
+        const perShop = new Map<string, ShippingPlatform[]>();
+        for (const row of data) perShop.set(row.product.shop.id, normalizeShippingPlatforms(row.product.shop.shipping_carriers));
+        return jsonResponse(deliveryOptions(intersectShippingPlatforms(Array.from(perShop.values()))), 200);
+    } catch (error) {
+        console.error(JSON.stringify({ event: 'cart_delivery.failed', error: error instanceof Error ? error.message : String(error) }));
         return jsonResponse({ error: t.apiCheckoutProductUnavailable }, 500);
     }
-
-    type Row = {
-        products: { shops: { id: string; shipping_carriers: string[] | null } | { id: string; shipping_carriers: string[] | null }[] | null }
-            | { shops: { id: string; shipping_carriers: string[] | null } | { id: string; shipping_carriers: string[] | null }[] | null }[]
-            | null;
-    };
-
-    const perShop = new Map<string, ShippingPlatform[]>();
-    for (const row of (data ?? []) as Row[]) {
-        const product = Array.isArray(row.products) ? row.products[0] : row.products;
-        const shop = product && (Array.isArray(product.shops) ? product.shops[0] : product.shops);
-        if (!shop?.id) continue;
-        perShop.set(shop.id, normalizeShippingPlatforms(shop.shipping_carriers));
-    }
-
-    return jsonResponse(deliveryOptions(intersectShippingPlatforms(Array.from(perShop.values()))), 200);
 };

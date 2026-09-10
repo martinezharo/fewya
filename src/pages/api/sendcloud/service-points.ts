@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { getServicePoints } from '../../../lib/shipping/sendcloud';
 import { normalizeShippingPlatforms } from '../../../lib/shipping/shippingPlatform';
+import { getRequestUser } from '../../../lib/core/auth';
 
 function jsonResponse(payload: Record<string, unknown>, status: number) {
     return new Response(JSON.stringify(payload), {
@@ -9,16 +10,9 @@ function jsonResponse(payload: Record<string, unknown>, status: number) {
     });
 }
 
-export const GET: APIRoute = async ({ locals, url, request, cookies  }) => {
+export const GET: APIRoute = async ({ locals, url, request }) => {
     const { t } = locals;
-    const { createSupabaseAuthClient } = await import('../../../lib/core/auth');
-    const authClient = createSupabaseAuthClient(cookies, request);
-
-    const {
-        data: { user },
-    } = await authClient.auth.getUser();
-
-    if (!user) {
+    if (!getRequestUser(request)) {
         return jsonResponse({ error: 'Unauthorized' }, 401);
     }
 

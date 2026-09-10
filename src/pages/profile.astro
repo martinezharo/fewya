@@ -1,17 +1,20 @@
 ---
+import { getRequestUser } from '../lib/core/auth';
 import BuyerAppLayout from "../layouts/BuyerAppLayout.astro";
-import { createSupabaseAuthClient } from "../lib/core/auth";
+import { SignOutButton } from '@clerk/astro/components';
 const { t } = Astro.locals;
 
-const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
-const { data: { user } } = await supabase.auth.getUser();
+const user = getRequestUser(Astro.request);
 
 if (!user) {
     return Astro.redirect('/login?redirect_to=/profile');
 }
 
-const displayName = user.user_metadata?.full_name ?? user.user_metadata?.name ?? user.email ?? t.profileAnonymous;
-const avatarUrl = user.user_metadata?.avatar_url as string | undefined;
+const displayName = user.fullName
+    ?? [user.firstName, user.lastName].filter(Boolean).join(' ').trim()
+    ?? user.email
+    ?? t.profileAnonymous;
+const avatarUrl = user.avatarUrl;
 ---
 
 <BuyerAppLayout title={t.profilePageTitle}>
@@ -35,12 +38,14 @@ const avatarUrl = user.user_metadata?.avatar_url as string | undefined;
                 {user.email && <p class="text-[15px] text-text-secondary mt-1">{user.email}</p>}
             </div>
 
-            <a
-                href="/api/auth/logout"
-                class="mt-4 px-5 py-2.5 text-[14px] font-semibold rounded-full border border-border-light text-text-secondary no-underline transition-colors duration-150 hover:bg-border-light hover:text-text-primary"
-            >
-                {t.profileSignOut}
-            </a>
+            <SignOutButton redirectUrl="/">
+                <button
+                    type="button"
+                    class="mt-4 px-5 py-2.5 text-[14px] font-semibold rounded-full border border-border-light text-text-secondary transition-colors duration-150 hover:bg-border-light hover:text-text-primary"
+                >
+                    {t.profileSignOut}
+                </button>
+            </SignOutButton>
         </div>
     </main>
 </BuyerAppLayout>

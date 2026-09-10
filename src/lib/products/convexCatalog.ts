@@ -198,23 +198,37 @@ export async function getConvexSearchProducts(params: SearchParams): Promise<Pro
     }
 }
 
-export async function getConvexShopCatalog(slug: string): Promise<{
+export interface ShopCatalog {
     shop: Shop;
     products: Product[];
     totalReviews: number;
     averageRating: number;
-} | null> {
+}
+
+/**
+ * Reads a public shop catalog, distinguishing "no such shop" (null) from a
+ * backend that could not answer (throws).
+ *
+ * The public feed needs that difference: a missing shop is a cacheable 404,
+ * an unreachable backend must not be cached as one.
+ */
+export async function fetchConvexShopCatalog(slug: string): Promise<ShopCatalog | null> {
     const client = createConvexClient();
-    if (!client) return null;
+    if (!client) throw new Error('Convex is not configured');
+    const result = await client.query(api.catalog.getShopCatalog, { slug }) as unknown as ConvexShopCatalog | null;
+    if (!result) return null;
+    return {
+        shop: toShop(result.shop),
+        products: result.products.map(toProduct),
+        totalReviews: result.totalReviews,
+        averageRating: result.averageRating,
+    };
+}
+
+/** Page-facing variant: an unavailable backend renders as a missing shop. */
+export async function getConvexShopCatalog(slug: string): Promise<ShopCatalog | null> {
     try {
-        const result = await client.query(api.catalog.getShopCatalog, { slug }) as unknown as ConvexShopCatalog | null;
-        if (!result) return null;
-        return {
-            shop: toShop(result.shop),
-            products: result.products.map(toProduct),
-            totalReviews: result.totalReviews,
-            averageRating: result.averageRating,
-        };
+        return await fetchConvexShopCatalog(slug);
     } catch (error) {
         console.error('Convex shop catalog unavailable:', error);
         return null;

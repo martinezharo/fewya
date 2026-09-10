@@ -4,28 +4,15 @@ import HeroBanner from "../components/HeroBanner.astro";
 import DeferredHomeGrid from "../components/home/DeferredHomeGrid.astro";
 import ShopsRow from "../components/home/ShopsRow.astro";
 import SkeletonProductGrid from "../components/ui/SkeletonProductGrid.astro";
-import { createSupabaseAuthClient } from "../lib/core/auth";
-import { supabase } from "../lib/core/supabase";
+import { getRequestUser } from "../lib/core/auth";
 import { optimizeImageUrl } from "../lib/ui/imageOptimize";
 import { getConvexHomeProducts } from "../lib/products/convexCatalog";
-import { convexOnly } from "../lib/core/env";
 
-const authClient = createSupabaseAuthClient(Astro.cookies, Astro.request);
-const { data: { user } } = await authClient.auth.getUser();
-const isLoggedIn = !!user;
+const isLoggedIn = Boolean(getRequestUser(Astro.request));
 
 // Eagerly fetch the first 2 product images so we can preload them in <head>.
 // This cuts the LCP resource-load delay even though the grid itself is deferred.
-const convexTopProducts = await getConvexHomeProducts(2);
-let topProducts = convexTopProducts ?? [];
-if (!convexTopProducts && !convexOnly) {
-    topProducts = (await supabase
-        .from("products")
-        .select("gallery_images")
-        .eq("is_active", true)
-        .order("created_at", { ascending: false })
-        .limit(2)).data ?? [];
-}
+const topProducts = (await getConvexHomeProducts(2)) ?? [];
 
 const preloadImageUrls: string[] = (topProducts ?? [])
     .map((p: { gallery_images?: string[] }) => optimizeImageUrl(p.gallery_images?.[0] ?? '', 400))
@@ -39,7 +26,7 @@ const preloadImageUrls: string[] = (topProducts ?? [])
 	<main>
 		<HeroBanner isLoggedIn={isLoggedIn} />
 		<ShopsRow />
-		<DeferredHomeGrid userId={user?.id ?? null} server:defer>
+		<DeferredHomeGrid server:defer>
 			<SkeletonProductGrid count={10} slot="fallback" />
 		</DeferredHomeGrid>
 	</main>

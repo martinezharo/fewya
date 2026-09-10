@@ -1,12 +1,10 @@
 import type { APIRoute } from 'astro';
 import { CONVEX_WEBHOOK_SECRET } from 'astro:env/server';
 import { api } from '../../../../convex/_generated/api';
-import { getStripeWebhookSecret, convexOnly } from '../../../lib/core/env';
+import { getStripeWebhookSecret } from '../../../lib/core/env';
 import { getStripeClient } from '../../../lib/payments/stripe';
 import { createConvexClient } from '../../../lib/core/convex';
-import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
 import { securityLog } from '../../../lib/core/security-log';
-import { PAYMENT_STATUS } from '../../../lib/orders/orderStatus';
 import { notify } from '../../../lib/notifications/dispatch';
 import { NOTIFICATION_TYPE } from '../../../lib/notifications/types';
 
@@ -50,11 +48,16 @@ export const POST: APIRoute = async ({ request }) => {
         return err('Invalid signature', 401);
     }
 
-    // Convex orders are processed first. If no post-cutover order matches the
-    // Stripe reference, fall through to the Supabase compatibility handler so
-    // historical orders remain payable during the staged migration.
-    const convex = CONVEX_WEBHOOK_SECRET ? createConvexClient() : null;
-    if (convex && CONVEX_WEBHOOK_SECRET && (event.type === 'checkout.session.completed' || event.type === 'payment_intent.succeeded')) {
+    const convexSecret = CONVEX_WEBHOOK_SECRET;
+    const convex = convexSecret ? createConvexClient() : null;
+    if (!convex || !convexSecret) {
+        // Without the deployment secret nothing can be committed. Fail loudly
+        // so Stripe retries instead of dropping a paid order.
+        console.error(JSON.stringify({ event: 'stripe_webhook.not_configured', type: event.type }));
+        return err('handler not configured', 500);
+    }
+
+    if (event.type === 'checkout.session.completed' || event.type === 'payment_intent.succeeded') {
         let sessionId: string | undefined;
         let paymentIntentId: string | undefined;
         if (event.type === 'checkout.session.completed') {
@@ -67,7 +70,7 @@ export const POST: APIRoute = async ({ request }) => {
 
         try {
             const result = await convex.mutation(api.orders.processStripePayment, {
-                secret: CONVEX_WEBHOOK_SECRET,
+                secret: convexSecret,
                 eventId: event.id,
                 ...(sessionId ? { sessionId } : {}),
                 ...(paymentIntentId ? { paymentIntentId } : {}),
@@ -90,16 +93,16 @@ export const POST: APIRoute = async ({ request }) => {
                         type: NOTIFICATION_TYPE.SELLER_NEW_SALE,
                         orderId: order.id,
                         recipient: 'seller',
-                        convexSecret: CONVEX_WEBHOOK_SECRET,
+                        convexSecret,
                     })));
                 }
                 return ok();
             }
         } catch (e) {
             // A Convex transport/deployment failure must be retried by Stripe;
-            // falling through would leave a Convex order pending forever.
+            // acknowledging would leave the order pending forever.
             console.error(JSON.stringify({
-                event: 'stripe_webhook.convex_handler_error',
+                event: 'stripe_webhook.handler_error',
                 type: event.type,
                 error: e instanceof Error ? e.message : String(e),
             }));
@@ -107,175 +110,10 @@ export const POST: APIRoute = async ({ request }) => {
         }
     }
 
-    // The isolated Worker has no legacy order store. Unknown/legacy Stripe
-    // events are acknowledged without opening a Supabase client.
-    if (convexOnly) return ok();
-
-    const adminClient = createSupabaseAdminClient();
-
-    // Idempotency: skip replays. The event is recorded only AFTER successful
-    // handling (below), so a transient failure is retried by Stripe instead of
-    // being silently dropped.
-    const { data: alreadyProcessed } = await adminClient
-        .from('processed_webhook_events')
-        .select('event_id')
-        .eq('event_id', event.id)
-        .maybeSingle();
-
-    if (alreadyProcessed) {
-        return ok();
-    }
-
-    try {
-        if (event.type === 'checkout.session.completed' || event.type === 'payment_intent.succeeded') {
-            await handlePaymentConfirmed(event, adminClient, stripe);
-        } else if (event.type === 'charge.refunded') {
-            const charge = event.data.object as import('stripe').Stripe.Charge;
-            console.info(JSON.stringify({ event: 'stripe.charge.refunded', chargeId: charge.id, amount: charge.amount_refunded }));
-        } else if (event.type === 'charge.dispute.created') {
-            const dispute = event.data.object as import('stripe').Stripe.Dispute;
-            console.warn(JSON.stringify({ event: 'stripe.dispute.created', disputeId: dispute.id, amount: dispute.amount }));
-        }
-    } catch (e) {
-        console.error(JSON.stringify({ event: 'stripe_webhook.handler_error', type: event.type, error: e instanceof Error ? e.message : String(e) }));
-        // Don't record the event; return 500 so Stripe retries the delivery.
-        return err('handler error', 500);
-    }
-
-    // Record the event only now that handling succeeded (best-effort).
-    await adminClient
-        .from('processed_webhook_events')
-        .insert({ event_id: event.id, source: 'stripe' });
-
+    // An event that matches no order (a legacy reference, or a Connect event we
+    // do not act on) is acknowledged rather than retried forever.
     return ok();
 };
-
-async function handlePaymentConfirmed(
-    event: import('stripe').Stripe.Event,
-    adminClient: ReturnType<typeof createSupabaseAdminClient>,
-    stripe: import('stripe').default,
-) {
-    let sessionId: string | null = null;
-    let paymentIntentId: string | null = null;
-
-    if (event.type === 'checkout.session.completed') {
-        const session = event.data.object as import('stripe').Stripe.Checkout.Session;
-        sessionId = session.id;
-        paymentIntentId = typeof session.payment_intent === 'string'
-            ? session.payment_intent
-            : (session.payment_intent?.id ?? null);
-    } else if (event.type === 'payment_intent.succeeded') {
-        const pi = event.data.object as import('stripe').Stripe.PaymentIntent;
-        paymentIntentId = pi.id;
-    }
-
-    if (!sessionId && !paymentIntentId) return;
-
-    // Find unpaid orders for this session or payment intent
-    let query = adminClient
-        .from('orders')
-        .select('id, buyer_id, stripe_checkout_session_id')
-        .neq('payment_status', PAYMENT_STATUS.PAID);
-
-    if (sessionId) {
-        query = query.eq('stripe_checkout_session_id', sessionId);
-    } else if (paymentIntentId) {
-        query = query.eq('stripe_payment_intent_id', paymentIntentId);
-    }
-
-    const { data: orders } = await query;
-    if (!orders || orders.length === 0) return;
-
-    // Group by session and buyer — mark_order_paid takes (buyer_id, session_id)
-    const sessionGroups = new Map<string, string>(); // sessionId → buyerId
-    const orderIdsBySession = new Map<string, string[]>(); // sessionId → order ids
-    for (const o of orders) {
-        if (o.stripe_checkout_session_id && o.buyer_id) {
-            sessionGroups.set(o.stripe_checkout_session_id, o.buyer_id);
-            const list = orderIdsBySession.get(o.stripe_checkout_session_id) ?? [];
-            list.push(o.id);
-            orderIdsBySession.set(o.stripe_checkout_session_id, list);
-        }
-    }
-
-    for (const [sid, buyerId] of sessionGroups) {
-        const { error } = await adminClient.rpc('mark_order_paid', {
-            p_buyer_id: buyerId,
-            p_session_id: sid,
-            p_payment_intent_id: paymentIntentId,
-            p_payment_status: PAYMENT_STATUS.PAID,
-        });
-
-        if (error) {
-            console.error(JSON.stringify({ event: 'stripe_webhook.mark_paid_failed', sessionId: sid, error: error.message }));
-
-            // The buyer's card has already been charged for this session (that's why
-            // we're in this handler), but mark_order_paid failed atomically — most
-            // commonly because stock ran out between checkout-session creation and
-            // payment. Leaving the order at "pending" here would silently strand a
-            // charged buyer with no order and no refund. Refund the charge and cancel
-            // the order(s) instead of just logging and moving on.
-            await refundAndCancelUnfulfillableOrders({
-                adminClient,
-                stripe,
-                sessionId: sid,
-                orderIds: orderIdsBySession.get(sid) ?? [],
-                paymentIntentId,
-                failureReason: error.message || 'payment_confirmation_failed',
-            });
-            continue;
-        }
-
-        // Notify each shop's seller of the new (paid) sale. Idempotent via
-        // notification_log; failures here must not fail the webhook.
-        for (const orderId of orderIdsBySession.get(sid) ?? []) {
-            try {
-                await notify({
-                    type: NOTIFICATION_TYPE.SELLER_NEW_SALE,
-                    orderId,
-                    recipient: 'seller',
-                    client: adminClient,
-                });
-            } catch (e) {
-                console.error(JSON.stringify({ event: 'stripe_webhook.notify_failed', orderId, error: e instanceof Error ? e.message : String(e) }));
-            }
-        }
-    }
-}
-
-async function refundAndCancelUnfulfillableOrders({
-    adminClient,
-    stripe,
-    sessionId,
-    orderIds,
-    paymentIntentId,
-    failureReason,
-}: {
-    adminClient: ReturnType<typeof createSupabaseAdminClient>;
-    stripe: import('stripe').default;
-    sessionId: string;
-    orderIds: string[];
-    paymentIntentId: string | null;
-    failureReason: string;
-}) {
-    await refundStripePayment({ stripe, sessionId, paymentIntentId, failureReason });
-
-    if (orderIds.length === 0) return;
-
-    const { error: cancelError } = await adminClient
-        .from('orders')
-        .update({ status: 'cancelled', cancellation_reason: failureReason })
-        .in('id', orderIds);
-
-    if (cancelError) {
-        console.error(JSON.stringify({
-            event: 'stripe_webhook.order_cancel_failed',
-            sessionId,
-            orderIds,
-            error: cancelError.message,
-        }));
-    }
-}
 
 async function refundStripePayment({
     stripe,

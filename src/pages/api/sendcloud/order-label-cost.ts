@@ -1,7 +1,6 @@
 import type { APIRoute } from 'astro';
 import { api } from '../../../../convex/_generated/api';
-import { createSupabaseAuthClient, getRequestConvexToken } from '../../../lib/core/auth';
-import { createConvexClient } from '../../../lib/core/convex';
+import { createRequestConvexClient } from '../../../lib/core/auth';
 import {
     getShippingQuotes,
     getConfig,
@@ -13,7 +12,6 @@ import { categorize, CARRIER_META, type CarrierKey } from '../../../lib/shipping
 import { platformForServicePointCarrier } from '../../../lib/shipping/shippingPlatform';
 import { getCarrierSubsidy } from '../../../lib/cart/checkout';
 import { DELIVERY_TYPE } from '../../../lib/orders/orderStatus';
-import { convexOnly } from '../../../lib/core/env';
 
 const IVA_RATE = 1.21;
 
@@ -35,208 +33,60 @@ function resolveExpectedBucket(
     return null;
 }
 
-export const GET: APIRoute = async ({ request, cookies, url }) => {
-    const authClient = createSupabaseAuthClient(cookies, request);
-    const { data: { user } } = await authClient.auth.getUser();
-    if (!user) return jsonResponse({ error: 'Unauthorized' }, 401);
+export const GET: APIRoute = async ({ request, url }) => {
+    // Seller ownership of the order is enforced by Convex.
+    const convex = createRequestConvexClient(request);
+    if (!convex) return jsonResponse({ error: 'Unauthorized' }, 401);
 
     const orderId = url.searchParams.get('orderId');
     if (!orderId) return jsonResponse({ error: 'orderId required' }, 400);
 
-    if (orderId.startsWith('convex:')) {
-        const token = getRequestConvexToken(request);
-        const convex = token ? createConvexClient(token) : null;
-        if (!convex) return jsonResponse({ error: 'Unauthorized' }, 401);
-        try {
-            const order = await convex.query(api.orders.getShipmentContext, { orderId });
-            const expectedBucket = resolveExpectedBucket(order.deliveryType, order.pickupPointCarrier);
-            if (!expectedBucket) return jsonResponse({ unavailable: true, error: 'No se puede determinar el tipo de entrega del pedido.' }, 200);
-            if (order.items.length === 0) return jsonResponse({ unavailable: true, error: 'El pedido no tiene artículos válidos.' }, 200);
-
-            const items = order.items.map((item) => ({
-                weightKg: item.weightKg ?? undefined,
-                lengthCm: item.lengthCm ?? undefined,
-                widthCm: item.widthCm ?? undefined,
-                heightCm: item.heightCm ?? undefined,
-                quantity: item.quantity,
-            }));
-            const buyerPaidShipping = order.items.reduce((max, item) => Math.max(max, item.shippingCostCents / 100), 0);
-            const config = getConfig();
-            const recipientPostalCode = order.deliveryType === DELIVERY_TYPE.PICKUP_POINT
-                ? order.pickupPointPostalCode || parseSpanishAddress(order.pickupPointAddress || '').postalCode || ''
-                : parseSpanishAddress(order.shippingAddress || '').postalCode;
-            if (!recipientPostalCode) return jsonResponse({ unavailable: true, error: 'No se pudo determinar el código postal de destino.' }, 200);
-
-            const quotes = await getShippingQuotes(config.senderPostalCode, 'ES', recipientPostalCode, 'ES', calculateParcelFromItems(items));
-            const buckets: Record<CarrierKey, SendcloudShippingQuote | null> = { inpost: null, correos_home: null, correos_pickup: null };
-            for (const quote of quotes) {
-                const key = categorize(quote.carrierId, quote.serviceName, quote.servicePointInput);
-                if (!key) continue;
-                if (!buckets[key] || quote.price < buckets[key]!.price) buckets[key] = quote;
-            }
-            const chosen = buckets[expectedBucket];
-            if (!chosen) return jsonResponse({ unavailable: true, carrierKey: expectedBucket, carrierLabel: CARRIER_META[expectedBucket].label, buyerPaidShipping, error: 'No hay tarifa disponible para este transportista ahora mismo.' }, 200);
-            const grossPrice = Math.round(chosen.price * IVA_RATE * 100) / 100;
-            const subsidy = getCarrierSubsidy(expectedBucket);
-            const netDeduction = Math.max(0, Math.round((grossPrice - subsidy) * 100) / 100);
-            return jsonResponse({
-                carrierKey: expectedBucket,
-                carrierLabel: CARRIER_META[expectedBucket].label,
-                serviceName: chosen.serviceName,
-                shippingOptionCode: chosen.shippingOptionCode,
-                grossPrice,
-                subsidy,
-                netDeduction,
-                buyerPaidShipping: Math.round(buyerPaidShipping * 100) / 100,
-                pickupPointName: order.pickupPointName ?? null,
-                currency: 'EUR',
-            }, 200);
-        } catch (error) {
-            console.error('[order-label-cost] Convex lookup/quote error', error);
-            return jsonResponse({ unavailable: true, error: 'No hemos podido obtener tarifas de Sendcloud.' }, 200);
-        }
-    }
-
-    if (convexOnly) return jsonResponse({ error: 'Order not found' }, 404);
-
-    const { data: hasAccess } = await authClient.rpc('order_belongs_to_seller', { p_order_id: orderId });
-    if (!hasAccess) return jsonResponse({ error: 'Forbidden' }, 403);
-
-    const { data: order, error: orderError } = await authClient
-        .from('orders')
-        .select(`
-            id,
-            delivery_type,
-            pickup_point_carrier,
-            pickup_point_name,
-            pickup_point_postal_code,
-            pickup_point_address,
-            shipping_address,
-            order_items (
-                quantity,
-                product_variants (
-                    weight_kg,
-                    length_cm,
-                    width_cm,
-                    height_cm,
-                    shipping_cost
-                )
-            )
-        `)
-        .eq('id', orderId)
-        .single();
-
-    if (orderError || !order) {
-        return jsonResponse({ error: 'Order not found' }, 404);
-    }
-
-    const expectedBucket = resolveExpectedBucket(order.delivery_type, order.pickup_point_carrier);
-    if (!expectedBucket) {
-        console.warn('[order-label-cost] expectedBucket could not be resolved');
-        return jsonResponse({
-            unavailable: true,
-            error: 'No se puede determinar el tipo de entrega del pedido.',
-        }, 200);
-    }
-
-    const items = (order.order_items ?? []).flatMap((oi: any) => {
-        const variant = Array.isArray(oi.product_variants) ? oi.product_variants[0] : oi.product_variants;
-        if (!variant) return [];
-        return [{
-            weightKg: variant.weight_kg,
-            lengthCm: variant.length_cm,
-            widthCm: variant.width_cm,
-            heightCm: variant.height_cm,
-            quantity: oi.quantity,
-        }];
-    });
-
-    if (items.length === 0) {
-        return jsonResponse({ unavailable: true, error: 'El pedido no tiene artículos válidos.' }, 200);
-    }
-
-    const buyerPaidShipping = (order.order_items ?? []).reduce((acc: number, oi: any) => {
-        const variant = Array.isArray(oi.product_variants) ? oi.product_variants[0] : oi.product_variants;
-        const cost = Number(variant?.shipping_cost ?? 0);
-        return Math.max(acc, cost);
-    }, 0);
-
-    const config = getConfig();
-    const senderPostalCode = config.senderPostalCode;
-
-    let recipientPostalCode = '';
-    if (order.delivery_type === DELIVERY_TYPE.PICKUP_POINT) {
-        recipientPostalCode = order.pickup_point_postal_code
-            || parseSpanishAddress(order.pickup_point_address || '').postalCode
-            || '';
-    } else {
-        recipientPostalCode = parseSpanishAddress(order.shipping_address || '').postalCode;
-    }
-
-    if (!recipientPostalCode) {
-        return jsonResponse({
-            unavailable: true,
-            error: 'No se pudo determinar el código postal de destino.',
-        }, 200);
-    }
-
-    const parcels = calculateParcelFromItems(items);
-
-    let quotes: SendcloudShippingQuote[];
     try {
-        quotes = await getShippingQuotes(senderPostalCode, 'ES', recipientPostalCode, 'ES', parcels);
-    } catch (err) {
-        console.error('[order-label-cost] Sendcloud quote error', err);
-        return jsonResponse({
-            unavailable: true,
-            error: 'No hemos podido obtener tarifas de Sendcloud.',
-        }, 200);
-    }
+        const order = await convex.query(api.orders.getShipmentContext, { orderId });
+        const expectedBucket = resolveExpectedBucket(order.deliveryType, order.pickupPointCarrier);
+        if (!expectedBucket) return jsonResponse({ unavailable: true, error: 'No se puede determinar el tipo de entrega del pedido.' }, 200);
+        if (order.items.length === 0) return jsonResponse({ unavailable: true, error: 'El pedido no tiene artículos válidos.' }, 200);
 
-    const buckets: Record<CarrierKey, SendcloudShippingQuote | null> = {
-        inpost: null,
-        correos_home: null,
-        correos_pickup: null,
-    };
+        const items = order.items.map((item) => ({
+            weightKg: item.weightKg ?? undefined,
+            lengthCm: item.lengthCm ?? undefined,
+            widthCm: item.widthCm ?? undefined,
+            heightCm: item.heightCm ?? undefined,
+            quantity: item.quantity,
+        }));
+        const buyerPaidShipping = order.items.reduce((max, item) => Math.max(max, item.shippingCostCents / 100), 0);
+        const config = getConfig();
+        const recipientPostalCode = order.deliveryType === DELIVERY_TYPE.PICKUP_POINT
+            ? order.pickupPointPostalCode || parseSpanishAddress(order.pickupPointAddress || '').postalCode || ''
+            : parseSpanishAddress(order.shippingAddress || '').postalCode;
+        if (!recipientPostalCode) return jsonResponse({ unavailable: true, error: 'No se pudo determinar el código postal de destino.' }, 200);
 
-    for (const q of quotes) {
-        const key = categorize(q.carrierId, q.serviceName, q.servicePointInput);
-        if (!key) continue;
-        const current = buckets[key];
-        if (!current || q.price < current.price) {
-            buckets[key] = q;
+        const quotes = await getShippingQuotes(config.senderPostalCode, 'ES', recipientPostalCode, 'ES', calculateParcelFromItems(items));
+        const buckets: Record<CarrierKey, SendcloudShippingQuote | null> = { inpost: null, correos_home: null, correos_pickup: null };
+        for (const quote of quotes) {
+            const key = categorize(quote.carrierId, quote.serviceName, quote.servicePointInput);
+            if (!key) continue;
+            if (!buckets[key] || quote.price < buckets[key]!.price) buckets[key] = quote;
         }
-    }
-
-    const chosen = buckets[expectedBucket];
-    if (!chosen) {
-        console.warn('[order-label-cost] no quote in expected bucket', {
-            expectedBucket,
-            availableBuckets: Object.entries(buckets).filter(([, v]) => v !== null).map(([k]) => k),
-        });
+        const chosen = buckets[expectedBucket];
+        if (!chosen) return jsonResponse({ unavailable: true, carrierKey: expectedBucket, carrierLabel: CARRIER_META[expectedBucket].label, buyerPaidShipping, error: 'No hay tarifa disponible para este transportista ahora mismo.' }, 200);
+        const grossPrice = Math.round(chosen.price * IVA_RATE * 100) / 100;
+        const subsidy = getCarrierSubsidy(expectedBucket);
+        const netDeduction = Math.max(0, Math.round((grossPrice - subsidy) * 100) / 100);
         return jsonResponse({
-            unavailable: true,
             carrierKey: expectedBucket,
             carrierLabel: CARRIER_META[expectedBucket].label,
-            buyerPaidShipping,
-            error: 'No hay tarifa disponible para este transportista ahora mismo.',
+            serviceName: chosen.serviceName,
+            shippingOptionCode: chosen.shippingOptionCode,
+            grossPrice,
+            subsidy,
+            netDeduction,
+            buyerPaidShipping: Math.round(buyerPaidShipping * 100) / 100,
+            pickupPointName: order.pickupPointName ?? null,
+            currency: 'EUR',
         }, 200);
+    } catch (error) {
+        console.error('[order-label-cost] Convex lookup/quote error', error);
+        return jsonResponse({ unavailable: true, error: 'No hemos podido obtener tarifas de Sendcloud.' }, 200);
     }
-
-    const grossPrice = Math.round(chosen.price * IVA_RATE * 100) / 100;
-    const subsidy = getCarrierSubsidy(expectedBucket);
-    const netDeduction = Math.max(0, Math.round((grossPrice - subsidy) * 100) / 100);
-
-    return jsonResponse({
-        carrierKey: expectedBucket,
-        carrierLabel: CARRIER_META[expectedBucket].label,
-        serviceName: chosen.serviceName,
-        shippingOptionCode: chosen.shippingOptionCode,
-        grossPrice,
-        subsidy,
-        netDeduction,
-        buyerPaidShipping: Math.round(buyerPaidShipping * 100) / 100,
-        pickupPointName: order.pickup_point_name ?? null,
-        currency: 'EUR',
-    }, 200);
 };

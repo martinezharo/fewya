@@ -1,4 +1,5 @@
 import type { APIRoute } from 'astro';
+import { getRequestUser } from '../../../lib/core/auth';
 import { getShippingQuotes } from '../../../lib/shipping/sendcloud';
 
 function jsonResponse(payload: Record<string, unknown>, status: number) {
@@ -8,11 +9,8 @@ function jsonResponse(payload: Record<string, unknown>, status: number) {
     });
 }
 
-export const GET: APIRoute = async ({ request, cookies, url }) => {
-    const { createSupabaseAuthClient } = await import('../../../lib/core/auth');
-    const authClient = createSupabaseAuthClient(cookies, request);
-    const { data: { user } } = await authClient.auth.getUser();
-    if (!user) return jsonResponse({ error: 'Unauthorized' }, 401);
+export const GET: APIRoute = async ({ request, url }) => {
+    if (!getRequestUser(request)) return jsonResponse({ error: 'Unauthorized' }, 401);
 
     const weight = parseFloat(url.searchParams.get('weight') ?? '1');
     const country = (url.searchParams.get('country') ?? 'ES').toUpperCase();

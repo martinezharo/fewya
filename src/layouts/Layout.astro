@@ -2,8 +2,7 @@
 import '../styles/global.css';
 import '../styles/pwa.css';
 import { ClientRouter } from 'astro:transitions';
-import { SUPABASE_URL, CONVEX_URL } from 'astro:env/server';
-import { convexOnly } from '../lib/core/env';
+import { CONVEX_URL } from 'astro:env/server';
 
 interface Props {
   title?: string;
@@ -25,7 +24,6 @@ const {
   canonical,
 } = Astro.props;
 
-const supabaseHost = !convexOnly && typeof SUPABASE_URL === 'string' ? new URL(SUPABASE_URL).host : '';
 const convexHost = typeof CONVEX_URL === 'string' ? new URL(CONVEX_URL).host : '';
 const siteUrl = Astro.site?.toString() ?? `${Astro.url.protocol}//${Astro.url.host}`;
 const canonicalUrl = canonical ?? new URL(Astro.url.pathname, siteUrl).toString();
@@ -66,13 +64,7 @@ const ogLocale = locale === 'es' ? 'es_ES' : 'en_US';
     <slot name="head" />
 
     <!-- Preconnect to critical 3rd-party origins (limit to 4 for performance) -->
-    {supabaseHost && (
-      <>
-        <link rel="dns-prefetch" href={`https://${supabaseHost}`} />
-        <link rel="preconnect" href={`https://${supabaseHost}`} crossorigin />
-      </>
-    )}
-    {convexHost && convexHost !== supabaseHost && (
+    {convexHost && (
       <>
         <link rel="dns-prefetch" href={`https://${convexHost}`} />
         <link rel="preconnect" href={`https://${convexHost}`} crossorigin />

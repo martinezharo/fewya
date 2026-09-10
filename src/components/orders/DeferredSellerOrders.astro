@@ -3,11 +3,9 @@ import SellerOrderCard from './SellerOrderCard.astro';
 import type { SellerOrderCardData, SellerOrderItem } from './SellerOrderCard.astro';
 import Icon from '../icons/Icon.astro';
 import { api } from '../../../convex/_generated/api';
-import { createConvexClient } from '../../lib/core/convex';
-import { createSupabaseAuthClient, getRequestConvexToken } from '../../lib/core/auth';
+import { createRequestConvexClient } from '../../lib/core/auth';
 
 import { ORDER_STATUS, ORDER_STATUSES, getOrderStatusLabels } from '../../lib/orders/orderStatus';
-import { convexOnly } from '../../lib/core/env';
 const { t } = Astro.locals;
 const orderStatusLabels = getOrderStatusLabels(t);
 
@@ -18,12 +16,8 @@ interface Props {
 
 const { shopId, shopSlug } = Astro.props;
 
-const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
-
 let ordersData: any[] | null = null;
-let usedConvexOrders = false;
-const convexToken = getRequestConvexToken(Astro.request);
-const convex = convexToken ? createConvexClient(convexToken) : null;
+const convex = createRequestConvexClient(Astro.request);
 
 if (convex) {
     try {
@@ -105,63 +99,9 @@ if (convex) {
             }] : [],
             refunds: order.refundedAmount == null ? [] : [{ amount: order.refundedAmount }],
         }));
-        usedConvexOrders = true;
     } catch (error) {
-        console.error('Convex seller orders unavailable; using Supabase fallback:', error);
+        console.error('Convex seller orders unavailable:', error);
     }
-}
-
-if (!usedConvexOrders && !convexOnly) {
-    const { data } = await supabase
-        .from('orders')
-        .select(`
-            id,
-            public_id,
-            status,
-            payment_status,
-            total_amount,
-            created_at,
-            delivered_at,
-            cancellation_reason,
-            buyer_email,
-            shipping_full_name,
-            shipping_phone,
-            shipping_address,
-            delivery_type,
-            pickup_point_carrier,
-            pickup_point_name,
-            order_items (
-                quantity,
-                price_at_purchase,
-                product_variants (
-                    variant_name,
-                    variant_image,
-                    shipping_cost,
-                    products (
-                        title,
-                        slug,
-                        gallery_images
-                    )
-                )
-            ),
-            shipments (
-                id,
-                sendcloud_shipment_id,
-                carrier_name,
-                service_name,
-                status,
-                tracking_number,
-                tracking_url,
-                label_url,
-                price
-            ),
-            refunds (
-                amount
-            )
-        `)
-        .eq('shop_id', shopId)
-        .order('created_at', { ascending: false });
-    ordersData = data as any[] | null;
 }
 
 const orders: SellerOrderCardData[] = (ordersData ?? []).map((order: any) => {
