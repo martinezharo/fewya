@@ -44,18 +44,13 @@ bun run build
 
 ## Deployment
 
-Configure Worker secrets with Wrangler, then build and deploy the selected
-environment:
+Deploy to Cloudflare Workers. Set secrets via `bunx wrangler secret put <NAME>`, then:
 
 ```bash
-CLOUDFLARE_ENV=production bun run build
-bunx wrangler deploy
+CLOUDFLARE_ENV=production bun run build && bunx wrangler deploy
 ```
 
-The test Worker is `fewya-test`; its environment is Convex-only, uses test
-payment keys and mocked shipping, and has no scheduled cron trigger. See
-[`wrangler.jsonc`](wrangler.jsonc) for environment bindings and deployment
-details.
+See [`wrangler.jsonc`](wrangler.jsonc) for bindings and environments. The test worker (`fewya-test`) runs on `*.workers.dev` with mocked shipping and Stripe test keys, and has no scheduled cron trigger. Its environment is Convex-only.
 
 ## Public catalog feed
 

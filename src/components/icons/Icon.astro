@@ -54,7 +54,8 @@ interface Props {
         | "file-text"
         | "info"
         | "credit-card"
-        | "headphones";
+        | "headphones"
+        | "more-vertical";
     size?: number;
     class?: string;
     [key: string]: any;
@@ -518,6 +519,15 @@ const { name, size = 24, class: className = "", ...rest } = Astro.props;
     {
         name === "headphones" && (
             <path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3" />
+        )
+    }
+    {
+        name === "more-vertical" && (
+            <>
+                <circle cx="12" cy="5" r="1" fill="currentColor" />
+                <circle cx="12" cy="12" r="1" fill="currentColor" />
+                <circle cx="12" cy="19" r="1" fill="currentColor" />
+            </>
         )
     }
 </svg>

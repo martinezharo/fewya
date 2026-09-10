@@ -10,6 +10,7 @@ import {
     type SendcloudShippingQuote,
 } from '../../../lib/shipping/sendcloud';
 import { categorize, CARRIER_META, type CarrierKey } from '../../../lib/shipping/carrierKey';
+import { platformForServicePointCarrier } from '../../../lib/shipping/shippingPlatform';
 import { getCarrierSubsidy } from '../../../lib/cart/checkout';
 import { DELIVERY_TYPE } from '../../../lib/orders/orderStatus';
 import { convexOnly } from '../../../lib/core/env';
@@ -29,10 +30,7 @@ function resolveExpectedBucket(
 ): CarrierKey | null {
     if (deliveryType === DELIVERY_TYPE.HOME) return 'correos_home';
     if (deliveryType === DELIVERY_TYPE.PICKUP_POINT) {
-        const carrier = (pickupPointCarrier || '').toLowerCase();
-        if (carrier.includes('inpost')) return 'inpost';
-        if (carrier.includes('correos')) return 'correos_pickup';
-        return 'correos_pickup';
+        return platformForServicePointCarrier(pickupPointCarrier) === 'inpost' ? 'inpost' : 'correos_pickup';
     }
     return null;
 }

@@ -6,12 +6,24 @@ import { api } from '../../../../convex/_generated/api';
 import {
     normalizeShippingPlatforms,
     intersectShippingPlatforms,
-    servicePointCarriersForPlatforms,
     type ShippingPlatform,
 } from '../../../lib/shipping/shippingPlatform';
 
 interface RequestBody {
     variantIds?: unknown;
+}
+
+/**
+ * The delivery options payload. Both the Convex and the legacy Supabase path
+ * build it from here so the two can never drift apart — the cart reads
+ * `platforms` and passes them straight to the service-point search.
+ */
+function deliveryOptions(platforms: ShippingPlatform[]) {
+    return {
+        platforms,
+        homeAvailable: platforms.includes('correos'),
+        pickupAvailable: platforms.length > 0,
+    };
 }
 
 function jsonResponse(payload: unknown, status: number) {
@@ -28,8 +40,9 @@ function jsonResponse(payload: unknown, status: number) {
  * Returns the shipping options compatible with EVERY shop in the cart. Because
  * the buyer picks a single delivery method that is applied to all shops, an
  * option is only offered when all shops enable the underlying platform.
+ *   - platforms       → shipping platforms all shops support
  *   - homeAvailable   → 'correos' enabled by all shops (home delivery)
- *   - pickupCarriers  → service-point carriers all shops support
+ *   - pickupAvailable → at least one platform left to search pickup points on
  */
 export const POST: APIRoute = async ({ locals, request  }) => {
     const { t } = locals;
@@ -44,13 +57,7 @@ export const POST: APIRoute = async ({ locals, request  }) => {
     const variantIds = raw.filter((id): id is string => typeof id === 'string' && id.length > 0).slice(0, 100);
 
     if (variantIds.length === 0) {
-        const all: ShippingPlatform[] = normalizeShippingPlatforms(null);
-        return jsonResponse({
-            platforms: all,
-            homeAvailable: all.includes('correos'),
-            pickupAvailable: true,
-            pickupCarriers: servicePointCarriersForPlatforms(all),
-        }, 200);
+        return jsonResponse(deliveryOptions(normalizeShippingPlatforms(null)), 200);
     }
 
     if (convexOnly) {
@@ -60,9 +67,7 @@ export const POST: APIRoute = async ({ locals, request  }) => {
             const data = await convex.query(api.catalog.getCartVariants, { ids: variantIds });
             const perShop = new Map<string, ShippingPlatform[]>();
             for (const row of data) perShop.set(row.product.shop.id, normalizeShippingPlatforms(row.product.shop.shipping_carriers));
-            const platforms = intersectShippingPlatforms(Array.from(perShop.values()));
-            const pickupCarriers = servicePointCarriersForPlatforms(platforms);
-            return jsonResponse({ platforms, homeAvailable: platforms.includes('correos'), pickupAvailable: pickupCarriers.length > 0, pickupCarriers }, 200);
+            return jsonResponse(deliveryOptions(intersectShippingPlatforms(Array.from(perShop.values()))), 200);
         } catch (error) {
             console.error(JSON.stringify({ event: 'cart_delivery.convex_failed', error: error instanceof Error ? error.message : String(error) }));
             return jsonResponse({ error: t.apiCheckoutProductUnavailable }, 500);
@@ -95,13 +100,5 @@ export const POST: APIRoute = async ({ locals, request  }) => {
         perShop.set(shop.id, normalizeShippingPlatforms(shop.shipping_carriers));
     }
 
-    const platforms = intersectShippingPlatforms(Array.from(perShop.values()));
-    const pickupCarriers = servicePointCarriersForPlatforms(platforms);
-
-    return jsonResponse({
-        platforms,
-        homeAvailable: platforms.includes('correos'),
-        pickupAvailable: pickupCarriers.length > 0,
-        pickupCarriers,
-    }, 200);
+    return jsonResponse(deliveryOptions(intersectShippingPlatforms(Array.from(perShop.values()))), 200);
 };

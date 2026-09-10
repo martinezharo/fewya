@@ -212,6 +212,9 @@ const isLoggedIn = !!user;
 
 <script>
   import { cart, type CartItem } from '../../lib/cart/cart';
+  // Optimistic fallback while delivery options load (or when they fail): every
+  // platform stays enabled and the checkout API re-validates the final choice.
+  import { DEFAULT_SHIPPING_PLATFORMS } from '../../lib/shipping/shippingPlatform';
   import { getClientT, getClientLocale } from '../../lib/core/i18n';
   import { formatCurrency } from '../../lib/core/formatCurrency';
   import { setBusy } from '../../lib/ui/busy';
@@ -227,7 +230,7 @@ const locale = getClientLocale();
   let deliveryOptions: {
     homeAvailable: boolean;
     pickupAvailable: boolean;
-    pickupCarriers: string[];
+    platforms: string[];
   } | null = null;
   let selectedDeliveryType: DeliveryType | null = null;
   let selectedPickupPoint: {
@@ -473,7 +476,7 @@ const locale = getClientLocale();
 
   // Disable delivery methods the cart's shop(s) don't support and explain why.
   function applyDeliveryAvailability() {
-    const opts = deliveryOptions ?? { homeAvailable: true, pickupAvailable: true, pickupCarriers: ['correos', 'inpost'] };
+    const opts = deliveryOptions ?? { homeAvailable: true, pickupAvailable: true, platforms: DEFAULT_SHIPPING_PLATFORMS };
     const multi = distinctShopCount() > 1;
 
     const setOption = (btn: HTMLElement | null, hint: HTMLElement | null, available: boolean, msgSingle: string, msgMulti: string) => {
@@ -508,11 +511,11 @@ const locale = getClientLocale();
         body: JSON.stringify({ variantIds: items.map((i) => i.variantId) }),
       });
       if (res.ok) {
-        const data = await res.json() as { homeAvailable?: boolean; pickupAvailable?: boolean; pickupCarriers?: string[] };
+        const data = await res.json() as { homeAvailable?: boolean; pickupAvailable?: boolean; platforms?: string[] };
         deliveryOptions = {
           homeAvailable: data.homeAvailable !== false,
           pickupAvailable: data.pickupAvailable !== false,
-          pickupCarriers: Array.isArray(data.pickupCarriers) && data.pickupCarriers.length ? data.pickupCarriers : ['correos', 'inpost'],
+          platforms: Array.isArray(data.platforms) && data.platforms.length ? data.platforms : DEFAULT_SHIPPING_PLATFORMS,
         };
       } else {
         deliveryOptions = null;
@@ -633,10 +636,10 @@ const locale = getClientLocale();
     setSearchButtonLoading(true);
 
     try {
-      const carriersParam = deliveryOptions?.pickupCarriers?.length
-        ? `&carriers=${encodeURIComponent(deliveryOptions.pickupCarriers.join(','))}`
+      const platformsParam = deliveryOptions?.platforms?.length
+        ? `&platforms=${encodeURIComponent(deliveryOptions.platforms.join(','))}`
         : '';
-      const res = await fetch(`/api/sendcloud/service-points?address=${encodeURIComponent(address)}&country=ES${carriersParam}`);
+      const res = await fetch(`/api/sendcloud/service-points?address=${encodeURIComponent(address)}&country=ES${platformsParam}`);
       const data = await res.json() as any;
 
       if (!res.ok || !data.points) {

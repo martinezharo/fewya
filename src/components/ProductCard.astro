@@ -34,10 +34,10 @@ const reviewAvg = product.review_avg ?? 0;
 {/* ─── MOBILE: Horizontal layout ─── */}
 <article class="md:hidden flex bg-surface rounded-lg overflow-hidden transition-shadow duration-200 hover:shadow-[0_2px_16px_rgba(0,0,0,0.08)] group">
     {/* Left — Image */}
-    <div class="relative shrink-0 w-[140px]">
-        <a href={productUrl} class="block h-full">
-            <div class="py-3 h-full">
-                <div class="w-full h-full aspect-square rounded-md bg-skeleton overflow-hidden" data-img-wrap>
+    <div class="relative shrink-0 self-start w-[140px]">
+        <a href={productUrl} class="block">
+            <div class="py-3">
+                <div class="w-full aspect-square rounded-md bg-skeleton overflow-hidden" data-img-wrap>
                     <img
                         src={imageUrl}
                         alt={product.title}

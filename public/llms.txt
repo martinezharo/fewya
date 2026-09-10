@@ -1,0 +1,22 @@
+# Fewya
+
+> Fewya is an open-source marketplace where shoppers buy new products from professional sellers and small businesses run their online storefronts.
+
+Fewya has two connected products: a mobile-first shopping experience for buyers and a seller workspace for catalog, order, shipping, and storefront management. The service is an early work in progress; verify time-sensitive availability and policies on the live site.
+
+## Product guide
+
+- [Fewya overview](https://fewya.com/index.md): Concise, LLM-friendly product facts, capabilities, audiences, and limits.
+- [Marketplace](https://fewya.com/): Browse the live marketplace and active shops.
+- [Product search](https://fewya.com/search): Search the public catalog.
+- [Sell on Fewya](https://fewya.com/sell): Seller proposition and onboarding entry point.
+
+## Technical references
+
+- [Project README](https://raw.githubusercontent.com/martinezharo/fewya/main/README.md): Current architecture, integrations, setup, deployment, and public catalog feed.
+- [Source code](https://github.com/martinezharo/fewya): Canonical source repository.
+- [Sitemap](https://fewya.com/sitemap.xml): Current public shops, products, and core pages.
+
+## Optional
+
+- [License](https://raw.githubusercontent.com/martinezharo/fewya/main/LICENSE): GNU Affero General Public License v3.0 terms for the source code.
