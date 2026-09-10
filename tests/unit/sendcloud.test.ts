@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
     calculateParcelFromItems,
     downloadSendcloudLabelPdf,
+    getServicePoints,
     parseSpanishAddress,
 } from '../../src/lib/shipping/sendcloud';
 
@@ -121,5 +122,112 @@ describe('downloadSendcloudLabelPdf', () => {
         await expect(
             downloadSendcloudLabelPdf('https://panel.sendcloud.sc/api/v3/docs/label/123'),
         ).rejects.toThrow(/401 Unauthorized/);
+    });
+});
+
+describe('getServicePoints', () => {
+    const originalFetch = globalThis.fetch;
+    const ADDRESS = 'Gran Via 1, 28013 Madrid';
+
+    const point = (id: number, carrier: string) => ({
+        id,
+        name: `Point ${id}`,
+        street: 'Gran Via',
+        house_number: '38',
+        postal_code: '28013',
+        city: 'Madrid',
+        latitude: '36.7',
+        longitude: '-4.4',
+        carrier,
+        distance: 100,
+        formatted_opening_times: {},
+    });
+
+    const okResponse = (points: unknown[]) => ({
+        ok: true,
+        json: async () => points,
+    } as unknown as Response);
+
+    const errorResponse = (status: number, body: string) => ({
+        ok: false,
+        status,
+        statusText: 'Bad Request',
+        text: async () => body,
+    } as unknown as Response);
+
+    const requestedUrl = (call: number) =>
+        new URL(vi.mocked(globalThis.fetch).mock.calls[call][0] as string);
+
+    beforeEach(() => {
+        globalThis.fetch = vi.fn() as unknown as typeof fetch;
+    });
+
+    afterEach(() => {
+        globalThis.fetch = originalFetch;
+        vi.restoreAllMocks();
+    });
+
+    it('asks sendcloud for inpost_es, the code its service points API accepts', async () => {
+        vi.mocked(globalThis.fetch).mockResolvedValueOnce(okResponse([point(1, 'inpost_es')]));
+
+        await getServicePoints(ADDRESS, 'ES', ['inpost']);
+
+        expect(requestedUrl(0).searchParams.get('carrier')).toBe('inpost_es');
+    });
+
+    it('sends one comma-separated carrier param, since sendcloud keeps only the last repeated one', async () => {
+        vi.mocked(globalThis.fetch).mockResolvedValueOnce(okResponse([]));
+
+        await getServicePoints(ADDRESS, 'ES', ['inpost', 'correos']);
+
+        const params = requestedUrl(0).searchParams;
+        expect(params.getAll('carrier')).toEqual(['inpost_es,correos']);
+    });
+
+    it('omits the carrier filter when no platform is requested', async () => {
+        vi.mocked(globalThis.fetch).mockResolvedValueOnce(okResponse([]));
+
+        await getServicePoints(ADDRESS, 'ES', []);
+
+        expect(requestedUrl(0).searchParams.has('carrier')).toBe(false);
+    });
+
+    it('maps the sendcloud payload to service points', async () => {
+        vi.mocked(globalThis.fetch).mockResolvedValueOnce(okResponse([point(1, 'correos')]));
+
+        const points = await getServicePoints(ADDRESS, 'ES', ['correos']);
+
+        expect(points).toHaveLength(1);
+        expect(points[0]).toMatchObject({ id: 1, houseNumber: '38', postalCode: '28013', carrier: 'correos' });
+    });
+
+    it('retries unfiltered when sendcloud rejects a carrier, keeping only enabled platforms', async () => {
+        vi.mocked(globalThis.fetch)
+            .mockResolvedValueOnce(errorResponse(400, JSON.stringify({
+                error: { message: 'carrier: "The following requested carriers do not support service point delivery and cannot be used: inpost"' },
+            })))
+            .mockResolvedValueOnce(okResponse([point(1, 'inpost_es'), point(2, 'correos'), point(3, 'seur')]));
+
+        const points = await getServicePoints(ADDRESS, 'ES', ['inpost']);
+
+        expect(requestedUrl(1).searchParams.has('carrier')).toBe(false);
+        expect(points.map((p) => p.id)).toEqual([1]);
+    });
+
+    it('retries unfiltered when a carrier is not activated on the account', async () => {
+        vi.mocked(globalThis.fetch)
+            .mockResolvedValueOnce(errorResponse(400, "carriers haven't been activated"))
+            .mockResolvedValueOnce(okResponse([point(1, 'inpost_es'), point(2, 'correos')]));
+
+        const points = await getServicePoints(ADDRESS, 'ES', ['correos']);
+
+        expect(points.map((p) => p.id)).toEqual([2]);
+    });
+
+    it('never hides points behind an unrelated sendcloud failure', async () => {
+        vi.mocked(globalThis.fetch).mockResolvedValueOnce(errorResponse(401, 'Invalid credentials'));
+
+        await expect(getServicePoints(ADDRESS, 'ES', ['correos'])).rejects.toThrow(/401/);
+        expect(vi.mocked(globalThis.fetch)).toHaveBeenCalledTimes(1);
     });
 });

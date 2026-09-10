@@ -44,12 +44,33 @@ export function intersectShippingPlatforms(lists: ShippingPlatform[][]): Shippin
     return SHIPPING_PLATFORMS.filter((platform) => lists.every((list) => list.includes(platform)));
 }
 
-// Sendcloud service-point carrier codes for a set of platforms.
+// Sendcloud names carriers with its own codes, which do NOT match our platform
+// names: InPost's Spanish network is `inpost_es`. Asking the service-points API
+// for `inpost` makes it reject the whole request with a 400
+// ("The following requested carriers do not support service point delivery"),
+// so this mapping is the single source of truth for the wire codes.
+const SERVICE_POINT_CARRIER_CODES: Record<ShippingPlatform, string> = {
+    inpost: 'inpost_es',
+    correos: 'correos',
+};
+
+/** Sendcloud service-point carrier codes for a set of platforms. */
 export function servicePointCarriersForPlatforms(platforms: ShippingPlatform[]): string[] {
-    const carriers: string[] = [];
-    if (platforms.includes('correos')) carriers.push('correos');
-    if (platforms.includes('inpost')) carriers.push('inpost');
-    return carriers;
+    return SHIPPING_PLATFORMS
+        .filter((platform) => platforms.includes(platform))
+        .map((platform) => SERVICE_POINT_CARRIER_CODES[platform]);
+}
+
+/**
+ * Reverse of `servicePointCarriersForPlatforms`: the platform a Sendcloud
+ * carrier code belongs to. Matches by substring because Sendcloud suffixes the
+ * codes per country (`inpost_es`, `correos_es`, ...). Unknown carriers return
+ * null so they are never silently attributed to a platform the seller enabled.
+ */
+export function platformForServicePointCarrier(code: string | null | undefined): ShippingPlatform | null {
+    const normalized = (code || '').toLowerCase();
+    if (!normalized) return null;
+    return SHIPPING_PLATFORMS.find((platform) => normalized.includes(platform)) ?? null;
 }
 
 /**
@@ -63,9 +84,9 @@ export function platformForDelivery(
 ): ShippingPlatform | null {
     if (deliveryType === 'home') return 'correos';
     if (deliveryType === 'pickup_point') {
-        const carrier = (pickupPointCarrier || '').toLowerCase();
-        if (carrier.includes('inpost')) return 'inpost';
-        return 'correos';
+        // An unrecognised (or missing) carrier falls back to correos, the only
+        // platform every shop can offer; checkout then validates it per shop.
+        return platformForServicePointCarrier(pickupPointCarrier) ?? 'correos';
     }
     return null;
 }

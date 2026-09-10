@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { getServicePoints } from '../../../lib/shipping/sendcloud';
+import { normalizeShippingPlatforms } from '../../../lib/shipping/shippingPlatform';
 
 function jsonResponse(payload: Record<string, unknown>, status: number) {
     return new Response(JSON.stringify(payload), {
@@ -28,16 +29,16 @@ export const GET: APIRoute = async ({ locals, url, request, cookies  }) => {
         return jsonResponse({ error: 'Address required' }, 400);
     }
 
-    // Optional carrier filter (comma-separated sendcloud carrier codes). Falls
-    // back to all supported carriers when absent or empty.
-    const carriersParam = (url.searchParams.get('carriers') || '')
-        .split(',')
-        .map((c) => c.trim().toLowerCase())
-        .filter((c) => c === 'correos' || c === 'inpost');
-    const carriers = carriersParam.length > 0 ? carriersParam : ['correos', 'inpost'];
+    // Optional platform filter (comma-separated shipping platforms, as returned
+    // by /api/cart/delivery-options). Falls back to every platform when absent
+    // or invalid. Sendcloud's own carrier codes never travel over the wire —
+    // they are an implementation detail of the shipping layer.
+    const platforms = normalizeShippingPlatforms(
+        (url.searchParams.get('platforms') || '').split(',').map((value) => value.trim().toLowerCase()),
+    );
 
     try {
-        const points = await getServicePoints(address, country, carriers);
+        const points = await getServicePoints(address, country, platforms);
         return jsonResponse({ points }, 200);
     } catch (err) {
         console.error('Sendcloud service points error:', err);

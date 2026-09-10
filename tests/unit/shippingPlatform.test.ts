@@ -7,6 +7,7 @@ import {
     normalizeShippingPlatforms,
     intersectShippingPlatforms,
     servicePointCarriersForPlatforms,
+    platformForServicePointCarrier,
     platformForDelivery,
 } from '../../src/lib/shipping/shippingPlatform';
 
@@ -65,9 +66,30 @@ describe('intersectShippingPlatforms', () => {
 
 describe('servicePointCarriersForPlatforms', () => {
     it('maps platforms to sendcloud carrier codes', () => {
-        expect(servicePointCarriersForPlatforms(['inpost', 'correos'])).toEqual(['correos', 'inpost']);
-        expect(servicePointCarriersForPlatforms(['inpost'])).toEqual(['inpost']);
+        expect(servicePointCarriersForPlatforms(['inpost', 'correos'])).toEqual(['inpost_es', 'correos']);
+        expect(servicePointCarriersForPlatforms(['correos'])).toEqual(['correos']);
         expect(servicePointCarriersForPlatforms([])).toEqual([]);
+    });
+
+    // Sendcloud rejects the whole request with a 400 when asked for `inpost`:
+    // the Spanish network is `inpost_es`.
+    it('asks sendcloud for inpost_es, never inpost', () => {
+        expect(servicePointCarriersForPlatforms(['inpost'])).toEqual(['inpost_es']);
+    });
+});
+
+describe('platformForServicePointCarrier', () => {
+    it('maps sendcloud country-suffixed codes back to platforms', () => {
+        expect(platformForServicePointCarrier('inpost_es')).toBe('inpost');
+        expect(platformForServicePointCarrier('correos')).toBe('correos');
+        expect(platformForServicePointCarrier('CORREOS_ES')).toBe('correos');
+    });
+
+    it('returns null for carriers we do not ship with', () => {
+        expect(platformForServicePointCarrier('seur')).toBeNull();
+        expect(platformForServicePointCarrier('')).toBeNull();
+        expect(platformForServicePointCarrier(null)).toBeNull();
+        expect(platformForServicePointCarrier(undefined)).toBeNull();
     });
 });
 
