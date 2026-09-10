@@ -5,7 +5,35 @@ import tailwindcss from '@tailwindcss/vite';
 import cloudflare from '@astrojs/cloudflare';
 import AstroPWA from '@vite-pwa/astro';
 import clerk from '@clerk/astro';
+import { loadEnv } from 'vite';
 import { clerkAppearance } from './src/lib/core/clerkAppearance';
+import { checkClerkPublishableKey } from './src/lib/core/clerkBuildKey';
+
+/**
+ * Refuses to build a bundle Clerk cannot start with.
+ *
+ * `PUBLIC_CLERK_PUBLISHABLE_KEY` is inlined at build time, so a build run
+ * without it — a CI machine with no `.env`, most of all — produces a Worker
+ * that redirect-loops on every request. Failing here keeps that build from
+ * ever reaching a deploy.
+ */
+/** @returns {import('astro').AstroIntegration} */
+function requireClerkPublishableKey() {
+  return {
+    name: 'fewya:require-clerk-publishable-key',
+    hooks: {
+      'astro:build:start': ({ logger }) => {
+        const env = loadEnv(process.env.NODE_ENV ?? 'production', process.cwd(), '');
+        const problem = checkClerkPublishableKey(
+          process.env.PUBLIC_CLERK_PUBLISHABLE_KEY ?? env.PUBLIC_CLERK_PUBLISHABLE_KEY,
+        );
+        if (!problem) return;
+        if (problem.level === 'warning') logger.warn(problem.message);
+        else throw new Error(problem.message);
+      },
+    },
+  };
+}
 
 // https://astro.build/config
 export default defineConfig({
@@ -58,6 +86,7 @@ export default defineConfig({
     // resolve its virtual config module at build time. Runtime auth remains
     // conditional on the publishable key in middleware and pages.
     clerk({ appearance: clerkAppearance }),
+    requireClerkPublishableKey(),
     AstroPWA({
       injectRegister: false,
       registerType: 'autoUpdate',
