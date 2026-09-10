@@ -1,4 +1,5 @@
 import type { APIRoute } from 'astro';
+import { CONVEX_WEBHOOK_SECRET } from 'astro:env/server';
 import { createRequestConvexClient } from '../../../../lib/core/auth';
 import { api } from '../../../../../convex/_generated/api';
 
@@ -23,6 +24,7 @@ export const GET: APIRoute = async ({ locals, url, request }) => {
     if (!convex) {
         return jsonResponse({ error: t.apiUnauthorized }, 401);
     }
+    if (!CONVEX_WEBHOOK_SECRET) return jsonResponse({ error: t.apiInternalError }, 503);
 
     try {
         // The query only returns the caller's own orders, so a guessed or
@@ -52,7 +54,10 @@ export const GET: APIRoute = async ({ locals, url, request }) => {
             return jsonResponse({ error: t.apiCheckoutConfirmationError }, 500);
         }
 
+        // Stripe has just told us the session is paid; the secret is what
+        // carries that fact to Convex, which cannot verify it itself.
         const marked = await convex.mutation(api.orders.markPaidForCurrentUser, {
+            secret: CONVEX_WEBHOOK_SECRET,
             sessionId,
             paymentIntentId,
         });

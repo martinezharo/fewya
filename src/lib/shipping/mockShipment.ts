@@ -159,7 +159,7 @@ export async function runMockShipment(params: {
 
     let labelUrl: string;
     try {
-        labelUrl = await uploadLabelPdf(context.publicId, pdfBytes, request);
+        labelUrl = await uploadLabelPdf(pdfBytes, request);
     } catch (error) {
         console.error('mock Convex shipment: storage error', error);
         return { success: false, status: 500, error: t.sellerOrderLabelError };

@@ -357,7 +357,27 @@ export async function createShipment(data: SendcloudShipmentData): Promise<Sendc
     };
 }
 
+/** Hosts that may be sent the Sendcloud API credentials. */
+const SENDCLOUD_HOSTS = ['sendcloud.sc', 'sendcloud.com'];
+
+function isSendcloudUrl(value: string): boolean {
+    try {
+        const { protocol, hostname } = new URL(value);
+        if (protocol !== 'https:') return false;
+        return SENDCLOUD_HOSTS.some((host) => hostname === host || hostname.endsWith(`.${host}`));
+    } catch {
+        return false;
+    }
+}
+
 export async function downloadSendcloudLabelPdf(documentUrl: string): Promise<Uint8Array> {
+    // This request carries the Sendcloud API key and secret. The URL comes
+    // from a stored shipment row, so refuse to send those credentials
+    // anywhere but Sendcloud itself.
+    if (!isSendcloudUrl(documentUrl)) {
+        throw new Error('Refusing to fetch a label from a non-Sendcloud URL');
+    }
+
     const response = await fetch(documentUrl, {
         method: 'GET',
         headers: getAuthHeaders(),

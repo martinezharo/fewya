@@ -33,9 +33,10 @@ export const POST: APIRoute = async ({ locals, request }) => {
     if (!CONVEX_WEBHOOK_SECRET) return jsonResponse({ error: t.apiInternalError }, 503);
 
     try {
-        // Only the seller who owns the order's shop can read this context, so
-        // reaching the retry at all is the authorization check.
         const payout = await convex.query(api.orders.getPayoutContextForCurrentUser, { orderId });
+        // The buyer of an order can read this context too, but retrying a
+        // payout is the seller's action: it moves money to their account.
+        if (!payout.viewerIsSeller) return jsonResponse({ error: t.apiForbidden }, 403);
         if (payout.fundsReleaseStatus !== FUNDS_RELEASE_STATUS.FAILED || !payout.stripePaymentIntentId) {
             return jsonResponse({ error: t.apiInvalidBody }, 400);
         }

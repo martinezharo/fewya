@@ -57,7 +57,7 @@ export const GET: APIRoute = async ({ request }) => {
         // future clicks are instant.
         try {
             const pdfBytes = await downloadSendcloudLabelPdf(shipment.labelUrl);
-            const newMarker = await uploadLabelPdf(shipment.publicId, pdfBytes, request);
+            const newMarker = await uploadLabelPdf(pdfBytes, request);
             await convex.mutation(api.orders.updateShipmentLabelUrl, {
                 shipmentId,
                 labelUrl: newMarker,

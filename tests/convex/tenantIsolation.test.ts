@@ -57,6 +57,16 @@ describe('order access', () => {
             orderId: orderA.orderLegacyId,
         });
         expect(payout.publicId).toBe('ORD-A');
+        // Seller-only actions (retrying a payout) key off this flag.
+        expect(payout.viewerIsSeller).toBe(true);
+    });
+
+    it('marks the buyer as not the seller, so seller-only actions can refuse', async () => {
+        const asBuyerA = t.withIdentity(identity(BUYER_A, 'buyer-a@fewya.test'));
+        const payout = await asBuyerA.query(api.orders.getPayoutContextForCurrentUser, {
+            orderId: orderA.orderLegacyId,
+        });
+        expect(payout.viewerIsSeller).toBe(false);
     });
 
     it('refuses another buyer', async () => {
@@ -248,6 +258,76 @@ describe('wishlist', () => {
     });
 });
 
+describe('payment confirmation', () => {
+    const SECRET = 'deployment-secret';
+
+    beforeEach(async () => {
+        process.env.CONVEX_WEBHOOK_SECRET = SECRET;
+        await t.run(async (ctx) => {
+            const order = await ctx.db
+                .query('orders')
+                .withIndex('by_legacy_id', (q) => q.eq('legacyId', orderA.orderLegacyId))
+                .unique();
+            await ctx.db.patch(order!._id, {
+                status: 'pending',
+                paymentStatus: 'pending',
+                stripeCheckoutSessionId: 'cs_1',
+                deliveredAt: undefined,
+            });
+        });
+    });
+
+    // Being the buyer does not prove payment: without this the buyer of an
+    // abandoned checkout could mark it paid, reserve the stock and have the
+    // seller ship it for free.
+    it('refuses to mark orders paid without the deployment secret', async () => {
+        const asBuyerA = t.withIdentity(identity(BUYER_A, 'buyer-a@fewya.test'));
+        await expect(
+            asBuyerA.mutation(api.orders.markPaidForCurrentUser, {
+                secret: 'wrong',
+                sessionId: 'cs_1',
+                paymentIntentId: 'pi_1',
+            }),
+        ).rejects.toThrow();
+
+        const order = await t.run(async (ctx) => ctx.db
+            .query('orders')
+            .withIndex('by_legacy_id', (q) => q.eq('legacyId', orderA.orderLegacyId))
+            .unique());
+        expect(order?.paymentStatus).toBe('pending');
+    });
+
+    it('marks them paid and reserves stock once the Worker vouches for the payment', async () => {
+        const asBuyerA = t.withIdentity(identity(BUYER_A, 'buyer-a@fewya.test'));
+        await asBuyerA.mutation(api.orders.markPaidForCurrentUser, {
+            secret: SECRET,
+            sessionId: 'cs_1',
+            paymentIntentId: 'pi_1',
+        });
+
+        const { order, variant } = await t.run(async (ctx) => ({
+            order: await ctx.db
+                .query('orders')
+                .withIndex('by_legacy_id', (q) => q.eq('legacyId', orderA.orderLegacyId))
+                .unique(),
+            variant: await ctx.db.get(shopA.variantId),
+        }));
+        expect(order?.paymentStatus).toBe('paid');
+        expect(variant?.stock).toBe(4);
+    });
+
+    it('will not mark another buyer´s orders paid', async () => {
+        const asBuyerB = t.withIdentity(identity(BUYER_B, 'buyer-b@fewya.test'));
+        await expect(
+            asBuyerB.mutation(api.orders.markPaidForCurrentUser, {
+                secret: SECRET,
+                sessionId: 'cs_1',
+                paymentIntentId: 'pi_1',
+            }),
+        ).rejects.toThrow();
+    });
+});
+
 describe('deployment-secret functions', () => {
     const SECRET = 'deployment-secret';
 
@@ -300,6 +380,83 @@ describe('deployment-secret functions', () => {
                 secret: SECRET,
                 orderId: orderA.orderLegacyId,
                 success: true,
+            }),
+        ).rejects.toThrow();
+    });
+});
+
+describe('shipment label references', () => {
+    async function seedShipment() {
+        return await t.run(async (ctx) => {
+            const order = await ctx.db
+                .query('orders')
+                .withIndex('by_legacy_id', (q) => q.eq('legacyId', orderA.orderLegacyId))
+                .unique();
+            await ctx.db.insert('shipments', {
+                legacyId: 'convex:shipment:sc-1',
+                orderId: order!._id,
+                orderLegacyId: order!.legacyId,
+                sendcloudShipmentId: 'sc-1',
+                status: 'shipped',
+                createdAt: 1_760_000_000_000,
+                updatedAt: 1_760_000_000_000,
+            });
+        });
+    }
+
+    // The stored label URL is later fetched with the Sendcloud API
+    // credentials attached, so an arbitrary address written here would
+    // exfiltrate them.
+    it('accepts only a Convex Storage marker', async () => {
+        await seedShipment();
+        const asBuyerA = t.withIdentity(identity(BUYER_A, 'buyer-a@fewya.test'));
+
+        await expect(
+            asBuyerA.mutation(api.orders.updateShipmentLabelUrl, {
+                shipmentId: 'sc-1',
+                labelUrl: 'https://attacker.example/collect',
+            }),
+        ).rejects.toThrow(/invalid label reference/i);
+
+        await asBuyerA.mutation(api.orders.updateShipmentLabelUrl, {
+            shipmentId: 'sc-1',
+            labelUrl: 'convex-storage:abc123',
+        });
+        const shipment = await t.run(async (ctx) => ctx.db
+            .query('shipments')
+            .withIndex('by_legacy_id', (q) => q.eq('legacyId', 'convex:shipment:sc-1'))
+            .unique());
+        expect(shipment?.labelUrl).toBe('convex-storage:abc123');
+    });
+
+    it('refuses a caller who is neither the buyer nor the seller', async () => {
+        await seedShipment();
+        const asBuyerB = t.withIdentity(identity(BUYER_B, 'buyer-b@fewya.test'));
+        await expect(
+            asBuyerB.mutation(api.orders.updateShipmentLabelUrl, {
+                shipmentId: 'sc-1',
+                labelUrl: 'convex-storage:abc123',
+            }),
+        ).rejects.toThrow();
+    });
+});
+
+describe('storage resolution', () => {
+    // Labels carry the buyer's address and incident photos are dispute
+    // evidence, so resolving a storage id is not something an anonymous
+    // caller may do — even holding the id.
+    it('refuses to resolve a storage id for an anonymous caller', async () => {
+        const storageId = await t.run(async (ctx) => await ctx.storage.store(new Blob(['pdf'])));
+        await expect(t.query(api.storage.getUrl, { storageId })).rejects.toThrow();
+
+        const asBuyerA = t.withIdentity(identity(BUYER_A, 'buyer-a@fewya.test'));
+        expect(await asBuyerA.query(api.storage.getUrl, { storageId })).toBeTruthy();
+    });
+
+    it('refuses to resolve an imported storage path for an anonymous caller', async () => {
+        await expect(
+            t.query(api.storage.resolveLegacyUrl, {
+                url: 'https://x.supabase.co/storage/v1/object/public/labels/ORD-1.pdf',
             }),
         ).rejects.toThrow();
     });

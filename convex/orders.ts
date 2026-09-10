@@ -528,6 +528,11 @@ export const updateShipmentLabelUrl = mutation({
         const profile = await profileForIdentity(ctx, user);
         if (!profile) throw new Error('Authentication required');
 
+        // A stored label URL is fetched later with Sendcloud credentials
+        // attached, so only a marker for an object already in Convex Storage
+        // may be written here — never an arbitrary address.
+        if (!args.labelUrl.startsWith('convex-storage:')) throw new Error('Invalid label reference');
+
         const shipment = await ctx.db
             .query('shipments')
             .withIndex('by_sendcloud_shipment_id', (q) => q.eq('sendcloudShipmentId', args.shipmentId))
@@ -754,6 +759,9 @@ export const getPayoutContextForCurrentUser = query({
         return {
             id: order.legacyId,
             publicId: order.publicId,
+            // Both sides of the order may read this context, so the caller's
+            // side is part of it: a payout retry is the seller's to trigger.
+            viewerIsSeller: isSeller,
             status: order.status,
             totalAmount: order.totalAmountCents / 100,
             deliveredAt: order.deliveredAt ?? null,
@@ -1082,13 +1090,24 @@ async function markOrdersPaid(
     }));
 }
 
-/** Marks the current buyer's Convex checkout orders paid after returning from Stripe. */
+/**
+ * Marks the current buyer's checkout orders paid after they return from Stripe.
+ *
+ * Being the buyer is not enough to prove payment, and Convex cannot ask
+ * Stripe: a mutation that trusted the caller here would let anyone flip their
+ * own abandoned checkout to paid, reserve the stock and have the seller ship
+ * it for free. So this also requires the deployment secret, which only the
+ * Worker holds — and the Worker only calls it after Stripe itself has
+ * confirmed the session is paid. The buyer scoping stays as a second fence.
+ */
 export const markPaidForCurrentUser = mutation({
     args: {
+        secret: v.string(),
         sessionId: v.string(),
         paymentIntentId: v.string(),
     },
     handler: async (ctx, args) => {
+        assertWebhookSecret(args.secret);
         const user = await identity(ctx);
         const profile = await profileForIdentity(ctx, user);
         if (!profile) throw new Error('Profile is not linked to this account');

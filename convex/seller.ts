@@ -462,15 +462,16 @@ export const updateProduct = mutation({
  * Loss-protection inputs for the seller Worker routes.
  *
  * The check itself needs a live Sendcloud quote, which Convex cannot make, so
- * the route runs it. This returns the two things the route cannot know on its
- * own: whether the shop opted out of the check, and the variants already
- * stored for a product (used when activating one without resending them).
+ * the route runs it. This returns what the route cannot know on its own:
+ * whether the shop opted out, whether the product is currently published, and
+ * the variants already stored for it (used when activating one without
+ * resending them).
  */
 export const pricingContext = query({
     args: { productId: v.optional(v.string()) },
     handler: async (ctx, args) => {
         const { shop } = await sellerContext(ctx);
-        if (!args.productId) return { allowLoss: shop.allowLoss, variants: [] };
+        if (!args.productId) return { allowLoss: shop.allowLoss, isActive: false, variants: [] };
 
         const product = await ctx.db
             .query('products')
@@ -485,6 +486,7 @@ export const pricingContext = query({
             .collect();
         return {
             allowLoss: shop.allowLoss,
+            isActive: product.isActive,
             variants: variants.map((variant) => ({
                 variant_name: variant.variantName ?? null,
                 price: variant.priceCents / 100,

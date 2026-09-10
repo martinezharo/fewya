@@ -13,10 +13,19 @@ export const generateUploadUrl = mutation({
     },
 });
 
-/** Resolve a Storage document ID to its signed/public URL. */
+/**
+ * Resolve a Storage document ID to its signed URL.
+ *
+ * The store holds private documents as well as product images — shipping
+ * labels carry the buyer's name and address, and incident photos are a
+ * dispute's evidence — so resolution requires a session. Public product
+ * images are resolved inside the catalog queries instead, which run without
+ * one on purpose.
+ */
 export const getUrl = query({
     args: { storageId: v.id('_storage') },
     handler: async (ctx, args) => {
+        await identity(ctx);
         return await ctx.storage.getUrl(args.storageId);
     },
 });
@@ -25,6 +34,7 @@ export const getUrl = query({
 export const resolveLegacyUrl = query({
     args: { url: v.string() },
     handler: async (ctx, args) => {
+        await identity(ctx);
         try {
             const parsed = new URL(args.url);
             const match = parsed.pathname.match(/\/storage\/v1\/object\/(?:public|authenticated|sign)\/([^/]+)\/(.+)$/);

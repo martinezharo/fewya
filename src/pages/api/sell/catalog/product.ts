@@ -69,17 +69,25 @@ function convexError(error: unknown, t: any): Response {
  * Refuses to publish variants that would lose money on shipping, unless the
  * seller explicitly enabled `allow_loss`. The rule needs a live carrier quote,
  * so it runs here rather than inside the Convex mutation.
+ *
+ * `willBeActive` is what the request leaves the product as: an unpublished
+ * draft may be saved at any price, since nobody can buy it.
  */
-async function pricingRejection(
-    convex: NonNullable<ReturnType<typeof createRequestConvexClient>>,
-    t: Strings,
-    locale: Locale,
-    variants: PricingCheckVariant[],
-    productId?: string,
-): Promise<Response | null> {
+async function pricingRejection(options: {
+    convex: NonNullable<ReturnType<typeof createRequestConvexClient>>;
+    t: Strings;
+    locale: Locale;
+    variants: PricingCheckVariant[];
+    requestedActive?: boolean;
+    productId?: string;
+}): Promise<Response | null> {
+    const { convex, t, locale, variants, requestedActive, productId } = options;
     if (variants.length === 0) return null;
+
     const context = await convex.query(api.seller.pricingContext, productId ? { productId } : {});
-    if (context.allowLoss) return null;
+    const willBeActive = requestedActive ?? context.isActive;
+    if (!willBeActive || context.allowLoss) return null;
+
     const pricing = await enforceVariantPricing(t, locale, variants);
     if (pricing.ok) return null;
     return new Response(JSON.stringify({ error: pricing.errors.join('\n') }), { status: 400 });
@@ -100,10 +108,15 @@ export const POST: APIRoute = async ({ locals, request }) => {
     const completeness = validateProductCompleteness(body, body.variants ?? []);
     if (!completeness.complete) return new Response(JSON.stringify({ error: t.sellerProductIncompleteError.replace('{fields}', completeness.missing.join(', ')) }), { status: 400 });
     try {
-        if (body.is_active !== false) {
-            const rejected = await pricingRejection(convex, t, locale, (body.variants ?? []) as PricingCheckVariant[]);
-            if (rejected) return rejected;
-        }
+        const rejected = await pricingRejection({
+            convex,
+            t,
+            locale,
+            variants: (body.variants ?? []) as PricingCheckVariant[],
+            requestedActive: body.is_active !== false,
+        });
+        if (rejected) return rejected;
+
         const result = await convex.mutation(api.seller.createProduct, {
             title: body.title.trim(),
             slug: body.slug?.trim() || slugify(body.title),
@@ -139,10 +152,20 @@ export const PATCH: APIRoute = async ({ locals, request, url }) => {
     if (body.title !== undefined && !body.title?.trim()) return new Response(JSON.stringify({ error: t.sellerProductTitleRequired }), { status: 400 });
     if (body.category !== undefined && !body.category?.trim()) return new Response(JSON.stringify({ error: t.sellerProductCategoryRequired }), { status: 400 });
     try {
-        if (body.is_active !== false && body.variants !== undefined) {
-            const rejected = await pricingRejection(convex, t, locale, body.variants as PricingCheckVariant[], productId);
+        if (body.variants !== undefined) {
+            const rejected = await pricingRejection({
+                convex,
+                t,
+                locale,
+                variants: body.variants as PricingCheckVariant[],
+                // Undefined means "leave publication as it is", so the stored
+                // value decides whether the check applies.
+                requestedActive: body.is_active,
+                productId,
+            });
             if (rejected) return rejected;
         }
+
         const result = await convex.mutation(api.seller.updateProduct, {
             productId,
             title: body.title === undefined ? undefined : body.title.trim(),
