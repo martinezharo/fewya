@@ -11,6 +11,9 @@
 import type * as catalog from "../catalog.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_identityLink from "../lib/identityLink.js";
+import type * as lib_storageAccess from "../lib/storageAccess.js";
+import type * as lib_storageMarker from "../lib/storageMarker.js";
+import type * as lib_storageUrl from "../lib/storageUrl.js";
 import type * as migration from "../migration.js";
 import type * as notifications from "../notifications.js";
 import type * as orders from "../orders.js";
@@ -30,6 +33,9 @@ declare const fullApi: ApiFromModules<{
   catalog: typeof catalog;
   "lib/auth": typeof lib_auth;
   "lib/identityLink": typeof lib_identityLink;
+  "lib/storageAccess": typeof lib_storageAccess;
+  "lib/storageMarker": typeof lib_storageMarker;
+  "lib/storageUrl": typeof lib_storageUrl;
   migration: typeof migration;
   notifications: typeof notifications;
   orders: typeof orders;

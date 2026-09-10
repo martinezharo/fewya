@@ -487,21 +487,59 @@ describe('shipment label references', () => {
 
 describe('storage resolution', () => {
     // Labels carry the buyer's address and incident photos are dispute
-    // evidence, so resolving a storage id is not something an anonymous
-    // caller may do — even holding the id.
+    // evidence, so holding a storage id is not permission to resolve it —
+    // for an anonymous caller or for a signed-in stranger.
     it('refuses to resolve a storage id for an anonymous caller', async () => {
         const storageId = await t.run(async (ctx) => await ctx.storage.store(new Blob(['pdf'])));
         await expect(t.query(api.storage.getUrl, { storageId })).rejects.toThrow();
-
-        const asBuyerA = t.withIdentity(identity(BUYER_A, 'buyer-a@fewya.test'));
-        expect(await asBuyerA.query(api.storage.getUrl, { storageId })).toBeTruthy();
     });
 
-    it('refuses to resolve an imported storage path for an anonymous caller', async () => {
-        await expect(
-            t.query(api.storage.resolveLegacyUrl, {
-                url: 'https://x.supabase.co/storage/v1/object/public/labels/ORD-1.pdf',
-            }),
-        ).rejects.toThrow();
+    it('refuses to resolve a file another signed-in user uploaded', async () => {
+        const asBuyerA = t.withIdentity(identity(BUYER_A, 'buyer-a@fewya.test'));
+        const asBuyerB = t.withIdentity(identity(BUYER_B, 'buyer-b@fewya.test'));
+        const storageId = await t.run(async (ctx) => await ctx.storage.store(new Blob(['pdf'])));
+        await asBuyerA.mutation(api.storage.claimUpload, { storageId });
+
+        expect(await asBuyerA.query(api.storage.getUrl, { storageId })).toBeTruthy();
+        await expect(asBuyerB.query(api.storage.getUrl, { storageId })).rejects.toThrow();
+    });
+
+    it('refuses to adopt a file another user already claimed', async () => {
+        const asBuyerA = t.withIdentity(identity(BUYER_A, 'buyer-a@fewya.test'));
+        const asBuyerB = t.withIdentity(identity(BUYER_B, 'buyer-b@fewya.test'));
+        const storageId = await t.run(async (ctx) => await ctx.storage.store(new Blob(['pdf'])));
+        await asBuyerA.mutation(api.storage.claimUpload, { storageId });
+
+        await expect(asBuyerB.mutation(api.storage.claimUpload, { storageId })).rejects.toThrow();
+    });
+
+    // A shipping label belongs to both sides of its order, and to nobody else.
+    it('resolves a shipment label for the order parties only', async () => {
+        const storageId = await t.run(async (ctx) => await ctx.storage.store(new Blob(['label'])));
+        const marker = `convex-storage:${storageId}`;
+        await t.run(async (ctx) => {
+            const order = await ctx.db
+                .query('orders')
+                .withIndex('by_legacy_id', (q) => q.eq('legacyId', orderA.orderLegacyId))
+                .unique();
+            await ctx.db.insert('shipments', {
+                legacyId: 'shipment-a',
+                orderId: order!._id,
+                orderLegacyId: orderA.orderLegacyId,
+                sendcloudShipmentId: 'sc-label',
+                status: 'delivered',
+                labelUrl: marker,
+                createdAt: 1,
+                updatedAt: 1,
+            });
+        });
+
+        const asBuyerA = t.withIdentity(identity(BUYER_A, 'buyer-a@fewya.test'));
+        const asSellerA = t.withIdentity(identity(SELLER_A, 'a@fewya.test'));
+        const asBuyerB = t.withIdentity(identity(BUYER_B, 'buyer-b@fewya.test'));
+
+        expect(await asBuyerA.query(api.storage.getUrl, { storageId })).toBeTruthy();
+        expect(await asSellerA.query(api.storage.getUrl, { storageId })).toBeTruthy();
+        await expect(asBuyerB.query(api.storage.getUrl, { storageId })).rejects.toThrow();
     });
 });

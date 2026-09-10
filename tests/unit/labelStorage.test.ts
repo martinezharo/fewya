@@ -15,13 +15,13 @@ describe('uploadLabelPdf', () => {
         mockUploadConvexBytes.mockReset();
     });
 
-    it('stores the PDF in Convex Storage and returns its marker path', async () => {
+    it('stores the PDF in Convex Storage and returns its marker and URL', async () => {
         mockUploadConvexBytes.mockResolvedValueOnce({ path: 'convex-storage:abc123', url: 'https://files/abc123' });
         const pdfBytes = new Uint8Array([1, 2, 3]);
 
-        const marker = await uploadLabelPdf(pdfBytes, request);
+        const stored = await uploadLabelPdf(pdfBytes, request);
 
-        expect(marker).toBe('convex-storage:abc123');
+        expect(stored).toEqual({ marker: 'convex-storage:abc123', url: 'https://files/abc123' });
         expect(mockUploadConvexBytes).toHaveBeenCalledWith(request, pdfBytes, 'application/pdf');
     });
 

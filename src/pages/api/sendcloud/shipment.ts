@@ -116,7 +116,7 @@ async function createSendcloudShipment({
         if (result.labelUrl) {
             try {
                 const pdfBytes = await downloadSendcloudLabelPdf(result.labelUrl);
-                storedLabelUrl = await uploadLabelPdf(pdfBytes, request);
+                storedLabelUrl = (await uploadLabelPdf(pdfBytes, request)).marker;
             } catch (error) {
                 console.warn('Sendcloud label download/upload failed; retaining provider URL:', error);
             }

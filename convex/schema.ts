@@ -371,6 +371,24 @@ export default defineSchema({
         .index('by_event_id', ['eventId'])
         .index('by_source', ['source']),
 
+    /**
+     * Who uploaded each Convex Storage object.
+     *
+     * Storage IDs are opaque but they are not secrets: they travel in URLs,
+     * markers and API responses. The store holds shipping labels and incident
+     * photos alongside public product images, so resolving one to a signed URL
+     * is authorized against this table and the documents that reference the
+     * object -- never against the caller merely holding the ID.
+     */
+    storageUploads: defineTable({
+        storageId: v.id('_storage'),
+        ownerId: v.id('profiles'),
+        ownerLegacyId: v.string(),
+        createdAt: v.number(),
+    })
+        .index('by_storage_id', ['storageId'])
+        .index('by_owner_id', ['ownerId']),
+
     storageObjects: defineTable({
         legacyId: v.string(),
         bucket: v.string(),

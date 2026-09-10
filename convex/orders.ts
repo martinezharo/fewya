@@ -502,7 +502,7 @@ export const getShipmentForAccess = query({
         const order = shipment.orderId
             ? await ctx.db.get(shipment.orderId)
             : await ctx.db.query('orders').withIndex('by_legacy_id', (q) => q.eq('legacyId', shipment.orderLegacyId)).unique();
-        if (!order || !isNewConvexOrder(order)) return null;
+        if (!order) return null;
 
         const shop = order.shopId
             ? await ctx.db.get(order.shopId)
@@ -515,6 +515,11 @@ export const getShipmentForAccess = query({
             shipmentId: shipment.sendcloudShipmentId ?? shipment.legacyId,
             internalId: shipment.legacyId,
             labelUrl: shipment.labelUrl ?? null,
+            // Resolved here, behind the buyer/seller check that just ran. A
+            // label is private, and an imported one is still addressed by its
+            // Supabase path, which is far more guessable than a storage ID —
+            // neither is safe to resolve through a general-purpose endpoint.
+            resolvedLabelUrl: shipment.labelUrl ? await resolveStorageUrl(ctx, shipment.labelUrl) : null,
             publicId: order.publicId,
         };
     },
