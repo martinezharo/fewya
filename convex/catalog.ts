@@ -1,8 +1,8 @@
 import { query } from './_generated/server';
-import type { MutationCtx, QueryCtx } from './_generated/server';
+import type { QueryCtx } from './_generated/server';
 import type { Doc } from './_generated/dataModel';
-import type { Id } from './_generated/dataModel';
 import { v } from 'convex/values';
+import { resolveStorageUrl } from './lib/storageUrl';
 
 const sortOption = v.union(
     v.literal('relevance'),
@@ -54,33 +54,6 @@ async function paymentReadyForShop(ctx: QueryCtx, shop: ShopDoc): Promise<boolea
     return Boolean(account?.stripeAccountId && account.chargesEnabled && account.payoutsEnabled && account.detailsSubmitted);
 }
 
-function legacyStoragePath(value: string | null | undefined): { bucket: string; path: string } | null {
-    if (!value) return null;
-    try {
-        const parsed = new URL(value);
-        const match = parsed.pathname.match(/\/storage\/v1\/object\/(?:public|authenticated|sign)\/([^/]+)\/(.+)$/);
-        if (!match) return null;
-        return { bucket: decodeURIComponent(match[1]), path: decodeURIComponent(match[2]) };
-    } catch {
-        return null;
-    }
-}
-
-export async function storageUrl(ctx: QueryCtx | MutationCtx, value: string | null | undefined): Promise<string | null> {
-    if (!value) return null;
-    if (value.startsWith('convex-storage:')) {
-        const storageId = value.slice('convex-storage:'.length) as Id<'_storage'>;
-        return await ctx.storage.getUrl(storageId) ?? value;
-    }
-    const legacy = legacyStoragePath(value);
-    if (!legacy) return value;
-    const object = await ctx.db
-        .query('storageObjects')
-        .withIndex('by_bucket_path', (q) => q.eq('bucket', legacy.bucket).eq('legacyPath', legacy.path))
-        .unique();
-    if (!object?.storageId) return value;
-    return await ctx.storage.getUrl(object.storageId) ?? value;
-}
 
 async function serializeShop(ctx: QueryCtx, shop: ShopDoc) {
     return {
@@ -89,8 +62,8 @@ async function serializeShop(ctx: QueryCtx, shop: ShopDoc) {
         slug: shop.slug,
         name: shop.name,
         description: shop.description ?? null,
-        profile_img: await storageUrl(ctx, shop.profileImg),
-        banner_img: await storageUrl(ctx, shop.bannerImg),
+        profile_img: await resolveStorageUrl(ctx, shop.profileImg),
+        banner_img: await resolveStorageUrl(ctx, shop.bannerImg),
         contact_email: shop.contactEmail ?? null,
         whatsapp: shop.whatsapp ?? null,
         is_active: shop.isActive,
@@ -118,7 +91,7 @@ async function serializeVariant(ctx: QueryCtx, variant: VariantDoc) {
         price: variant.priceCents / 100,
         stock: variant.stock,
         attributes: {},
-        variant_image: await storageUrl(ctx, variant.variantImage),
+        variant_image: await resolveStorageUrl(ctx, variant.variantImage),
         created_at: new Date(variant.createdAt).toISOString(),
         is_default: variant.isDefault,
         weight_kg: variant.weightKg ?? null,
@@ -160,7 +133,7 @@ async function publicProduct(
         title: product.title,
         description: product.description ?? null,
         category: product.category,
-        gallery_images: await Promise.all(product.galleryImages.map((image) => storageUrl(ctx, image))),
+        gallery_images: await Promise.all(product.galleryImages.map((image) => resolveStorageUrl(ctx, image))),
         is_active: product.isActive,
         created_at: new Date(product.createdAt).toISOString(),
         brand: product.brand ?? null,
@@ -193,7 +166,7 @@ async function publicReviews(ctx: QueryCtx, product: ProductDoc) {
             is_auto: review.isAuto,
             profile: profile ? {
                 full_name: profile.fullName ?? null,
-                avatar_url: await storageUrl(ctx, profile.avatarUrl),
+                avatar_url: await resolveStorageUrl(ctx, profile.avatarUrl),
             } : undefined,
         };
     }));
@@ -385,7 +358,7 @@ export const getCartVariants = query({
                 price: variant.priceCents / 100,
                 stock: variant.stock,
                 variant_name: variant.variantName ?? null,
-                variant_image: await storageUrl(ctx, variant.variantImage),
+                variant_image: await resolveStorageUrl(ctx, variant.variantImage),
                 shipping_cost: variant.shippingCostCents == null ? null : variant.shippingCostCents / 100,
                 weight_kg: variant.weightKg ?? null,
                 length_cm: variant.lengthCm ?? null,
@@ -395,7 +368,7 @@ export const getCartVariants = query({
                     id: product.legacyId,
                     title: product.title,
                     slug: product.slug,
-                    gallery_images: await Promise.all(product.galleryImages.map((image) => storageUrl(ctx, image))),
+                    gallery_images: await Promise.all(product.galleryImages.map((image) => resolveStorageUrl(ctx, image))),
                     is_active: product.isActive,
                     shop: {
                         id: shop.legacyId,

@@ -3,7 +3,7 @@ import type { MutationCtx, QueryCtx } from './_generated/server';
 import type { Doc } from './_generated/dataModel';
 import { v } from 'convex/values';
 import { identity, profileForIdentity } from './lib/auth';
-import { storageUrl } from './catalog';
+import { resolveStorageUrl } from './lib/storageUrl';
 
 type ReadCtx = QueryCtx | MutationCtx;
 type ShopDoc = Doc<'shops'>;
@@ -63,7 +63,7 @@ async function serializeProduct(ctx: ReadCtx, product: ProductDoc) {
         category: product.category,
         brand: product.brand ?? null,
         specifications: product.specifications,
-        gallery_images: await Promise.all(product.galleryImages.map((image) => storageUrl(ctx, image))),
+        gallery_images: await Promise.all(product.galleryImages.map((image) => resolveStorageUrl(ctx, image))),
         is_active: product.isActive,
         created_at: new Date(product.createdAt).toISOString(),
         isComplete: productIsComplete(product, variants),
@@ -73,7 +73,7 @@ async function serializeProduct(ctx: ReadCtx, product: ProductDoc) {
             variant_name: variant.variantName ?? null,
             price: variant.priceCents / 100,
             stock: variant.stock,
-            variant_image: await storageUrl(ctx, variant.variantImage),
+            variant_image: await resolveStorageUrl(ctx, variant.variantImage),
             created_at: new Date(variant.createdAt).toISOString(),
             is_default: variant.isDefault,
             weight_kg: variant.weightKg ?? null,
@@ -93,8 +93,8 @@ async function serializeShop(ctx: ReadCtx, shop: ShopDoc) {
         name: shop.name,
         slug: shop.slug,
         description: shop.description ?? null,
-        profile_img: await storageUrl(ctx, shop.profileImg),
-        banner_img: await storageUrl(ctx, shop.bannerImg),
+        profile_img: await resolveStorageUrl(ctx, shop.profileImg),
+        banner_img: await resolveStorageUrl(ctx, shop.bannerImg),
         contact_email: shop.contactEmail ?? null,
         whatsapp: shop.whatsapp ?? null,
         is_active: shop.isActive,
@@ -551,7 +551,7 @@ export const listReviews = query({
                 createdAt: new Date(review.createdAt).toISOString(),
                 buyerName: profile?.fullName ?? null,
                 productTitle: product?.title ?? '',
-                productImage: product ? (await storageUrl(ctx, product.galleryImages[0])) ?? '' : '',
+                productImage: product ? (await resolveStorageUrl(ctx, product.galleryImages[0])) ?? '' : '',
                 productSlug: product?.slug ?? '',
                 isAuto: review.isAuto,
             };
@@ -582,7 +582,7 @@ export const listClaims = query({
                 shippingAmount = Math.max(shippingAmount, (item.shippingCostAtPurchaseCents ?? variant.shippingCostCents ?? 0) / 100);
                 if (!firstProductTitle) {
                     firstProductTitle = product.title;
-                    firstProductImage = (await storageUrl(ctx, variant.variantImage)) ?? (await storageUrl(ctx, product.galleryImages[0])) ?? '';
+                    firstProductImage = (await resolveStorageUrl(ctx, variant.variantImage)) ?? (await resolveStorageUrl(ctx, product.galleryImages[0])) ?? '';
                 }
             }
             const incident = (await ctx.db.query('orderIncidents').withIndex('by_order_id', (q) => q.eq('orderId', order._id)).collect())[0] ?? null;
@@ -595,7 +595,7 @@ export const listClaims = query({
                 buyerEmail: order.buyerEmail ?? null,
                 buyerName: order.shippingFullName ?? null,
                 incidentDescription: incident?.description ?? '',
-                incidentPhotos: await Promise.all((incident?.photos ?? []).map((photo) => storageUrl(ctx, photo))),
+                incidentPhotos: await Promise.all((incident?.photos ?? []).map((photo) => resolveStorageUrl(ctx, photo))),
                 incidentCreatedAt: new Date(incident?.createdAt ?? order.createdAt).toISOString(),
                 firstProductTitle,
                 firstProductImage,

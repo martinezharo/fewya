@@ -3,7 +3,7 @@ import type { MutationCtx, QueryCtx } from './_generated/server';
 import type { Doc } from './_generated/dataModel';
 import { v } from 'convex/values';
 import { identity, profileForIdentity } from './lib/auth';
-import { storageUrl } from './catalog';
+import { resolveStorageUrl } from './lib/storageUrl';
 
 type ReadCtx = QueryCtx | MutationCtx;
 
@@ -69,8 +69,8 @@ async function resolveOrderItems(ctx: ReadCtx, order: OrderDoc): Promise<Resolve
         if (!shop) return null;
 
         const [variantImage, galleryImages] = await Promise.all([
-            storageUrl(ctx, variant.variantImage),
-            Promise.all(product.galleryImages.map((image) => storageUrl(ctx, image))),
+            resolveStorageUrl(ctx, variant.variantImage),
+            Promise.all(product.galleryImages.map((image) => resolveStorageUrl(ctx, image))),
         ]);
 
         return {
@@ -149,7 +149,7 @@ async function serializeBuyerOrder(ctx: QueryCtx, order: OrderDoc, profileId: Do
             : null,
         carrierName: shipment?.carrierName ?? null,
         incidentDescription: incident?.description ?? null,
-        incidentPhotos: (await Promise.all(incident?.photos.map((photo) => storageUrl(ctx, photo)) ?? []))
+        incidentPhotos: (await Promise.all(incident?.photos.map((photo) => resolveStorageUrl(ctx, photo)) ?? []))
             .filter((photo): photo is string => photo !== null),
         sellerEmail: items.find((item) => item.sellerEmail)?.sellerEmail ?? null,
         refundedAmount: refundedAmount > 0 ? refundedAmount : null,
