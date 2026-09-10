@@ -142,6 +142,17 @@ deploys. The following procedure documents how to reproduce the switch:
    `production` environment. Setting `CLOUDFLARE_ENV=production` fails during
    type generation. Check that `dist/server/wrangler.json` names `fewya` and
    points at `quirky-puffin-695` before deploying.
+   The Cloudflare Workers Build that runs on a push to `main` does **not**
+   have this key: it builds from a clean checkout with no `.env`. On
+   2026-09-10 such a build deployed itself over the working Worker and took
+   `fewya.com` down — Clerk's middleware throws before anything else runs, so
+   every request, catalog included, answered a redirect to itself. The build
+   now refuses to produce that bundle (`astro.config.mjs`), so CI fails
+   instead of deploying. To let CI deploy again, add
+   `PUBLIC_CLERK_PUBLISHABLE_KEY` under *Settings → Builds → Variables and
+   Secrets* on the `fewya` Worker. It is a publishable key, served to every
+   visitor in the page bundle, so it belongs in a build variable rather than
+   a secret.
 5. **Point Stripe and Sendcloud webhooks** at the deployed Worker (the URLs do
    not change) and confirm one event of each arrives.
 6. **Remove the leftovers**: `bunx wrangler secret delete SUPABASE_SECRET_KEY --name fewya`
