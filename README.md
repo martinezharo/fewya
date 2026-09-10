@@ -4,15 +4,15 @@ Fewya is a marketplace for small businesses: sellers manage a storefront,
 catalog, orders, shipping, and payouts while buyers browse and check out from a
 mobile-friendly web app.
 
-The current application is an Astro SSR app deployed to Cloudflare Workers. It
-uses Convex and Clerk in the isolated test deployment while the production
-rollout still retains the Supabase compatibility path. The migration status and
-cutover gates are documented in [`docs/supabase-to-convex.md`](docs/supabase-to-convex.md).
+The current application is an Astro SSR app deployed to Cloudflare Workers,
+with Convex as its only database and Clerk for authentication. How the data got
+there, and what remains to switch production traffic over, is documented in
+[`docs/supabase-to-convex.md`](docs/supabase-to-convex.md).
 
 ## Stack
 
 - Astro and TypeScript, with Tailwind CSS
-- Convex and Supabase during the staged data migration
+- Convex for data, file storage and authorization
 - Clerk authentication with Convex JWTs
 - Stripe Connect payments and Sendcloud shipping
 - Resend email and Web Push notifications
@@ -38,9 +38,14 @@ Useful checks:
 ```bash
 bun run check
 bun run lint
-bun run test
+bun run test       # unit tests plus the Convex authorization suite
 bun run build
 ```
+
+`tests/convex/` runs the real Convex functions against an in-memory deployment.
+That is where authorization is asserted — one tenant must never reach another's
+documents — since the rules live in the functions rather than in database
+policies.
 
 ## Deployment
 
@@ -50,7 +55,14 @@ Deploy to Cloudflare Workers. Set secrets via `bunx wrangler secret put <NAME>`,
 CLOUDFLARE_ENV=production bun run build && bunx wrangler deploy
 ```
 
-See [`wrangler.jsonc`](wrangler.jsonc) for bindings and environments. The test worker (`fewya-test`) runs on `*.workers.dev` with mocked shipping and Stripe test keys, and has no scheduled cron trigger. Its environment is Convex-only.
+Convex functions deploy separately from the Worker:
+
+```bash
+bunx convex deploy          # production deployment
+bunx convex dev             # staging/development deployment
+```
+
+See [`wrangler.jsonc`](wrangler.jsonc) for bindings and environments. The test worker (`fewya-test`) runs on `*.workers.dev` with mocked shipping and Stripe test keys, points at the staging Convex deployment, and has no scheduled cron trigger.
 
 ## Public catalog feed
 

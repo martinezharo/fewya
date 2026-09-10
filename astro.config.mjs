@@ -15,21 +15,10 @@ export default defineConfig({
   devToolbar: { enabled: false },
   env: {
     schema: {
-      SUPABASE_URL: envField.string({ context: 'server', access: 'public' }),
-      SUPABASE_KEY: envField.string({ context: 'server', access: 'public' }),
-      SUPABASE_SECRET_KEY: envField.string({ context: 'server', access: 'secret', optional: true }),
       // Runtime-only deployment URL; it is never bundled into browser code.
-      // Optional while Supabase/Convex dual-read is being rolled out.
+      // Every read and write goes through it, so a Worker without it can only
+      // serve static pages.
       CONVEX_URL: envField.string({ context: 'server', access: 'secret', optional: true }),
-      // Runtime-only flag. This hard-disables all Supabase compatibility
-      // fallbacks so an isolated deployment can never write production.
-      CONVEX_ONLY: envField.enum({
-        context: 'server',
-        access: 'secret',
-        values: ['true', 'false'],
-        default: 'false',
-        optional: true,
-      }),
       // Shared secret used only by the verified Stripe webhook to authorize
       // server-to-server payment mutations in Convex.
       CONVEX_WEBHOOK_SECRET: envField.string({ context: 'server', access: 'secret', optional: true }),

@@ -19,15 +19,18 @@
 	"vars": {
 		"APP_MODE": "production",
 		"WORKER_BASE_URL": "https://fewya.com",
+		// Convex production deployment. It holds the imported snapshot and is
+		// the only data source: there is no fallback behind it.
+		"CONVEX_URL": "https://quirky-puffin-695.convex.cloud",
 		// Read at runtime (declared access:'secret' in astro.config.mjs so CI builds
 		// don't bake in null). Not sensitive — it's the Web Push VAPID public key.
 		"VAPID_PUBLIC_KEY": "BNm6TUaJ9ehIHedtrIIp41Pp5oyHdLgKDRlFTAadOck2fovY4oRlrEP4O7KKKYysQFJFXHkk3ecHX10GSuXtzcY"
 	},
-	// A7: Rate limiting for auth endpoints — consumed by middleware.ts via env.RATE_LIMITER_AUTH.
+	// A7: Rate limiting for the paid third-party endpoints — consumed by middleware.ts via env.RATE_LIMITER.
 	// namespace_id is an arbitrary string unique within this Worker; no dashboard setup needed.
 	"ratelimits": [
 		{
-			"name": "RATE_LIMITER_AUTH",
+			"name": "RATE_LIMITER",
 			"namespace_id": "1001",
 			"simple": { "limit": 20, "period": 60 }
 		}
@@ -40,8 +43,8 @@
 		// Test deployment (fewya-test worker on workers.dev).
 		// ⚠️ The environment is resolved at BUILD time, not deploy time:
 		//   CLOUDFLARE_ENV=test bun run build && bunx wrangler deploy
-		// APP_MODE, APP_BASE_URL, CONVEX_URL and CONVEX_ONLY are runtime-only
-		// server variables, so the resolved test Worker vars below are authoritative.
+		// APP_MODE, APP_BASE_URL and CONVEX_URL are runtime-only server
+		// variables, so the resolved test Worker vars below are authoritative.
 		// (a plain `wrangler deploy --env test` after a normal build deploys PRODUCTION —
 		// the build writes a resolved config to dist/server/wrangler.json that wrangler uses).
 		// APP_MODE=development → Stripe test keys + mocked Sendcloud labels. Secrets are per-worker:
@@ -53,18 +56,14 @@
 				"APP_MODE": "development",
 				"WORKER_BASE_URL": "https://fewya-test.olma.workers.dev",
 				"APP_BASE_URL": "https://fewya-test.olma.workers.dev",
-				// Staging-only Convex development deployment. Production receives its
-				// own URL after auth and write-path cutover validation.
+				// Staging Convex deployment, separate from production.
 				"CONVEX_URL": "https://tremendous-fennec-292.convex.cloud",
-				// Hard isolation: no route on fewya-test may use the Supabase
-				// compatibility source, which is the production project.
-				"CONVEX_ONLY": "true",
 				"VAPID_PUBLIC_KEY": "BNm6TUaJ9ehIHedtrIIp41Pp5oyHdLgKDRlFTAadOck2fovY4oRlrEP4O7KKKYysQFJFXHkk3ecHX10GSuXtzcY"
 			},
 			// Bindings are not inherited by environments — redeclare the rate limiter.
 			"ratelimits": [
 				{
-					"name": "RATE_LIMITER_AUTH",
+					"name": "RATE_LIMITER",
 					"namespace_id": "1001",
 					"simple": { "limit": 20, "period": 60 }
 				}
