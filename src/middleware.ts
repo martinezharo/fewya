@@ -78,13 +78,12 @@ async function hydrateClerkUser(auth: () => ClerkSessionAuth, context: APIContex
     const firstName = stringClaim('given_name', 'first_name');
     const lastName = stringClaim('family_name', 'last_name');
     const pictureUrl = stringClaim('picture_url', 'image_url');
-    const legacyIdCandidate = crypto.randomUUID();
 
     const convex = createConvexClient(token);
     if (!convex) return;
 
     try {
-        const linked = await convex.mutation(api.users.ensureCurrent, { legacyId: legacyIdCandidate });
+        const linked = await convex.mutation(api.users.ensureCurrent, {});
 
         // During the staged production rollout this bridge keeps legacy routes
         // usable. The isolated test Worker must never write the current

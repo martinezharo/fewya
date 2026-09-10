@@ -30,6 +30,12 @@ cutover are explicitly approved.
   catalog management, seller settings, and uploads use Convex in the isolated
   Worker; the Supabase compatibility implementation remains available only to
   the staged production build.
+  > **The `convex` JWT template MUST emit the `email_verified` claim.** Linking
+  > an existing profile by email hands over its orders, address and seller
+  > permissions, so `users.ensureCurrent` only adopts a profile when the claim
+  > is `true`; a missing claim counts as unverified. Without it, returning users
+  > cannot link and the mutation refuses the sign-in rather than forking the
+  > account into a second profile.
 - Authenticated buyer profile/order overview, buyer order history, and seller
   order history now read through authorized Convex queries for Clerk sessions;
   in the isolated Worker a Convex error is surfaced without falling back to

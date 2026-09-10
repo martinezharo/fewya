@@ -1,6 +1,7 @@
 import { mutation, query } from './_generated/server';
 import { v } from 'convex/values';
-import { identity, profileForIdentity } from './lib/auth';
+import { identity, profileByEmail, profileForIdentity } from './lib/auth';
+import { mayAdoptProfileByEmail } from './lib/identityLink';
 
 const storageMarker = (storageId: string) => `convex-storage:${storageId}`;
 
@@ -16,10 +17,15 @@ export const current = query({
 /**
  * Links an existing Supabase profile by verified email on first login, or
  * creates a profile for a genuinely new Clerk user.
+ *
+ * Takes no arguments on purpose: everything it writes is derived from the
+ * verified Clerk identity. `legacyId` used to be a parameter, which let any
+ * authenticated caller bind their Clerk subject to another user's profile UUID
+ * (CWE-639). It is generated here, in trusted code, and never accepted.
  */
 export const ensureCurrent = mutation({
-    args: { legacyId: v.optional(v.string()) },
-    handler: async (ctx, args) => {
+    args: {},
+    handler: async (ctx) => {
         const user = await identity(ctx);
         const existing = await profileForIdentity(ctx, user);
         if (existing) {
@@ -32,8 +38,22 @@ export const ensureCurrent = mutation({
             return { id: String(existing._id), legacyId: existing.legacyId, created: false };
         }
 
+        // No profile was adopted. If that is only because the address is
+        // unverified, creating one here would silently fork an existing
+        // account into two, so refuse loudly instead.
+        if (user.email && !mayAdoptProfileByEmail(user)) {
+            const clash = await profileByEmail(ctx, user.email);
+            if (clash) {
+                throw new Error(
+                    'A profile already exists for this email address. Verify the address with the identity provider before signing in.',
+                );
+            }
+        }
+
         const email = user.email ?? `clerk-${user.subject}@invalid.local`;
-        const legacyId = args.legacyId ?? `clerk:${user.subject}`;
+        // Mirrors the Supabase profiles.id UUID column, and is what the
+        // compatibility layer authorizes on. Trusted-side only.
+        const legacyId = crypto.randomUUID();
         const id = await ctx.db.insert('profiles', {
             legacyId,
             authSubject: user.subject,

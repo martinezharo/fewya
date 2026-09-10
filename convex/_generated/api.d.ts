@@ -10,6 +10,7 @@
 
 import type * as catalog from "../catalog.js";
 import type * as lib_auth from "../lib/auth.js";
+import type * as lib_identityLink from "../lib/identityLink.js";
 import type * as migration from "../migration.js";
 import type * as notifications from "../notifications.js";
 import type * as orders from "../orders.js";
@@ -28,6 +29,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   catalog: typeof catalog;
   "lib/auth": typeof lib_auth;
+  "lib/identityLink": typeof lib_identityLink;
   migration: typeof migration;
   notifications: typeof notifications;
   orders: typeof orders;
