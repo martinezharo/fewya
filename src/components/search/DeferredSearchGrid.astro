@@ -1,10 +1,8 @@
 ---
 import ProductGrid from "../ProductGrid.astro";
-import { supabase } from "../../lib/core/supabase";
-import { createSupabaseAuthClient } from "../../lib/core/auth";
-import { enrichProductsWithRatings } from "../../lib/products/productUtils";
 import type { SearchParams } from "../../lib/products/search";
 import { getMergedWishlistIds } from "../../lib/wishlist/wishlist";
+import { getConvexSearchProducts } from "../../lib/products/convexCatalog";
 
 import type { Product } from "../../lib/core/types";
 const { t } = Astro.locals;
@@ -17,34 +15,13 @@ interface Props {
 // points at the island endpoint, so it does NOT carry the original ?q=... query.
 const { params } = Astro.props;
 
-// maxPrice >= 500 means "no upper limit" (the filter UI tops out at 500).
-const maxPrice = params.maxPrice !== null && params.maxPrice < 500 ? params.maxPrice : null;
-
-const authClient = createSupabaseAuthClient(Astro.cookies, Astro.request);
-
-// Relevance-ranked search: text matching, shop visibility, price/stock filtering,
-// ordering and pagination all happen DB-side in the search_products RPC.
-const [dataResult, authResult] = await Promise.all([
-    supabase.rpc("search_products", {
-        p_query: params.q,
-        p_min_price: params.minPrice,
-        p_max_price: maxPrice,
-        p_show_oos: params.showOos,
-        p_sort: params.sort,
-        p_dir: params.dir,
-        p_limit: 80,
-        p_offset: 0,
-    }),
-    authClient.auth.getUser(),
+// Relevance-ranked search, visibility and stock filtering run in Convex.
+const [convexProducts, wishedProductIds] = await Promise.all([
+    getConvexSearchProducts(params),
+    getMergedWishlistIds(Astro.cookies, Astro.request),
 ]);
 
-const products: Product[] = (dataResult.data ?? []) as Product[];
-
-// Ratings enrichment and wishlist lookup in parallel
-const [, wishedProductIds] = await Promise.all([
-    enrichProductsWithRatings(products, supabase),
-    getMergedWishlistIds(authClient, Astro.cookies, authResult.data.user?.id ?? null),
-]);
+const products: Product[] = convexProducts ?? [];
 ---
 
 {products.length > 0 ? (

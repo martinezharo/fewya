@@ -1,70 +1,58 @@
-import { createServerClient, parseCookieHeader } from '@supabase/ssr';
 import type { AstroCookies } from 'astro';
-import { SUPABASE_URL, SUPABASE_KEY } from 'astro:env/server';
-import type { User } from '@supabase/supabase-js';
-
-const AUTH_REDIRECT_BASE = 'fewya-auth-redirect';
-const AUTH_ROLE_BASE = 'fewya-auth-role';
+import type { ConvexHttpClient } from 'convex/browser';
+import { createConvexClient } from './convex';
 
 /**
- * Returns the cookie name with __Host- prefix when on HTTPS.
- * __Host- prevents subdomain override and requires Path=/ and Secure.
+ * Identity of the Clerk-authenticated caller for the current request.
+ *
+ * `id` is the profile UUID (`profiles.legacyId` in Convex). It stayed the
+ * canonical user id after the Supabase migration so that imported orders,
+ * shops and reviews keep pointing at the same person.
  */
-function authCookieName(base: string, url: URL): string {
-    return url.protocol === 'https:' ? `__Host-${base}` : base;
+export interface AuthUser {
+    id: string;
+    email: string;
+    fullName?: string;
+    firstName?: string;
+    lastName?: string;
+    avatarUrl?: string;
+}
+
+// The middleware verifies the Clerk session once per request and publishes the
+// result here. A WeakMap keeps that request-scoped without putting identity
+// data in a cookie, and without threading it through every component prop.
+const requestUsers = new WeakMap<Request, AuthUser>();
+const requestConvexTokens = new WeakMap<Request, string>();
+
+export function setRequestAuthUser(request: Request, user: AuthUser, convexToken?: string) {
+    requestUsers.set(request, user);
+    if (convexToken) requestConvexTokens.set(request, convexToken);
+}
+
+/** The authenticated caller, or null for an anonymous request. */
+export function getRequestUser(request: Request): AuthUser | null {
+    return requestUsers.get(request) ?? null;
+}
+
+export function hasRequestAuthUser(request: Request) {
+    return requestUsers.has(request);
+}
+
+export function getRequestConvexToken(request: Request) {
+    return requestConvexTokens.get(request) ?? null;
 }
 
 /**
- * Creates a Supabase client with cookie-based session management for SSR.
- * Pass Astro.cookies and Astro.request from any page or API route.
+ * Convex client that acts as the caller, so every query and mutation is
+ * authorized by the Clerk identity instead of by the calling route.
+ *
+ * Returns null when the request is anonymous or Convex is not configured;
+ * callers answer that with 401/503 rather than falling back to a privileged
+ * client.
  */
-export function createSupabaseAuthClient(cookies: AstroCookies, request: Request) {
-    if (!SUPABASE_URL || !SUPABASE_KEY) {
-        throw new Error('SUPABASE_URL or SUPABASE_KEY environment variables are not configured');
-    }
-    return createServerClient(SUPABASE_URL, SUPABASE_KEY, {
-        cookies: {
-            getAll() {
-                const cookieHeader = request.headers.get('Cookie') ?? '';
-                const cookies = parseCookieHeader(cookieHeader);
-                return cookies.map(c => ({ name: c.name, value: c.value ?? '' }));
-            },
-            setAll(cookiesToSet) {
-                cookiesToSet.forEach(({ name, value, options }) => {
-                    cookies.set(name, value, options as Parameters<AstroCookies['set']>[2]);
-                });
-            },
-        },
-    });
-}
-
-function getAuthStateCookieOptions(url: URL): Parameters<AstroCookies['set']>[2] {
-    return {
-        path: '/',
-        httpOnly: true,
-        sameSite: 'lax',
-        secure: url.protocol === 'https:',
-        maxAge: 60 * 10,
-    };
-}
-
-function clearAuthStateCookie(cookies: AstroCookies, name: string, url: URL) {
-    cookies.set(name, '', {
-        ...getAuthStateCookieOptions(url),
-        maxAge: 0,
-    });
-}
-
-function hasPendingAuthState(cookies: AstroCookies, url: URL) {
-    const redirectName = authCookieName(AUTH_REDIRECT_BASE, url);
-    const roleName = authCookieName(AUTH_ROLE_BASE, url);
-    return Boolean(cookies.get(redirectName)?.value || cookies.get(roleName)?.value);
-}
-
-function appendAuthError(path: string, url: URL) {
-    const targetUrl = new URL(path, url.origin);
-    targetUrl.searchParams.set('auth_error', '1');
-    return `${targetUrl.pathname}${targetUrl.search}${targetUrl.hash}`;
+export function createRequestConvexClient(request: Request): ConvexHttpClient | null {
+    const token = getRequestConvexToken(request);
+    return token ? createConvexClient(token) : null;
 }
 
 export function normalizeAuthRedirectPath(path: string | null | undefined) {
@@ -79,79 +67,14 @@ export function normalizeAuthRedirectPath(path: string | null | undefined) {
     return path;
 }
 
-export function storePendingAuthFlowState(
-    cookies: AstroCookies,
-    url: URL,
-    redirectTo: string,
-    role: string | null,
-) {
-    const options = getAuthStateCookieOptions(url);
-    const redirectName = authCookieName(AUTH_REDIRECT_BASE, url);
-    const roleName = authCookieName(AUTH_ROLE_BASE, url);
-
-    cookies.set(redirectName, normalizeAuthRedirectPath(redirectTo), options);
-
-    if (role) {
-        cookies.set(roleName, role, options);
-        return;
-    }
-
-    clearAuthStateCookie(cookies, roleName, url);
-}
-
-export function clearPendingAuthFlowState(cookies: AstroCookies, url: URL) {
-    clearAuthStateCookie(cookies, authCookieName(AUTH_REDIRECT_BASE, url), url);
-    clearAuthStateCookie(cookies, authCookieName(AUTH_ROLE_BASE, url), url);
-}
-
-function isNewlyRegisteredUser(user: User): boolean {
-    if (!user.last_sign_in_at) {
-        return false;
-    }
-    const createdAt = new Date(user.created_at).getTime();
-    const lastSignInAt = new Date(user.last_sign_in_at).getTime();
-    return Math.abs(lastSignInAt - createdAt) < 60_000;
-}
-
-export async function exchangeAuthCodeForSession(cookies: AstroCookies, request: Request, url: URL) {
-    const code = url.searchParams.get('code');
-
-    if (!code) {
-        return null;
-    }
-
-    if (url.pathname !== '/api/auth/callback' && !hasPendingAuthState(cookies, url)) {
-        return null;
-    }
-
-    const redirectCookieName = authCookieName(AUTH_REDIRECT_BASE, url);
-    const roleCookieName = authCookieName(AUTH_ROLE_BASE, url);
-
-    const redirectTo = normalizeAuthRedirectPath(
-        url.searchParams.get('redirect_to') ?? cookies.get(redirectCookieName)?.value,
-    );
-    const role = url.searchParams.get('role') ?? cookies.get(roleCookieName)?.value ?? null;
-    const supabase = createSupabaseAuthClient(cookies, request);
-    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-
-    clearPendingAuthFlowState(cookies, url);
-
-    if (error) {
-        return appendAuthError(redirectTo, url);
-    }
-
-    if (role === 'seller' && data.session?.user) {
-        await supabase
-            .from('profiles')
-            .update({ is_seller: true })
-            .eq('id', data.session.user.id);
-    }
-
-    if (!role && data.session?.user && isNewlyRegisteredUser(data.session.user)) {
-        return '/me/details?welcome=1';
-    }
-
-    return redirectTo;
+/**
+ * Builds the sign-in URL for a protected page. Clerk renders the form at
+ * /login and returns the visitor to `redirectTo` afterwards.
+ */
+export function loginRedirectPath(redirectTo: string, role?: string | null) {
+    const params = new URLSearchParams({ redirect_to: normalizeAuthRedirectPath(redirectTo) });
+    if (role) params.set('role', role);
+    return `/login?${params.toString()}`;
 }
 
 /**
@@ -164,4 +87,17 @@ export function assertSameOrigin(request: Request): boolean {
     if (!origin) return true;
     const requestOrigin = new URL(request.url).origin;
     return origin === requestOrigin;
+}
+
+/**
+ * Clears the cookies the Supabase OAuth flow used to leave behind. Clerk owns
+ * the session now; this only stops stale cookies from lingering in browsers
+ * that signed in before the migration.
+ */
+export function clearLegacyAuthCookies(cookies: AstroCookies, url: URL) {
+    const secure = url.protocol === 'https:';
+    for (const base of ['fewya-auth-redirect', 'fewya-auth-role']) {
+        const name = secure ? `__Host-${base}` : base;
+        cookies.set(name, '', { path: '/', httpOnly: true, sameSite: 'lax', secure, maxAge: 0 });
+    }
 }

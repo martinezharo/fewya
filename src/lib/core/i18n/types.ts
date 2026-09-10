@@ -94,11 +94,10 @@ export interface Strings {
     shopNoDescription: string;
 
     // Auth / Login
-    heroGoogleSignIn: string;
+    heroSignIn: string;
     loginPageTitle: string;
     loginPageDescription: string;
     loginSubtitle: string;
-    loginGoogleCta: string;
     loginTermsHint: string;
     loginTermsHintTerms: string;
     loginTermsHintAnd: string;
@@ -587,8 +586,6 @@ export interface Strings {
     sellerReviewsReplyError: string;
 
     // Auth / API / errors
-    authGoogleLoginError: string;
-    authMissingSupabaseEnv: string;
     authMissingStripeEnv: string;
     apiUnauthorized: string;
     apiForbidden: string;

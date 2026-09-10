@@ -1,26 +1,22 @@
 ---
+import { getRequestUser } from '../../../lib/core/auth';
 import SellerLayout from '../../../layouts/SellerLayout.astro';
-import { createSupabaseAuthClient } from '../../../lib/core/auth';
 import ShopForm from '../../../components/seller/ShopForm.astro';
 import Icon from '../../../components/icons/Icon.astro';
+import { getConvexSeller } from '../../../lib/seller/convexSeller';
+import { getRequestConvexToken } from '../../../lib/core/auth';
+import { createConvexClient } from '../../../lib/core/convex';
+import { api } from '../../../../convex/_generated/api';
 
 const { t } = Astro.locals;
-const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
-const { data: sessionData } = await supabase.auth.getSession();
-const user = sessionData?.session?.user;
+const user = getRequestUser(Astro.request);
 
 if (!user) {
     return Astro.redirect('/sell');
 }
 
-// Get the shop of the current seller
-const { data: shop } = await supabase
-    .from('shops')
-    .select(`
-        *
-    `)
-    .eq('owner_id', user.id)
-    .single();
+const seller = await getConvexSeller(Astro.request);
+const shop = seller?.shop;
 
 if (!shop) {
     return Astro.redirect('/sell/onboarding');
@@ -36,32 +32,25 @@ if (Astro.request.method === 'POST') {
     const whatsapp = formData.get('whatsapp')?.toString() || '';
     const location = formData.get('location')?.toString() || '';
 
-    // Check slug uniqueness if it changed
-    if (slug !== shop.slug) {
-        const { data: slugCheck } = await supabase.from('shops').select('id').eq('slug', slug).maybeSingle();
-        if (slugCheck) {
-            return new Response(JSON.stringify({ error: t.sellerOnboardingUrlInUse }), { status: 400 });
-        }
-    }
-
-    const { error } = await supabase
-        .from('shops')
-        .update({
+    const token = getRequestConvexToken(Astro.request);
+    const convex = token ? createConvexClient(token) : null;
+    if (!convex) return new Response(JSON.stringify({ error: t.apiUnauthorized }), { status: 401 });
+    try {
+        // Convex enforces shop ownership and slug uniqueness in one write.
+        await convex.mutation(api.seller.updateShop, {
             name,
             slug,
             description,
-            accent_color,
-            contact_email,
+            accentColor: accent_color,
+            contactEmail: contact_email,
             whatsapp,
-            location
-        })
-        .eq('id', shop.id);
-
-    if (error) {
-        return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+            location,
+        });
+        return new Response(JSON.stringify({ success: true }), { status: 200 });
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        return new Response(JSON.stringify({ error: message.includes('slug') ? t.sellerOnboardingUrlInUse : t.apiInternalError }), { status: message.includes('slug') ? 400 : 500 });
     }
-
-    return new Response(JSON.stringify({ success: true }), { status: 200 });
 }
 
 const profileImg = shop.profile_img || '';

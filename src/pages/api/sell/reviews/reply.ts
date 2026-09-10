@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
-import { createSupabaseAuthClient } from '../../../../lib/core/auth';
-import { createSupabaseAdminClient } from '../../../../lib/core/supabase-admin';
+import { createRequestConvexClient } from '../../../../lib/core/auth';
+import { api } from '../../../../../convex/_generated/api';
 
 function jsonResponse(payload: Record<string, unknown>, status: number) {
     return new Response(JSON.stringify(payload), {
@@ -9,14 +9,11 @@ function jsonResponse(payload: Record<string, unknown>, status: number) {
     });
 }
 
-export const POST: APIRoute = async ({ locals, request, cookies  }) => {
+export const POST: APIRoute = async ({ locals, request }) => {
     const { t } = locals;
-    const authClient = createSupabaseAuthClient(cookies, request);
-    const {
-        data: { user },
-    } = await authClient.auth.getUser();
+    const convex = createRequestConvexClient(request);
 
-    if (!user) {
+    if (!convex) {
         return jsonResponse({ error: t.apiUnauthorized }, 401);
     }
 
@@ -32,50 +29,11 @@ export const POST: APIRoute = async ({ locals, request, cookies  }) => {
         return jsonResponse({ error: t.apiInvalidBody }, 400);
     }
 
-    const adminClient = createSupabaseAdminClient();
-
-    // Verify the review belongs to a product in the seller's shop
-    const { data: review, error: reviewError } = await adminClient
-        .from('reviews')
-        .select('id, products:product_id (shop_id)')
-        .eq('id', reviewId)
-        .maybeSingle();
-
-    if (reviewError || !review) {
-        return jsonResponse({ error: t.apiForbidden }, 403);
-    }
-
-    const product = Array.isArray(review.products) ? review.products[0] : review.products;
-    const shopId = (product as any)?.shop_id;
-
-    if (!shopId) {
-        return jsonResponse({ error: t.apiForbidden }, 403);
-    }
-
-    const { data: shop } = await adminClient
-        .from('shops')
-        .select('id')
-        .eq('id', shopId)
-        .eq('owner_id', user.id)
-        .maybeSingle();
-
-    if (!shop) {
-        return jsonResponse({ error: t.apiForbidden }, 403);
-    }
-
-    const trimmedReply = reply.trim();
-    const { error: updateError } = await adminClient
-        .from('reviews')
-        .update({
-            seller_reply: trimmedReply.length > 0 ? trimmedReply : null,
-            seller_reply_at: trimmedReply.length > 0 ? new Date().toISOString() : null,
-        })
-        .eq('id', reviewId);
-
-    if (updateError) {
-        console.error('seller reply update error', updateError);
+    try {
+        await convex.mutation(api.seller.replyReview, { reviewId, reply });
+        return jsonResponse({ success: true }, 200);
+    } catch (error) {
+        console.error(JSON.stringify({ event: 'seller_review_reply.failed', error: error instanceof Error ? error.message : String(error) }));
         return jsonResponse({ error: t.sellerReviewsReplyError }, 500);
     }
-
-    return jsonResponse({ success: true }, 200);
 };

@@ -1,11 +1,11 @@
 import type { APIRoute } from 'astro';
-import { createSupabaseAuthClient } from '../../../lib/core/auth';
-import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
+import { CONVEX_WEBHOOK_SECRET } from 'astro:env/server';
+import { api } from '../../../../convex/_generated/api';
+import { createRequestConvexClient } from '../../../lib/core/auth';
 
 import { getStripeClient } from '../../../lib/payments/stripe';
 import { validatePayoutDestinations } from '../../../lib/payments/payoutValidation';
-import { createAutoReviewsForOrder } from '../../../lib/orders/autoReview';
-import { fetchPayoutItems, releaseAndRecord } from '../../../lib/orders/payoutFlow';
+import { createAutoReviews, releaseAndRecordFunds } from '../../../lib/orders/convexPayout';
 
 function jsonResponse(payload: Record<string, unknown>, status: number) {
     return new Response(JSON.stringify(payload), {
@@ -14,16 +14,10 @@ function jsonResponse(payload: Record<string, unknown>, status: number) {
     });
 }
 
-export const POST: APIRoute = async ({ locals, request, cookies  }) => {
+export const POST: APIRoute = async ({ locals, request }) => {
     const { t } = locals;
-    const authClient = createSupabaseAuthClient(cookies, request);
-    const {
-        data: { user },
-    } = await authClient.auth.getUser();
-
-    if (!user) {
-        return jsonResponse({ error: t.apiUnauthorized }, 401);
-    }
+    const convex = createRequestConvexClient(request);
+    if (!convex) return jsonResponse({ error: t.apiUnauthorized }, 401);
 
     let body: { orderId?: string };
     try {
@@ -36,82 +30,53 @@ export const POST: APIRoute = async ({ locals, request, cookies  }) => {
     if (!orderId) {
         return jsonResponse({ error: t.apiInvalidBody }, 400);
     }
+    if (!CONVEX_WEBHOOK_SECRET) return jsonResponse({ error: t.apiInternalError }, 503);
 
-    const adminClient = createSupabaseAdminClient();
+    try {
+        // Ownership is enforced in Convex: the query only answers for an order
+        // that belongs to the authenticated buyer.
+        const payout = await convex.query(api.orders.getPayoutContextForCurrentUser, { orderId });
+        if (!['delivered', 'incident'].includes(payout.status)) {
+            return jsonResponse({ error: t.apiCheckoutConfirmationError }, 400);
+        }
+        if (!payout.stripePaymentIntentId) return jsonResponse({ error: t.apiCheckoutConfirmationError }, 400);
 
-    // Ownership check BEFORE any Stripe calls: only the buyer may confirm
-    // delivery for their own order. The RPC below also enforces this, but
-    // checking here first avoids exposing Stripe account lookups (needless
-    // API/rate-limit surface) for an order id the caller doesn't own.
-    const { data: ownedOrder } = await adminClient
-        .from('orders')
-        .select('id')
-        .eq('id', orderId)
-        .eq('buyer_id', user.id)
-        .single();
+        const stripe = getStripeClient();
 
-    if (!ownedOrder) {
-        return jsonResponse({ error: t.apiForbidden }, 403);
-    }
+        // Pre-validate destinations before flipping status: if a seller's
+        // Connect account is disabled the order stays as it is and the buyer
+        // can retry once it is fixed.
+        const destErrors = await validatePayoutDestinations(stripe, payout.items);
+        if (destErrors.length > 0) {
+            console.error(JSON.stringify({
+                event: 'confirm_delivery.payout_destination_invalid',
+                orderId,
+                errors: destErrors,
+            }));
+            return jsonResponse({ error: t.orderPayoutDestinationUnavailable }, 400);
+        }
 
-    const stripe = getStripeClient();
-
-    // Pre-validate destinations before flipping status. If invalid, the order
-    // stays in 'delivered' and the buyer can retry once the seller fixes it.
-    const fetched = await fetchPayoutItems(adminClient, orderId);
-    if (fetched.error) {
-        console.error(JSON.stringify({
-            event: 'confirm_delivery.fetch_items_failed',
+        const confirmed = await convex.mutation(api.orders.confirmDeliveryForBuyer, { orderId });
+        const releaseResult = await releaseAndRecordFunds({
+            convex,
+            stripe,
+            secret: CONVEX_WEBHOOK_SECRET,
             orderId,
-            error: fetched.error,
-        }));
-        return jsonResponse({ error: t.apiCheckoutConfirmationError }, 500);
-    }
+            payout,
+        });
+        if (!releaseResult.success) {
+            console.error('releaseOrderFunds failed after buyer confirmation', releaseResult.error);
+            return jsonResponse({
+                error: 'Delivery confirmed but fund release failed. Our team will resolve this.',
+                orderId,
+            }, 500);
+        }
 
-    const destErrors = await validatePayoutDestinations(stripe, fetched.items);
-    if (destErrors.length > 0) {
-        console.error(JSON.stringify({
-            event: 'confirm_delivery.payout_destination_invalid',
-            orderId,
-            errors: destErrors,
-        }));
-        return jsonResponse({ error: t.orderPayoutDestinationUnavailable }, 400);
-    }
+        await createAutoReviews({ convex, secret: CONVEX_WEBHOOK_SECRET, orderId, comment: t.autoReviewComment });
 
-    // 1. Confirm delivery in DB
-    const { data: confirmedOrder, error: confirmError } = await adminClient.rpc(
-        'confirm_order_delivery',
-        { p_actor_id: user.id, p_order_id: orderId }
-    );
-
-    if (confirmError) {
-        console.error('confirm_order_delivery failed', confirmError);
+        return jsonResponse({ success: true, orderId: confirmed.orderId, publicId: confirmed.publicId }, 200);
+    } catch (error) {
+        console.error('Convex confirm delivery failed', error);
         return jsonResponse({ error: t.apiCheckoutConfirmationError }, 400);
     }
-
-    const order = Array.isArray(confirmedOrder) ? confirmedOrder[0] : confirmedOrder;
-    if (!order?.id) {
-        return jsonResponse({ error: t.apiCheckoutConfirmationError }, 400);
-    }
-
-    // 2. Release funds to sellers (and persist outcome on the order)
-    const releaseResult = await releaseAndRecord({
-        adminClient,
-        stripe,
-        order: { id: order.id, public_id: order.public_id, stripe_payment_intent_id: order.stripe_payment_intent_id },
-        items: fetched.items,
-    });
-
-    if (!releaseResult.success) {
-        console.error('releaseOrderFunds failed after buyer confirmation', releaseResult.error);
-        return jsonResponse({
-            error: 'Delivery confirmed but fund release failed. Our team will resolve this.',
-            orderId: order.id,
-        }, 500);
-    }
-
-    // Create auto-reviews for products in this order (silent — non-critical)
-    await createAutoReviewsForOrder(order.id, t);
-
-    return jsonResponse({ success: true, orderId: order.id, publicId: order.public_id }, 200);
 };

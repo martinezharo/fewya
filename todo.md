@@ -15,52 +15,37 @@ performance/DB/testing). Items are grouped by area and roughly ordered by urgenc
 - [x] **Orphaned "pending" orders on partial multi-shop checkout failure** — `src/pages/api/cart/checkout.ts`.
       Fixed: orders already created for other shops in the same checkout attempt are now cancelled when a later
       shop's order creation fails.
-- [x] **Shipping cost read live instead of frozen at order time** — `src/lib/orders/orderJoins.ts` /
-      `src/lib/orders/payoutFlow.ts`. Fixed in code: added `order_items.shipping_cost_at_purchase`, populated at
-      checkout, with payout/refund code preferring it over the live variant value (falling back to the live value
-      only for orders that predate the column). **⚠️ The DB migration
-      (`.migrations/2026-07-02-freeze-shipping-cost-at-purchase.sql`) has NOT been applied to Supabase yet** — no
-      Supabase MCP tool was available in the session that made this fix. It must be applied before/with deploying
-      that commit, or `refund-incident`, `resolve-delivery-failure`, and fund release will error on the missing
-      column.
+- [x] **Shipping cost read live instead of frozen at order time.** Settled by the Convex migration: the schema has
+      `orderItems.shippingCostAtPurchaseCents`, checkout writes it on every new order, and payouts prefer it over
+      the live variant value. The Postgres column was never applied, so imported items have no frozen value and
+      fall back to the variant's current shipping cost — harmless, because every imported order is terminal and
+      Convex refuses to pay out an imported order at all.
 
 ## 🟠 Security
 
 - [x] **Open-redirect bypass in auth flow** — `src/lib/core/auth.ts` (`normalizeAuthRedirectPath`). Fixed: now
       also rejects `/\`-prefixed paths, which browsers normalize to a protocol-relative `//` redirect.
-- [ ] **`profiles` RLS policy is `FOR ALL` on the whole row** — `db-structure/00-base.sql:267`. Lets an authenticated
-      user write *any* column on their own row via direct REST/JS client access, not just the fields exposed by
-      `profile/update.ts`. No exploit today, but it's a latent risk if a sensitive/admin-controlled column is added
-      later (e.g. a verification flag) without a matching column-level restriction. Consider column-level grants or
-      a trigger that rejects changes to protected columns.
+- [x] **`profiles` RLS policy is `FOR ALL` on the whole row.** Moot after the Convex migration: there is no direct
+      client access to the database at all, and `users.updateCurrent` accepts a fixed list of fields.
 - [ ] **CSP allows `script-src 'unsafe-inline'`** — `src/middleware.ts:27`. Documented trade-off for Astro's
       ClientRouter re-execution, but materially weakens XSS mitigation. Worth revisiting with nonces/hashes if the
       ClientRouter constraint can be worked around.
-- [ ] No ownership pre-check before Stripe account lookups in `confirm-delivery.ts` / `cancel-incident.ts` — any
-      authenticated user can trigger a Stripe `accounts.retrieve` call for an arbitrary order id before the
-      (correctly enforced) ownership check happens inside the state-changing RPC. Not exploitable for state changes,
-      but needless Stripe API exposure/rate-limit surface. Add an early ownership check.
+- [x] No ownership pre-check before Stripe account lookups in `confirm-delivery.ts` / `cancel-incident.ts`. Fixed by
+      the Convex migration: both routes now read the payout context through an authorized query that refuses a
+      foreign order id, so Stripe is never called for an order the caller does not own.
 
 ## 🟡 Performance & database
 
-- [ ] **Missing indexes on hot foreign keys**:
-  - `product_variants.product_id` (`db-structure/01-catalog.sql:36-52`) — joined on every product page, cart, and search.
-  - `shipments.order_id` (`db-structure/03-shipping.sql:26-45`) — used by `get_order_shipment()` and every order page.
-  - `shipment_tracking.shipment_id` (`db-structure/03-shipping.sql:48-59`) — used in RLS policy and tracking sync.
-  - `reviews.product_id` (`db-structure/04-social.sql:6-19`) — only has a partial unique index (`WHERE is_auto=true`);
-    add a plain index for rating aggregation/cascade queries.
-- [ ] **`wishlist` has no `UNIQUE(profile_id, product_id)` constraint** (`db-structure/04-social.sql:24-32`) — duplicate
-      wishlist rows are currently possible; add the constraint plus an index on `product_id`.
+- [x] **Missing indexes on hot foreign keys** and **`wishlist` uniqueness**. Both are gone with Postgres: the Convex
+      schema declares an index for every relationship it queries, and `wishlist.toggle` looks a row up before
+      inserting.
 - [ ] **Unbounded fetches with no pagination** — will degrade as data grows:
-  - `src/components/home/DeferredHomeGrid.astro:18-23` — fetches *all* active products (search already limits to 80).
-  - `src/components/orders/DeferredBuyerOrders.astro` and `DeferredSellerOrders.astro` — full order history with deep
-    joins, no `.limit()`/`.range()`.
-  - `src/pages/sell/catalog/index.astro:33-36` — fetches all products for a shop.
-  - `src/pages/sell/reviews.astro:63-70` — fetches all reviews for a shop.
-- [ ] `.migrations/` is git-ignored by design (local staging area before applying to Supabase via
-      `mcp__supabase__apply_migration`), so its absence from git history isn't itself a bug — but it also means
-      there's no durable, shared record of past schema changes beyond the current-state snapshot in `db-structure/`.
-      Worth deciding whether to track migrations in git after all (e.g. drop the `.gitignore` entry) for auditability.
+  - `orders.listMine` and `orders.listForShop` — full order history, no pagination.
+  - `seller.current` — every product and order of the shop in one query, to render the dashboard.
+  - `catalog.listHomeProducts` is capped at 80, but several Convex queries still `collect()` a whole table before
+    filtering, which is the same problem one layer down.
+- [x] `.migrations/` is git-ignored, and now holds only the exported Supabase snapshot (personal data — it must stay
+      out of git). Schema history lives in `convex/schema.ts` and its deploy log.
 - [ ] Images missing `width`/`height` (CLS risk): `src/components/ProductCardMinimal.astro:27-33` and
       `src/components/product/ProductGallery.astro:48-53` (desktop main image also has no `loading` attribute).
 - [ ] `src/lib/shipping/syncTracking.ts:30-47` fires one Sendcloud API call per open shipment in parallel with no
@@ -101,11 +86,8 @@ performance/DB/testing). Items are grouped by area and roughly ordered by urgenc
 
 - [ ] Debug `console.log` left in production code paths: `src/lib/shipping/sendcloud.ts:312`,
       `src/pages/api/sendcloud/preview-quote.ts:92-95`, `src/pages/api/sendcloud/order-label-cost.ts:77-185`.
-- [ ] `src/pages/api/reviews/submit.ts:44-54` — a first "has the buyer purchased anything" check is fully superseded
-      by the product-scoped check right after it (lines 57-64); the first query is dead weight, delete it.
-- [ ] `src/pages/api/sitemap.xml.ts:45-60` uses the admin (RLS-bypassing) client to read already-public data
-      (active shops/products) — not a security bug since filters are explicit, but should use the RLS-respecting
-      client for consistency with the rest of the codebase.
+- [x] The duplicated purchase check in `reviews/submit.ts` and the admin client in `sitemap.xml.ts` are both gone:
+      the route now delegates to `reviews.submitBatch`, and the sitemap reads a public Convex query.
 - [x] `AGENTS.md`'s "Cart & checkout" section said "one Stripe Checkout Session per shop" — corrected to describe
       the actual single-combined-session-per-cart architecture.
 
@@ -114,14 +96,14 @@ performance/DB/testing). Items are grouped by area and roughly ordered by urgenc
 - [x] Regression tests added alongside the fixes above: `refund.ts` idempotency key, webhook
       `insufficient_stock` refund-and-cancel path (including the sub-case where the compensating refund itself
       fails), shipping-cost-frozen-vs-live fallback in `orderJoins.ts`, and the multi-shop checkout
-      partial-failure/rollback path in `cart/checkout.ts`.
+      partial-failure path in `cart/checkout.ts` (one atomic Convex write now replaces the rollback).
 ### Remaining from the 2026-07-31 testing pass
 
 The middleware, `core/rate-limit.ts` and the ERP/OC items from that pass are
 done (PRs #23 here, erp#3, octopus-control#3). Still open, roughly by value:
 
-- [x] **Storage RLS.** The 16 policies in `db-structure/06-storage.sql` are
-      covered against real Postgres using the existing storage stubs.
+- [x] **Storage authorization.** Replaced by Convex Storage: uploads go through authorized mutations, and label and
+      incident files are only handed out to the buyer or seller of the order (`tests/convex/tenantIsolation.test.ts`).
 - [x] **E2E for checkout and seller sign-up.** Playwright covers only
       those two flows; they are the ones where a break costs money directly.
 - [x] **Contract test for `/api/public/shops/[shopSlug]/catalog.json`.** This is
@@ -129,13 +111,12 @@ done (PRs #23 here, erp#3, octopus-control#3). Still open, roughly by value:
       one validator for it (octopus-control#3). A change to the shape here
       now fails on the producer side too.
 - [x] `lib/core/shopStatus.ts` and `lib/notifications/scan.ts` have focused tests.
-- [ ] Zero test coverage on: `lib/shipping/syncTracking.ts`, `lib/orders/autoConfirm.ts`,
-      `lib/orders/autoReview.ts`, `lib/orders/payoutFlow.ts`, `lib/payments/payoutValidation.ts`,
-      `lib/products/pricingEnforcement.ts`, `lib/products/productUtils.ts`, `lib/products/search.ts`,
-      `lib/shipping/shipmentStatus.ts`, `lib/shipping/shippingLabelPdf.ts`, `lib/wishlist/*`. Also very low coverage:
-      `core/auth.ts` (12%), `notifications/push.ts` (0%), `notifications/resend.ts` (7%), `core/supabase-admin.ts` (0%).
-- [ ] No route-level tests exist for `src/pages/api/orders/*` covering illegal state transitions (e.g. can a shipped
-      order be moved back to `paid`?) — only `orderStatus.test.ts` covers labels, not transition legality.
+- [x] `lib/shipping/syncTracking.ts`, `lib/orders/autoConfirm.ts` and `lib/wishlist/*` are covered as part of the
+      Convex cutover. Still thin: `lib/payments/payoutValidation.ts`, `lib/products/pricingEnforcement.ts`,
+      `lib/products/search.ts`, `lib/shipping/shippingLabelPdf.ts`, `notifications/push.ts`, `notifications/resend.ts`.
+- [ ] Route-level tests cover the authorization boundary (`tests/convex/tenantIsolation.test.ts`) but not transition
+      legality end to end: whether a shipped order can be moved back to `paid` is asserted only inside Convex, and
+      only for the transitions the suite happens to exercise.
 
 ## 💡 Feature ideas worth considering
 

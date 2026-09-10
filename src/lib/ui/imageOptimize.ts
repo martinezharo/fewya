@@ -22,16 +22,9 @@ export function optimizeImageUrl(url: string, width = 400): string {
             return url.replace(/_AC_UF\d+,\d+_QL\d+_/, `_AC_UF${width},${width}_QL80_`);
         }
 
-        // Supabase Storage: resize via query params (requires Supabase Image Transformations enabled)
-        // If transformations are unavailable, the original image still loads.
-        if (parsed.hostname.includes('.supabase.co') && parsed.pathname.includes('/storage/v1/object/public/')) {
-            parsed.searchParams.set('width', String(width));
-            parsed.searchParams.set('height', String(width));
-            parsed.searchParams.set('resize', 'cover');
-            return parsed.toString();
-        }
-
-        // Google Cloud Storage / Carrefour (no resize available, leave as-is)
+        // Convex Storage serves signed URLs that ignore resize params, and the
+        // Worker's Images binding handles those instead. Everything else is
+        // left untouched.
         return url;
     } catch {
         return url;

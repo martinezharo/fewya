@@ -1,9 +1,18 @@
-import { createSupabaseAdminClient } from '../core/supabase-admin';
+import type { ConvexHttpClient } from 'convex/browser';
+import { createConvexClient } from '../core/convex';
+import { api } from '../../../convex/_generated/api';
 import { getStripeClient } from '../payments/stripe';
-import { ORDER_STATUS, FUNDS_RELEASE_STATUS } from './orderStatus';
-import { fetchAndReleaseFunds } from './payoutFlow';
+import { releaseAndRecordFunds } from './convexPayout';
 
 const FUND_HOLD_HOURS = 48;
+
+/**
+ * How long a confirmation is left alone before the retry scan claims it.
+ *
+ * A buyer confirmation releases the funds in the same request, so sweeping one
+ * up seconds later would only duplicate work already in flight.
+ */
+const RELEASE_IN_FLIGHT_GRACE_MS = 10 * 60 * 1000;
 
 interface AutoConfirmReport {
     autoConfirmed: number;
@@ -14,138 +23,153 @@ interface AutoConfirmReport {
     retriedFailed: string[];
 }
 
+function emptyReport(): AutoConfirmReport {
+    return {
+        autoConfirmed: 0,
+        released: [],
+        failed: [],
+        retried: 0,
+        retriedReleased: [],
+        retriedFailed: [],
+    };
+}
+
+interface ReleaseCandidate {
+    orderId: string;
+    publicId: string;
+    stripePaymentIntentId: string | null;
+}
+
+/**
+ * Releases one candidate's funds. Returns false when the money did not move,
+ * so the caller can report it for the next run — the transfer_group key makes
+ * a later retry of the same order idempotent on Stripe's side.
+ */
+async function releaseCandidate(
+    convex: ConvexHttpClient,
+    stripe: ReturnType<typeof getStripeClient>,
+    secret: string,
+    candidate: ReleaseCandidate,
+): Promise<boolean> {
+    if (!candidate.stripePaymentIntentId) {
+        await convex.mutation(api.orders.recordFundsRelease, {
+            secret,
+            orderId: candidate.orderId,
+            success: false,
+            error: 'Missing stripe payment intent',
+        });
+        return false;
+    }
+
+    const payout = await convex.query(api.orders.getPayoutOrder, { secret, orderId: candidate.orderId });
+    const result = await releaseAndRecordFunds({
+        convex,
+        stripe,
+        secret,
+        orderId: candidate.orderId,
+        payout,
+    });
+    return result.success;
+}
+
 /**
  * Confirms delivered orders past the 48h hold and releases their funds.
- * Also retries any previously-failed releases (transfer_group keys make the
- * Stripe call idempotent).
+ * Also retries any previously-failed releases.
  *
  * Shared by the cron `scheduled()` handler and the HTTP endpoint. Reads env via
  * astro:env at call time, so it is safe to invoke from the scheduled context.
  */
-export async function runAutoConfirm(): Promise<AutoConfirmReport> {
-    const adminClient = createSupabaseAdminClient();
+export async function runAutoConfirm(convexSecret?: string): Promise<AutoConfirmReport> {
+    const report = emptyReport();
+    const convex = convexSecret ? createConvexClient() : null;
+    if (!convex || !convexSecret) return report;
+
     const stripe = getStripeClient();
+    const cutoff = Date.now() - FUND_HOLD_HOURS * 60 * 60 * 1000;
 
     // ----- Phase 1: auto-confirm newly-eligible orders -----
-
-    const cutoffTime = new Date(Date.now() - FUND_HOLD_HOURS * 60 * 60 * 1000).toISOString();
-
-    const { data: eligibleOrders, error: fetchError } = await adminClient
-        .from('orders')
-        .select('id, public_id, stripe_payment_intent_id')
-        .eq('status', ORDER_STATUS.DELIVERED)
-        .lt('delivered_at', cutoffTime)
-        .is('funds_released_at', null);
-
-    if (fetchError) {
-        console.error(JSON.stringify({ event: 'auto_confirm.fetch_failed', error: fetchError.message }));
-        throw new Error(fetchError.message);
+    let eligible: ReleaseCandidate[];
+    try {
+        eligible = await convex.query(api.orders.listAutoConfirmCandidates, { secret: convexSecret, cutoff });
+    } catch (error) {
+        console.error(JSON.stringify({
+            event: 'auto_confirm.fetch_failed',
+            error: error instanceof Error ? error.message : String(error),
+        }));
+        return report;
     }
 
-    const released: string[] = [];
-    const failed: string[] = [];
+    report.autoConfirmed = eligible.length;
+    await Promise.allSettled(eligible.map(async (candidate) => {
+        try {
+            const confirmed = await convex.mutation(api.orders.autoConfirmDelivered, {
+                secret: convexSecret,
+                orderId: candidate.orderId,
+                cutoff,
+            });
+            if (!confirmed.confirmed) return;
 
-    if (eligibleOrders && eligibleOrders.length > 0) {
-        const now = new Date().toISOString();
-        const confirmedIds = eligibleOrders.map(o => o.id);
-
-        const { error: updateError } = await adminClient
-            .from('orders')
-            .update({ status: ORDER_STATUS.CONFIRMED, funds_released_at: now })
-            .in('id', confirmedIds)
-            .eq('status', ORDER_STATUS.DELIVERED);
-
-        if (updateError) {
-            console.error(JSON.stringify({ event: 'auto_confirm.update_failed', error: updateError.message }));
-            throw new Error(updateError.message);
+            if (await releaseCandidate(convex, stripe, convexSecret, candidate)) {
+                report.released.push(candidate.publicId);
+            } else {
+                report.failed.push(candidate.publicId);
+            }
+        } catch (error) {
+            report.failed.push(candidate.publicId);
+            console.error(JSON.stringify({
+                event: 'auto_confirm.fund_release_failed',
+                publicId: candidate.publicId,
+                error: error instanceof Error ? error.message : String(error),
+            }));
         }
+    }));
 
-        await Promise.allSettled(
-            eligibleOrders.map(async order => {
-                if (!order.stripe_payment_intent_id) {
-                    failed.push(order.public_id);
-                    return;
-                }
-                const result = await fetchAndReleaseFunds({
-                    adminClient,
-                    stripe,
-                    order: {
-                        id: order.id,
-                        public_id: order.public_id,
-                        stripe_payment_intent_id: order.stripe_payment_intent_id,
-                    },
-                });
-                if (result.success) {
-                    released.push(order.public_id);
-                } else {
-                    console.error(JSON.stringify({
-                        event: 'auto_confirm.fund_release_failed',
-                        publicId: order.public_id,
-                        error: result.error,
-                    }));
-                    failed.push(order.public_id);
-                }
-            }),
-        );
+    // ----- Phase 2: retry orders that asked for a payout and never got one -----
+    // Orders already flipped to a paying status (confirmed) where the Stripe
+    // transfer never completed: it blew up (transient issue, deleted account),
+    // or it never ran at all because the confirmation did not go through the
+    // Worker. Both leave the seller unpaid with nothing else watching.
+    let retries: ReleaseCandidate[];
+    try {
+        retries = await convex.query(api.orders.listPendingFundReleaseCandidates, {
+            secret: convexSecret,
+            grace: RELEASE_IN_FLIGHT_GRACE_MS,
+        });
+    } catch (error) {
+        console.error(JSON.stringify({
+            event: 'auto_confirm.retry_fetch_failed',
+            error: error instanceof Error ? error.message : String(error),
+        }));
+        return report;
     }
 
-    // ----- Phase 2: retry orders whose previous release failed -----
-    // These are orders already flipped to a paying status (confirmed) but where
-    // the Stripe transfer step blew up (transient issue, deleted account, etc).
-    // releaseOrderFunds is idempotent via transfer_group, so retries are safe.
-
-    const { data: retryOrders, error: retryFetchError } = await adminClient
-        .from('orders')
-        .select('id, public_id, stripe_payment_intent_id')
-        .eq('funds_release_status', FUNDS_RELEASE_STATUS.FAILED);
-
-    const retriedReleased: string[] = [];
-    const retriedFailed: string[] = [];
-
-    if (retryFetchError) {
-        console.error(JSON.stringify({ event: 'auto_confirm.retry_fetch_failed', error: retryFetchError.message }));
-    } else if (retryOrders && retryOrders.length > 0) {
-        await Promise.allSettled(
-            retryOrders.map(async order => {
-                if (!order.stripe_payment_intent_id) {
-                    retriedFailed.push(order.public_id);
-                    return;
-                }
-                const result = await fetchAndReleaseFunds({
-                    adminClient,
-                    stripe,
-                    order: {
-                        id: order.id,
-                        public_id: order.public_id,
-                        stripe_payment_intent_id: order.stripe_payment_intent_id,
-                    },
-                });
-                if (result.success) {
-                    retriedReleased.push(order.public_id);
-                } else {
-                    retriedFailed.push(order.public_id);
-                }
-            }),
-        );
-
-        if (retriedFailed.length > 0) {
-            console.warn(JSON.stringify({ event: 'auto_confirm.retry_still_failing', failed: retriedFailed }));
+    report.retried = retries.length;
+    await Promise.allSettled(retries.map(async (candidate) => {
+        try {
+            if (await releaseCandidate(convex, stripe, convexSecret, candidate)) {
+                report.retriedReleased.push(candidate.publicId);
+            } else {
+                report.retriedFailed.push(candidate.publicId);
+            }
+        } catch (error) {
+            report.retriedFailed.push(candidate.publicId);
+            console.error(JSON.stringify({
+                event: 'auto_confirm.retry_failed',
+                publicId: candidate.publicId,
+                error: error instanceof Error ? error.message : String(error),
+            }));
         }
-        if (retriedReleased.length > 0) {
-            console.info(JSON.stringify({ event: 'auto_confirm.retry_recovered', released: retriedReleased }));
-        }
+    }));
+
+    if (report.failed.length > 0) {
+        console.warn(JSON.stringify({ event: 'auto_confirm.retry_needed', failed: report.failed }));
+    }
+    if (report.retriedFailed.length > 0) {
+        console.warn(JSON.stringify({ event: 'auto_confirm.retry_still_failing', failed: report.retriedFailed }));
+    }
+    if (report.retriedReleased.length > 0) {
+        console.info(JSON.stringify({ event: 'auto_confirm.retry_recovered', released: report.retriedReleased }));
     }
 
-    if (failed.length > 0) {
-        console.warn(JSON.stringify({ event: 'auto_confirm.retry_needed', failed }));
-    }
-
-    return {
-        autoConfirmed: eligibleOrders?.length ?? 0,
-        released,
-        failed,
-        retried: retryOrders?.length ?? 0,
-        retriedReleased,
-        retriedFailed,
-    };
+    return report;
 }

@@ -1,25 +1,23 @@
 ---
 import BuyerAppLayout from "../../layouts/BuyerAppLayout.astro";
 import Icon from "../../components/icons/Icon.astro";
+import { api } from '../../../convex/_generated/api';
 
-import { createSupabaseAuthClient } from "../../lib/core/auth";
+import { createRequestConvexClient, getRequestUser } from "../../lib/core/auth";
+import { toProfileFields } from "../../lib/core/profile";
 import { getAllCountries } from "../../lib/shipping/countries";
 import { spainProvinces } from "../../lib/shipping/spain-provinces";
 import { isProfileComplete } from "../../lib/core/validation";
 const { t } = Astro.locals;
 
-const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
-const { data: { user } } = await supabase.auth.getUser();
+const user = getRequestUser(Astro.request);
+const convex = createRequestConvexClient(Astro.request);
 
-if (!user) {
+if (!user || !convex) {
     return Astro.redirect('/login?redirect_to=/me/details');
 }
 
-const { data: profile } = await supabase
-    .from('profiles')
-    .select('first_name, last_name, email, avatar_url, phone, phone_prefix, address_street, address_number, address_floor, address_postal_code, address_city, address_province, address_country, email_marketing_opt_in')
-    .eq('id', user.id)
-    .single();
+const profile = toProfileFields(await convex.query(api.users.current, {}));
 
 const returnTo = Astro.url.searchParams.get('return_to');
 const fromCheckout = Astro.url.searchParams.get('checkout') === '1' && returnTo === '/cart';

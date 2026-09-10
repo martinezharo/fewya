@@ -40,3 +40,6 @@ pnpm-debug.log*
 
 #supabase
 .migrations/
+
+# Convex local backend and generated deployment state
+.convex/

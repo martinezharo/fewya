@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
-import { createSupabaseAuthClient } from '../../../lib/core/auth';
-import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
+import { createRequestConvexClient, getRequestUser } from '../../../lib/core/auth';
+import { api } from '../../../../convex/_generated/api';
 
 import { getStripeClient } from '../../../lib/payments/stripe';
 import { toMinorUnits } from '../../../lib/cart/checkout';
@@ -13,16 +13,11 @@ function jsonResponse(payload: Record<string, unknown>, status: number) {
     });
 }
 
-export const POST: APIRoute = async ({ locals, request, cookies  }) => {
+export const POST: APIRoute = async ({ locals, request }) => {
     const { t } = locals;
-    const authClient = createSupabaseAuthClient(cookies, request);
-    const {
-        data: { user },
-    } = await authClient.auth.getUser();
-
-    if (!user) {
-        return jsonResponse({ error: t.apiUnauthorized }, 401);
-    }
+    const user = getRequestUser(request);
+    const convex = createRequestConvexClient(request);
+    if (!user || !convex) return jsonResponse({ error: t.apiUnauthorized }, 401);
 
     let body: { orderId?: string; cancellationReason?: string };
     try {
@@ -38,88 +33,32 @@ export const POST: APIRoute = async ({ locals, request, cookies  }) => {
 
     const cancellationReason = body.cancellationReason?.trim();
 
-    // Verify seller owns this order
-    const { data: hasAccess } = await authClient.rpc('order_belongs_to_seller', {
-        p_order_id: orderId,
-    });
-
-    if (!hasAccess) {
-        return jsonResponse({ error: t.apiForbidden }, 403);
-    }
-
-    // Get order with payment intent
-    const { data: order, error: orderError } = await authClient
-        .from('orders')
-        .select('id, public_id, status, stripe_payment_intent_id, total_amount')
-        .eq('id', orderId)
-        .single();
-
-    if (orderError || !order) {
-        return jsonResponse({ error: t.apiShopNotFound }, 404);
-    }
-
-    // Only allow cancelling paid/processing orders
-    if (!([ORDER_STATUS.PAID, ORDER_STATUS.PROCESSING] as string[]).includes(order.status)) {
-        return jsonResponse({ error: t.apiOrderCannotBeCancelled }, 400);
-    }
-
-    const stripe = getStripeClient();
-
     try {
-        // Create partial Stripe refund for this shop's order only
-        if (order.stripe_payment_intent_id) {
-            await stripe.refunds.create({
-                payment_intent: order.stripe_payment_intent_id,
-                amount: toMinorUnits(order.total_amount),
+        const payout = await convex.query(api.orders.getPayoutContextForCurrentUser, { orderId });
+        if (!([ORDER_STATUS.PAID, ORDER_STATUS.PROCESSING] as string[]).includes(payout.status)) {
+            return jsonResponse({ error: t.apiOrderCannotBeCancelled }, 400);
+        }
+        const stripe = getStripeClient();
+        let stripeRefundId: string | undefined;
+        if (payout.stripePaymentIntentId && payout.totalAmount > 0) {
+            const refund = await stripe.refunds.create({
+                payment_intent: payout.stripePaymentIntentId,
+                amount: toMinorUnits(payout.totalAmount),
                 reason: 'requested_by_customer',
-                metadata: {
-                    orderId: order.id,
-                    publicId: order.public_id,
-                    cancelledBy: user.id,
-                },
-            }, {
-                idempotencyKey: `cancel-refund:${order.id}`,
-            });
+                metadata: { orderId: payout.id, publicId: payout.publicId, cancelledBy: user.id },
+            }, { idempotencyKey: `cancel-refund:${payout.id}` });
+            stripeRefundId = refund.id;
         }
-
-        // Mark order as cancelled via RPC (bypasses RLS)
-        const adminClient = createSupabaseAdminClient();
-        const { data: cancelledOrder, error: cancelError } = await adminClient.rpc(
-            'cancel_order',
-            { p_actor_id: user.id, p_order_id: orderId, p_cancellation_reason: cancellationReason }
-        );
-
-        if (cancelError || !cancelledOrder) {
-            console.error(JSON.stringify({
-                event: 'refund.cancel_failed',
-                orderId: order.id,
-                publicId: order.public_id,
-                error: cancelError?.message,
-            }));
-            return jsonResponse({ error: t.sellerOrderRefundError }, 500);
-        }
-
-        // Save refund record
-        await authClient.from('refunds').insert({
-            order_id: orderId,
-            amount: order.total_amount,
+        const cancelled = await convex.mutation(api.orders.cancelForSeller, {
+            orderId,
+            ...(cancellationReason ? { cancellationReason } : {}),
+            refundAmountCents: toMinorUnits(payout.totalAmount),
             currency: 'eur',
-            reason: 'seller_cancellation',
-            processed_by: user.id,
+            ...(stripeRefundId ? { stripeRefundId } : {}),
         });
-
-        return jsonResponse({
-            success: true,
-            orderId: order.id,
-            publicId: order.public_id,
-        }, 200);
+        return jsonResponse(cancelled, 200);
     } catch (error) {
-        console.error(JSON.stringify({
-            event: 'refund.failed',
-            orderId: order.id,
-            publicId: order.public_id,
-            error: error instanceof Error ? error.message : String(error),
-        }));
+        console.error('Convex seller cancellation failed', error);
         return jsonResponse({ error: t.sellerOrderRefundError }, 500);
     }
 };

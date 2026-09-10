@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { CRON_SECRET } from 'astro:env/server';
+import { CRON_SECRET, CONVEX_WEBHOOK_SECRET } from 'astro:env/server';
 import { timingSafeEqual } from '../../../lib/core/timing-safe';
 import { securityLog } from '../../../lib/core/security-log';
 import { runNotificationScan } from '../../../lib/notifications/scan';
@@ -23,7 +23,7 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     try {
-        const result = await runNotificationScan();
+        const result = await runNotificationScan(CONVEX_WEBHOOK_SECRET);
         return jsonResponse({ ...result }, 200);
     } catch (e) {
         console.error(JSON.stringify({ event: 'notifications_run.failed', error: e instanceof Error ? e.message : String(e) }));

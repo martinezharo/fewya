@@ -1,3 +1,6 @@
+/* Slot Clerk's injected styles below Tailwind's components/utilities so
+   appearance element classes can override them (see clerkAppearance.ts). */
+@layer theme, base, clerk, components, utilities;
 @import "tailwindcss";
 
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));

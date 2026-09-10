@@ -1,24 +1,19 @@
 import type { APIRoute } from 'astro';
-import { createSupabaseAuthClient } from '../../../lib/core/auth';
+import { api } from '../../../../convex/_generated/api';
+import { createRequestConvexClient } from '../../../lib/core/auth';
+import { toProfileFields } from '../../../lib/core/profile';
 
-export const GET: APIRoute = async ({ cookies, request }) => {
-    const authClient = createSupabaseAuthClient(cookies, request);
-    const {
-        data: { user },
-    } = await authClient.auth.getUser();
+export const GET: APIRoute = async ({ request }) => {
+    const convex = createRequestConvexClient(request);
 
-    if (!user) {
+    if (!convex) {
         return new Response(JSON.stringify({ error: 'Unauthorized' }), {
             status: 401,
             headers: { 'Content-Type': 'application/json' },
         });
     }
 
-    const { data: profile } = await authClient
-        .from('profiles')
-        .select('address_street, address_number, address_floor, address_postal_code, address_city, address_province, address_country')
-        .eq('id', user.id)
-        .single();
+    const profile = toProfileFields(await convex.query(api.users.current, {}));
 
     const street = profile?.address_street?.trim() || '';
     const number = profile?.address_number?.trim() || '';

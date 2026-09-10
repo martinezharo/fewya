@@ -1,8 +1,6 @@
 import type { APIRoute } from 'astro';
-import { createSupabaseAuthClient } from '../../../lib/core/auth';
-import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
-
-import { ORDER_STATUS } from '../../../lib/orders/orderStatus';
+import { api } from '../../../../convex/_generated/api';
+import { createRequestConvexClient } from '../../../lib/core/auth';
 
 function jsonResponse(payload: Record<string, unknown>, status: number) {
     return new Response(JSON.stringify(payload), {
@@ -11,14 +9,11 @@ function jsonResponse(payload: Record<string, unknown>, status: number) {
     });
 }
 
-export const POST: APIRoute = async ({ locals, request, cookies  }) => {
+export const POST: APIRoute = async ({ locals, request }) => {
     const { t } = locals;
-    const authClient = createSupabaseAuthClient(cookies, request);
-    const {
-        data: { user },
-    } = await authClient.auth.getUser();
+    const convex = createRequestConvexClient(request);
 
-    if (!user) {
+    if (!convex) {
         return jsonResponse({ error: t.apiUnauthorized }, 401);
     }
 
@@ -39,62 +34,17 @@ export const POST: APIRoute = async ({ locals, request, cookies  }) => {
         return jsonResponse({ error: t.apiInvalidBody }, 400);
     }
 
-    const adminClient = createSupabaseAdminClient();
-
-    // Verify the user has purchased this specific product in a confirmed order
-    const { data: validPurchase, error: validError } = await adminClient
-        .from('orders')
-        .select('id, order_items!inner(product_variants!inner(product_id))')
-        .eq('buyer_id', user.id)
-        .eq('status', ORDER_STATUS.CONFIRMED)
-        .eq('order_items.product_variants.product_id', productId)
-        .limit(1)
-        .maybeSingle();
-
-    if (validError || !validPurchase) {
-        console.error('valid purchase check failed', validError);
+    try {
+        // Convex verifies the caller bought the product in a confirmed order.
+        await convex.mutation(api.reviews.submitBatch, {
+            reviews: [{ productId, rating, ...(comment?.trim() ? { comment: comment.trim() } : {}) }],
+        });
+        return jsonResponse({ success: true }, 200);
+    } catch (error) {
+        console.error(JSON.stringify({
+            event: 'reviews.submit_failed',
+            error: error instanceof Error ? error.message : String(error),
+        }));
         return jsonResponse({ error: t.apiForbidden }, 403);
     }
-
-    // Check if review already exists
-    const { data: existingReview } = await adminClient
-        .from('reviews')
-        .select('id')
-        .eq('product_id', productId)
-        .eq('profile_id', user.id)
-        .limit(1)
-        .maybeSingle();
-
-    let result;
-    if (existingReview?.id) {
-        result = await adminClient
-            .from('reviews')
-            .update({
-                rating,
-                comment: comment ?? null,
-            })
-            .eq('id', existingReview.id)
-            .select()
-            .single();
-    } else {
-        // Remove any auto-review for this product so the real one takes its place
-        await adminClient.from('reviews').delete().eq('product_id', productId).eq('is_auto', true);
-        result = await adminClient
-            .from('reviews')
-            .insert({
-                product_id: productId,
-                profile_id: user.id,
-                rating,
-                comment: comment ?? null,
-            })
-            .select()
-            .single();
-    }
-
-    if (result.error) {
-        console.error('review submit error', result.error);
-        return jsonResponse({ error: t.reviewSubmitError }, 500);
-    }
-
-    return jsonResponse({ success: true, review: result.data }, 200);
 };

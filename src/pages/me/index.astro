@@ -1,8 +1,10 @@
 ---
 import BuyerAppLayout from "../../layouts/BuyerAppLayout.astro";
 import Icon from "../../components/icons/Icon.astro";
+import { api } from '../../../convex/_generated/api';
 
-import { createSupabaseAuthClient } from "../../lib/core/auth";
+import { createRequestConvexClient } from "../../lib/core/auth";
+import { toProfileFields } from "../../lib/core/profile";
 import { getOrderStatusLabels, ORDER_STATUS } from "../../lib/orders/orderStatus";
 import { isProfileComplete } from "../../lib/core/validation";
 const { t } = Astro.locals;
@@ -18,49 +20,58 @@ interface PurchaseGroup {
 }
 
 // Auth Server-Side Verification:
-const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
-const { data: { user } } = await supabase.auth.getUser();
+const convex = createRequestConvexClient(Astro.request);
 
 // If unauthorized, redirect to login
-if (!user) {
+if (!convex) {
     return Astro.redirect('/login?redirect_to=/me');
 }
 
 // Fetch profile for completeness check
-const { data: profile } = await supabase
-    .from('profiles')
-    .select('first_name, last_name, phone, address_street, address_number, address_postal_code, address_city, address_province, address_country')
-    .eq('id', user.id)
-    .single();
+let profile: ReturnType<typeof toProfileFields> = null;
+try {
+    profile = toProfileFields(await convex.query(api.users.current, {}));
+} catch (error) {
+    console.error('Convex profile unavailable:', error);
+}
 
 const profileCheck = isProfileComplete(profile ?? {});
 const profileIncomplete = !profileCheck.complete;
 
-// Fetch real orders data
-const { data: ordersData } = await supabase
-    .from('orders')
-    .select(`
-        id,
-        created_at,
-        status,
-        order_items (
-            quantity,
-            product_variants (
-                variant_image,
-                products (
-                    title,
-                    gallery_images,
-                    shops (
-                        id,
-                        name
-                    )
-                )
-            )
-        )
-    `)
-    .eq('buyer_id', user.id)
-    .is('buyer_hidden_at', null)
-    .order('created_at', { ascending: false });
+// Fetch the buyer's orders through the authorized Convex query.
+let ordersData: any[] | null = null;
+try {
+    const convexOrders = await convex.query(api.orders.listMine, {}) as unknown as Array<{
+        orderId: string;
+        createdAt: string;
+        status: string;
+        items: Array<{
+            quantity: number;
+            imageUrl: string;
+            productTitle: string;
+            shopId: string;
+            shopName: string;
+        }>;
+    }>;
+    ordersData = convexOrders.map((order) => ({
+        id: order.orderId,
+        created_at: order.createdAt,
+        status: order.status,
+        order_items: order.items.map((item) => ({
+            quantity: item.quantity,
+            product_variants: {
+                variant_image: item.imageUrl,
+                products: {
+                    title: item.productTitle,
+                    gallery_images: [item.imageUrl],
+                    shops: { id: item.shopId, name: item.shopName },
+                },
+            },
+        })),
+    }));
+} catch (error) {
+    console.error('Convex overview orders unavailable:', error);
+}
 
 const statusColorMap: Record<string, string> = {
     pending: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",

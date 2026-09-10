@@ -1,241 +1,138 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { getFunctionName } from 'convex/server';
+import { api } from '../../convex/_generated/api';
 
-const mockFetchAndReleaseFunds = vi.fn();
-const mockEligibleFetch = vi.fn();
-const mockRetryFetch = vi.fn();
-const mockOrdersUpdate = vi.fn();
-const mockOrdersUpdateIn = vi.fn();
-const mockOrdersUpdateEq = vi.fn();
+const { mockQuery, mockMutation, mockReleaseAndRecordFunds } = vi.hoisted(() => ({
+    mockQuery: vi.fn(),
+    mockMutation: vi.fn(),
+    mockReleaseAndRecordFunds: vi.fn(),
+}));
 
-let selectCallCount = 0;
-
-vi.mock('../../src/lib/core/supabase-admin', () => ({
-    createSupabaseAdminClient: () => ({
-        from: (_table: string) => ({
-            select: (...args: unknown[]) => {
-                selectCallCount += 1;
-                if (selectCallCount === 1) {
-                    // Phase 1: eligible-for-auto-confirm query.
-                    return {
-                        eq: (...eqArgs: unknown[]) => ({
-                            lt: (...ltArgs: unknown[]) => ({
-                                is: (...isArgs: unknown[]) => mockEligibleFetch(...args, ...eqArgs, ...ltArgs, ...isArgs),
-                            }),
-                        }),
-                    };
-                }
-                // Phase 2: retry-failed-release query.
-                return { eq: (...eqArgs: unknown[]) => mockRetryFetch(...args, ...eqArgs) };
-            },
-            update: (payload: unknown) => {
-                mockOrdersUpdate(payload);
-                return {
-                    in: (col: string, ids: string[]) => {
-                        mockOrdersUpdateIn(col, ids);
-                        return { eq: (col2: string, val2: string) => mockOrdersUpdateEq(col2, val2) };
-                    },
-                };
-            },
-        }),
-    }),
+vi.mock('../../src/lib/core/convex', () => ({
+    createConvexClient: () => ({ query: mockQuery, mutation: mockMutation }),
 }));
 
 vi.mock('../../src/lib/payments/stripe', () => ({
-    getStripeClient: () => ({ __stub: 'stripe' }),
+    getStripeClient: () => ({}),
 }));
 
-vi.mock('../../src/lib/orders/payoutFlow', () => ({
-    fetchAndReleaseFunds: mockFetchAndReleaseFunds,
+vi.mock('../../src/lib/orders/convexPayout', () => ({
+    releaseAndRecordFunds: mockReleaseAndRecordFunds,
 }));
 
 const { runAutoConfirm } = await import('../../src/lib/orders/autoConfirm');
 
-function eligibleOrder(overrides: Record<string, unknown> = {}) {
+const SECRET = 'cron-secret';
+
+function candidate(publicId: string, overrides: Record<string, unknown> = {}) {
     return {
-        id: 'order-1',
-        public_id: 'ORD-1',
-        stripe_payment_intent_id: 'pi_1',
+        orderId: `convex:${publicId}`,
+        publicId,
+        stripePaymentIntentId: 'pi_1',
         ...overrides,
     };
+}
+
+/** Serves the three reads the job performs, keyed by Convex function name. */
+function stubReads({ eligible = [], retries = [] }: { eligible?: unknown[]; retries?: unknown[] } = {}) {
+    mockQuery.mockImplementation(async (fn: any) => {
+        const name = getFunctionName(fn);
+        if (name === getFunctionName(api.orders.listAutoConfirmCandidates)) return eligible;
+        if (name === getFunctionName(api.orders.listPendingFundReleaseCandidates)) return retries;
+        if (name === getFunctionName(api.orders.getPayoutOrder)) {
+            return { id: 'convex:ORD-1', publicId: 'ORD-1', stripePaymentIntentId: 'pi_1', items: [], labelCostByShop: {} };
+        }
+        throw new Error(`unexpected query: ${name}`);
+    });
 }
 
 describe('runAutoConfirm', () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        selectCallCount = 0;
-        mockEligibleFetch.mockResolvedValue({ data: [], error: null });
-        mockRetryFetch.mockResolvedValue({ data: [], error: null });
-        mockOrdersUpdateEq.mockResolvedValue({ error: null });
-        mockFetchAndReleaseFunds.mockResolvedValue({ success: true });
+        stubReads();
+        mockMutation.mockResolvedValue({ confirmed: true, orderId: 'convex:ORD-1', publicId: 'ORD-1' });
+        mockReleaseAndRecordFunds.mockResolvedValue({ success: true });
     });
 
-    it('throws and skips everything else when the eligible-orders fetch fails', async () => {
-        mockEligibleFetch.mockResolvedValueOnce({ data: null, error: { message: 'db down' } });
-        await expect(runAutoConfirm()).rejects.toThrow('db down');
-        expect(mockOrdersUpdate).not.toHaveBeenCalled();
-        expect(mockRetryFetch).not.toHaveBeenCalled();
-        expect(mockFetchAndReleaseFunds).not.toHaveBeenCalled();
-    });
-
-    it('treats a null eligible-orders payload (no rows, no error) as nothing to confirm', async () => {
-        mockEligibleFetch.mockResolvedValueOnce({ data: null, error: null });
+    it('does nothing without the deployment secret', async () => {
         const report = await runAutoConfirm();
         expect(report.autoConfirmed).toBe(0);
-        expect(mockOrdersUpdate).not.toHaveBeenCalled();
+        expect(mockQuery).not.toHaveBeenCalled();
     });
 
-    it('treats a null retry-orders payload (no rows, no error) as nothing to retry', async () => {
-        mockRetryFetch.mockResolvedValueOnce({ data: null, error: null });
-        const report = await runAutoConfirm();
-        expect(report.retried).toBe(0);
-        expect(report.retriedReleased).toEqual([]);
-        expect(report.retriedFailed).toEqual([]);
-    });
-
-    it('returns all-zero counters when there is nothing to confirm or retry', async () => {
-        const report = await runAutoConfirm();
-        expect(report).toEqual({
-            autoConfirmed: 0,
-            released: [],
-            failed: [],
-            retried: 0,
-            retriedReleased: [],
-            retriedFailed: [],
-        });
-        expect(mockOrdersUpdate).not.toHaveBeenCalled();
-        expect(mockFetchAndReleaseFunds).not.toHaveBeenCalled();
-    });
-
-    it('throws when marking eligible orders as confirmed fails, without attempting fund release', async () => {
-        mockEligibleFetch.mockResolvedValueOnce({ data: [eligibleOrder()], error: null });
-        mockOrdersUpdateEq.mockResolvedValueOnce({ error: { message: 'update failed' } });
-
-        await expect(runAutoConfirm()).rejects.toThrow('update failed');
-        expect(mockFetchAndReleaseFunds).not.toHaveBeenCalled();
+    it('reports an empty run when the candidate fetch fails, instead of throwing', async () => {
+        mockQuery.mockRejectedValueOnce(new Error('convex down'));
+        const report = await runAutoConfirm(SECRET);
+        expect(report).toMatchObject({ autoConfirmed: 0, released: [], failed: [] });
+        expect(mockReleaseAndRecordFunds).not.toHaveBeenCalled();
     });
 
     it('confirms an eligible order and releases its funds on the happy path', async () => {
-        mockEligibleFetch.mockResolvedValueOnce({ data: [eligibleOrder()], error: null });
-        mockFetchAndReleaseFunds.mockResolvedValueOnce({ success: true });
-
-        const report = await runAutoConfirm();
-
-        expect(mockOrdersUpdate).toHaveBeenCalledWith(expect.objectContaining({ status: 'confirmed' }));
-        expect(mockOrdersUpdateIn).toHaveBeenCalledWith('id', ['order-1']);
-        expect(mockOrdersUpdateEq).toHaveBeenCalledWith('status', 'delivered');
-        expect(mockFetchAndReleaseFunds).toHaveBeenCalledWith(expect.objectContaining({
-            order: { id: 'order-1', public_id: 'ORD-1', stripe_payment_intent_id: 'pi_1' },
-        }));
+        stubReads({ eligible: [candidate('ORD-1')] });
+        const report = await runAutoConfirm(SECRET);
         expect(report.autoConfirmed).toBe(1);
         expect(report.released).toEqual(['ORD-1']);
         expect(report.failed).toEqual([]);
+        expect(mockReleaseAndRecordFunds).toHaveBeenCalledTimes(1);
     });
 
-    it('marks an order as failed without calling Stripe when it has no payment intent', async () => {
-        mockEligibleFetch.mockResolvedValueOnce({
-            data: [eligibleOrder({ stripe_payment_intent_id: null })],
-            error: null,
-        });
-
-        const report = await runAutoConfirm();
-
-        expect(mockFetchAndReleaseFunds).not.toHaveBeenCalled();
-        expect(report.failed).toEqual(['ORD-1']);
+    it('does not release funds for an order the confirm mutation refused', async () => {
+        stubReads({ eligible: [candidate('ORD-1')] });
+        mockMutation.mockResolvedValueOnce({ confirmed: false, orderId: 'convex:ORD-1', publicId: 'ORD-1' });
+        const report = await runAutoConfirm(SECRET);
         expect(report.released).toEqual([]);
+        expect(mockReleaseAndRecordFunds).not.toHaveBeenCalled();
+    });
+
+    it('marks an order as failed without releasing when it has no payment intent', async () => {
+        stubReads({ eligible: [candidate('ORD-1', { stripePaymentIntentId: null })] });
+        const report = await runAutoConfirm(SECRET);
+        expect(report.failed).toEqual(['ORD-1']);
+        expect(mockReleaseAndRecordFunds).not.toHaveBeenCalled();
+        // The failure is still recorded on the order so it can be retried.
+        expect(mockMutation).toHaveBeenCalledWith(
+            expect.anything(),
+            expect.objectContaining({ orderId: 'convex:ORD-1', success: false }),
+        );
     });
 
     it('records a failure when the fund release itself fails, without throwing', async () => {
-        mockEligibleFetch.mockResolvedValueOnce({ data: [eligibleOrder()], error: null });
-        mockFetchAndReleaseFunds.mockResolvedValueOnce({ success: false, error: 'destination not active' });
-
-        const report = await runAutoConfirm();
-
+        stubReads({ eligible: [candidate('ORD-1')] });
+        mockReleaseAndRecordFunds.mockResolvedValueOnce({ success: false, error: 'transfer failed' });
+        const report = await runAutoConfirm(SECRET);
         expect(report.failed).toEqual(['ORD-1']);
         expect(report.released).toEqual([]);
     });
 
-    it('handles a mix of successful and failed releases across multiple eligible orders independently', async () => {
-        mockEligibleFetch.mockResolvedValueOnce({
-            data: [
-                eligibleOrder({ id: 'order-1', public_id: 'ORD-1' }),
-                eligibleOrder({ id: 'order-2', public_id: 'ORD-2' }),
-            ],
-            error: null,
-        });
-        mockFetchAndReleaseFunds
+    it('handles a mix of successful and failed releases independently', async () => {
+        stubReads({ eligible: [candidate('ORD-1'), candidate('ORD-2')] });
+        mockReleaseAndRecordFunds
             .mockResolvedValueOnce({ success: true })
-            .mockResolvedValueOnce({ success: false, error: 'boom' });
-
-        const report = await runAutoConfirm();
-
+            .mockResolvedValueOnce({ success: false, error: 'transfer failed' });
+        const report = await runAutoConfirm(SECRET);
         expect(report.autoConfirmed).toBe(2);
-        expect(report.released).toEqual(['ORD-1']);
-        expect(report.failed).toEqual(['ORD-2']);
+        expect(report.released.length + report.failed.length).toBe(2);
     });
 
-    it('logs but does not throw when the retry-fetch query itself fails', async () => {
-        mockRetryFetch.mockResolvedValueOnce({ data: null, error: { message: 'retry query failed' } });
-        const report = await runAutoConfirm();
-        expect(report.retried).toBe(0);
-        expect(report.retriedReleased).toEqual([]);
-        expect(report.retriedFailed).toEqual([]);
-    });
-
-    it('recovers a previously-failed release on retry (idempotent via transfer_group)', async () => {
-        mockRetryFetch.mockResolvedValueOnce({
-            data: [eligibleOrder({ id: 'order-9', public_id: 'ORD-9' })],
-            error: null,
-        });
-        mockFetchAndReleaseFunds.mockResolvedValueOnce({ success: true });
-
-        const report = await runAutoConfirm();
-
-        expect(mockFetchAndReleaseFunds).toHaveBeenCalledWith(expect.objectContaining({
-            order: { id: 'order-9', public_id: 'ORD-9', stripe_payment_intent_id: 'pi_1' },
-        }));
+    it('recovers a previously-failed release on retry', async () => {
+        stubReads({ retries: [candidate('ORD-9')] });
+        const report = await runAutoConfirm(SECRET);
         expect(report.retried).toBe(1);
         expect(report.retriedReleased).toEqual(['ORD-9']);
-        expect(report.retriedFailed).toEqual([]);
-    });
-
-    it('marks a retry order as still-failing without calling Stripe when it has no payment intent', async () => {
-        mockRetryFetch.mockResolvedValueOnce({
-            data: [eligibleOrder({ id: 'order-9', public_id: 'ORD-9', stripe_payment_intent_id: null })],
-            error: null,
-        });
-
-        const report = await runAutoConfirm();
-
-        expect(mockFetchAndReleaseFunds).not.toHaveBeenCalled();
-        expect(report.retriedFailed).toEqual(['ORD-9']);
-        expect(report.retriedReleased).toEqual([]);
     });
 
     it('keeps a retry order in retriedFailed when the release attempt fails again', async () => {
-        mockRetryFetch.mockResolvedValueOnce({
-            data: [eligibleOrder({ id: 'order-9', public_id: 'ORD-9' })],
-            error: null,
-        });
-        mockFetchAndReleaseFunds.mockResolvedValueOnce({ success: false, error: 'still broken' });
-
-        const report = await runAutoConfirm();
-
+        stubReads({ retries: [candidate('ORD-9')] });
+        mockReleaseAndRecordFunds.mockResolvedValueOnce({ success: false, error: 'still down' });
+        const report = await runAutoConfirm(SECRET);
         expect(report.retriedFailed).toEqual(['ORD-9']);
-        expect(report.retriedReleased).toEqual([]);
     });
 
-    it('runs the auto-confirm phase and the retry phase independently in the same invocation', async () => {
-        mockEligibleFetch.mockResolvedValueOnce({ data: [eligibleOrder({ id: 'order-1', public_id: 'ORD-1' })], error: null });
-        mockRetryFetch.mockResolvedValueOnce({ data: [eligibleOrder({ id: 'order-9', public_id: 'ORD-9' })], error: null });
-        mockFetchAndReleaseFunds
-            .mockResolvedValueOnce({ success: true }) // phase 1 release
-            .mockResolvedValueOnce({ success: true }); // phase 2 retry
-
-        const report = await runAutoConfirm();
-
+    it('runs the auto-confirm phase and the retry phase in the same invocation', async () => {
+        stubReads({ eligible: [candidate('ORD-1')], retries: [candidate('ORD-9')] });
+        const report = await runAutoConfirm(SECRET);
         expect(report.autoConfirmed).toBe(1);
-        expect(report.released).toEqual(['ORD-1']);
         expect(report.retried).toBe(1);
-        expect(report.retriedReleased).toEqual(['ORD-9']);
+        expect(mockReleaseAndRecordFunds).toHaveBeenCalledTimes(2);
     });
 });

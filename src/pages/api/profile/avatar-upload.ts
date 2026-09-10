@@ -1,15 +1,17 @@
 import type { APIRoute } from 'astro';
-import { createSupabaseAuthClient } from '../../../lib/core/auth';
+import { createRequestConvexClient, getRequestUser } from '../../../lib/core/auth';
+import { api } from '../../../../convex/_generated/api';
 
+import { uploadConvexFile } from '../../../lib/core/convexStorage';
 import { detectImageMimeType, ALLOWED_IMAGE_TYPES } from '../../../lib/core/file-validation';
 import { securityLog } from '../../../lib/core/security-log';
 
-export const POST: APIRoute = async ({ locals, cookies, request  }) => {
+export const POST: APIRoute = async ({ locals, request }) => {
     const { t } = locals;
-    const supabase = createSupabaseAuthClient(cookies, request);
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = getRequestUser(request);
+    const convex = createRequestConvexClient(request);
 
-    if (!user) {
+    if (!user || !convex) {
         return new Response(JSON.stringify({ error: t.apiUnauthorized }), { status: 401 });
     }
 
@@ -31,68 +33,39 @@ export const POST: APIRoute = async ({ locals, cookies, request  }) => {
         return new Response(JSON.stringify({ error: 'File too large. Max 2MB.' }), { status: 400 });
     }
 
-    const extMap: Record<string, string> = {
-        'image/jpeg': 'jpg',
-        'image/png': 'png',
-        'image/webp': 'webp',
-        'image/gif': 'gif',
-    };
-    const ext = extMap[detectedType] ?? 'jpg';
-    const filename = `${user.id}/${crypto.randomUUID()}.${ext}`;
-    const path = `avatars/${filename}`;
-
-    const buffer = Buffer.from(await file.arrayBuffer());
-
-    const { error: uploadError } = await supabase.storage
-        .from('imgs')
-        .upload(path, buffer, {
-            contentType: detectedType, // use validated type
-            upsert: false,
-        });
-
-    if (uploadError) {
-        console.error(JSON.stringify({ event: 'avatar_upload.failed', error: uploadError.message }));
+    try {
+        // The upload records the caller as the file's owner, and attaching it
+        // to the profile hands back the URL, so no separate resolve is needed.
+        const { storageId } = await uploadConvexFile(request, file, detectedType);
+        const { avatarUrl, url } = await convex.mutation(api.users.setAvatarStorage, { storageId });
+        return new Response(JSON.stringify({ url, path: avatarUrl }), { status: 200 });
+    } catch (error) {
+        console.error(JSON.stringify({
+            event: 'avatar_upload.failed',
+            error: error instanceof Error ? error.message : String(error),
+        }));
         return new Response(JSON.stringify({ error: t.apiInternalError }), { status: 500 });
     }
-
-    const { data: urlData } = supabase.storage
-        .from('imgs')
-        .getPublicUrl(path);
-
-    return new Response(JSON.stringify({ url: urlData.publicUrl, path }), { status: 200 });
 };
 
-export const DELETE: APIRoute = async ({ locals, cookies, request, url  }) => {
+export const DELETE: APIRoute = async ({ locals, request }) => {
     const { t } = locals;
-    const supabase = createSupabaseAuthClient(cookies, request);
-    const { data: { user } } = await supabase.auth.getUser();
+    const convex = createRequestConvexClient(request);
 
-    if (!user) {
+    if (!convex) {
         return new Response(JSON.stringify({ error: t.apiUnauthorized }), { status: 401 });
     }
 
-    const path = url.searchParams.get('path');
-    if (!path) {
-        return new Response(JSON.stringify({ error: 'No path provided' }), { status: 400 });
-    }
-
-    const segments = path.split('/');
-    if (segments.length < 3 || segments[0] !== 'avatars') {
-        return new Response(JSON.stringify({ error: t.apiPathForbidden }), { status: 403 });
-    }
-
-    if (segments[1] !== user.id) {
-        return new Response(JSON.stringify({ error: t.apiPathForbidden }), { status: 403 });
-    }
-
-    const { error } = await supabase.storage
-        .from('imgs')
-        .remove([path]);
-
-    if (error) {
-        console.error(JSON.stringify({ event: 'avatar_delete.failed', error: error.message }));
+    try {
+        // Convex clears the avatar on the caller's own profile and removes the
+        // stored object, so no client-supplied path can be targeted.
+        await convex.mutation(api.users.deleteAvatarStorage, {});
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    } catch (error) {
+        console.error(JSON.stringify({
+            event: 'avatar_delete.failed',
+            error: error instanceof Error ? error.message : String(error),
+        }));
         return new Response(JSON.stringify({ error: t.apiInternalError }), { status: 500 });
     }
-
-    return new Response(JSON.stringify({ ok: true }), { status: 200 });
 };

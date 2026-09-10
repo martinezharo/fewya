@@ -1,13 +1,6 @@
-import type { SupabaseClient } from '@supabase/supabase-js';
 import type { AstroCookies } from 'astro';
-
-export async function getWishlistCount(client: SupabaseClient, userId: string): Promise<number> {
-    const { count } = await client
-        .from('wishlist')
-        .select('*', { count: 'exact', head: true })
-        .eq('profile_id', userId);
-    return count ?? 0;
-}
+import { api } from '../../../convex/_generated/api';
+import { createRequestConvexClient } from '../core/auth';
 
 /** Read wishlist IDs from the synced cookie (used for non-authenticated users). */
 export function getWishlistIdsFromCookie(cookies: AstroCookies): string[] {
@@ -20,36 +13,35 @@ export function getWishlistIdsFromCookie(cookies: AstroCookies): string[] {
     return [];
 }
 
-/** Merge DB wishlist IDs with local cookie IDs for authenticated users.
+/** Merge stored wishlist IDs with local cookie IDs for authenticated users.
  *  For anonymous users, returns only local cookie IDs.
  */
 export async function getMergedWishlistIds(
-    client: SupabaseClient,
     cookies: AstroCookies,
-    userId?: string | null
+    request?: Request,
 ): Promise<Set<string>> {
     const merged = new Set<string>();
 
     // Always include local wishlist
     getWishlistIdsFromCookie(cookies).forEach(id => merged.add(id));
 
-    if (userId) {
-        const { data: wishData } = await client
-            .from('wishlist')
-            .select('product_id')
-            .eq('profile_id', userId);
-        (wishData ?? []).forEach((w: any) => merged.add(w.product_id));
-    }
+    const convex = request ? createRequestConvexClient(request) : null;
+    if (!convex) return merged;
 
+    try {
+        const ids = await convex.query(api.wishlist.mine, {});
+        ids.forEach((id) => merged.add(id));
+    } catch (error) {
+        console.error('Convex wishlist unavailable:', error);
+    }
     return merged;
 }
 
-/** Count merged wishlist items (DB + local). */
+/** Count merged wishlist items (stored + local). */
 export async function getMergedWishlistCount(
-    client: SupabaseClient,
     cookies: AstroCookies,
-    userId?: string | null
+    request?: Request,
 ): Promise<number> {
-    const ids = await getMergedWishlistIds(client, cookies, userId);
+    const ids = await getMergedWishlistIds(cookies, request);
     return ids.size;
 }

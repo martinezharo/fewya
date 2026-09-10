@@ -1,7 +1,12 @@
 import { defineMiddleware } from 'astro:middleware';
+import type { MiddlewareHandler } from 'astro';
 import { env } from 'cloudflare:workers';
-import { parseCookieHeader } from '@supabase/ssr';
-import { exchangeAuthCodeForSession } from './lib/core/auth';
+import { createClerkClient, type SessionAuthObject } from '@clerk/backend';
+import type { APIContext } from 'astro';
+import { CLERK_JWT_TEMPLATE, CLERK_SECRET_KEY } from 'astro:env/server';
+import { api } from '../convex/_generated/api';
+import { createConvexClient } from './lib/core/convex';
+import { hasRequestAuthUser, setRequestAuthUser, type AuthUser } from './lib/core/auth';
 import { securityLog } from './lib/core/security-log';
 import { checkRateLimit, rateLimitResponse, type RateLimitBinding } from './lib/core/rate-limit';
 import { getT, resolveLocale } from './lib/core/i18n';
@@ -13,8 +18,14 @@ const PUBLIC_SWR = 300;
 // Webhook routes that must not have CSRF or auth checks
 const WEBHOOK_PATHS = new Set(['/api/webhooks/stripe', '/api/sendcloud/webhook']);
 
-// Routes subject to strict rate limiting (auth endpoints)
-const AUTH_RATE_PATHS = ['/api/auth/'];
+// Routes subject to strict rate limiting. Clerk now absorbs the sign-in
+// traffic that used to live under /api/auth/, so what is left worth limiting
+// is the surface that spends money on every call: Sendcloud quotes and
+// service-point lookups, and Stripe checkout sessions.
+const RATE_LIMITED_PREFIXES = ['/api/sendcloud/', '/api/cart/'];
+
+// Clerk serves production assets and authentication from the custom domain.
+const CLERK_CSP_SOURCES = "https://clerk.fewya.com https://*.clerk.com https://*.clerk.accounts.dev";
 
 const CSP = [
     "default-src 'self'",
@@ -24,18 +35,94 @@ const CSP = [
     // and astro:page-load never fires — event handlers stop re-binding on
     // SPA navigation. The XSS surface is essentially unchanged because
     // 'unsafe-inline' already permits inline script execution.
-    "script-src 'self' 'unsafe-inline' https://js.stripe.com data:",
-    "frame-src https://js.stripe.com https://hooks.stripe.com",
-    "img-src 'self' data: blob: https://*.supabase.co https://imagedelivery.net",
+    `script-src 'self' 'unsafe-inline' https://js.stripe.com ${CLERK_CSP_SOURCES} https://*.protect.clerk.com https://challenges.cloudflare.com https://clerk-telemetry.com https://*.clerk-telemetry.com data:`,
+    `script-src-elem 'self' 'unsafe-inline' https://js.stripe.com ${CLERK_CSP_SOURCES} https://*.protect.clerk.com https://challenges.cloudflare.com data:`,
+    "worker-src 'self' blob:",
+    `frame-src https://js.stripe.com https://hooks.stripe.com ${CLERK_CSP_SOURCES} https://*.protect.clerk.com https://challenges.cloudflare.com`,
+    `img-src 'self' data: blob: http://127.0.0.1:3210 http://localhost:3210 https://*.convex.cloud https://*.convex.site ${CLERK_CSP_SOURCES} https://img.clerk.com https://imagedelivery.net`,
     // style-src: Google Fonts stylesheet loaded via <link> in Layout.astro
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "connect-src 'self' https://*.supabase.co https://api.stripe.com https://panel.sendcloud.sc",
+    `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com ${CLERK_CSP_SOURCES}`,
+    `connect-src 'self' http://127.0.0.1:3210 http://localhost:3210 https://*.convex.cloud https://*.convex.site ${CLERK_CSP_SOURCES} https://*.protect.clerk.com https://challenges.cloudflare.com https://clerk-telemetry.com https://*.clerk-telemetry.com https://img.clerk.com https://api.stripe.com https://panel.sendcloud.sc`,
     // font-src: Google Fonts serves .woff2 files from fonts.gstatic.com
     "font-src 'self' https://fonts.gstatic.com",
     "object-src 'none'",
 ].join('; ');
 
-export const onRequest = defineMiddleware(async (context, next) => {
+const clerkPublishableKey = import.meta.env.PUBLIC_CLERK_PUBLISHABLE_KEY as string | undefined;
+function getClerkBackendClient() {
+    // Secret env bindings are populated by the Worker adapter after module
+    // evaluation, so construct the client at request time rather than taking
+    // a stale module-scope snapshot.
+    return CLERK_SECRET_KEY
+        ? createClerkClient({ secretKey: CLERK_SECRET_KEY, publishableKey: clerkPublishableKey })
+        : null;
+}
+type ClerkSessionAuth = SessionAuthObject;
+
+/**
+ * True when the browser carries a Clerk session cookie. `__client_uat` is 0
+ * for a signed-out client, so anything else means the visitor is (or was just)
+ * signed in. Parsed by name to avoid false positives on cookie values.
+ */
+function hasClerkSessionCookie(request: Request): boolean {
+    const header = request.headers.get('Cookie') ?? '';
+    for (const part of header.split(';')) {
+        const index = part.indexOf('=');
+        if (index < 0) continue;
+        const name = part.slice(0, index).trim();
+        const value = part.slice(index + 1).trim();
+        if (name === '__session' && value) return true;
+        if (name === '__client_uat' && value && value !== '0') return true;
+    }
+    return false;
+}
+
+async function hydrateClerkUser(auth: () => ClerkSessionAuth, context: APIContext) {
+    const clerkAuth = auth();
+    if (!clerkAuth.userId) return;
+
+    const token = await clerkAuth.getToken({ template: CLERK_JWT_TEMPLATE || 'convex' });
+    if (!token) return;
+
+    const claims = (clerkAuth.sessionClaims ?? {}) as Record<string, unknown>;
+    const stringClaim = (...keys: string[]) => {
+        for (const key of keys) {
+            const value = claims[key];
+            if (typeof value === 'string' && value.trim()) return value.trim();
+        }
+        return undefined;
+    };
+
+    const email = stringClaim('email', 'email_address');
+    const fullName = stringClaim('name', 'full_name');
+    const firstName = stringClaim('given_name', 'first_name');
+    const lastName = stringClaim('family_name', 'last_name');
+    const pictureUrl = stringClaim('picture_url', 'image_url');
+
+    const convex = createConvexClient(token);
+    if (!convex) return;
+
+    try {
+        const linked = await convex.mutation(api.users.ensureCurrent, {});
+
+        const user: AuthUser = {
+            id: linked.legacyId,
+            email: email ?? `clerk-${clerkAuth.userId}@invalid.local`,
+            fullName,
+            firstName,
+            lastName,
+            avatarUrl: pictureUrl,
+        };
+        setRequestAuthUser(context.request, user, token);
+    } catch (error) {
+        console.error(JSON.stringify({
+            event: 'clerk.identity_bridge_failed',
+            error: error instanceof Error ? error.message : String(error),
+        }));
+    }
+}
+
+const legacyMiddleware: MiddlewareHandler = async (context, next) => {
     const { method } = context.request;
     const { pathname } = context.url;
 
@@ -48,18 +135,13 @@ export const onRequest = defineMiddleware(async (context, next) => {
     context.locals.locale = locale;
     context.locals.t = getT(locale);
 
-    // Auth code exchange — only for GET requests (except the callback itself)
-    if (method === 'GET' && pathname !== '/api/auth/callback') {
-        const redirectTo = await exchangeAuthCodeForSession(context.cookies, context.request, context.url);
-        if (redirectTo) {
-            return context.redirect(redirectTo);
-        }
-    }
-
-    // Rate limiting for auth endpoints
-    const isAuthPath = AUTH_RATE_PATHS.some(p => pathname.startsWith(p));
-    if (isAuthPath) {
-        const rateLimiter = (env as unknown as Record<string, unknown>)?.['RATE_LIMITER_AUTH'] as RateLimitBinding | undefined;
+    // Rate limiting for the endpoints that call paid third-party APIs
+    // Webhooks are authenticated by signature and arrive from a handful of
+    // provider IPs; limiting them by IP would drop real events.
+    const isRateLimited = !WEBHOOK_PATHS.has(pathname)
+        && RATE_LIMITED_PREFIXES.some(p => pathname.startsWith(p));
+    if (isRateLimited) {
+        const rateLimiter = (env as unknown as Record<string, unknown>)?.['RATE_LIMITER'] as RateLimitBinding | undefined;
         const ip = context.request.headers.get('CF-Connecting-IP') ?? 'unknown';
         const allowed = await checkRateLimit(rateLimiter, ip);
         if (!allowed) {
@@ -118,12 +200,11 @@ export const onRequest = defineMiddleware(async (context, next) => {
     if (isPrivate) {
         response.headers.set('Cache-Control', 'private, no-store');
     } else {
-        // M1: parse cookies properly to avoid false positives on cookie values
-        const cookieHeader = context.request.headers.get('Cookie') ?? '';
-        const parsed = parseCookieHeader(cookieHeader);
-        const hasSession = parsed.some(
-            c => c.name.startsWith('sb-') && c.name.includes('auth-token'),
-        );
+        // Never hand a signed-in visitor a shared cache entry. The Clerk
+        // cookie is checked as well as the resolved identity so that a failed
+        // identity hydration cannot downgrade the response to a public one.
+        const hasSession = hasRequestAuthUser(context.request)
+            || hasClerkSessionCookie(context.request);
         response.headers.set(
             'Cache-Control',
             hasSession
@@ -133,4 +214,32 @@ export const onRequest = defineMiddleware(async (context, next) => {
     }
 
     return response;
+};
+
+export const onRequest: MiddlewareHandler = defineMiddleware((context, next) => {
+    const clerkBackendClient = getClerkBackendClient();
+    if (!clerkBackendClient) {
+        return legacyMiddleware(context, next);
+    }
+
+    return (async () => {
+        const requestState = await clerkBackendClient.authenticateRequest(context.request, {
+            acceptsToken: 'session_token',
+        });
+        const location = requestState.headers.get('location');
+        if (location) {
+            return new Response(null, { status: 307, headers: requestState.headers });
+        }
+
+        const authObject = requestState.toAuth();
+        if (!authObject) {
+            return new Response(null, { status: 401 });
+        }
+        (context.locals as unknown as Record<string, unknown>).auth = () => authObject;
+        await hydrateClerkUser(() => authObject, context);
+
+        const response = (await legacyMiddleware(context, next)) ?? new Response(null, { status: 204 });
+        requestState.headers.forEach((value, key) => response.headers.append(key, value));
+        return response;
+    })();
 });

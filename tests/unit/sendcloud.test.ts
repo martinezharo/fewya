@@ -93,6 +93,23 @@ describe('downloadSendcloudLabelPdf', () => {
         vi.restoreAllMocks();
     });
 
+    // The request carries the Sendcloud API key and secret, and the URL comes
+    // from a stored shipment row rather than from Sendcloud's own response,
+    // so a tampered row must not be able to redirect those credentials.
+    it('refuses to send the credentials to a non-Sendcloud host', async () => {
+        const fetchMock = vi.mocked(globalThis.fetch);
+
+        await expect(downloadSendcloudLabelPdf('https://attacker.example/collect'))
+            .rejects.toThrow(/non-Sendcloud/i);
+        await expect(downloadSendcloudLabelPdf('http://panel.sendcloud.sc/api/v2/labels/1'))
+            .rejects.toThrow(/non-Sendcloud/i);
+        // A host that merely *starts* with the Sendcloud domain is not it.
+        await expect(downloadSendcloudLabelPdf('https://panel.sendcloud.sc.attacker.example/x'))
+            .rejects.toThrow(/non-Sendcloud/i);
+
+        expect(fetchMock).not.toHaveBeenCalled();
+    });
+
     it('descarga el PDF de Sendcloud con Basic auth y devuelve Uint8Array', async () => {
         const fakeBytes = new Uint8Array([0x25, 0x50, 0x44, 0x46]); // %PDF
         const fetchMock = vi.mocked(globalThis.fetch);

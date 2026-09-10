@@ -4,6 +4,9 @@ import {
     calculateParcelFromItems,
     DEFAULT_SHOP_SHIPPING_EUR,
 } from '../../../lib/shipping/sendcloud';
+import { createConvexClient } from '../../../lib/core/convex';
+import { getRequestUser } from '../../../lib/core/auth';
+import { api } from '../../../../convex/_generated/api';
 
 interface QuoteItem {
     variantId: string;
@@ -17,15 +20,10 @@ function jsonResponse(payload: Record<string, unknown>, status: number) {
     });
 }
 
-export const POST: APIRoute = async ({ request, cookies }) => {
-    const { createSupabaseAuthClient } = await import('../../../lib/core/auth');
-    const authClient = createSupabaseAuthClient(cookies, request);
-
-    const {
-        data: { user },
-    } = await authClient.auth.getUser();
-
-    if (!user) {
+export const POST: APIRoute = async ({ request }) => {
+    // Quotes stay behind a session, as they did before the migration: they
+    // call a paid Sendcloud endpoint on every request.
+    if (!getRequestUser(request)) {
         return jsonResponse({ error: 'Unauthorized' }, 401);
     }
 
@@ -53,16 +51,10 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     const variantIds = items.map((i) => i.variantId);
 
-    const { createClient } = await import('@supabase/supabase-js');
-    const { SUPABASE_URL, SUPABASE_KEY } = await import('astro:env/server');
-    const supabase = createClient(SUPABASE_URL as string, SUPABASE_KEY as string);
-
-    const { data: variants, error } = await supabase
-        .from('product_variants')
-        .select('id, weight_kg, length_cm, width_cm, height_cm')
-        .in('id', variantIds);
-
-    if (error || !variants) {
+    const convex = createConvexClient();
+    if (!convex) return jsonResponse({ error: 'Convex is not configured' }, 503);
+    const variants = await convex.query(api.catalog.getCartVariants, { ids: variantIds });
+    if (!variants) {
         return jsonResponse({ error: 'Failed to fetch product dimensions' }, 500);
     }
 

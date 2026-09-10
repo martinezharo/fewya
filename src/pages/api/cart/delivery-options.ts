@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
-import { supabase } from '../../../lib/core/supabase';
+import { createConvexClient } from '../../../lib/core/convex';
+import { api } from '../../../../convex/_generated/api';
 import {
     normalizeShippingPlatforms,
     intersectShippingPlatforms,
@@ -8,6 +9,18 @@ import {
 
 interface RequestBody {
     variantIds?: unknown;
+}
+
+/**
+ * The delivery options payload. The cart reads `platforms` and passes them
+ * straight to the service-point search.
+ */
+function deliveryOptions(platforms: ShippingPlatform[]) {
+    return {
+        platforms,
+        homeAvailable: platforms.includes('correos'),
+        pickupAvailable: platforms.length > 0,
+    };
 }
 
 function jsonResponse(payload: unknown, status: number) {
@@ -41,45 +54,18 @@ export const POST: APIRoute = async ({ locals, request  }) => {
     const variantIds = raw.filter((id): id is string => typeof id === 'string' && id.length > 0).slice(0, 100);
 
     if (variantIds.length === 0) {
-        const all: ShippingPlatform[] = normalizeShippingPlatforms(null);
-        return jsonResponse({
-            platforms: all,
-            homeAvailable: all.includes('correos'),
-            pickupAvailable: all.length > 0,
-        }, 200);
+        return jsonResponse(deliveryOptions(normalizeShippingPlatforms(null)), 200);
     }
 
-    const { data, error } = await supabase
-        .from('product_variants')
-        .select(`
-            id,
-            products!inner ( shops!inner ( id, shipping_carriers ) )
-        `)
-        .in('id', variantIds);
-
-    if (error) {
+    const convex = createConvexClient();
+    if (!convex) return jsonResponse({ error: t.apiCheckoutProductUnavailable }, 503);
+    try {
+        const data = await convex.query(api.catalog.getCartVariants, { ids: variantIds });
+        const perShop = new Map<string, ShippingPlatform[]>();
+        for (const row of data) perShop.set(row.product.shop.id, normalizeShippingPlatforms(row.product.shop.shipping_carriers));
+        return jsonResponse(deliveryOptions(intersectShippingPlatforms(Array.from(perShop.values()))), 200);
+    } catch (error) {
+        console.error(JSON.stringify({ event: 'cart_delivery.failed', error: error instanceof Error ? error.message : String(error) }));
         return jsonResponse({ error: t.apiCheckoutProductUnavailable }, 500);
     }
-
-    type Row = {
-        products: { shops: { id: string; shipping_carriers: string[] | null } | { id: string; shipping_carriers: string[] | null }[] | null }
-            | { shops: { id: string; shipping_carriers: string[] | null } | { id: string; shipping_carriers: string[] | null }[] | null }[]
-            | null;
-    };
-
-    const perShop = new Map<string, ShippingPlatform[]>();
-    for (const row of (data ?? []) as Row[]) {
-        const product = Array.isArray(row.products) ? row.products[0] : row.products;
-        const shop = product && (Array.isArray(product.shops) ? product.shops[0] : product.shops);
-        if (!shop?.id) continue;
-        perShop.set(shop.id, normalizeShippingPlatforms(shop.shipping_carriers));
-    }
-
-    const platforms = intersectShippingPlatforms(Array.from(perShop.values()));
-
-    return jsonResponse({
-        platforms,
-        homeAvailable: platforms.includes('correos'),
-        pickupAvailable: platforms.length > 0,
-    }, 200);
 };

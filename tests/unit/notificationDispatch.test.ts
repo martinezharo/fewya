@@ -1,7 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { getFunctionName } from 'convex/server';
+import { api } from '../../convex/_generated/api';
 
-const sendEmailMock = vi.fn();
-const sendPushMock = vi.fn();
+const { sendEmailMock, sendPushMock, mockQuery, mockMutation } = vi.hoisted(() => ({
+    sendEmailMock: vi.fn(),
+    sendPushMock: vi.fn(),
+    mockQuery: vi.fn(),
+    mockMutation: vi.fn(),
+}));
 
 vi.mock('../../src/lib/notifications/resend', () => ({
     sendEmail: (...args: unknown[]) => sendEmailMock(...args),
@@ -9,121 +15,135 @@ vi.mock('../../src/lib/notifications/resend', () => ({
 vi.mock('../../src/lib/notifications/push', () => ({
     sendPush: (...args: unknown[]) => sendPushMock(...args),
 }));
+vi.mock('../../src/lib/core/convex', () => ({
+    createConvexClient: () => ({ query: mockQuery, mutation: mockMutation }),
+}));
 
-import { notify } from '../../src/lib/notifications/dispatch';
-import { NOTIFICATION_TYPE } from '../../src/lib/notifications/types';
+const { notify } = await import('../../src/lib/notifications/dispatch');
+const { NOTIFICATION_TYPE } = await import('../../src/lib/notifications/types');
 
-const ORDER_ROW = {
-    id: 'o1',
-    public_id: 'ORD-1',
-    buyer_id: 'buyer-1',
-    buyer_email: 'buyer@example.com',
-    pickup_point_name: null,
-    shops: { name: 'Tienda', owner_id: 'seller-1', contact_email: null, owner: { email: 'seller@example.com' } },
-    shipments: [{ tracking_url: null }],
-};
+const SECRET = 'convex-webhook-mock';
+
+function claimed(overrides: Record<string, unknown> = {}) {
+    return {
+        claimed: true,
+        notificationId: 'notif-1',
+        orderPublicId: 'ORD-1',
+        shopName: 'Tienda',
+        trackingUrl: null,
+        pickupPointName: null,
+        recipientEmail: 'seller@example.com',
+        recipientUserLegacyId: 'seller-1',
+        ...overrides,
+    };
+}
 
 /**
- * Stateful fake of the admin client. The notification_log upsert mimics
- * INSERT ... ON CONFLICT DO NOTHING: it returns the claimed row only the first
- * time a given (order_id, type) is seen, and an empty array afterwards.
+ * Claiming is what makes a notification idempotent: Convex hands out the
+ * notification row once, and every later attempt for the same (order, type)
+ * comes back unclaimed.
  */
-function makeFakeClient() {
-    const claimed = new Set<string>();
-    return {
-        from(table: string) {
-            if (table === 'orders') {
-                return {
-                    select: () => ({
-                        eq: () => ({
-                            single: () => Promise.resolve({ data: ORDER_ROW, error: null }),
-                        }),
-                    }),
-                };
-            }
-            if (table === 'notification_log') {
-                return {
-                    upsert: (row: { order_id: string; type: string }) => ({
-                        select: () => {
-                            const key = `${row.order_id}:${row.type}`;
-                            if (claimed.has(key)) return Promise.resolve({ data: [], error: null });
-                            claimed.add(key);
-                            return Promise.resolve({ data: [{ id: `log-${key}` }], error: null });
-                        },
-                    }),
-                    update: () => ({ eq: () => Promise.resolve({ data: null, error: null }) }),
-                };
-            }
-            if (table === 'push_subscriptions') {
-                return {
-                    select: () => ({ eq: () => Promise.resolve({ data: [], error: null }) }),
-                    delete: () => ({ in: () => Promise.resolve({ data: null, error: null }) }),
-                };
-            }
-            throw new Error(`unexpected table ${table}`);
-        },
-    };
+function claimOnce() {
+    const seen = new Set<string>();
+    mockMutation.mockImplementation(async (fn: any, args: any) => {
+        if (getFunctionName(fn) !== getFunctionName(api.orders.claimNotification)) return { ok: true };
+        const key = `${args.orderId}:${args.type}`;
+        if (seen.has(key)) return { claimed: false, reason: 'already_sent' };
+        seen.add(key);
+        return claimed();
+    });
 }
 
 describe('notify (dispatch)', () => {
     beforeEach(() => {
-        sendEmailMock.mockReset();
-        sendPushMock.mockReset();
+        vi.clearAllMocks();
         sendEmailMock.mockResolvedValue({ sent: true });
         sendPushMock.mockResolvedValue({ sent: true });
+        mockQuery.mockResolvedValue([]);
+        claimOnce();
     });
 
-    it('envía la primera vez y deduplica las siguientes para el mismo (pedido, tipo)', async () => {
-        const client = makeFakeClient() as never;
-
+    it('sends the first time and deduplicates later attempts for the same (order, type)', async () => {
         const first = await notify({
             type: NOTIFICATION_TYPE.SELLER_NEW_SALE,
-            orderId: 'o1',
+            orderId: 'convex:ORD-1',
             recipient: 'seller',
-            client,
+            convexSecret: SECRET,
         });
         expect(first.sent).toBe(true);
         expect(sendEmailMock).toHaveBeenCalledTimes(1);
 
         const second = await notify({
             type: NOTIFICATION_TYPE.SELLER_NEW_SALE,
-            orderId: 'o1',
+            orderId: 'convex:ORD-1',
             recipient: 'seller',
-            client,
+            convexSecret: SECRET,
         });
         expect(second.sent).toBe(false);
         expect(second.skipped).toBe(true);
         expect(second.reason).toBe('already_sent');
-        // No second email — dedupe prevented the resend.
+        // No second email — the claim prevented the resend.
         expect(sendEmailMock).toHaveBeenCalledTimes(1);
     });
 
-    it('envía el email al comprador para una notificación de comprador', async () => {
-        const client = makeFakeClient() as never;
+    it('emails the address Convex resolved for the recipient', async () => {
+        mockMutation.mockResolvedValueOnce(claimed({ recipientEmail: 'buyer@example.com' }));
         await notify({
             type: NOTIFICATION_TYPE.BUYER_READY_TO_SEND,
-            orderId: 'o1',
+            orderId: 'convex:ORD-1',
             recipient: 'buyer',
-            client,
+            convexSecret: SECRET,
         });
         expect(sendEmailMock).toHaveBeenCalledTimes(1);
         expect(sendEmailMock.mock.calls[0][0]).toMatchObject({ to: 'buyer@example.com' });
     });
 
-    it('devuelve skipped cuando el pedido no existe', async () => {
-        const client = {
-            from: () => ({
-                select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: null, error: { message: 'x' } }) }) }),
-            }),
-        } as never;
+    it('returns skipped when the order cannot be claimed', async () => {
+        mockMutation.mockResolvedValueOnce({ claimed: false, reason: 'order_not_found' });
         const result = await notify({
             type: NOTIFICATION_TYPE.SELLER_NEW_SALE,
-            orderId: 'missing',
+            orderId: 'convex:missing',
             recipient: 'seller',
-            client,
+            convexSecret: SECRET,
         });
         expect(result.skipped).toBe(true);
         expect(result.reason).toBe('order_not_found');
         expect(sendEmailMock).not.toHaveBeenCalled();
+    });
+
+    it('pushes to every stored subscription and drops the ones that are gone', async () => {
+        mockQuery.mockResolvedValueOnce([
+            { legacyId: 'sub-1', endpoint: 'https://push/1', p256dh: 'k1', auth: 'a1' },
+            { legacyId: 'sub-2', endpoint: 'https://push/2', p256dh: 'k2', auth: 'a2' },
+        ]);
+        sendPushMock
+            .mockResolvedValueOnce({ sent: true })
+            .mockResolvedValueOnce({ sent: false, gone: true });
+
+        const result = await notify({
+            type: NOTIFICATION_TYPE.SELLER_NEW_SALE,
+            orderId: 'convex:ORD-1',
+            recipient: 'seller',
+            convexSecret: SECRET,
+        });
+
+        expect(result.pushStatus).toBe('sent:1/2');
+        expect(mockMutation).toHaveBeenCalledWith(
+            expect.anything(),
+            expect.objectContaining({ subscriptionLegacyId: 'sub-2' }),
+        );
+    });
+
+    it('records the delivery outcome on the claimed notification', async () => {
+        await notify({
+            type: NOTIFICATION_TYPE.SELLER_NEW_SALE,
+            orderId: 'convex:ORD-1',
+            recipient: 'seller',
+            convexSecret: SECRET,
+        });
+        expect(mockMutation).toHaveBeenCalledWith(
+            expect.anything(),
+            expect.objectContaining({ notificationId: 'notif-1', emailStatus: 'sent' }),
+        );
     });
 });

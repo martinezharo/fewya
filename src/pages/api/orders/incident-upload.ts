@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
-import { createSupabaseAuthClient } from '../../../lib/core/auth';
-import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
+import { createRequestConvexClient, getRequestUser } from '../../../lib/core/auth';
+import { api } from '../../../../convex/_generated/api';
+import { uploadConvexFile } from '../../../lib/core/convexStorage';
 
 import { detectImageMimeType, ALLOWED_IMAGE_TYPES } from '../../../lib/core/file-validation';
 import { securityLog } from '../../../lib/core/security-log';
@@ -8,14 +9,11 @@ import { ORDER_STATUS } from '../../../lib/orders/orderStatus';
 
 const MAX_SIZE = 5 * 1024 * 1024;
 
-export const POST: APIRoute = async ({ locals, cookies, request  }) => {
+export const POST: APIRoute = async ({ locals, request }) => {
     const { t } = locals;
-    const authClient = createSupabaseAuthClient(cookies, request);
-    const { data: { user } } = await authClient.auth.getUser();
-
-    if (!user) {
-        return new Response(JSON.stringify({ error: t.apiUnauthorized }), { status: 401 });
-    }
+    const user = getRequestUser(request);
+    const convex = createRequestConvexClient(request);
+    if (!user || !convex) return new Response(JSON.stringify({ error: t.apiUnauthorized }), { status: 401 });
 
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
@@ -36,50 +34,20 @@ export const POST: APIRoute = async ({ locals, cookies, request  }) => {
         return new Response(JSON.stringify({ error: 'File too large. Max 5MB.' }), { status: 400 });
     }
 
-    const adminClient = createSupabaseAdminClient();
-    const { data: order, error: orderError } = await adminClient
-        .from('orders')
-        .select('id, buyer_id, status')
-        .eq('id', orderId)
-        .maybeSingle();
-
-    if (orderError || !order) {
+    try {
+        const order = await convex.query(api.orders.getIncidentUploadContext, { orderId });
+        if (!([ORDER_STATUS.DELIVERED, ORDER_STATUS.CONFIRMED] as string[]).includes(order.status)) {
+            return new Response(JSON.stringify({ error: 'Order cannot be reported at this stage' }), { status: 400 });
+        }
+    } catch {
         return new Response(JSON.stringify({ error: 'Order not found' }), { status: 404 });
     }
 
-    if (order.buyer_id !== user.id) {
-        return new Response(JSON.stringify({ error: t.apiForbidden }), { status: 403 });
-    }
-
-    if (!([ORDER_STATUS.DELIVERED, ORDER_STATUS.CONFIRMED] as string[]).includes(order.status)) {
-        return new Response(JSON.stringify({ error: 'Order cannot be reported at this stage' }), { status: 400 });
-    }
-
-    const extMap: Record<string, string> = {
-        'image/jpeg': 'jpg',
-        'image/png': 'png',
-        'image/webp': 'webp',
-        'image/gif': 'gif',
-    };
-    const ext = extMap[detectedType] ?? 'jpg';
-    const filename = `${orderId}/${crypto.randomUUID()}.${ext}`;
-    const buffer = Buffer.from(await file.arrayBuffer());
-
-    const { error: uploadError } = await adminClient.storage
-        .from('imgs')
-        .upload(`incidents/${filename}`, buffer, {
-            contentType: detectedType, // use validated type
-            upsert: false,
-        });
-
-    if (uploadError) {
-        console.error(JSON.stringify({ event: 'incident_upload.failed', error: uploadError.message }));
+    try {
+        const uploaded = await uploadConvexFile(request, file, detectedType);
+        return new Response(JSON.stringify(uploaded), { status: 200 });
+    } catch (error) {
+        console.error(JSON.stringify({ event: 'incident_upload.failed', error: error instanceof Error ? error.message : String(error) }));
         return new Response(JSON.stringify({ error: t.apiInternalError }), { status: 500 });
     }
-
-    const { data: urlData } = adminClient.storage
-        .from('imgs')
-        .getPublicUrl(`incidents/${filename}`);
-
-    return new Response(JSON.stringify({ url: urlData.publicUrl, path: filename }), { status: 200 });
 };

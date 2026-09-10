@@ -1,5 +1,5 @@
 /**
- * Client-side image compression for Supabase uploads.
+ * Client-side image compression for uploads.
  * Re-encodes to WebP and optionally center-crops (cover) or fits within a bounding box (contain).
  * Falls back to the original file if anything goes wrong or if WebP is larger.
  */

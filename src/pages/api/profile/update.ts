@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
-import { createSupabaseAuthClient } from '../../../lib/core/auth';
+import { api } from '../../../../convex/_generated/api';
+import { createRequestConvexClient } from '../../../lib/core/auth';
 
 // A4: field length limits to prevent storage DoS and stored-XSS from oversized values
 const FIELD_LIMITS: Record<string, number> = {
@@ -48,12 +49,11 @@ function validateStringField(value: unknown, field: string): string | Response {
     return trimmed;
 }
 
-export const POST: APIRoute = async ({ locals, cookies, request  }) => {
+export const POST: APIRoute = async ({ locals, request }) => {
     const { t } = locals;
-    const authClient = createSupabaseAuthClient(cookies, request);
-    const { data: { user } } = await authClient.auth.getUser();
+    const convex = createRequestConvexClient(request);
 
-    if (!user) {
+    if (!convex) {
         return new Response(JSON.stringify({ error: t.apiUnauthorized }), { status: 401 });
     }
 
@@ -134,15 +134,33 @@ export const POST: APIRoute = async ({ locals, cookies, request  }) => {
         return new Response(JSON.stringify({ error: 'no_fields' }), { status: 400 });
     }
 
-    const { error } = await authClient
-        .from('profiles')
-        .update(updates)
-        .eq('id', user.id);
-
-    if (error) {
-        // M3: don't expose DB error details
-        console.error(JSON.stringify({ event: 'profile_update.failed', error: error.message }));
-        return new Response(JSON.stringify({ error: t.apiInternalError }), { status: 500 });
+    try {
+        const stringUpdate = (field: string): string | null | undefined => {
+            const value = updates[field];
+            return typeof value === 'string' || value === null ? value : undefined;
+        };
+        const optIn = updates.email_marketing_opt_in;
+        await convex.mutation(api.users.updateCurrent, {
+            firstName: stringUpdate('first_name'),
+            lastName: stringUpdate('last_name'),
+            avatarUrl: stringUpdate('avatar_url'),
+            phone: stringUpdate('phone'),
+            phonePrefix: stringUpdate('phone_prefix'),
+            addressStreet: stringUpdate('address_street'),
+            addressNumber: stringUpdate('address_number'),
+            addressFloor: stringUpdate('address_floor'),
+            addressPostalCode: stringUpdate('address_postal_code'),
+            addressCity: stringUpdate('address_city'),
+            addressProvince: stringUpdate('address_province'),
+            addressCountry: stringUpdate('address_country'),
+            emailMarketingOptIn: typeof optIn === 'boolean' ? optIn : undefined,
+        });
+    } catch (error) {
+        console.error(JSON.stringify({
+            event: 'profile_update.failed',
+            error: error instanceof Error ? error.message : String(error),
+        }));
+        return new Response(JSON.stringify({ error: t.apiInternalError }), { status: 503 });
     }
 
     return new Response(JSON.stringify({ ok: true }), { status: 200 });

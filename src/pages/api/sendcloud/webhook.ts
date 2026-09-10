@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
-import { SENDCLOUD_API_SECRET } from 'astro:env/server';
-import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
+import { CONVEX_WEBHOOK_SECRET, SENDCLOUD_API_SECRET } from 'astro:env/server';
+import { api } from '../../../../convex/_generated/api';
+import { createConvexClient } from '../../../lib/core/convex';
 import { securityLog } from '../../../lib/core/security-log';
 
 const MAX_TIMESTAMP_DRIFT_MS = 5 * 60 * 1000; // 5 minutes
@@ -101,66 +102,36 @@ export const POST: APIRoute = async ({ request }) => {
         return jsonResponse({ received: true }, 200);
     }
 
-    const supabase = createSupabaseAdminClient();
-
-    // Idempotency: skip replays. The event is recorded only AFTER the update
-    // succeeds (below), so a transient failure is retried instead of being lost.
+    // An event for a shipment Convex does not know about is acknowledged, not
+    // retried: Sendcloud would otherwise keep redelivering it forever.
     const eventId = `sendcloud:${parcel.id}:${action ?? ''}:${timestamp ?? ''}`;
-    const { data: alreadyProcessed } = await supabase
-        .from('processed_webhook_events')
-        .select('event_id')
-        .eq('event_id', eventId)
-        .maybeSingle();
-
-    if (alreadyProcessed) {
-        return jsonResponse({ received: true }, 200);
-    }
-
-    const { data: shipmentRow } = await supabase
-        .from('shipments')
-        .select('id, order_id')
-        .eq('sendcloud_shipment_id', String(parcel.id))
-        .single();
-
-    if (!shipmentRow) {
-        return jsonResponse({ received: true }, 200);
-    }
-
-    const shipment = shipmentRow as { id: string; order_id: string };
     // Prefer parcel.status.message (the actual carrier state, e.g. "Delivered",
-    // "Sorted") over `action` — Sendcloud actions like "parcel_status_changed"
-    // describe the event type, not the state, and won't match the SQL branches.
+    // "Sorted") over `action` — Sendcloud actions describe the event type, not
+    // the carrier state used by the order transition rules.
     const normalizedStatus = parcel.status?.message || action || 'unknown';
     const description = `Sendcloud status: ${normalizedStatus}`;
-    const eventTimestamp = timestampMs ? new Date(timestampMs) : new Date();
 
-    try {
-        const { error } = await supabase.rpc('update_shipment_tracking', {
-            p_shipment_id: shipment.id,
-            p_status: normalizedStatus,
-            p_description: description,
-            p_location: '',
-            p_event_timestamp: eventTimestamp.toISOString(),
-            // Coerce to null: supabase-js drops `undefined` keys, which would make
-            // the RPC call miss a required parameter and fail the signature match.
-            p_tracking_number: parcel.tracking_number ?? null,
-            p_tracking_url: parcel.tracking_url ?? null,
-            p_raw_data: body as Record<string, unknown>,
-        });
-
-        if (error) {
-            console.error(JSON.stringify({ event: 'sendcloud_webhook.tracking_update_failed', error: error.message }));
+    const convex = CONVEX_WEBHOOK_SECRET ? createConvexClient() : null;
+    if (convex && CONVEX_WEBHOOK_SECRET) {
+        try {
+            const result = await convex.mutation(api.orders.processShipmentTrackingEvent, {
+                secret: CONVEX_WEBHOOK_SECRET,
+                eventId,
+                sendcloudShipmentId: String(parcel.id),
+                status: normalizedStatus,
+                description,
+                location: '',
+                eventTimestamp: timestampMs ?? Date.now(),
+                ...(parcel.tracking_number ? { trackingNumber: parcel.tracking_number } : {}),
+                ...(parcel.tracking_url ? { trackingUrl: parcel.tracking_url } : {}),
+                rawData: body as Record<string, unknown>,
+            });
+            if (result.handled) return jsonResponse({ received: true }, 200);
+        } catch (error) {
+            console.error(JSON.stringify({ event: 'sendcloud_webhook.handler_failed', error: error instanceof Error ? error.message : String(error) }));
             return jsonResponse({ error: 'Failed to update tracking' }, 500);
         }
-
-        // Record the event only now that processing succeeded (best-effort).
-        await supabase
-            .from('processed_webhook_events')
-            .insert({ event_id: eventId, source: 'sendcloud' });
-
-        return jsonResponse({ success: true }, 200);
-    } catch (err) {
-        console.error(JSON.stringify({ event: 'sendcloud_webhook.unexpected_error', error: err instanceof Error ? err.message : String(err) }));
-        return jsonResponse({ error: 'Internal error' }, 500);
     }
+
+    return jsonResponse({ received: true }, 200);
 };

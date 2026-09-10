@@ -1,0 +1,7 @@
+; Import into the fewya.com Cloudflare DNS zone with proxy disabled.
+; These records belong to Clerk production instance ins_3J9626kyJEa8blSGsd2xfiA7Glf.
+clerk.fewya.com. 300 IN CNAME frontend-api.clerk.services.
+accounts.fewya.com. 300 IN CNAME accounts.clerk.services.
+clkmail.fewya.com. 300 IN CNAME mail.3y6msakv7xz3.clerk.services.
+clk._domainkey.fewya.com. 300 IN CNAME dkim1.3y6msakv7xz3.clerk.services.
+clk2._domainkey.fewya.com. 300 IN CNAME dkim2.3y6msakv7xz3.clerk.services.

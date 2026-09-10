@@ -1,32 +1,25 @@
 ---
+import { getRequestUser } from '../../lib/core/auth';
 import SellerLayout from "../../layouts/SellerLayout.astro";
 
-import { createSupabaseAuthClient } from "../../lib/core/auth";
 import { getAllCountries } from "../../lib/shipping/countries";
 import { spainProvinces } from "../../lib/shipping/spain-provinces";
 import { isProfileComplete } from "../../lib/core/validation";
+import { getConvexSeller } from "../../lib/seller/convexSeller";
 const { t } = Astro.locals;
 
-const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
-const { data: { user } } = await supabase.auth.getUser();
+const user = getRequestUser(Astro.request);
 
 if (!user) {
     return Astro.redirect('/login?redirect_to=/sell/details');
 }
 
-const { data: profile } = await supabase
-    .from('profiles')
-    .select('is_seller, first_name, last_name, email, phone, phone_prefix, address_street, address_number, address_floor, address_postal_code, address_city, address_province, address_country')
-    .eq('id', user.id)
-    .single();
-
-if (!profile?.is_seller) return Astro.redirect('/sell');
-
-const { data: shop } = await supabase
-    .from('shops')
-    .select('id, slug')
-    .eq('owner_id', user.id)
-    .maybeSingle();
+let profile: any;
+let shop: any;
+const seller = await getConvexSeller(Astro.request);
+if (!seller?.profile?.is_seller) return Astro.redirect('/sell');
+profile = seller.profile;
+shop = seller.shop;
 
 if (!shop) return Astro.redirect('/sell/onboarding');
 

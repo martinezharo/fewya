@@ -1,63 +1,38 @@
 ---
 import Layout from '../../../layouts/Layout.astro';
-import { createSupabaseAuthClient } from '../../../lib/core/auth';
 import ShopForm from '../../../components/seller/ShopForm.astro';
 
 import { getStripeClient, getStripeAccountStatus } from '../../../lib/payments/stripe';
-import { createSupabaseAdminClient } from '../../../lib/core/supabase-admin';
+import { createRequestConvexClient, getRequestUser } from '../../../lib/core/auth';
+import { api } from '../../../../convex/_generated/api';
 const { t } = Astro.locals;
 
-const supabase = createSupabaseAuthClient(Astro.cookies, Astro.request);
-const { data: sessionData } = await supabase.auth.getSession();
-const user = sessionData?.session?.user;
+const user = getRequestUser(Astro.request);
+const convex = createRequestConvexClient(Astro.request);
 
-if (!user) {
+if (!user || !convex) {
     return Astro.redirect('/sell');
 }
 
-const { data: profile } = await supabase
-    .from('profiles')
-    .select('is_seller')
-    .eq('id', user.id)
-    .single();
-
-// Reaching onboarding while logged in IS the act of becoming a seller. A buyer
-// arriving here (is_seller=false) is promoted in place instead of being bounced
-// back to /sell, which made the "Configurar mi tienda" CTA appear to do nothing.
-if (!profile?.is_seller) {
-    const { error: promoteError } = await supabase
-        .from('profiles')
-        .update({ is_seller: true })
-        .eq('id', user.id);
-
-    if (promoteError) {
-        return Astro.redirect('/sell');
-    }
-}
+const onboarding = await convex.query(api.seller.onboarding, {});
+if (!onboarding) return Astro.redirect('/sell');
+const profile = onboarding.profile;
+const existingShop = onboarding.shop;
+const existingPaymentAccount = onboarding.paymentAccount;
+// Reaching onboarding while logged in IS the act of becoming a seller.
+if (!profile.is_seller) await convex.mutation(api.users.markSeller, {});
 
 const stripeReturnParam = Astro.url.searchParams.get('stripe');
 
 // Check if they already have a shop
-const { data: existingShop } = await supabase
-    .from('shops')
-    .select('id, contact_email')
-    .eq('owner_id', user.id)
-    .maybeSingle();
-
 // If shop exists, check stripe status
 let stripeReady = false;
 let showStripeStep = false;
 
 if (existingShop) {
-    const { data: paymentAccount } = await supabase
-        .from('shop_payment_accounts')
-        .select('charges_enabled, payouts_enabled, details_submitted, onboarding_completed_at')
-        .eq('shop_id', existingShop.id)
-        .maybeSingle();
-
-    stripeReady = paymentAccount?.charges_enabled === true
-        && paymentAccount?.payouts_enabled === true
-        && paymentAccount?.details_submitted === true;
+    stripeReady = existingPaymentAccount?.charges_enabled === true
+        && existingPaymentAccount?.payouts_enabled === true
+        && existingPaymentAccount?.details_submitted === true;
 
     if (stripeReady) {
         // Everything done, redirect to shop dashboard
@@ -71,23 +46,14 @@ if (existingShop) {
     if (stripeReturnParam === 'return' || stripeReturnParam === 'refresh') {
         try {
             const stripe = getStripeClient();
-            const { data: existingAccount } = await supabase
-                .from('shop_payment_accounts')
-                .select('stripe_account_id')
-                .eq('shop_id', existingShop.id)
-                .maybeSingle();
-
-            if (existingAccount?.stripe_account_id) {
-                const account = await stripe.accounts.retrieve(existingAccount.stripe_account_id);
+            if (existingPaymentAccount?.stripe_account_id) {
+                const account = await stripe.accounts.retrieve(existingPaymentAccount.stripe_account_id);
                 const status = getStripeAccountStatus(account);
-                const adminClient = createSupabaseAdminClient();
-                await adminClient.rpc('upsert_shop_payment_account', {
-                    p_actor_id: user.id,
-                    p_shop_id: existingShop.id,
-                    p_stripe_account_id: status.stripeAccountId,
-                    p_charges_enabled: status.chargesEnabled,
-                    p_payouts_enabled: status.payoutsEnabled,
-                    p_details_submitted: status.detailsSubmitted,
+                await convex.mutation(api.seller.syncPaymentAccount, {
+                    stripeAccountId: status.stripeAccountId,
+                    chargesEnabled: status.chargesEnabled,
+                    payoutsEnabled: status.payoutsEnabled,
+                    detailsSubmitted: status.detailsSubmitted,
                 });
                 stripeReady = status.isReady;
                 if (stripeReady) {
@@ -105,39 +71,31 @@ if (Astro.request.method === 'POST') {
     const name = formData.get('name')?.toString() || '';
     const slug = formData.get('slug')?.toString() || '';
     const description = formData.get('description')?.toString();
-    const profile_img = formData.get('profile_img')?.toString() || user.user_metadata?.avatar_url;
+    const profile_img = formData.get('profile_img')?.toString() || user.avatarUrl;
     const banner_img = formData.get('banner_img')?.toString() || null;
     const accent_color = formData.get('accent_color')?.toString() || '#000000';
     const contact_email = formData.get('contact_email')?.toString() || user.email;
     const whatsapp = formData.get('whatsapp')?.toString() || null;
     const location = formData.get('location')?.toString() || null;
 
-    // Check slug uniqueness manually to give a proper response
-    const { data: slugCheck } = await supabase.from('shops').select('id').eq('slug', slug).maybeSingle();
-    
-    if (slugCheck) {
-        return new Response(JSON.stringify({ error: t.sellerOnboardingUrlInUse }), { status: 400 });
+    try {
+        // Convex enforces slug uniqueness and shop ownership in one write.
+        await convex.mutation(api.seller.createShop, {
+            name,
+            slug,
+            description: description ?? null,
+            profileImg: profile_img ?? null,
+            bannerImg: banner_img,
+            accentColor: accent_color,
+            contactEmail: contact_email ?? null,
+            whatsapp,
+            location,
+        });
+        return new Response(JSON.stringify({ success: true }), { status: 200 });
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        return new Response(JSON.stringify({ error: message.includes('slug') ? t.sellerOnboardingUrlInUse : t.apiInternalError }), { status: message.includes('slug') ? 400 : 500 });
     }
-
-    const { error } = await supabase.from('shops').insert({
-        owner_id: user.id,
-        name,
-        slug,
-        description,
-        profile_img,
-        banner_img,
-        accent_color,
-        contact_email,
-        whatsapp,
-        location,
-        is_active: true
-    });
-
-    if (error) {
-        return new Response(JSON.stringify({ error: error.message }), { status: 500 });
-    }
-
-    return new Response(JSON.stringify({ success: true }), { status: 200 });
 }
 ---
 

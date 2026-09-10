@@ -1,38 +1,29 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { en } from '../../src/lib/core/i18n/strings.en';
 
-const mockGetUser = vi.fn();
-const mockAuthRpc = vi.fn();
-const mockOrderSingle = vi.fn();
-const mockRefundsInsert = vi.fn();
-const mockAdminRpc = vi.fn();
-const mockStripeRefundCreate = vi.fn();
+const convex = await vi.hoisted(async () => {
+    const { createConvexRouteMock } = await import('../helpers/convexRoute');
+    return createConvexRouteMock();
+});
+const { mockRefundsCreate } = vi.hoisted(() => ({ mockRefundsCreate: vi.fn() }));
 
-vi.mock('../../src/lib/core/auth', () => ({
-    createSupabaseAuthClient: () => ({
-        auth: { getUser: mockGetUser },
-        rpc: mockAuthRpc,
-        from: (table: string) => {
-            if (table === 'orders') {
-                return {
-                    select: () => ({ eq: () => ({ single: mockOrderSingle }) }),
-                };
-            }
-            // refunds
-            return { insert: mockRefundsInsert };
-        },
-    }),
-}));
-
-vi.mock('../../src/lib/core/supabase-admin', () => ({
-    createSupabaseAdminClient: () => ({ rpc: mockAdminRpc }),
-}));
+vi.mock('../../src/lib/core/auth', () => convex.authModule());
 
 vi.mock('../../src/lib/payments/stripe', () => ({
-    getStripeClient: () => ({ refunds: { create: mockStripeRefundCreate } }),
+    getStripeClient: () => ({ refunds: { create: mockRefundsCreate } }),
 }));
 
 const { POST } = await import('../../src/pages/api/orders/refund');
+
+const payout = {
+    id: 'convex:ORD-1',
+    publicId: 'ORD-1',
+    status: 'paid',
+    totalAmount: 42.5,
+    stripePaymentIntentId: 'pi_1',
+    items: [{ shopId: 'shop-1', shippingCost: 5, stripeAccountId: 'acct_1' }],
+    labelCostByShop: {},
+};
 
 function call(body: unknown, { rawBody }: { rawBody?: string } = {}) {
     const request = new Request('https://fewya.com/api/orders/refund', {
@@ -40,82 +31,73 @@ function call(body: unknown, { rawBody }: { rawBody?: string } = {}) {
         headers: { 'Content-Type': 'application/json' },
         body: rawBody ?? JSON.stringify(body),
     });
-    return POST({ locals: { t: en, locale: 'en' }, request, cookies: {} } as any);
+    return POST({ locals: { t: en, locale: 'en' }, request } as any);
 }
-
-const paidOrder = {
-    id: 'order-1',
-    public_id: 'ORD-1',
-    status: 'paid',
-    stripe_payment_intent_id: 'pi_1',
-    total_amount: 42.5,
-};
 
 describe('POST /api/orders/refund', () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        mockGetUser.mockResolvedValue({ data: { user: { id: 'seller-1' } } });
-        mockAuthRpc.mockResolvedValue({ data: true }); // order_belongs_to_seller
-        mockOrderSingle.mockResolvedValue({ data: paidOrder, error: null });
-        mockAdminRpc.mockResolvedValue({ data: [{ id: 'order-1' }], error: null });
-        mockStripeRefundCreate.mockResolvedValue({ id: 're_1' });
-        mockRefundsInsert.mockResolvedValue({ error: null });
+        convex.reset();
+        convex.query.mockResolvedValue(payout);
+        convex.mutation.mockResolvedValue({ success: true, orderId: 'convex:ORD-1' });
+        mockRefundsCreate.mockResolvedValue({ id: 're_1' });
     });
 
     it('returns 401 when there is no authenticated user', async () => {
-        mockGetUser.mockResolvedValueOnce({ data: { user: null } });
-        expect((await call({ orderId: 'order-1' })).status).toBe(401);
+        convex.reset(null);
+        const res = await call({ orderId: 'convex:ORD-1' });
+        expect(res.status).toBe(401);
+        expect(mockRefundsCreate).not.toHaveBeenCalled();
     });
 
     it('returns 400 when orderId is missing', async () => {
         expect((await call({})).status).toBe(400);
+        expect(mockRefundsCreate).not.toHaveBeenCalled();
     });
 
-    it('returns 403 when the seller does not own the order', async () => {
-        mockAuthRpc.mockResolvedValueOnce({ data: false });
-        const res = await call({ orderId: 'order-1' });
-        expect(res.status).toBe(403);
-        expect(mockStripeRefundCreate).not.toHaveBeenCalled();
-    });
-
-    it('returns 404 when the order cannot be found', async () => {
-        mockOrderSingle.mockResolvedValueOnce({ data: null, error: { message: 'not found' } });
-        expect((await call({ orderId: 'order-1' })).status).toBe(404);
+    it('returns 500 without refunding when the seller does not own the order', async () => {
+        convex.query.mockRejectedValueOnce(new Error('Order access required'));
+        const res = await call({ orderId: 'convex:ORD-1' });
+        expect(res.status).toBe(500);
+        expect(mockRefundsCreate).not.toHaveBeenCalled();
     });
 
     it('returns 400 when the order is not in a cancellable status', async () => {
-        mockOrderSingle.mockResolvedValueOnce({ data: { ...paidOrder, status: 'shipped' }, error: null });
-        const res = await call({ orderId: 'order-1' });
+        convex.query.mockResolvedValueOnce({ ...payout, status: 'shipped' });
+        const res = await call({ orderId: 'convex:ORD-1' });
         expect(res.status).toBe(400);
-        expect(mockStripeRefundCreate).not.toHaveBeenCalled();
+        expect(await res.json()).toMatchObject({ error: en.apiOrderCannotBeCancelled });
+        expect(mockRefundsCreate).not.toHaveBeenCalled();
     });
 
     it('refunds via Stripe in minor units and cancels the order on success', async () => {
-        const res = await call({ orderId: 'order-1' });
+        const res = await call({ orderId: 'convex:ORD-1', cancellationReason: 'out of stock' });
         expect(res.status).toBe(200);
-        expect(mockStripeRefundCreate).toHaveBeenCalledWith(expect.objectContaining({
-            payment_intent: 'pi_1',
-            amount: 4250, // 42.50 EUR → cents
-        }), expect.objectContaining({
-            idempotencyKey: 'cancel-refund:order-1',
-        }));
-        expect(mockAdminRpc).toHaveBeenCalledWith('cancel_order', expect.objectContaining({
-            p_actor_id: 'seller-1',
-            p_order_id: 'order-1',
-        }));
-        expect(mockRefundsInsert).toHaveBeenCalled();
+        expect(mockRefundsCreate).toHaveBeenCalledWith(
+            expect.objectContaining({ payment_intent: 'pi_1', amount: 4250 }),
+            expect.objectContaining({ idempotencyKey: 'cancel-refund:convex:ORD-1' }),
+        );
+        expect(convex.mutation).toHaveBeenCalledWith(
+            expect.anything(),
+            expect.objectContaining({
+                orderId: 'convex:ORD-1',
+                cancellationReason: 'out of stock',
+                refundAmountCents: 4250,
+                stripeRefundId: 're_1',
+            }),
+        );
     });
 
-    it('returns 500 when the cancel RPC fails', async () => {
-        mockAdminRpc.mockResolvedValueOnce({ data: null, error: { message: 'rpc failed' } });
-        const res = await call({ orderId: 'order-1' });
+    it('returns 500 when the cancellation write fails', async () => {
+        convex.mutation.mockRejectedValueOnce(new Error('bad transition'));
+        const res = await call({ orderId: 'convex:ORD-1' });
         expect(res.status).toBe(500);
     });
 
-    it('returns 500 when the Stripe refund throws', async () => {
-        mockStripeRefundCreate.mockRejectedValueOnce(new Error('stripe down'));
-        const res = await call({ orderId: 'order-1' });
+    it('returns 500 without cancelling when the Stripe refund throws', async () => {
+        mockRefundsCreate.mockRejectedValueOnce(new Error('card_error'));
+        const res = await call({ orderId: 'convex:ORD-1' });
         expect(res.status).toBe(500);
-        expect(mockAdminRpc).not.toHaveBeenCalled();
+        expect(convex.mutation).not.toHaveBeenCalled();
     });
 });

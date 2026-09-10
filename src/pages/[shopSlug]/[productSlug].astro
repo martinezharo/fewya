@@ -8,63 +8,31 @@ import VariantSelector from '../../components/product/VariantSelector.astro';
 import ProductSpecs from '../../components/product/ProductSpecs.astro';
 import ProductReviews from '../../components/product/ProductReviews.astro';
 import ShopContact from '../../components/product/ShopContact.astro';
-import { supabase } from '../../lib/core/supabase';
-import { createSupabaseAuthClient } from '../../lib/core/auth';
 import { isProductComplete, formatShippingDisplay } from '../../lib/products/productValidation';
 import { sortVariants } from '../../lib/products/variants';
 import { formatCurrency } from '../../lib/core/formatCurrency';
 
 import { getMergedWishlistIds } from '../../lib/wishlist/wishlist';
-import type { Product, Review, Shop } from '../../lib/core/types';
-import { SHOP_STATUS } from '../../lib/core/shopStatus';
+import { getConvexProduct } from '../../lib/products/convexCatalog';
+import type { Product, Shop } from '../../lib/core/types';
 const { t, locale } = Astro.locals;
 
 const { shopSlug, productSlug } = Astro.params;
 
-const authClient = createSupabaseAuthClient(Astro.cookies, Astro.request);
-
-// Ola 1: shop and user in parallel (independent)
-const [shopResult, userResult] = await Promise.all([
-  supabase
-    .from('shops')
-    .select('*')
-    .eq('slug', shopSlug!)
-    .eq('is_active', true)
-    .eq('status', SHOP_STATUS.ACTIVE)
-    .single(),
-  authClient.auth.getUser(),
+const [convexProductPage, mergedWishlist] = await Promise.all([
+  getConvexProduct(shopSlug!, productSlug!),
+  getMergedWishlistIds(Astro.cookies, Astro.request),
 ]);
 
-const shop = shopResult.data;
-if (!shop || !shop.payments_active || !shop.seller_details_complete) return Astro.redirect('/');
+if (!convexProductPage?.product.shop) return Astro.redirect('/');
 
-// Ola 2: product (needs shop.id)
-const { data: productData } = await supabase
-  .from('products')
-  .select('*, variants:product_variants(*)')
-  .eq('slug', productSlug!)
-  .eq('shop_id', shop.id)
-  .eq('is_active', true)
-  .single();
-
-if (!productData) return Astro.redirect('/');
-
-const product = { ...productData, shop: shop as Shop } as Product;
+const product: Product = convexProductPage.product;
+const shop: Shop = convexProductPage.product.shop;
 
 if (!isProductComplete(product)) return Astro.redirect('/');
 
-// Ola 3: reviews and wishlist in parallel (both depend on product.id / user)
-const userId = userResult.data.user?.id ?? null;
-const [reviewsResult, mergedWishlist] = await Promise.all([
-  supabase
-    .from('reviews')
-    .select('id, rating, comment, seller_reply, seller_reply_at, created_at, profile_id, product_id, is_auto, profile:public_profiles(full_name, avatar_url)')
-    .eq('product_id', product.id)
-    .order('created_at', { ascending: false }),
-  getMergedWishlistIds(authClient, Astro.cookies, userId),
-]);
+const reviews = convexProductPage.reviews;
 
-const reviews = (reviewsResult.data ?? []) as Review[];
 const isWished = mergedWishlist.has(product.id);
 const images = product.gallery_images?.length > 0 ? product.gallery_images : ['/placeholder.svg'];
 

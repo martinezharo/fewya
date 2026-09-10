@@ -1,18 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const responses = vi.hoisted(() => new Map<string, { data: unknown; error?: { message: string } | null }>());
+const { mockFetchConvexShopCatalog } = vi.hoisted(() => ({ mockFetchConvexShopCatalog: vi.fn() }));
 
-function query(table: string) {
-    const chain: Record<string, unknown> = {};
-    for (const method of ['select', 'eq']) chain[method] = vi.fn(() => chain);
-    chain.maybeSingle = vi.fn(() => Promise.resolve(responses.get(table) ?? { data: null, error: null }));
-    chain.then = (resolve: (value: unknown) => unknown) =>
-        Promise.resolve(responses.get(table) ?? { data: null, error: null }).then(resolve);
-    return chain;
-}
-
-vi.mock('../../src/lib/core/supabase', () => ({
-    supabase: { from: (table: string) => query(table) },
+vi.mock('../../src/lib/products/convexCatalog', () => ({
+    fetchConvexShopCatalog: mockFetchConvexShopCatalog,
 }));
 
 const { GET, OPTIONS } = await import('../../src/pages/api/public/shops/[shopSlug]/catalog.json');
@@ -33,9 +24,10 @@ function context(slug = 'octopus-control') {
 }
 
 beforeEach(() => {
-    responses.clear();
-    responses.set('shops', { data: shop });
-    responses.set('products', { data: [product], error: null });
+    mockFetchConvexShopCatalog.mockReset();
+    mockFetchConvexShopCatalog.mockResolvedValue({
+        shop, products: [product], totalReviews: 0, averageRating: 0,
+    });
 });
 
 describe('public catalog feed contract', () => {
@@ -64,14 +56,17 @@ describe('public catalog feed contract', () => {
         ]);
     });
 
-    it('fails closed and disables caching for hidden shops or database errors', async () => {
-        responses.set('shops', { data: { ...shop, payments_active: false } });
+    it('fails closed and disables caching for hidden shops', async () => {
+        // Convex only answers for shops that are publicly visible, so a hidden
+        // one arrives here as "no such shop".
+        mockFetchConvexShopCatalog.mockResolvedValueOnce(null);
         const hidden = await GET(context());
         expect(hidden.status).toBe(404);
         expect(hidden.headers.get('Cache-Control')).toBe('no-store');
+    });
 
-        responses.set('shops', { data: shop });
-        responses.set('products', { data: null, error: { message: 'down' } });
+    it('answers 502 without caching when the backend cannot be reached', async () => {
+        mockFetchConvexShopCatalog.mockRejectedValueOnce(new Error('convex down'));
         const unavailable = await GET(context());
         expect(unavailable.status).toBe(502);
         expect(unavailable.headers.get('Cache-Control')).toBe('no-store');

@@ -1,9 +1,7 @@
 import type { APIRoute } from 'astro';
 import { APP_BASE_URL } from 'astro:env/server';
-import { supabase } from '../../../../../lib/core/supabase';
-import { SHOP_STATUS } from '../../../../../lib/core/shopStatus';
-import { buildPublicCatalog, isShopPubliclyVisible } from '../../../../../lib/products/publicCatalog';
-import type { Product, Shop } from '../../../../../lib/core/types';
+import { buildPublicCatalog } from '../../../../../lib/products/publicCatalog';
+import { fetchConvexShopCatalog } from '../../../../../lib/products/convexCatalog';
 
 /**
  * Public, read-only catalog feed for a single shop.
@@ -35,35 +33,24 @@ export const GET: APIRoute = async ({ params, url }) => {
     const shopSlug = params.shopSlug;
     if (!shopSlug) return jsonResponse({ error: 'shop_not_found' }, 404, false);
 
-    const { data: shopData } = await supabase
-        .from('shops')
-        .select('id, slug, name, is_active, status, payments_active, seller_details_complete')
-        .eq('slug', shopSlug)
-        .eq('is_active', true)
-        .eq('status', SHOP_STATUS.ACTIVE)
-        .maybeSingle();
+    const origin = (APP_BASE_URL ?? new URL(url).origin).replace(/\/+$/, '');
+
+    let catalog;
+    try {
+        catalog = await fetchConvexShopCatalog(shopSlug);
+    } catch (error) {
+        // An unreachable backend must not be cached as a missing shop.
+        console.error('Public catalog feed unavailable:', error);
+        return jsonResponse({ error: 'catalog_unavailable' }, 502, false);
+    }
 
     // A shop that exists but cannot sell is indistinguishable from a missing
     // one here on purpose: the feed must not leak onboarding state.
-    if (!isShopPubliclyVisible(shopData as Shop | null)) {
-        return jsonResponse({ error: 'shop_not_found' }, 404, false);
-    }
-    const shop = shopData as Shop;
-
-    const { data: productsData, error } = await supabase
-        .from('products')
-        .select('id, slug, title, description, category, brand, gallery_images, specifications, is_active, created_at, variants:product_variants(price, stock, is_default, weight_kg, length_cm, width_cm, height_cm, shipping_cost)')
-        .eq('shop_id', shop.id)
-        .eq('is_active', true);
-
-    if (error) return jsonResponse({ error: 'catalog_unavailable' }, 502, false);
+    if (!catalog) return jsonResponse({ error: 'shop_not_found' }, 404, false);
 
     // Product URLs must be the canonical public ones, not whatever host the
     // request happened to hit (preview domains, workers.dev, custom proxies).
-    const origin = (APP_BASE_URL ?? new URL(url).origin).replace(/\/+$/, '');
-    const catalog = buildPublicCatalog(shop, (productsData ?? []) as unknown as Product[], origin);
-
-    return jsonResponse(catalog, 200, true);
+    return jsonResponse(buildPublicCatalog(catalog.shop, catalog.products, origin), 200, true);
 };
 
 export const OPTIONS: APIRoute = () =>

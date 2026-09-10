@@ -1,7 +1,9 @@
 import type { APIRoute } from 'astro';
+import { createRequestConvexClient } from '../../../lib/core/auth';
 import { getShippingQuotes, getConfig, type SendcloudShippingQuote } from '../../../lib/shipping/sendcloud';
 import { categorize, CARRIER_META, type CarrierKey } from '../../../lib/shipping/carrierKey';
 import { carrierKeyToPlatform, normalizeShippingPlatforms } from '../../../lib/shipping/shippingPlatform';
+import { api } from '../../../../convex/_generated/api';
 
 export type { CarrierKey };
 
@@ -24,19 +26,20 @@ function jsonResponse(payload: Record<string, unknown>, status: number) {
     });
 }
 
-export const POST: APIRoute = async ({ request, cookies }) => {
-    const { createSupabaseAuthClient } = await import('../../../lib/core/auth');
-    const authClient = createSupabaseAuthClient(cookies, request);
-    const { data: { user } } = await authClient.auth.getUser();
-    if (!user) return jsonResponse({ error: 'Unauthorized' }, 401);
+export const POST: APIRoute = async ({ request }) => {
 
     // Only preview platforms this seller actually ships with.
-    const { data: shopRow } = await authClient
-        .from('shops')
-        .select('shipping_carriers')
-        .eq('owner_id', user.id)
-        .maybeSingle();
-    const enabledPlatforms = normalizeShippingPlatforms(shopRow?.shipping_carriers);
+    let enabledPlatforms: ReturnType<typeof normalizeShippingPlatforms>;
+    const convex = createRequestConvexClient(request);
+    if (!convex) return jsonResponse({ error: 'Unauthorized' }, 401);
+    try {
+        const seller = await convex.query(api.seller.current, {});
+        if (!seller?.shop) return jsonResponse({ error: 'Shop not found' }, 404);
+        enabledPlatforms = normalizeShippingPlatforms(seller.shop.shipping_carriers);
+    } catch (error) {
+        console.error('Convex preview shop lookup failed:', error);
+        return jsonResponse({ error: 'Shop not found' }, 404);
+    }
 
     let body: {
         weight_kg: number;

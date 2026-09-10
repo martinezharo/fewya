@@ -11,7 +11,7 @@ export interface RateLimitBinding {
  * The interesting question here is not what happens when the limiter works, but
  * what happens when it does not. A rate limiter that answers "allow" whenever it
  * is broken protects nothing: the one moment it matters — someone hammering
- * `/api/auth/` — is also the moment it is most likely to be under strain, and a
+ * the paid endpoints — is also the moment it is most likely to be under strain, and a
  * binding that has been renamed, dropped from an environment, or is simply
  * throwing would hand out unlimited attempts while looking perfectly healthy.
  *
@@ -20,7 +20,7 @@ export interface RateLimitBinding {
  * - **Binding missing.** In production this is a deployment mistake, and the
  *   safe reading of "I cannot tell whether you are over the limit" is *no*.
  *   Under `astro dev` there is no binding at all, and failing closed there would
- *   mean nobody could log in locally — so development allows, and says so.
+ *   make the cart unusable locally — so development allows, and says so.
  * - **Binding throws.** Never a normal condition. Denied and logged, in every
  *   environment.
  * - **Binding answers something malformed.** Treated as a denial rather than

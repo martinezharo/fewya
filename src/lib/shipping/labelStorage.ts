@@ -1,29 +1,18 @@
-import { createSupabaseAdminClient } from '../core/supabase-admin';
+import { uploadConvexBytes } from '../core/convexStorage';
 
-export const LABELS_BUCKET = 'labels';
-
-export function buildLabelPath(orderPublicId: string): string {
-    return `${orderPublicId}.pdf`;
-}
-
-export function buildLabelUrlMarker(orderPublicId: string): string {
-    return `${LABELS_BUCKET}:${buildLabelPath(orderPublicId)}`;
-}
-
+/**
+ * Stores a shipping label in Convex Storage.
+ *
+ * Returns both the marker to persist on the shipment and the URL the upload
+ * already resolved, so serving the label back does not need a second lookup.
+ * The upload is authorized by the caller's own session, which is why the
+ * originating request is required: a label may only be written by the seller
+ * who is generating it.
+ */
 export async function uploadLabelPdf(
-    orderPublicId: string,
     pdfBytes: Uint8Array,
-): Promise<string> {
-    const path = buildLabelPath(orderPublicId);
-    const adminClient = createSupabaseAdminClient();
-    const { error } = await adminClient.storage
-        .from(LABELS_BUCKET)
-        .upload(path, pdfBytes, {
-            contentType: 'application/pdf',
-            upsert: true,
-        });
-    if (error) {
-        throw new Error(`labelStorage upload failed: ${error.message}`);
-    }
-    return buildLabelUrlMarker(orderPublicId);
+    request: Request,
+): Promise<{ marker: string; url: string }> {
+    const uploaded = await uploadConvexBytes(request, pdfBytes, 'application/pdf');
+    return { marker: uploaded.path, url: uploaded.url };
 }

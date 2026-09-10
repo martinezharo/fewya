@@ -1,0 +1,33 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { SignUp } from '@clerk/astro/components';
+
+const { t } = Astro.locals;
+const redirectTo = Astro.url.searchParams.get('redirect_to') || '/me';
+const signInUrl = `/login?redirect_to=${encodeURIComponent(redirectTo)}`;
+---
+
+<Layout title={t.loginPageTitle} description={t.loginPageDescription}>
+  <main class="min-h-dvh flex flex-col items-center justify-center px-6">
+    <div class="w-full max-w-sm flex flex-col items-center gap-8">
+      <div class="flex flex-col items-center gap-3">
+        <img src="/favicon.svg" alt="Fewya" class="w-16 h-16" draggable="false" />
+        <span class="text-3xl font-bold tracking-tight text-text-primary font-[Jost]">
+          {t.logoText}
+        </span>
+      </div>
+
+      <div class="w-full flex justify-center">
+        <SignUp
+          routing="hash"
+          forceRedirectUrl={redirectTo}
+          signInUrl={signInUrl}
+        />
+      </div>
+
+      <a href="/" class="text-sm text-text-secondary hover:text-text-primary transition-colors">
+        {t.loginBackToHome}
+      </a>
+    </div>
+  </main>
+</Layout>

@@ -1,31 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { en } from '../../src/lib/core/i18n/strings.en';
 
-const mockGetUser = vi.fn();
-const mockAdminRpc = vi.fn();
-const mockAdminFrom = vi.fn();
-const mockFetchPayoutItems = vi.fn();
-const mockValidatePayoutDestinations = vi.fn();
-const mockReleaseAndRecord = vi.fn();
-const mockCreateAutoReviews = vi.fn();
-
-/** Chainable stub for `adminClient.from('orders').select().eq().eq().single()`. */
-function orderOwnershipQuery(result: { data: { id: string } | null }) {
-    const builder = {
-        select: () => builder,
-        eq: () => builder,
-        single: () => Promise.resolve(result),
-    };
-    return builder;
-}
-
-vi.mock('../../src/lib/core/auth', () => ({
-    createSupabaseAuthClient: () => ({ auth: { getUser: mockGetUser } }),
+const convex = await vi.hoisted(async () => {
+    const { createConvexRouteMock } = await import('../helpers/convexRoute');
+    return createConvexRouteMock();
+});
+const { mockValidatePayoutDestinations, mockReleaseAndRecordFunds, mockCreateAutoReviews } = vi.hoisted(() => ({
+    mockValidatePayoutDestinations: vi.fn(),
+    mockReleaseAndRecordFunds: vi.fn(),
+    mockCreateAutoReviews: vi.fn(),
 }));
 
-vi.mock('../../src/lib/core/supabase-admin', () => ({
-    createSupabaseAdminClient: () => ({ rpc: mockAdminRpc, from: mockAdminFrom }),
-}));
+vi.mock('../../src/lib/core/auth', () => convex.authModule());
 
 vi.mock('../../src/lib/payments/stripe', () => ({
     getStripeClient: () => ({}),
@@ -35,16 +21,21 @@ vi.mock('../../src/lib/payments/payoutValidation', () => ({
     validatePayoutDestinations: mockValidatePayoutDestinations,
 }));
 
-vi.mock('../../src/lib/orders/payoutFlow', () => ({
-    fetchPayoutItems: mockFetchPayoutItems,
-    releaseAndRecord: mockReleaseAndRecord,
-}));
-
-vi.mock('../../src/lib/orders/autoReview', () => ({
-    createAutoReviewsForOrder: mockCreateAutoReviews,
+vi.mock('../../src/lib/orders/convexPayout', () => ({
+    releaseAndRecordFunds: mockReleaseAndRecordFunds,
+    createAutoReviews: mockCreateAutoReviews,
 }));
 
 const { POST } = await import('../../src/pages/api/orders/cancel-incident');
+
+const payout = {
+    id: 'convex:ORD-1',
+    publicId: 'ORD-1',
+    status: 'incident',
+    stripePaymentIntentId: 'pi_1',
+    items: [{ shopId: 'shop-1' }],
+    labelCostByShop: {},
+};
 
 function call(body: unknown, { rawBody }: { rawBody?: string } = {}) {
     const request = new Request('https://fewya.com/api/orders/cancel-incident', {
@@ -52,103 +43,78 @@ function call(body: unknown, { rawBody }: { rawBody?: string } = {}) {
         headers: { 'Content-Type': 'application/json' },
         body: rawBody ?? JSON.stringify(body),
     });
-    return POST({ locals: { t: en, locale: 'en' }, request, cookies: {} } as any);
+    return POST({ locals: { t: en, locale: 'en' }, request } as any);
 }
 
 describe('POST /api/orders/cancel-incident', () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        mockGetUser.mockResolvedValue({ data: { user: { id: 'user-1' } } });
-        mockAdminFrom.mockReturnValue(orderOwnershipQuery({ data: { id: 'order-1' } }));
-        mockFetchPayoutItems.mockResolvedValue({ items: [{ shopId: 'shop-1' }], error: null });
+        convex.reset();
+        convex.query.mockResolvedValue(payout);
+        convex.mutation.mockResolvedValue({ orderId: 'convex:ORD-1', publicId: 'ORD-1' });
         mockValidatePayoutDestinations.mockResolvedValue([]);
-        mockAdminRpc.mockResolvedValue({
-            data: [{ id: 'order-1', public_id: 'ORD-1', stripe_payment_intent_id: 'pi_1' }],
-            error: null,
-        });
-        mockReleaseAndRecord.mockResolvedValue({ success: true });
+        mockReleaseAndRecordFunds.mockResolvedValue({ success: true });
         mockCreateAutoReviews.mockResolvedValue(undefined);
     });
 
     it('returns 401 when there is no authenticated user', async () => {
-        mockGetUser.mockResolvedValueOnce({ data: { user: null } });
-        const res = await call({ orderId: 'order-1' });
+        convex.reset(null);
+        const res = await call({ orderId: 'convex:ORD-1' });
         expect(res.status).toBe(401);
-        expect(mockAdminRpc).not.toHaveBeenCalled();
+        expect(convex.mutation).not.toHaveBeenCalled();
     });
 
     it('returns 400 when orderId is missing', async () => {
         const res = await call({});
         expect(res.status).toBe(400);
+        expect(convex.mutation).not.toHaveBeenCalled();
     });
 
-    it('returns 403 without touching Stripe when the caller does not own the order', async () => {
-        mockAdminFrom.mockReturnValueOnce(orderOwnershipQuery({ data: null }));
-        const res = await call({ orderId: 'order-1' });
-        expect(res.status).toBe(403);
-        expect(mockFetchPayoutItems).not.toHaveBeenCalled();
+    it('returns 400 on malformed JSON', async () => {
+        const res = await call(undefined, { rawBody: '{' });
+        expect(res.status).toBe(400);
+    });
+
+    it('returns 400 without confirming when the caller cannot reach the order', async () => {
+        // Convex authorizes the read: a foreign order id throws instead of answering.
+        convex.query.mockRejectedValueOnce(new Error('Order access required'));
+        const res = await call({ orderId: 'convex:ORD-1' });
+        expect(res.status).toBe(400);
         expect(mockValidatePayoutDestinations).not.toHaveBeenCalled();
-        expect(mockAdminRpc).not.toHaveBeenCalled();
+        expect(convex.mutation).not.toHaveBeenCalled();
     });
 
-    it('returns 500 without confirming when payout items cannot be fetched', async () => {
-        mockFetchPayoutItems.mockResolvedValueOnce({ items: [], error: 'db down' });
-        const res = await call({ orderId: 'order-1' });
-        expect(res.status).toBe(500);
-        expect(mockAdminRpc).not.toHaveBeenCalled();
+    it('returns 400 without confirming when the order has no open incident', async () => {
+        convex.query.mockResolvedValueOnce({ ...payout, status: 'delivered' });
+        const res = await call({ orderId: 'convex:ORD-1' });
+        expect(res.status).toBe(400);
+        expect(convex.mutation).not.toHaveBeenCalled();
     });
 
     it('returns 400 without confirming when a payout destination is invalid', async () => {
         mockValidatePayoutDestinations.mockResolvedValueOnce(['shop-1: charges disabled']);
-        const res = await call({ orderId: 'order-1' });
+        const res = await call({ orderId: 'convex:ORD-1' });
         expect(res.status).toBe(400);
         // Status must NOT be flipped when the destination is unusable.
-        expect(mockAdminRpc).not.toHaveBeenCalled();
-    });
-
-    it('returns 400 when the confirm RPC fails', async () => {
-        mockAdminRpc.mockResolvedValueOnce({ data: null, error: { message: 'bad transition' } });
-        const res = await call({ orderId: 'order-1' });
-        expect(res.status).toBe(400);
-        expect(mockReleaseAndRecord).not.toHaveBeenCalled();
-    });
-
-    // NOTE (coverage gap): this endpoint, like confirm-delivery, has NO
-    // TypeScript-level check of the order's current status before calling
-    // `confirm_order_delivery`. The 'delivered'/'incident' -> 'confirmed'
-    // transition legality is enforced entirely inside the Postgres RPC
-    // (see db-structure/02-orders.sql: `WHERE status IN ('delivered', 'incident')`),
-    // which raises an exception for any other starting status (e.g. an
-    // already-'confirmed' or 'cancelled' order). We can't spin up a real
-    // Postgres instance in unit tests, so we simulate that rejection via the
-    // mocked RPC error to lock in the route's *handling* of an illegal
-    // transition (it must surface a 400 and skip the payout release), even
-    // though the transition rule itself lives only in SQL.
-    it('returns 400 when the order is not eligible for the delivered/incident -> confirmed transition', async () => {
-        mockAdminRpc.mockResolvedValueOnce({
-            data: null,
-            error: { message: 'Order not found or not in delivered or incident status' },
-        });
-        const res = await call({ orderId: 'order-1' });
-        expect(res.status).toBe(400);
-        expect(mockReleaseAndRecord).not.toHaveBeenCalled();
+        expect(convex.mutation).not.toHaveBeenCalled();
+        expect(mockReleaseAndRecordFunds).not.toHaveBeenCalled();
     });
 
     it('returns 500 when fund release fails after confirmation', async () => {
-        mockReleaseAndRecord.mockResolvedValueOnce({ success: false, error: 'transfer failed' });
-        const res = await call({ orderId: 'order-1' });
+        mockReleaseAndRecordFunds.mockResolvedValueOnce({ success: false, error: 'transfer failed' });
+        const res = await call({ orderId: 'convex:ORD-1' });
         expect(res.status).toBe(500);
+        expect(mockCreateAutoReviews).not.toHaveBeenCalled();
     });
 
     it('confirms, releases funds and returns 200 on the happy path', async () => {
-        const res = await call({ orderId: 'order-1' });
+        const res = await call({ orderId: 'convex:ORD-1' });
         expect(res.status).toBe(200);
-        expect(mockAdminRpc).toHaveBeenCalledWith('confirm_order_delivery', {
-            p_actor_id: 'user-1',
-            p_order_id: 'order-1',
-        });
-        expect(mockReleaseAndRecord).toHaveBeenCalledTimes(1);
-        expect(mockCreateAutoReviews).toHaveBeenCalledWith('order-1', en);
-        expect(await res.json()).toMatchObject({ success: true, orderId: 'order-1', publicId: 'ORD-1' });
+        expect(convex.mutation).toHaveBeenCalledTimes(1);
+        expect(mockReleaseAndRecordFunds).toHaveBeenCalledTimes(1);
+        expect(mockCreateAutoReviews).toHaveBeenCalledWith(
+            expect.objectContaining({ orderId: 'convex:ORD-1', comment: en.autoReviewComment }),
+        );
+        expect(await res.json()).toMatchObject({ success: true, orderId: 'convex:ORD-1', publicId: 'ORD-1' });
     });
 });

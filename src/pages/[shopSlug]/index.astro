@@ -3,65 +3,25 @@ import BuyerDetailLayout from '../../layouts/BuyerDetailLayout.astro';
 import ProductGrid from '../../components/ProductGrid.astro';
 import ShopContact from '../../components/product/ShopContact.astro';
 import Icon from '../../components/icons/Icon.astro';
-import { supabase } from '../../lib/core/supabase';
-import { createSupabaseAuthClient } from '../../lib/core/auth';
-import { enrichProductsWithRatings } from '../../lib/products/productUtils';
-import { isProductComplete } from '../../lib/products/productValidation';
 import { getMergedWishlistIds } from '../../lib/wishlist/wishlist';
+import { getConvexShopCatalog } from '../../lib/products/convexCatalog';
 
 import type { Shop, Product } from '../../lib/core/types';
-import { SHOP_STATUS } from '../../lib/core/shopStatus';
 const { t } = Astro.locals;
 
 const { shopSlug } = Astro.params;
 
-// Fetch shop details
-const { data: shopData } = await supabase
-  .from('shops')
-  .select('*')
-  .eq('slug', shopSlug!)
-  .eq('is_active', true)
-  .eq('status', SHOP_STATUS.ACTIVE)
-  .single();
+const convexCatalog = await getConvexShopCatalog(shopSlug!);
+if (!convexCatalog) return Astro.redirect('/');
 
-if (!shopData || !shopData.payments_active || !shopData.seller_details_complete) return Astro.redirect('/');
-const shop = shopData as Shop;
-
-// Fetch shop products
-const { data: productsData } = await supabase
-  .from('products')
-  .select('*, variants:product_variants(*)')
-  .eq('shop_id', shop.id)
-  .eq('is_active', true)
-  .order('created_at', { ascending: false });
-
-const rawProducts = (productsData ?? []).map((p: any) => ({ ...p, shop })) as Product[];
-const products = rawProducts.filter(p => isProductComplete(p));
-await enrichProductsWithRatings(products, supabase);
-
-// Calculate average rating of shop's products
-// Optional optimizations could be done via a Postgres view
-const productIds = products.map((p: Product) => p.id);
-let avgRating = 0;
-let totalReviews = 0;
-
-if (productIds.length > 0) {
-  const { data: reviewsData } = await supabase
-    .from('reviews')
-    .select('rating')
-    .in('product_id', productIds);
-
-  if (reviewsData && reviewsData.length > 0) {
-    totalReviews = reviewsData.length;
-    avgRating = reviewsData.reduce((acc: number, curr: any) => acc + curr.rating, 0) / totalReviews;
-  }
-}
+const shop: Shop = convexCatalog.shop;
+const products: Product[] = convexCatalog.products;
+const avgRating = convexCatalog.averageRating;
+const totalReviews = convexCatalog.totalReviews;
 
 const profileImg = shop.profile_img || '/placeholder.svg';
 
-const authClient = createSupabaseAuthClient(Astro.cookies, Astro.request);
-const { data: { user } } = await authClient.auth.getUser();
-const wishedProductIds = await getMergedWishlistIds(authClient, Astro.cookies, user?.id ?? null);
+const wishedProductIds = await getMergedWishlistIds(Astro.cookies, Astro.request);
 
 const siteOrigin = (Astro.site ?? new URL(`${Astro.url.protocol}//${Astro.url.host}`)).origin;
 const shopUrl = `${siteOrigin}/${shop.slug}`;

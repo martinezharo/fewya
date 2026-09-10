@@ -96,11 +96,10 @@ export const es: Strings = {
     shopNoDescription: 'Sin descripción disponible.',
 
     // Auth / Login
-    heroGoogleSignIn: 'Continuar con Google',
+    heroSignIn: 'Iniciar sesión',
     loginPageTitle: 'Iniciar sesión — Fewya',
     loginPageDescription: 'Inicia sesión en Fewya para continuar.',
     loginSubtitle: 'Inicia sesión para comprar, vender y gestionar tus pedidos.',
-    loginGoogleCta: 'Continuar con Google',
     loginTermsHint: 'Al continuar, aceptas nuestras',
     loginTermsHintTerms: 'condiciones de uso',
     loginTermsHintAnd: 'y la',
@@ -589,8 +588,6 @@ export const es: Strings = {
     sellerReviewsReplyError: 'No se pudo guardar la respuesta',
 
     // Auth / API / errors
-    authGoogleLoginError: 'Error al iniciar sesion con Google',
-    authMissingSupabaseEnv: 'Variables de entorno SUPABASE_URL o SUPABASE_KEY no configuradas',
     authMissingStripeEnv: 'Variable de entorno STRIPE_SECRET_KEY_TEST/STRIPE_SECRET_KEY_LIVE no configurada para el modo actual',
     apiUnauthorized: 'No autenticado',
     apiForbidden: 'No autorizado',
