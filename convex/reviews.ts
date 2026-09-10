@@ -70,6 +70,18 @@ export const submitBatch = mutation({
     handler: async (ctx, args) => {
         if (args.reviews.length === 0) throw new Error('At least one review is required');
 
+        // The Worker validates these too, for a friendlier error. Repeating
+        // it here is what actually holds: a rating is public and feeds the
+        // shop's average, and this mutation is callable directly.
+        for (const review of args.reviews) {
+            if (!Number.isInteger(review.rating) || review.rating < 1 || review.rating > 5) {
+                throw new Error('Rating must be a whole number between 1 and 5');
+            }
+            if (review.comment !== undefined && review.comment.length > 2000) {
+                throw new Error('Review comment is too long');
+            }
+        }
+
         const user = await identity(ctx);
         const profile = await profileForIdentity(ctx, user);
         if (!profile) throw new Error('Profile is not linked to this account');

@@ -47,9 +47,13 @@ export const toggle = mutation({
             .filter((q) => q.eq(q.field('productId'), product._id))
             .unique();
         if (existing) {
+            // Removal always works: a product that was deactivated after
+            // being wishlisted must still be removable.
             await ctx.db.delete(existing._id);
             return { wished: false };
         }
+
+        if (!product.isActive) throw new Error('Product not found');
 
         await ctx.db.insert('wishlist', {
             legacyId: `${profile.legacyId}:${product.legacyId}`,

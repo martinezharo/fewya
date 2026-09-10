@@ -204,6 +204,34 @@ describe('reviews', () => {
         ).rejects.toThrow();
     });
 
+    it('refuses a rating outside 1-5 or an oversized comment', async () => {
+        await t.run(async (ctx) => {
+            const order = await ctx.db
+                .query('orders')
+                .withIndex('by_legacy_id', (q) => q.eq('legacyId', orderA.orderLegacyId))
+                .unique();
+            await ctx.db.patch(order!._id, { status: 'confirmed' });
+        });
+        const asBuyerA = t.withIdentity(identity(BUYER_A, 'buyer-a@fewya.test'));
+
+        // A rating is public and feeds the shop average, so the bound is the
+        // mutation's to enforce — not the route's.
+        for (const rating of [0, 6, -1, 3.5, 1000]) {
+            await expect(
+                asBuyerA.mutation(api.reviews.submitBatch, {
+                    reviews: [{ productId: shopA.productLegacyId, rating }],
+                }),
+            ).rejects.toThrow(/rating/i);
+        }
+        await expect(
+            asBuyerA.mutation(api.reviews.submitBatch, {
+                reviews: [{ productId: shopA.productLegacyId, rating: 5, comment: 'x'.repeat(2001) }],
+            }),
+        ).rejects.toThrow(/too long/i);
+
+        expect(await t.run(async (ctx) => ctx.db.query('reviews').collect())).toHaveLength(0);
+    });
+
     it('accepts a review once the purchase is confirmed', async () => {
         await t.run(async (ctx) => {
             const order = await ctx.db
@@ -249,6 +277,22 @@ describe('wishlist', () => {
 
         expect(await asBuyerA.query(api.wishlist.mine, {})).toEqual([shopA.productLegacyId]);
         expect(await asBuyerB.query(api.wishlist.mine, {})).toEqual([shopB.productLegacyId]);
+    });
+
+    it('will not add a deactivated product, but still removes one', async () => {
+        const asBuyerA = t.withIdentity(identity(BUYER_A, 'buyer-a@fewya.test'));
+        await asBuyerA.mutation(api.wishlist.toggle, { productLegacyId: shopA.productLegacyId });
+        await t.run(async (ctx) => {
+            await ctx.db.patch(shopA.productId, { isActive: false });
+        });
+
+        // Removing what is already there must keep working after the seller
+        // unpublishes it; adding it back must not.
+        expect(await asBuyerA.mutation(api.wishlist.toggle, { productLegacyId: shopA.productLegacyId }))
+            .toEqual({ wished: false });
+        await expect(
+            asBuyerA.mutation(api.wishlist.toggle, { productLegacyId: shopA.productLegacyId }),
+        ).rejects.toThrow();
     });
 
     it('refuses an anonymous toggle', async () => {
