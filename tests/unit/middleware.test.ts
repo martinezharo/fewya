@@ -11,10 +11,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
  * page in a CDN and serves it to the next.
  */
 
-const exchangeAuthCodeForSession = vi.fn(async () => null as string | null);
 vi.mock('../../src/lib/core/auth', () => ({
-    exchangeAuthCodeForSession,
     hasRequestAuthUser: () => false,
+    setRequestAuthUser: () => {},
 }));
 
 // Same file the `cloudflare:workers` alias resolves to, so mutating this `env`
@@ -73,7 +72,6 @@ async function call(url: string, options: CallOptions = {}) {
 
 describe('middleware', () => {
     beforeEach(() => {
-        exchangeAuthCodeForSession.mockResolvedValue(null);
         vi.spyOn(console, 'warn').mockImplementation(() => {});
     });
 
@@ -92,10 +90,12 @@ describe('middleware', () => {
     });
 
     describe('CSRF', () => {
+        // A path outside the rate-limited prefixes, so these assertions see
+        // only the CSRF decision.
         const mutating = ['POST', 'PATCH', 'DELETE'] as const;
 
         it.each(mutating)('rejects a cross-origin %s with 403', async (method) => {
-            const { response } = await call('https://fewya.com/api/cart/add', {
+            const { response } = await call('https://fewya.com/api/products', {
                 method,
                 headers: { Origin: 'https://evil.example' },
             });
@@ -104,7 +104,7 @@ describe('middleware', () => {
         });
 
         it('allows a same-origin POST', async () => {
-            const { response } = await call('https://fewya.com/api/cart/add', {
+            const { response } = await call('https://fewya.com/api/products', {
                 method: 'POST',
                 headers: { Origin: 'https://fewya.com' },
             });
@@ -115,7 +115,7 @@ describe('middleware', () => {
             // Not every legitimate client sends one, and the check is a
             // defence-in-depth measure on top of SameSite cookies rather than
             // the only thing standing between a request and a write.
-            const { response } = await call('https://fewya.com/api/cart/add', { method: 'POST' });
+            const { response } = await call('https://fewya.com/api/products', { method: 'POST' });
             expect(response.status).toBe(200);
         });
 
@@ -159,23 +159,29 @@ describe('middleware', () => {
     });
 
     describe('rate limiting', () => {
-        it('applies to auth endpoints', async () => {
-            env.RATE_LIMITER_AUTH = { limit: async () => ({ success: false }) };
-            const { response } = await call('https://fewya.com/api/auth/signin', { method: 'POST' });
+        it('never limits a signed webhook, whose events would be lost', async () => {
+            env.RATE_LIMITER = { limit: async () => ({ success: false }) };
+            const { response } = await call('https://fewya.com/api/sendcloud/webhook', { method: 'POST' });
+            expect(response.status).toBe(200);
+        });
+
+        it('applies to the endpoints that call paid third-party APIs', async () => {
+            env.RATE_LIMITER = { limit: async () => ({ success: false }) };
+            const { response } = await call('https://fewya.com/api/sendcloud/quote', { method: 'POST' });
             expect(response.status).toBe(429);
             expect(response.headers.get('Retry-After')).toBe('60');
         });
 
-        it('lets an allowed auth request through', async () => {
-            env.RATE_LIMITER_AUTH = { limit: async () => ({ success: true }) };
-            const { response } = await call('https://fewya.com/api/auth/signin', { method: 'POST' });
+        it('lets an allowed request through', async () => {
+            env.RATE_LIMITER = { limit: async () => ({ success: true }) };
+            const { response } = await call('https://fewya.com/api/cart/checkout', { method: 'POST' });
             expect(response.status).toBe(200);
         });
 
         it('keys the limiter on the client IP', async () => {
             const limit = vi.fn(async () => ({ success: true }));
-            env.RATE_LIMITER_AUTH = { limit };
-            await call('https://fewya.com/api/auth/signin', {
+            env.RATE_LIMITER = { limit };
+            await call('https://fewya.com/api/cart/checkout', {
                 method: 'POST',
                 headers: { 'CF-Connecting-IP': '203.0.113.9' },
             });
@@ -187,49 +193,27 @@ describe('middleware', () => {
             // an attacker-supplied header such as X-Forwarded-For instead would
             // let each request invent its own bucket and never trip.
             const limit = vi.fn(async () => ({ success: true }));
-            env.RATE_LIMITER_AUTH = { limit };
-            await call('https://fewya.com/api/auth/signin', {
+            env.RATE_LIMITER = { limit };
+            await call('https://fewya.com/api/cart/checkout', {
                 method: 'POST',
                 headers: { 'X-Forwarded-For': '203.0.113.9' },
             });
             expect(limit).toHaveBeenCalledWith({ key: 'unknown' });
         });
 
-        it('does not rate limit non-auth routes', async () => {
+        it('does not rate limit unrelated routes', async () => {
             const limit = vi.fn(async () => ({ success: false }));
-            env.RATE_LIMITER_AUTH = { limit };
-            const { response } = await call('https://fewya.com/api/cart/add', { method: 'POST' });
+            env.RATE_LIMITER = { limit };
+            const { response } = await call('https://fewya.com/api/products', { method: 'POST' });
             expect(limit).not.toHaveBeenCalled();
             expect(response.status).toBe(200);
         });
 
-        it('rate limits GETs to auth routes too', async () => {
-            // The OAuth callback is a GET, and it is as worth limiting as the
-            // sign-in POST.
-            env.RATE_LIMITER_AUTH = { limit: async () => ({ success: false }) };
-            const { response } = await call('https://fewya.com/api/auth/callback?code=x');
+        it('rate limits GETs too', async () => {
+            // Service-point lookups are GETs and cost a Sendcloud call each.
+            env.RATE_LIMITER = { limit: async () => ({ success: false }) };
+            const { response } = await call('https://fewya.com/api/sendcloud/service-points?address=x');
             expect(response.status).toBe(429);
-        });
-    });
-
-    describe('auth code exchange', () => {
-        it('redirects when a code is exchanged successfully', async () => {
-            exchangeAuthCodeForSession.mockResolvedValue('/me');
-            const { response } = await call('https://fewya.com/?code=abc');
-            expect(response.status).toBe(302);
-            expect(response.headers.get('Location')).toBe('/me');
-        });
-
-        it('leaves the callback route to handle its own code', async () => {
-            // Running the exchange here as well would consume a single-use code
-            // before the route that exists to consume it ever saw it.
-            await call('https://fewya.com/api/auth/callback?code=abc');
-            expect(exchangeAuthCodeForSession).not.toHaveBeenCalled();
-        });
-
-        it('does not attempt an exchange on a POST', async () => {
-            await call('https://fewya.com/?code=abc', { method: 'POST' });
-            expect(exchangeAuthCodeForSession).not.toHaveBeenCalled();
         });
     });
 
@@ -338,9 +322,19 @@ describe('middleware', () => {
             // The whole point: a personalised header on a "public" page must
             // not be stored by a shared cache and handed to the next visitor.
             const { response } = await call('https://fewya.com/products/widget', {
-                headers: { Cookie: 'sb-abcdef-auth-token=xyz' },
+                headers: { Cookie: '__session=jwt-value' },
             });
             expect(response.headers.get('Cache-Control')).toBe('private, no-store');
+        });
+
+        it('treats a signed-out Clerk client as cacheable', async () => {
+            // __client_uat=0 is Clerk's "nobody is signed in here" marker.
+            const { response } = await call('https://fewya.com/products/widget', {
+                headers: { Cookie: '__client_uat=0' },
+            });
+            expect(response.headers.get('Cache-Control')).toBe(
+                'public, s-maxage=60, stale-while-revalidate=300',
+            );
         });
 
         it('is not fooled by a session-looking string inside a cookie value', async () => {
@@ -348,14 +342,14 @@ describe('middleware', () => {
             // harmless cookie whose *value* mentions an auth token used to
             // suppress caching for everyone who had one.
             const { response } = await call('https://fewya.com/products/widget', {
-                headers: { Cookie: 'cart=sb-abcdef-auth-token; locale=es' },
+                headers: { Cookie: 'cart=__session-lookalike; locale=es' },
             });
             expect(response.headers.get('Cache-Control')).toBe(
                 'public, s-maxage=60, stale-while-revalidate=300',
             );
         });
 
-        it('ignores unrelated sb- cookies', async () => {
+        it('ignores unrelated cookies', async () => {
             const { response } = await call('https://fewya.com/products/widget', {
                 headers: { Cookie: 'sb-abcdef-locale=es' },
             });

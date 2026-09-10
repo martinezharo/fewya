@@ -1,11 +1,18 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { AstroCookies } from 'astro';
-import {
-    getWishlistCount,
+
+const convex = await vi.hoisted(async () => {
+    const { createConvexRouteMock } = await import('../helpers/convexRoute');
+    return createConvexRouteMock();
+});
+
+vi.mock('../../src/lib/core/auth', () => convex.authModule());
+
+const {
     getWishlistIdsFromCookie,
     getMergedWishlistIds,
     getMergedWishlistCount,
-} from '../../src/lib/wishlist/wishlist';
+} = await import('../../src/lib/wishlist/wishlist');
 
 function makeCookies(raw?: string): AstroCookies {
     return {
@@ -16,35 +23,7 @@ function makeCookies(raw?: string): AstroCookies {
     } as unknown as AstroCookies;
 }
 
-function makeCountClient(count: number | null) {
-    const eqMock = vi.fn().mockResolvedValue({ count });
-    const selectMock = vi.fn().mockReturnValue({ eq: eqMock });
-    const fromMock = vi.fn().mockReturnValue({ select: selectMock });
-    return { from: fromMock, _mocks: { fromMock, selectMock, eqMock } } as any;
-}
-
-function makeWishlistDataClient(data: Array<{ product_id: string }> | null) {
-    const eqMock = vi.fn().mockResolvedValue({ data });
-    const selectMock = vi.fn().mockReturnValue({ eq: eqMock });
-    const fromMock = vi.fn().mockReturnValue({ select: selectMock });
-    return { from: fromMock, _mocks: { fromMock, selectMock, eqMock } } as any;
-}
-
-describe('getWishlistCount', () => {
-    it('returns the count from the wishlist table for the given user', async () => {
-        const client = makeCountClient(3);
-        const count = await getWishlistCount(client, 'user-1');
-        expect(count).toBe(3);
-        expect(client._mocks.fromMock).toHaveBeenCalledWith('wishlist');
-        expect(client._mocks.selectMock).toHaveBeenCalledWith('*', { count: 'exact', head: true });
-        expect(client._mocks.eqMock).toHaveBeenCalledWith('profile_id', 'user-1');
-    });
-
-    it('returns 0 when count is null', async () => {
-        const client = makeCountClient(null);
-        expect(await getWishlistCount(client, 'user-1')).toBe(0);
-    });
-});
+const request = new Request('https://fewya.com/');
 
 describe('getWishlistIdsFromCookie', () => {
     it('returns an empty array when there is no cookie', () => {
@@ -72,55 +51,64 @@ describe('getWishlistIdsFromCookie', () => {
 });
 
 describe('getMergedWishlistIds', () => {
-    it('returns only cookie ids for anonymous users (no userId)', async () => {
-        const raw = encodeURIComponent(JSON.stringify(['local-1']));
-        const client = makeWishlistDataClient([{ product_id: 'db-1' }]);
+    beforeEach(() => {
+        vi.clearAllMocks();
+        convex.reset();
+        convex.query.mockResolvedValue(['stored-1']);
+    });
 
-        const result = await getMergedWishlistIds(client, makeCookies(raw));
+    it('returns only cookie ids for anonymous visitors', async () => {
+        convex.reset(null);
+        const raw = encodeURIComponent(JSON.stringify(['local-1']));
+
+        const result = await getMergedWishlistIds(makeCookies(raw), request);
 
         expect(result).toEqual(new Set(['local-1']));
-        expect(client._mocks.fromMock).not.toHaveBeenCalled();
+        expect(convex.query).not.toHaveBeenCalled();
     });
 
-    it('merges DB wishlist ids with local cookie ids for authenticated users', async () => {
+    it('returns only cookie ids when no request is available to authorize with', async () => {
+        const raw = encodeURIComponent(JSON.stringify(['local-1']));
+        const result = await getMergedWishlistIds(makeCookies(raw));
+        expect(result).toEqual(new Set(['local-1']));
+        expect(convex.query).not.toHaveBeenCalled();
+    });
+
+    it('merges stored wishlist ids with local cookie ids for signed-in users', async () => {
         const raw = encodeURIComponent(JSON.stringify(['local-1', 'shared']));
-        const client = makeWishlistDataClient([{ product_id: 'db-1' }, { product_id: 'shared' }]);
+        convex.query.mockResolvedValueOnce(['stored-1', 'shared']);
 
-        const result = await getMergedWishlistIds(client, makeCookies(raw), 'user-1');
+        const result = await getMergedWishlistIds(makeCookies(raw), request);
 
-        expect(result).toEqual(new Set(['local-1', 'shared', 'db-1']));
-        expect(client._mocks.fromMock).toHaveBeenCalledWith('wishlist');
-        expect(client._mocks.eqMock).toHaveBeenCalledWith('profile_id', 'user-1');
+        expect(result).toEqual(new Set(['local-1', 'shared', 'stored-1']));
     });
 
-    it('handles a null wishData response from the DB gracefully', async () => {
-        const client = makeWishlistDataClient(null);
-        const result = await getMergedWishlistIds(client, makeCookies(), 'user-1');
-        expect(result).toEqual(new Set());
-    });
+    it('falls back to the cookie ids when the stored wishlist cannot be read', async () => {
+        const raw = encodeURIComponent(JSON.stringify(['local-1']));
+        convex.query.mockRejectedValueOnce(new Error('convex down'));
 
-    it('treats userId undefined the same as anonymous', async () => {
-        const client = makeWishlistDataClient([{ product_id: 'db-1' }]);
-        const result = await getMergedWishlistIds(client, makeCookies(), undefined);
-        expect(result).toEqual(new Set());
-        expect(client._mocks.fromMock).not.toHaveBeenCalled();
+        const result = await getMergedWishlistIds(makeCookies(raw), request);
+
+        expect(result).toEqual(new Set(['local-1']));
     });
 });
 
 describe('getMergedWishlistCount', () => {
-    it('returns the size of the merged id set', async () => {
-        const raw = encodeURIComponent(JSON.stringify(['local-1', 'local-2']));
-        const client = makeWishlistDataClient([{ product_id: 'local-1' }, { product_id: 'db-1' }]);
-
-        const count = await getMergedWishlistCount(client, makeCookies(raw), 'user-1');
-
-        // local-1, local-2, db-1 => 3 unique ids
-        expect(count).toBe(3);
+    beforeEach(() => {
+        vi.clearAllMocks();
+        convex.reset();
     });
 
-    it('returns 0 when there is nothing in cookie or DB', async () => {
-        const client = makeWishlistDataClient([]);
-        const count = await getMergedWishlistCount(client, makeCookies(), 'user-1');
-        expect(count).toBe(0);
+    it('returns the size of the merged id set', async () => {
+        const raw = encodeURIComponent(JSON.stringify(['local-1', 'local-2']));
+        convex.query.mockResolvedValueOnce(['local-1', 'stored-1']);
+
+        // local-1, local-2, stored-1 => 3 unique ids
+        expect(await getMergedWishlistCount(makeCookies(raw), request)).toBe(3);
+    });
+
+    it('returns 0 when there is nothing stored and no cookie', async () => {
+        convex.query.mockResolvedValueOnce([]);
+        expect(await getMergedWishlistCount(makeCookies(), request)).toBe(0);
     });
 });

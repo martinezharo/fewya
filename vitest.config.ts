@@ -12,9 +12,9 @@ export default defineConfig({
     test: {
         environment: 'happy-dom',
         globals: true,
-        // The RLS suite needs a live Postgres and runs as its own project;
-        // see vitest.rls.config.ts and tests/rls/README.md.
-        exclude: ['node_modules/**', 'tests/rls/**', 'tests/e2e/**'],
+        // tests/convex/* run the real Convex functions and set their own
+        // `@vitest-environment edge-runtime` docblock; everything else is DOM.
+        exclude: ['node_modules/**', 'tests/e2e/**'],
         coverage: {
             provider: 'v8',
             reporter: ['text', 'json', 'html'],

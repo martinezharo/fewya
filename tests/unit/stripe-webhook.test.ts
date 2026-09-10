@@ -1,17 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// vi.mock is hoisted — variables whose names start with "mock" are also hoisted
-const mockConstructEventAsync = vi.fn();
-const mockRefundsCreate = vi.fn();
-const mockStripeInstance = {
-    webhooks: { constructEventAsync: mockConstructEventAsync },
-    refunds: { create: mockRefundsCreate },
-};
-const mockInsert = vi.fn();
-const mockRpc = vi.fn();
-const mockMaybeSingle = vi.fn();
-const mockOrdersSelectResult = vi.fn();
-const mockOrdersUpdateIn = vi.fn();
+const {
+    mockConstructEventAsync,
+    mockRefundsCreate,
+    mockQuery,
+    mockMutation,
+    mockNotify,
+} = vi.hoisted(() => ({
+    mockConstructEventAsync: vi.fn(),
+    mockRefundsCreate: vi.fn(),
+    mockQuery: vi.fn(),
+    mockMutation: vi.fn(),
+    mockNotify: vi.fn(),
+}));
 
 vi.mock('astro:env/server', () => ({
     APP_MODE: 'production',
@@ -19,37 +20,22 @@ vi.mock('astro:env/server', () => ({
     STRIPE_WEBHOOK_SECRET_LIVE: 'whsec_test_secret',
     STRIPE_SECRET_KEY_TEST: 'sk_test_key_test',
     STRIPE_SECRET_KEY_LIVE: 'sk_test_key',
-    CONVEX_WEBHOOK_SECRET: undefined,
-    CONVEX_ONLY: 'false',
-    SUPABASE_URL: 'https://test.supabase.co',
-    SUPABASE_KEY: 'test-key',
-    SUPABASE_SECRET_KEY: 'test-secret-key',
+    CONVEX_URL: 'https://mock.convex.cloud',
+    CONVEX_WEBHOOK_SECRET: 'convex-webhook-mock',
 }));
 
 vi.mock('../../src/lib/payments/stripe', () => ({
-    getStripeClient: () => mockStripeInstance,
-}));
-
-vi.mock('../../src/lib/core/supabase-admin', () => ({
-    createSupabaseAdminClient: () => ({
-        from: (_table: string) => ({
-            insert: mockInsert,
-            update: (_values: Record<string, unknown>) => ({ in: mockOrdersUpdateIn }),
-            select: (_cols: string) => ({
-                // dedup pre-check: .select('event_id').eq('event_id', id).maybeSingle()
-                eq: (_col: string, _val: unknown) => ({
-                    maybeSingle: mockMaybeSingle,
-                }),
-                // orders lookup: .select(...).neq(...).eq(...)/.in(...)
-                neq: (_col: string, _val: unknown) => ({
-                    eq: (_col2: string, _val2: unknown) => mockOrdersSelectResult(),
-                    in: (_col2: string, _vals: unknown[]) => mockOrdersSelectResult(),
-                }),
-            }),
-        }),
-        rpc: mockRpc,
+    getStripeClient: () => ({
+        webhooks: { constructEventAsync: mockConstructEventAsync },
+        refunds: { create: mockRefundsCreate },
     }),
 }));
+
+vi.mock('../../src/lib/core/convex', () => ({
+    createConvexClient: () => ({ query: mockQuery, mutation: mockMutation }),
+}));
+
+vi.mock('../../src/lib/notifications/dispatch', () => ({ notify: mockNotify }));
 
 vi.mock('../../src/lib/core/security-log', () => ({
     securityLog: vi.fn(),
@@ -57,143 +43,127 @@ vi.mock('../../src/lib/core/security-log', () => ({
 
 const { POST } = await import('../../src/pages/api/webhooks/stripe');
 
+function post(event: unknown, { signature = 'valid_sig' }: { signature?: string | null } = {}) {
+    const request = new Request('https://fewya.com/api/webhooks/stripe', {
+        method: 'POST',
+        headers: signature ? { 'stripe-signature': signature } : {},
+        body: JSON.stringify(event ?? {}),
+    });
+    return POST({ request } as any);
+}
+
+const checkoutCompleted = {
+    id: 'evt_1',
+    type: 'checkout.session.completed',
+    data: { object: { id: 'cs_1', payment_intent: 'pi_1' } },
+};
+
 describe('Stripe webhook handler', () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        mockOrdersSelectResult.mockResolvedValue({ data: [] });
-        mockOrdersUpdateIn.mockResolvedValue({ error: null });
+        mockNotify.mockResolvedValue({ sent: true });
+        mockMutation.mockResolvedValue({ handled: true, requiresRefund: false, orders: [] });
     });
 
-    it('returns 400 when stripe-signature header is missing', async () => {
-        const req = new Request('https://fewya.com/api/webhooks/stripe', {
-            method: 'POST',
-            body: '{}',
-        });
-
-        const res = await POST({ request: req } as any);
+    it('returns 400 when the stripe-signature header is missing', async () => {
+        const res = await post({}, { signature: null });
         expect(res.status).toBe(400);
+        expect(mockMutation).not.toHaveBeenCalled();
     });
 
-    it('returns 401 when signature is invalid', async () => {
+    it('returns 401 when the signature is invalid', async () => {
         mockConstructEventAsync.mockRejectedValueOnce(new Error('No signatures found'));
-
-        const req = new Request('https://fewya.com/api/webhooks/stripe', {
-            method: 'POST',
-            headers: { 'stripe-signature': 'bad_sig', 'Content-Type': 'text/plain' },
-            body: '{}',
-        });
-
-        const res = await POST({ request: req } as any);
+        const res = await post({}, { signature: 'bad_sig' });
         expect(res.status).toBe(401);
+        expect(mockMutation).not.toHaveBeenCalled();
     });
 
-    it('returns 200 for a valid event when signature passes', async () => {
-        const fakeEvent = {
-            id: 'evt_test_ok',
+    it('acknowledges an event type it does not act on', async () => {
+        mockConstructEventAsync.mockResolvedValueOnce({
+            id: 'evt_refund',
             type: 'charge.refunded',
             data: { object: { id: 'ch_1', amount_refunded: 1000 } },
-        };
-        mockConstructEventAsync.mockResolvedValueOnce(fakeEvent);
-        // Dedup pre-check: not previously processed
-        mockMaybeSingle.mockResolvedValueOnce({ data: null });
-
-        const req = new Request('https://fewya.com/api/webhooks/stripe', {
-            method: 'POST',
-            headers: { 'stripe-signature': 'valid_sig' },
-            body: JSON.stringify(fakeEvent),
         });
-
-        const res = await POST({ request: req } as any);
+        const res = await post({});
         expect(res.status).toBe(200);
+        expect(mockMutation).not.toHaveBeenCalled();
     });
 
-    it('returns 200 without re-processing a duplicate event (idempotency)', async () => {
-        const fakeEvent = {
-            id: 'evt_duplicate',
-            type: 'charge.refunded',
-            data: { object: { id: 'ch_dup', amount_refunded: 500 } },
-        };
-        mockConstructEventAsync.mockResolvedValueOnce(fakeEvent);
-        // Dedup pre-check: event already recorded
-        mockMaybeSingle.mockResolvedValueOnce({ data: { event_id: 'evt_duplicate' } });
-
-        const req = new Request('https://fewya.com/api/webhooks/stripe', {
-            method: 'POST',
-            headers: { 'stripe-signature': 'valid_sig' },
-            body: JSON.stringify(fakeEvent),
+    it('commits the payment and notifies the seller on the happy path', async () => {
+        mockConstructEventAsync.mockResolvedValueOnce(checkoutCompleted);
+        mockMutation.mockResolvedValueOnce({
+            handled: true,
+            requiresRefund: false,
+            orders: [{ id: 'convex:ORD-1' }],
         });
 
-        const res = await POST({ request: req } as any);
+        const res = await post(checkoutCompleted);
+
         expect(res.status).toBe(200);
-        expect(mockRpc).not.toHaveBeenCalled();
+        expect(mockMutation).toHaveBeenCalledWith(
+            expect.anything(),
+            expect.objectContaining({ eventId: 'evt_1', sessionId: 'cs_1', paymentIntentId: 'pi_1' }),
+        );
+        expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
+            orderId: 'convex:ORD-1',
+            recipient: 'seller',
+        }));
     });
 
-    it('refunds the charge and cancels the order when mark_order_paid fails (e.g. insufficient stock)', async () => {
-        const fakeEvent = {
-            id: 'evt_stock_conflict',
-            type: 'checkout.session.completed',
-            data: {
-                object: {
-                    id: 'cs_1',
-                    payment_intent: 'pi_1',
-                },
-            },
-        };
-        mockConstructEventAsync.mockResolvedValueOnce(fakeEvent);
-        mockMaybeSingle.mockResolvedValueOnce({ data: null });
-        mockOrdersSelectResult.mockResolvedValueOnce({
-            data: [{ id: 'order-1', buyer_id: 'buyer-1', stripe_checkout_session_id: 'cs_1' }],
+    // Convex dedupes by event id: a replay comes back handled with nothing to do.
+    it('returns 200 without re-notifying on a duplicate event', async () => {
+        mockConstructEventAsync.mockResolvedValueOnce(checkoutCompleted);
+        mockMutation.mockResolvedValueOnce({ handled: true, requiresRefund: false, orders: [] });
+
+        const res = await post(checkoutCompleted);
+
+        expect(res.status).toBe(200);
+        expect(mockNotify).not.toHaveBeenCalled();
+    });
+
+    it('refunds the charge when the payment cannot be committed (e.g. insufficient stock)', async () => {
+        mockConstructEventAsync.mockResolvedValueOnce(checkoutCompleted);
+        mockMutation.mockResolvedValueOnce({
+            handled: true,
+            requiresRefund: true,
+            failureReason: 'insufficient_stock',
+            orders: [],
         });
-        mockRpc.mockResolvedValueOnce({ error: { message: 'insufficient_stock' } });
         mockRefundsCreate.mockResolvedValueOnce({ id: 're_1' });
 
-        const req = new Request('https://fewya.com/api/webhooks/stripe', {
-            method: 'POST',
-            headers: { 'stripe-signature': 'valid_sig' },
-            body: JSON.stringify(fakeEvent),
-        });
-
-        const res = await POST({ request: req } as any);
+        const res = await post(checkoutCompleted);
 
         expect(res.status).toBe(200);
         expect(mockRefundsCreate).toHaveBeenCalledWith(
             expect.objectContaining({ payment_intent: 'pi_1' }),
             expect.objectContaining({ idempotencyKey: 'mark-paid-failure-refund:cs_1' }),
         );
-        expect(mockOrdersUpdateIn).toHaveBeenCalledWith('id', ['order-1']);
-        // The event is still recorded so Stripe doesn't retry forever once we've
-        // already refunded and cancelled — retrying would just refund again.
-        expect(mockInsert).toHaveBeenCalledWith({ event_id: 'evt_stock_conflict', source: 'stripe' });
+        expect(mockNotify).not.toHaveBeenCalled();
     });
 
-    it('still cancels the order when the compensating Stripe refund itself fails', async () => {
-        const fakeEvent = {
-            id: 'evt_stock_conflict_2',
-            type: 'checkout.session.completed',
-            data: {
-                object: {
-                    id: 'cs_2',
-                    payment_intent: 'pi_2',
-                },
-            },
-        };
-        mockConstructEventAsync.mockResolvedValueOnce(fakeEvent);
-        mockMaybeSingle.mockResolvedValueOnce({ data: null });
-        mockOrdersSelectResult.mockResolvedValueOnce({
-            data: [{ id: 'order-2', buyer_id: 'buyer-2', stripe_checkout_session_id: 'cs_2' }],
+    it('still acknowledges when the compensating refund itself fails', async () => {
+        vi.spyOn(console, 'error').mockImplementation(() => {});
+        mockConstructEventAsync.mockResolvedValueOnce(checkoutCompleted);
+        mockMutation.mockResolvedValueOnce({
+            handled: true,
+            requiresRefund: true,
+            failureReason: 'insufficient_stock',
+            orders: [],
         });
-        mockRpc.mockResolvedValueOnce({ error: { message: 'insufficient_stock' } });
         mockRefundsCreate.mockRejectedValueOnce(new Error('stripe down'));
 
-        const req = new Request('https://fewya.com/api/webhooks/stripe', {
-            method: 'POST',
-            headers: { 'stripe-signature': 'valid_sig' },
-            body: JSON.stringify(fakeEvent),
-        });
-
-        const res = await POST({ request: req } as any);
-
+        const res = await post(checkoutCompleted);
         expect(res.status).toBe(200);
-        expect(mockOrdersUpdateIn).toHaveBeenCalledWith('id', ['order-2']);
+    });
+
+    // A transport failure must be retried by Stripe: acknowledging would leave
+    // a paid order pending forever.
+    it('returns 500 when the Convex write throws', async () => {
+        vi.spyOn(console, 'error').mockImplementation(() => {});
+        mockConstructEventAsync.mockResolvedValueOnce(checkoutCompleted);
+        mockMutation.mockRejectedValueOnce(new Error('convex unreachable'));
+
+        const res = await post(checkoutCompleted);
+        expect(res.status).toBe(500);
     });
 });

@@ -1,7 +1,8 @@
-export const SUPABASE_URL = 'https://mock.supabase.co';
-export const SUPABASE_KEY = 'mock-key';
-export const SUPABASE_SECRET_KEY = 'sb_secret_mock';
 export const APP_MODE = 'production';
+export const CONVEX_URL = 'https://mock.convex.cloud';
+export const CONVEX_WEBHOOK_SECRET = 'convex-webhook-mock';
+export const CLERK_SECRET_KEY = undefined;
+export const CLERK_JWT_TEMPLATE = 'convex';
 export const STRIPE_SECRET_KEY_TEST = 'sk_test_mock';
 export const STRIPE_SECRET_KEY_LIVE = 'sk_live_mock';
 export const STRIPE_WEBHOOK_SECRET_TEST = 'whsec_test_mock';

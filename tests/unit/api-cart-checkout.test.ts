@@ -1,35 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { en } from '../../src/lib/core/i18n/strings.en';
+import { getFunctionName } from 'convex/server';
+import { api } from '../../convex/_generated/api';
 
-const mockGetUser = vi.fn();
-const mockProfileSingle = vi.fn();
-const mockVariantsIn = vi.fn();
-const mockAdminRpc = vi.fn();
-const mockSessionCreate = vi.fn();
-const mockSessionExpire = vi.fn();
-const mockOrdersUpdateIn = vi.fn();
-const mockOrdersUpdate = vi.fn(() => ({ in: mockOrdersUpdateIn }));
-
-vi.mock('../../src/lib/core/auth', () => ({
-    createSupabaseAuthClient: () => ({
-        auth: { getUser: mockGetUser },
-        from: (table: string) => {
-            if (table === 'profiles') {
-                return { select: () => ({ eq: () => ({ single: mockProfileSingle }) }) };
-            }
-            // product_variants
-            return { select: () => ({ in: mockVariantsIn }) };
-        },
-    }),
-    getRequestConvexToken: () => null,
+const convex = await vi.hoisted(async () => {
+    const { createConvexRouteMock } = await import('../helpers/convexRoute');
+    return createConvexRouteMock();
+});
+const { mockSessionCreate, mockSessionExpire } = vi.hoisted(() => ({
+    mockSessionCreate: vi.fn(),
+    mockSessionExpire: vi.fn(),
 }));
 
-vi.mock('../../src/lib/core/supabase-admin', () => ({
-    createSupabaseAdminClient: () => ({
-        rpc: mockAdminRpc,
-        from: () => ({ update: mockOrdersUpdate }),
-    }),
-}));
+vi.mock('../../src/lib/core/auth', () => convex.authModule());
 
 vi.mock('../../src/lib/payments/stripe', () => ({
     getStripeClient: () => ({
@@ -46,33 +29,24 @@ function call(body: unknown, { rawBody }: { rawBody?: string } = {}) {
         headers: { 'Content-Type': 'application/json' },
         body: rawBody ?? JSON.stringify(body),
     });
-    return POST({ locals: { t: en, locale: 'en' }, request, cookies: {} } as any);
+    return POST({ locals: { t: en, locale: 'en' }, request } as any);
 }
 
+/** The Convex profile document for a buyer who can check out. */
 const completeProfile = {
-    first_name: 'Ana',
-    last_name: 'García',
+    firstName: 'Ana',
+    lastName: 'García',
     email: 'ana@example.com',
     phone: '600111222',
-    phone_prefix: '+34',
-    address_street: 'Calle Mayor',
-    address_number: '1',
-    address_floor: '',
-    address_postal_code: '28001',
-    address_city: 'Madrid',
-    address_province: 'Madrid',
-    address_country: 'ES',
+    phonePrefix: '+34',
+    addressStreet: 'Calle Mayor',
+    addressNumber: '1',
+    addressFloor: '',
+    addressPostalCode: '28001',
+    addressCity: 'Madrid',
+    addressProvince: 'Madrid',
+    addressCountry: 'ES',
 };
-
-function paymentAccount(overrides: Record<string, unknown> = {}) {
-    return {
-        stripe_account_id: 'acct_1',
-        charges_enabled: true,
-        payouts_enabled: true,
-        details_submitted: true,
-        ...overrides,
-    };
-}
 
 function shop(overrides: Record<string, unknown> = {}) {
     return {
@@ -82,7 +56,7 @@ function shop(overrides: Record<string, unknown> = {}) {
         is_active: true,
         seller_details_complete: true,
         shipping_carriers: ['correos', 'inpost'],
-        shop_payment_accounts: paymentAccount(),
+        payment_ready: true,
         ...overrides,
     };
 }
@@ -95,33 +69,46 @@ function variantRow(overrides: Record<string, unknown> = {}, productOverrides: R
         variant_name: 'Red',
         variant_image: null,
         shipping_cost: 3,
-        products: {
+        product: {
             id: 'prod-1',
             title: 'Widget',
             slug: 'widget',
             is_active: true,
             gallery_images: ['img.jpg'],
-            shops: shop(),
+            shop: shop(),
             ...productOverrides,
         },
         ...overrides,
     };
 }
 
+/** Routes the two Convex reads the checkout performs. */
+function stubReads({ profile = completeProfile, variants = [variantRow()] }: {
+    profile?: Record<string, unknown> | null;
+    variants?: unknown[];
+} = {}) {
+    convex.query.mockImplementation(async (fn: any) => {
+        const name = getFunctionName(fn);
+        if (name === getFunctionName(api.users.current)) return profile;
+        if (name === getFunctionName(api.catalog.getCartVariants)) return variants;
+        throw new Error(`unexpected query: ${name}`);
+    });
+}
+
 describe('POST /api/cart/checkout', () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        mockGetUser.mockResolvedValue({ data: { user: { id: 'buyer-1', email: 'ana@example.com', user_metadata: {} } } });
-        mockProfileSingle.mockResolvedValue({ data: completeProfile, error: null });
-        mockVariantsIn.mockResolvedValue({ data: [variantRow()], error: null });
-        mockAdminRpc.mockResolvedValue({ data: [{ id: 'order-uuid-1' }], error: null });
+        convex.reset();
+        stubReads();
+        convex.mutation.mockResolvedValue({
+            orders: [{ id: 'convex:ORD-1', public_id: 'ORD-1', shop_id: 'shop-1' }],
+        });
         mockSessionCreate.mockResolvedValue({ id: 'cs_1', url: 'https://stripe.test/session/cs_1' });
         mockSessionExpire.mockResolvedValue({});
-        mockOrdersUpdateIn.mockResolvedValue({ error: null });
     });
 
     it('returns 401 when there is no authenticated user', async () => {
-        mockGetUser.mockResolvedValueOnce({ data: { user: null } });
+        convex.reset(null);
         const res = await call({ items: [{ variantId: 'var-1', quantity: 1 }] });
         expect(res.status).toBe(401);
         expect(mockSessionCreate).not.toHaveBeenCalled();
@@ -141,8 +128,15 @@ describe('POST /api/cart/checkout', () => {
         expect(await res.json()).toMatchObject({ error: en.apiInvalidProductData });
     });
 
+    it('returns 401 when the caller has no linked profile', async () => {
+        stubReads({ profile: null });
+        const res = await call({ items: [{ variantId: 'var-1', quantity: 1 }] });
+        expect(res.status).toBe(401);
+        expect(mockSessionCreate).not.toHaveBeenCalled();
+    });
+
     it('returns 400 with a profile-completion redirect when the profile is incomplete', async () => {
-        mockProfileSingle.mockResolvedValueOnce({ data: { ...completeProfile, phone: null }, error: null });
+        stubReads({ profile: { ...completeProfile, phone: null } });
         const res = await call({ items: [{ variantId: 'var-1', quantity: 1 }] });
         expect(res.status).toBe(400);
         const payload = await res.json();
@@ -151,54 +145,48 @@ describe('POST /api/cart/checkout', () => {
     });
 
     it('returns 500 when the variant lookup fails', async () => {
-        mockVariantsIn.mockResolvedValueOnce({ data: null, error: { message: 'db down' } });
+        convex.query.mockImplementation(async (fn: any) => {
+            if (getFunctionName(fn) === getFunctionName(api.users.current)) return completeProfile;
+            throw new Error('convex down');
+        });
         expect((await call({ items: [{ variantId: 'var-1', quantity: 1 }] })).status).toBe(500);
     });
 
     it('returns 400 when a variant cannot be resolved', async () => {
-        mockVariantsIn.mockResolvedValueOnce({ data: [], error: null });
+        stubReads({ variants: [] });
         const res = await call({ items: [{ variantId: 'var-1', quantity: 1 }] });
         expect(res.status).toBe(400);
         expect(await res.json()).toMatchObject({ error: en.apiCheckoutProductUnavailable });
     });
 
     it('returns 400 when the product is inactive', async () => {
-        mockVariantsIn.mockResolvedValueOnce({ data: [variantRow({}, { is_active: false })], error: null });
+        stubReads({ variants: [variantRow({}, { is_active: false })] });
         expect((await call({ items: [{ variantId: 'var-1', quantity: 1 }] })).status).toBe(400);
     });
 
     it('returns an out-of-stock error when the quantity exceeds stock', async () => {
-        mockVariantsIn.mockResolvedValueOnce({ data: [variantRow({ stock: 1 })], error: null });
+        stubReads({ variants: [variantRow({ stock: 1 })] });
         const res = await call({ items: [{ variantId: 'var-1', quantity: 2 }] });
         expect(res.status).toBe(400);
         expect(await res.json()).toMatchObject({ error: en.apiCheckoutOutOfStock });
     });
 
-    it('returns 400 when the seller payment account is not chargeable', async () => {
-        mockVariantsIn.mockResolvedValueOnce({
-            data: [variantRow({}, { shops: shop({ shop_payment_accounts: paymentAccount({ charges_enabled: false }) }) })],
-            error: null,
-        });
+    it('returns 400 when the shop cannot be paid', async () => {
+        stubReads({ variants: [variantRow({}, { shop: shop({ payment_ready: false }) })] });
         const res = await call({ items: [{ variantId: 'var-1', quantity: 1 }] });
         expect(res.status).toBe(400);
         expect(await res.json()).toMatchObject({ error: en.apiCheckoutSellerNotReady });
     });
 
     it('returns 400 when seller details are incomplete', async () => {
-        mockVariantsIn.mockResolvedValueOnce({
-            data: [variantRow({}, { shops: shop({ seller_details_complete: false }) })],
-            error: null,
-        });
+        stubReads({ variants: [variantRow({}, { shop: shop({ seller_details_complete: false }) })] });
         const res = await call({ items: [{ variantId: 'var-1', quantity: 1 }] });
         expect(res.status).toBe(400);
         expect(await res.json()).toMatchObject({ error: en.apiCheckoutSellerNotReady });
     });
 
     it('returns 400 when a shop does not support the chosen delivery platform', async () => {
-        mockVariantsIn.mockResolvedValueOnce({
-            data: [variantRow({}, { shops: shop({ shipping_carriers: ['inpost'] }) })],
-            error: null,
-        });
+        stubReads({ variants: [variantRow({}, { shop: shop({ shipping_carriers: ['inpost'] }) })] });
         const res = await call({
             items: [{ variantId: 'var-1', quantity: 1 }],
             delivery: { type: 'home' },
@@ -212,57 +200,31 @@ describe('POST /api/cart/checkout', () => {
         mockSessionCreate.mockRejectedValueOnce(new Error('stripe down'));
         const res = await call({ items: [{ variantId: 'var-1', quantity: 1 }] });
         expect(res.status).toBe(500);
-        expect(mockAdminRpc).not.toHaveBeenCalled();
+        expect(convex.mutation).not.toHaveBeenCalled();
     });
 
     it('expires the Stripe session and returns 500 when order creation fails', async () => {
-        mockAdminRpc.mockResolvedValueOnce({ data: null, error: { message: 'rpc failed' } });
+        convex.mutation.mockRejectedValueOnce(new Error('write failed'));
         const res = await call({ items: [{ variantId: 'var-1', quantity: 1 }] });
         expect(res.status).toBe(500);
         expect(mockSessionExpire).toHaveBeenCalledWith('cs_1');
         expect(await res.json()).toMatchObject({ error: en.apiOrderCreateError });
-        expect(mockOrdersUpdate).not.toHaveBeenCalled();
     });
 
-    it('cancels orders already created for other shops when a later shop fails to create its order', async () => {
+    it('creates one order per shop in a single atomic write on the happy path', async () => {
         const shopTwo = shop({ id: 'shop-2', name: 'Shop Two', slug: 'shop-two' });
-        mockVariantsIn.mockResolvedValueOnce({
-            data: [
+        stubReads({
+            variants: [
                 variantRow(),
-                variantRow({ id: 'var-2', price: 10, shipping_cost: 5 }, { id: 'prod-2', title: 'Gadget', slug: 'gadget', shops: shopTwo }),
-            ],
-            error: null,
-        });
-        // shop-1 succeeds, shop-2 fails
-        mockAdminRpc
-            .mockResolvedValueOnce({ data: [{ id: 'order-uuid-1' }], error: null })
-            .mockResolvedValueOnce({ data: null, error: { message: 'rpc failed' } });
-
-        const res = await call({
-            items: [
-                { variantId: 'var-1', quantity: 1 },
-                { variantId: 'var-2', quantity: 1 },
+                variantRow({ id: 'var-2', price: 10, shipping_cost: 5 }, { id: 'prod-2', title: 'Gadget', slug: 'gadget', shop: shopTwo }),
             ],
         });
-
-        expect(res.status).toBe(500);
-        expect(mockSessionExpire).toHaveBeenCalledWith('cs_1');
-        expect(mockOrdersUpdate).toHaveBeenCalledWith(expect.objectContaining({ status: 'cancelled' }));
-        expect(mockOrdersUpdateIn).toHaveBeenCalledWith('id', ['order-uuid-1']);
-    });
-
-    it('creates one order per shop and returns the checkout URL on the happy path', async () => {
-        const shopTwo = shop({ id: 'shop-2', name: 'Shop Two', slug: 'shop-two' });
-        mockVariantsIn.mockResolvedValueOnce({
-            data: [
-                variantRow(),
-                variantRow({ id: 'var-2', price: 10, shipping_cost: 5 }, { id: 'prod-2', title: 'Gadget', slug: 'gadget', shops: shopTwo }),
+        convex.mutation.mockResolvedValueOnce({
+            orders: [
+                { id: 'convex:ORD-1', public_id: 'ORD-1', shop_id: 'shop-1' },
+                { id: 'convex:ORD-2', public_id: 'ORD-2', shop_id: 'shop-2' },
             ],
-            error: null,
         });
-        mockAdminRpc
-            .mockResolvedValueOnce({ data: [{ id: 'order-uuid-1' }], error: null })
-            .mockResolvedValueOnce({ data: [{ id: 'order-uuid-2' }], error: null });
 
         const res = await call({
             items: [
@@ -276,66 +238,55 @@ describe('POST /api/cart/checkout', () => {
         expect(payload.checkoutUrl).toBe('https://stripe.test/session/cs_1');
         expect(payload.orders).toHaveLength(2);
 
-        expect(mockAdminRpc).toHaveBeenCalledTimes(2);
-        // shop-1: 2 × 20 + 3 shipping
-        expect(mockAdminRpc).toHaveBeenNthCalledWith(1, 'create_checkout_order', expect.objectContaining({
-            p_buyer_id: 'buyer-1',
-            p_shop_id: 'shop-1',
-            p_total_amount: 43,
-            p_currency: 'eur',
-            p_stripe_checkout_session_id: 'cs_1',
-            p_delivery_type: 'home',
-            p_items: [{ variant_id: 'var-1', quantity: 2, price_at_purchase: 20, shipping_cost_at_purchase: 3 }],
-        }));
-        // shop-2: 1 × 10 + 5 shipping
-        expect(mockAdminRpc).toHaveBeenNthCalledWith(2, 'create_checkout_order', expect.objectContaining({
-            p_shop_id: 'shop-2',
-            p_total_amount: 15,
-        }));
+        // One mutation for the whole checkout: partial order creation is what
+        // the atomic Convex write exists to prevent.
+        expect(convex.mutation).toHaveBeenCalledTimes(1);
+        const [, args] = convex.mutation.mock.calls[0] as [unknown, any];
+        expect(args.stripeCheckoutSessionId).toBe('cs_1');
+        expect(args.currency).toBe('eur');
+        // shop-1: 2 × 20 + 3 shipping; shop-2: 1 × 10 + 5 shipping
+        expect(args.orders[0]).toMatchObject({ shopLegacyId: 'shop-1', totalAmountCents: 4300, deliveryType: 'home' });
+        expect(args.orders[0].items).toEqual([
+            { variantLegacyId: 'var-1', quantity: 2, priceAtPurchaseCents: 2000, shippingCostAtPurchaseCents: 300 },
+        ]);
+        expect(args.orders[1]).toMatchObject({ shopLegacyId: 'shop-2', totalAmountCents: 1500 });
         expect(mockSessionExpire).not.toHaveBeenCalled();
     });
 
     it('uses the max shipping cost per shop when a shop has several items', async () => {
-        mockVariantsIn.mockResolvedValueOnce({
-            data: [
-                variantRow({ shipping_cost: 3 }),
-                variantRow({ id: 'var-2', price: 10, shipping_cost: 7 }, { id: 'prod-2', title: 'Gadget', slug: 'gadget' }),
+        stubReads({
+            variants: [
+                variantRow({ id: 'var-1', shipping_cost: 3 }),
+                variantRow({ id: 'var-2', price: 10, shipping_cost: 7 }, { id: 'prod-2', slug: 'gadget' }),
             ],
-            error: null,
         });
-
-        const res = await call({
+        await call({
             items: [
                 { variantId: 'var-1', quantity: 1 },
                 { variantId: 'var-2', quantity: 1 },
             ],
         });
-
-        expect(res.status).toBe(200);
-        // One shop → a single order. Total = 20 + 10 + max(3, 7) shipping.
-        expect(mockAdminRpc).toHaveBeenCalledTimes(1);
-        expect(mockAdminRpc).toHaveBeenCalledWith('create_checkout_order', expect.objectContaining({
-            p_total_amount: 37,
-        }));
+        const [, args] = convex.mutation.mock.calls[0] as [unknown, any];
+        // 20 + 10 + max(3, 7)
+        expect(args.orders[0].totalAmountCents).toBe(3700);
     });
 
     it('stores the pickup point address on the order for pickup deliveries', async () => {
-        const res = await call({
+        await call({
             items: [{ variantId: 'var-1', quantity: 1 }],
             delivery: {
                 type: 'pickup_point',
-                pickupPointId: 'pp-1',
-                pickupPointName: 'Locker 42',
-                pickupPointAddress: 'Calle Falsa 123',
-                pickupPointCarrier: 'inpost',
+                pickupPointId: 'sp-1',
+                pickupPointName: 'Correos Sol',
+                pickupPointAddress: 'Puerta del Sol 1, 28013 Madrid',
+                pickupPointCarrier: 'correos',
             },
         });
-
-        expect(res.status).toBe(200);
-        expect(mockAdminRpc).toHaveBeenCalledWith('create_checkout_order', expect.objectContaining({
-            p_delivery_type: 'pickup_point',
-            p_pickup_point_id: 'pp-1',
-            p_shipping_address: 'Calle Falsa 123',
-        }));
+        const [, args] = convex.mutation.mock.calls[0] as [unknown, any];
+        expect(args.orders[0]).toMatchObject({
+            deliveryType: 'pickup_point',
+            pickupPointId: 'sp-1',
+            shippingAddress: 'Puerta del Sol 1, 28013 Madrid',
+        });
     });
 });

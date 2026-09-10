@@ -1,0 +1,89 @@
+/**
+ * @vitest-environment edge-runtime
+ */
+import { describe, expect, it, beforeEach } from 'vitest';
+import { api } from '../../convex/_generated/api';
+import { newTestHarness, type Harness } from './fixtures';
+
+/**
+ * Linking a Clerk sign-in to an imported profile hands over that person's
+ * orders, address and seller permissions. These cover the one rule that keeps
+ * that safe: only a provider-verified email may adopt an existing profile.
+ */
+
+const IMPORTED_EMAIL = 'imported@fewya.test';
+
+let t: Harness;
+
+beforeEach(async () => {
+    t = newTestHarness();
+    await t.run(async (ctx) => {
+        await ctx.db.insert('profiles', {
+            legacyId: '3e2c19e0-19b1-40f3-b3c5-daaa46a15247',
+            email: IMPORTED_EMAIL,
+            firstName: 'Imported',
+            isSeller: true,
+            emailMarketingOptIn: false,
+            createdAt: 1_700_000_000_000,
+        });
+    });
+});
+
+describe('users.ensureCurrent', () => {
+    it('adopts the imported profile for a verified email', async () => {
+        const asUser = t.withIdentity({ subject: 'clerk|1', email: IMPORTED_EMAIL, emailVerified: true } as never);
+        const linked = await asUser.mutation(api.users.ensureCurrent, {});
+
+        expect(linked.created).toBe(false);
+        expect(linked.legacyId).toBe('3e2c19e0-19b1-40f3-b3c5-daaa46a15247');
+        // The imported seller keeps their permissions and history.
+        const profile = await asUser.query(api.users.current, {});
+        expect(profile).toMatchObject({ isSeller: true, firstName: 'Imported', authSubject: 'clerk|1' });
+    });
+
+    it('refuses to adopt or fork a profile when the email is unverified', async () => {
+        const asUser = t.withIdentity({ subject: 'clerk|2', email: IMPORTED_EMAIL, emailVerified: false } as never);
+        await expect(asUser.mutation(api.users.ensureCurrent, {})).rejects.toThrow();
+
+        const profiles = await t.run(async (ctx) => ctx.db.query('profiles').collect());
+        expect(profiles).toHaveLength(1);
+    });
+
+    it('treats a missing email_verified claim as unverified', async () => {
+        const asUser = t.withIdentity({ subject: 'clerk|3', email: IMPORTED_EMAIL } as never);
+        await expect(asUser.mutation(api.users.ensureCurrent, {})).rejects.toThrow();
+    });
+
+    it('creates a fresh profile for a genuinely new address', async () => {
+        const asUser = t.withIdentity({ subject: 'clerk|4', email: 'new@fewya.test', emailVerified: true } as never);
+        const linked = await asUser.mutation(api.users.ensureCurrent, {});
+
+        expect(linked.created).toBe(true);
+        const profile = await asUser.query(api.users.current, {});
+        expect(profile).toMatchObject({ email: 'new@fewya.test', isSeller: false });
+    });
+
+    it('is idempotent across sign-ins', async () => {
+        const asUser = t.withIdentity({ subject: 'clerk|5', email: 'repeat@fewya.test', emailVerified: true } as never);
+        const first = await asUser.mutation(api.users.ensureCurrent, {});
+        const second = await asUser.mutation(api.users.ensureCurrent, {});
+
+        expect(second.legacyId).toBe(first.legacyId);
+        expect(second.created).toBe(false);
+        const profiles = await t.run(async (ctx) => ctx.db.query('profiles').collect());
+        expect(profiles).toHaveLength(2);
+    });
+
+    it('refuses an anonymous caller', async () => {
+        await expect(t.mutation(api.users.ensureCurrent, {})).rejects.toThrow();
+    });
+
+    // The subject, not the caller's arguments, decides which profile is
+    // written: the mutation takes no id at all.
+    it('never lets a caller name the profile to link', async () => {
+        const asUser = t.withIdentity({ subject: 'clerk|6', email: 'other@fewya.test', emailVerified: true } as never);
+        await expect(
+            asUser.mutation(api.users.ensureCurrent, { legacyId: '3e2c19e0-19b1-40f3-b3c5-daaa46a15247' } as never),
+        ).rejects.toThrow();
+    });
+});
