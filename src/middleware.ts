@@ -6,12 +6,12 @@ import type { APIContext } from 'astro';
 import { CLERK_JWT_TEMPLATE, CLERK_SECRET_KEY } from 'astro:env/server';
 import { api } from '../convex/_generated/api';
 import { createConvexClient } from './lib/core/convex';
-import { hasRequestAuthUser, setRequestAuthUser, type AuthUser } from './lib/core/auth';
+import { getAuthRedirectPath, isAuthPage, hasRequestAuthUser, setRequestAuthUser, type AuthUser } from './lib/core/auth';
 import { securityLog } from './lib/core/security-log';
 import { checkRateLimit, rateLimitResponse, type RateLimitBinding } from './lib/core/rate-limit';
 import { getT, resolveLocale } from './lib/core/i18n';
 
-const PRIVATE_PREFIXES = ['/me', '/sell', '/cart', '/profile', '/wishlist', '/api'];
+const PRIVATE_PREFIXES = ['/me', '/sell', '/cart', '/profile', '/wishlist', '/api', '/login', '/sign-up'];
 const PUBLIC_MAX_AGE = 60;
 const PUBLIC_SWR = 300;
 
@@ -82,7 +82,7 @@ async function hydrateClerkUser(auth: () => ClerkSessionAuth, context: APIContex
     if (!clerkAuth.userId) return;
 
     const token = await clerkAuth.getToken({ template: CLERK_JWT_TEMPLATE || 'convex' });
-    if (!token) return;
+    if (!token) throw new Error('Clerk did not issue a Convex token');
 
     const claims = (clerkAuth.sessionClaims ?? {}) as Record<string, unknown>;
     const stringClaim = (...keys: string[]) => {
@@ -100,26 +100,19 @@ async function hydrateClerkUser(auth: () => ClerkSessionAuth, context: APIContex
     const pictureUrl = stringClaim('picture_url', 'image_url');
 
     const convex = createConvexClient(token);
-    if (!convex) return;
+    if (!convex) throw new Error('Convex is not configured');
 
-    try {
-        const linked = await convex.mutation(api.users.ensureCurrent, {});
+    const linked = await convex.mutation(api.users.ensureCurrent, {});
 
-        const user: AuthUser = {
-            id: linked.legacyId,
-            email: email ?? `clerk-${clerkAuth.userId}@invalid.local`,
-            fullName,
-            firstName,
-            lastName,
-            avatarUrl: pictureUrl,
-        };
-        setRequestAuthUser(context.request, user, token);
-    } catch (error) {
-        console.error(JSON.stringify({
-            event: 'clerk.identity_bridge_failed',
-            error: error instanceof Error ? error.message : String(error),
-        }));
-    }
+    const user: AuthUser = {
+        id: linked.legacyId,
+        email: email ?? `clerk-${clerkAuth.userId}@invalid.local`,
+        fullName,
+        firstName,
+        lastName,
+        avatarUrl: pictureUrl,
+    };
+    setRequestAuthUser(context.request, user, token);
 }
 
 const legacyMiddleware: MiddlewareHandler = async (context, next) => {
@@ -228,6 +221,7 @@ export const onRequest: MiddlewareHandler = defineMiddleware((context, next) => 
         });
         const location = requestState.headers.get('location');
         if (location) {
+            requestState.headers.set('Cache-Control', 'private, no-store');
             return new Response(null, { status: 307, headers: requestState.headers });
         }
 
@@ -236,9 +230,32 @@ export const onRequest: MiddlewareHandler = defineMiddleware((context, next) => 
             return new Response(null, { status: 401 });
         }
         (context.locals as unknown as Record<string, unknown>).auth = () => authObject;
-        await hydrateClerkUser(() => authObject, context);
+        let identityUnavailable = false;
+        try {
+            await hydrateClerkUser(() => authObject, context);
+        } catch (error) {
+            identityUnavailable = true;
+            console.error(JSON.stringify({
+                event: 'clerk.identity_bridge_failed',
+                error: error instanceof Error ? error.message : String(error),
+            }));
+        }
 
-        const response = (await legacyMiddleware(context, next)) ?? new Response(null, { status: 204 });
+        const response = (await legacyMiddleware(context, async () => {
+            // A valid Clerk session with an unavailable profile is not signed
+            // out. Sending it back to Clerk would bounce straight here again.
+            if (identityUnavailable) {
+                return new Response(context.locals.t.authTemporarilyUnavailable, {
+                    status: 503,
+                    headers: { 'Cache-Control': 'private, no-store', 'Retry-After': '5' },
+                });
+            }
+            if (hasRequestAuthUser(context.request) && isAuthPage(context.url.pathname)
+                && (context.request.method === 'GET' || context.request.method === 'HEAD')) {
+                return context.redirect(getAuthRedirectPath(context.url));
+            }
+            return next();
+        })) ?? new Response(null, { status: 204 });
         requestState.headers.forEach((value, key) => response.headers.append(key, value));
         return response;
     })();

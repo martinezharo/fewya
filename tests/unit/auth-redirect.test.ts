@@ -1,5 +1,32 @@
 import { describe, it, expect } from 'vitest';
-import { normalizeAuthRedirectPath, assertSameOrigin } from '../../src/lib/core/auth';
+import { normalizeAuthRedirectPath, getAuthRedirectPath, assertSameOrigin } from '../../src/lib/core/auth';
+
+describe('getAuthRedirectPath', () => {
+    const resolve = (path: string, key = 'redirect_to') => {
+        const url = new URL('https://fewya.com/login');
+        url.searchParams.set(key, path);
+        return getAuthRedirectPath(url);
+    };
+
+    it('defaults to the account and preserves the intended page, query, and fragment', () => {
+        expect(getAuthRedirectPath(new URL('https://fewya.com/login'))).toBe('/me');
+        expect(resolve('/cart?checkout=1#delivery')).toBe('/cart?checkout=1#delivery');
+        expect(resolve('/sell/catalog')).toBe('/sell/catalog');
+    });
+
+    it('accepts Clerk return URLs on this origin and prefers the explicit app destination', () => {
+        expect(resolve('https://fewya.com/cart?checkout=1#delivery', 'redirect_url')).toBe('/cart?checkout=1#delivery');
+        expect(getAuthRedirectPath(new URL('https://fewya.com/login?redirect_to=/cart&redirect_url=/me'))).toBe('/cart');
+    });
+
+    it.each([
+        '//evil.com', '/\\evil.com', '/\n/evil.com', 'https://evil.com/cart',
+        'https://[invalid', 'javascript:alert(1)', '/login', '/sign-up/?redirect_to=/login',
+        '/cart/../login', '/%6cogin', '/sign-up#callback', '/%invalid', '/cart/..//evil.com',
+    ])('rejects external, malformed, or recursive destination %j', (path) => {
+        expect(resolve(path)).toBe('/me');
+    });
+});
 
 describe('normalizeAuthRedirectPath', () => {
     it('returns / for null input', () => {

@@ -96,6 +96,7 @@ export interface Strings {
     // Auth / Login
     heroSignIn: string;
     loginPageTitle: string;
+    authTemporarilyUnavailable: string;
     loginPageDescription: string;
     loginSubtitle: string;
     loginTermsHint: string;
