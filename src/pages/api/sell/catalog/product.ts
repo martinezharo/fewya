@@ -6,32 +6,40 @@ import { validateProductCompleteness } from '../../../../lib/products/productVal
 import type { Strings } from '../../../../lib/core/i18n';
 import type { Locale } from '../../../../lib/core/i18n/locales';
 import { enforceVariantPricing, type PricingCheckVariant } from '../../../../lib/products/pricingEnforcement';
+import {
+    InvalidFieldError,
+    optionalNumber,
+    optionalStringArray,
+    optionalText,
+    requireObject,
+    requiredText,
+} from '../../../../lib/core/requestFields';
 
-type VariantInput = {
+/**
+ * A variant as the seller form posts it: euros, snake_case, and `null` for
+ * every value the seller has not filled in yet. The loss-protection check
+ * consumes this shape directly, so the payload is normalized once and then
+ * converted to Convex's cents-based input.
+ */
+interface NormalizedVariant extends PricingCheckVariant {
     id?: string;
-    variant_name?: string;
-    price: number;
     stock: number;
-    is_default?: boolean;
-    variant_image?: string | null;
-    weight_kg?: number | null;
-    length_cm?: number | null;
-    width_cm?: number | null;
-    height_cm?: number | null;
-    shipping_cost?: number | null;
-};
+    is_default: boolean;
+    variant_image: string | null;
+}
 
-type ProductPayload = {
-    title: string;
+/** The product payload after validation; absent keys mean "leave unchanged". */
+interface NormalizedProduct {
+    title?: string;
     slug?: string;
-    description?: string;
-    category: string;
-    brand?: string;
+    description?: string | null;
+    category?: string;
+    brand?: string | null;
     specifications?: Record<string, unknown>;
     gallery_images?: string[];
     is_active?: boolean;
-    variants?: VariantInput[];
-};
+    variants?: NormalizedVariant[];
+}
 
 function slugify(text: string): string {
     return text
@@ -40,23 +48,98 @@ function slugify(text: string): string {
         .replace(/(^-|-$)+/g, '');
 }
 
-function toConvexVariants(variants: VariantInput[] | undefined) {
-    return (variants ?? []).map((variant, index) => ({
+function optionalBoolean(field: string, value: unknown): boolean | undefined {
+    if (value === undefined || value === null) return undefined;
+    if (typeof value !== 'boolean') throw new InvalidFieldError(field);
+    return value;
+}
+
+function normalizeVariants(value: unknown): NormalizedVariant[] | undefined {
+    if (value === undefined || value === null) return undefined;
+    if (!Array.isArray(value)) throw new InvalidFieldError('variants');
+    return value.map((entry, index) => {
+        const variant = requireObject(`variants[${index}]`, entry);
+        const at = (field: string) => `variants[${index}].${field}`;
+        return {
+            id: variant.id == null ? undefined : requiredText(at('id'), variant.id),
+            variant_name: optionalText(at('variant_name'), variant.variant_name) ?? null,
+            price: optionalNumber(at('price'), variant.price) ?? 0,
+            stock: optionalNumber(at('stock'), variant.stock) ?? 0,
+            is_default: optionalBoolean(at('is_default'), variant.is_default) ?? index === 0,
+            variant_image: optionalText(at('variant_image'), variant.variant_image) ?? null,
+            weight_kg: optionalNumber(at('weight_kg'), variant.weight_kg),
+            length_cm: optionalNumber(at('length_cm'), variant.length_cm),
+            width_cm: optionalNumber(at('width_cm'), variant.width_cm),
+            height_cm: optionalNumber(at('height_cm'), variant.height_cm),
+            shipping_cost: optionalNumber(at('shipping_cost'), variant.shipping_cost),
+        };
+    });
+}
+
+/**
+ * Validates a request body, whether it creates a product or patches one.
+ *
+ * `required` is what a creation must carry; on a PATCH every key is optional,
+ * but one that is present still has to be usable — an empty title would blank
+ * the listing rather than leave it alone.
+ */
+function normalizeProduct(body: unknown, options: { required: boolean }): NormalizedProduct {
+    const raw = requireObject('body', body);
+    const specifications = raw.specifications;
+    if (specifications !== undefined && specifications !== null
+        && (typeof specifications !== 'object' || Array.isArray(specifications))) {
+        throw new InvalidFieldError('specifications');
+    }
+
+    const title = options.required || raw.title !== undefined ? requiredText('title', raw.title) : undefined;
+    const category = options.required || raw.category !== undefined ? requiredText('category', raw.category) : undefined;
+    const slug = optionalText('slug', raw.slug);
+
+    return {
+        title,
+        // A creation always stores a slug; a patch only touches it when asked.
+        slug: slug ?? (options.required && title ? slugify(title) : undefined),
+        description: optionalText('description', raw.description),
+        category,
+        brand: optionalText('brand', raw.brand),
+        specifications: specifications == null ? undefined : specifications as Record<string, unknown>,
+        gallery_images: optionalStringArray('gallery_images', raw.gallery_images),
+        is_active: optionalBoolean('is_active', raw.is_active),
+        variants: normalizeVariants(raw.variants),
+    };
+}
+
+function toConvexVariants(variants: NormalizedVariant[]) {
+    return variants.map((variant) => ({
         id: variant.id,
-        variantName: variant.variant_name?.trim() || null,
-        priceCents: Math.round(Number(variant.price ?? 0) * 100),
-        stock: Number(variant.stock ?? 0),
-        isDefault: variant.is_default ?? index === 0,
-        variantImage: variant.variant_image ?? null,
+        variantName: variant.variant_name ?? null,
+        priceCents: Math.round((variant.price ?? 0) * 100),
+        stock: variant.stock,
+        isDefault: variant.is_default,
+        variantImage: variant.variant_image,
         weightKg: variant.weight_kg ?? null,
         lengthCm: variant.length_cm ?? null,
         widthCm: variant.width_cm ?? null,
         heightCm: variant.height_cm ?? null,
-        shippingCostCents: variant.shipping_cost == null ? null : Math.round(Number(variant.shipping_cost) * 100),
+        shippingCostCents: variant.shipping_cost == null ? null : Math.round(variant.shipping_cost * 100),
     }));
 }
 
-function convexError(error: unknown, t: any): Response {
+/**
+ * Turns a rejected payload into a 400. The two fields the seller form can
+ * realistically get wrong get their own message; anything else is a malformed
+ * request that no seller should ever produce, so it is logged and answered
+ * generically.
+ */
+function badRequest(error: unknown, t: Strings): Response {
+    const field = error instanceof InvalidFieldError ? error.field : 'body';
+    if (field === 'title') return new Response(JSON.stringify({ error: t.sellerProductTitleRequired }), { status: 400 });
+    if (field === 'category') return new Response(JSON.stringify({ error: t.sellerProductCategoryRequired }), { status: 400 });
+    console.error(JSON.stringify({ event: 'seller_product.invalid_body', field }));
+    return new Response(JSON.stringify({ error: t.apiInvalidBody }), { status: 400 });
+}
+
+function convexError(error: unknown, t: Strings): Response {
     const message = error instanceof Error ? error.message : String(error);
     if (message.includes('slug already in use')) return new Response(JSON.stringify({ error: t.sellerProductSlugInUse }), { status: 409 });
     if (message.includes('access denied')) return new Response(JSON.stringify({ error: t.apiForbidden }), { status: 403 });
@@ -101,10 +184,13 @@ export const POST: APIRoute = async ({ locals, request }) => {
         return new Response(JSON.stringify({ error: t.apiUnauthorized }), { status: 401 });
     }
 
-    let body: ProductPayload;
-    try { body = await request.json(); } catch { return new Response(JSON.stringify({ error: t.apiInvalidBody }), { status: 400 }); }
-    if (!body.title?.trim()) return new Response(JSON.stringify({ error: t.sellerProductTitleRequired }), { status: 400 });
-    if (!body.category?.trim()) return new Response(JSON.stringify({ error: t.sellerProductCategoryRequired }), { status: 400 });
+    let body: NormalizedProduct;
+    try {
+        body = normalizeProduct(await request.json(), { required: true });
+    } catch (error) {
+        return badRequest(error, t);
+    }
+
     const completeness = validateProductCompleteness(body, body.variants ?? []);
     if (!completeness.complete) return new Response(JSON.stringify({ error: t.sellerProductIncompleteError.replace('{fields}', completeness.missing.join(', ')) }), { status: 400 });
     try {
@@ -112,21 +198,21 @@ export const POST: APIRoute = async ({ locals, request }) => {
             convex,
             t,
             locale,
-            variants: (body.variants ?? []) as PricingCheckVariant[],
+            variants: body.variants ?? [],
             requestedActive: body.is_active !== false,
         });
         if (rejected) return rejected;
 
         const result = await convex.mutation(api.seller.createProduct, {
-            title: body.title.trim(),
-            slug: body.slug?.trim() || slugify(body.title),
-            description: body.description?.trim() || null,
-            category: body.category.trim(),
-            brand: body.brand?.trim() || null,
+            title: body.title!,
+            slug: body.slug!,
+            description: body.description ?? null,
+            category: body.category!,
+            brand: body.brand ?? null,
             specifications: body.specifications ?? {},
             galleryImages: body.gallery_images ?? [],
             isActive: body.is_active !== false,
-            variants: toConvexVariants(body.variants),
+            variants: toConvexVariants(body.variants ?? []),
         });
         return new Response(JSON.stringify({ product: result.product, variants: result.product?.variants ?? [] }), { status: 201 });
     } catch (error) {
@@ -147,17 +233,20 @@ export const PATCH: APIRoute = async ({ locals, request, url }) => {
         return new Response(JSON.stringify({ error: t.apiInvalidBody }), { status: 400 });
     }
 
-    let body: ProductPayload;
-    try { body = await request.json(); } catch { return new Response(JSON.stringify({ error: t.apiInvalidBody }), { status: 400 }); }
-    if (body.title !== undefined && !body.title?.trim()) return new Response(JSON.stringify({ error: t.sellerProductTitleRequired }), { status: 400 });
-    if (body.category !== undefined && !body.category?.trim()) return new Response(JSON.stringify({ error: t.sellerProductCategoryRequired }), { status: 400 });
+    let body: NormalizedProduct;
+    try {
+        body = normalizeProduct(await request.json(), { required: false });
+    } catch (error) {
+        return badRequest(error, t);
+    }
+
     try {
         if (body.variants !== undefined) {
             const rejected = await pricingRejection({
                 convex,
                 t,
                 locale,
-                variants: body.variants as PricingCheckVariant[],
+                variants: body.variants,
                 // Undefined means "leave publication as it is", so the stored
                 // value decides whether the check applies.
                 requestedActive: body.is_active,
@@ -168,11 +257,11 @@ export const PATCH: APIRoute = async ({ locals, request, url }) => {
 
         const result = await convex.mutation(api.seller.updateProduct, {
             productId,
-            title: body.title === undefined ? undefined : body.title.trim(),
-            slug: body.slug === undefined ? undefined : body.slug.trim(),
-            description: body.description === undefined ? undefined : body.description.trim() || null,
-            category: body.category === undefined ? undefined : body.category.trim(),
-            brand: body.brand === undefined ? undefined : body.brand.trim() || null,
+            title: body.title,
+            slug: body.slug,
+            description: body.description,
+            category: body.category,
+            brand: body.brand,
             specifications: body.specifications,
             galleryImages: body.gallery_images,
             isActive: body.is_active,
