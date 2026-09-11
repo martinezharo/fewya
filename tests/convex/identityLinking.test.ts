@@ -4,6 +4,7 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import { api } from '../../convex/_generated/api';
 import { newTestHarness, type Harness } from './fixtures';
+import { isPlaceholderEmail, realEmail } from '../../convex/lib/placeholderEmail';
 
 /**
  * Linking a Clerk sign-in to an imported profile hands over that person's
@@ -85,5 +86,57 @@ describe('users.ensureCurrent', () => {
         await expect(
             asUser.mutation(api.users.ensureCurrent, { legacyId: '3e2c19e0-19b1-40f3-b3c5-daaa46a15247' } as never),
         ).rejects.toThrow();
+    });
+    // Regression: a profile created before the JWT template emitted `email`
+    // held an undeliverable stand-in, and nothing ever replaced it. It reached
+    // Stripe, the carrier and the seller's order view as the customer's inbox.
+    it('stores a stand-in when the provider sends no email, and never sends to it', async () => {
+        const asUser = t.withIdentity({ subject: 'clerk|7' } as never);
+        await asUser.mutation(api.users.ensureCurrent, {});
+
+        const profile = await asUser.query(api.users.current, {});
+        expect(profile?.email).toBe('clerk-clerk|7@invalid.local');
+        expect(isPlaceholderEmail(profile!.email)).toBe(true);
+        expect(realEmail(profile!.email)).toBeNull();
+    });
+
+    it('replaces the stand-in once the provider does send a verified email', async () => {
+        const withoutEmail = t.withIdentity({ subject: 'clerk|8' } as never);
+        const first = await withoutEmail.mutation(api.users.ensureCurrent, {});
+
+        const withEmail = t.withIdentity({ subject: 'clerk|8', email: 'real@fewya.test', emailVerified: true } as never);
+        const second = await withEmail.mutation(api.users.ensureCurrent, {});
+
+        // Same profile, repaired in place: the account keeps its history.
+        expect(second.legacyId).toBe(first.legacyId);
+        const profile = await withEmail.query(api.users.current, {});
+        expect(profile?.email).toBe('real@fewya.test');
+    });
+
+    it('keeps the stand-in when the address the provider sends is unverified', async () => {
+        const withoutEmail = t.withIdentity({ subject: 'clerk|9' } as never);
+        await withoutEmail.mutation(api.users.ensureCurrent, {});
+
+        const unverified = t.withIdentity({ subject: 'clerk|9', email: 'claimed@fewya.test' } as never);
+        await unverified.mutation(api.users.ensureCurrent, {});
+
+        const profile = await unverified.query(api.users.current, {});
+        expect(isPlaceholderEmail(profile!.email)).toBe(true);
+    });
+
+    // `profiles.email` is read through a `.unique()` index, so letting two rows
+    // share an address would break the lookup for both accounts.
+    it('refuses to reconcile onto an address another profile already holds', async () => {
+        const asUser = t.withIdentity({ subject: 'clerk|10' } as never);
+        await asUser.mutation(api.users.ensureCurrent, {});
+
+        const squatter = t.withIdentity({ subject: 'clerk|10', email: IMPORTED_EMAIL, emailVerified: true } as never);
+        await squatter.mutation(api.users.ensureCurrent, {});
+
+        const profile = await squatter.query(api.users.current, {});
+        expect(isPlaceholderEmail(profile!.email)).toBe(true);
+        const imported = await t.run(async (ctx) =>
+            ctx.db.query('profiles').withIndex('by_email', (q) => q.eq('email', IMPORTED_EMAIL)).unique());
+        expect(imported?.legacyId).toBe('3e2c19e0-19b1-40f3-b3c5-daaa46a15247');
     });
 });

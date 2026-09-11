@@ -104,9 +104,15 @@ async function hydrateClerkUser(auth: () => ClerkSessionAuth, context: APIContex
 
     const linked = await convex.mutation(api.users.ensureCurrent, {});
 
+    if (!email) {
+        // The `convex` JWT template is expected to emit `email`; without it the
+        // buyer's real address never reaches checkout, Stripe or the carrier.
+        console.warn(JSON.stringify({ event: 'auth.session_without_email_claim', subject: clerkAuth.userId }));
+    }
+
     const user: AuthUser = {
         id: linked.legacyId,
-        email: email ?? `clerk-${clerkAuth.userId}@invalid.local`,
+        email: email ?? null,
         fullName,
         firstName,
         lastName,

@@ -11,6 +11,7 @@ import { uploadLabelPdf } from '../../../lib/shipping/labelStorage';
 import { isDevelopment } from '../../../lib/core/env';
 import type { createConvexClient } from '../../../lib/core/convex';
 import { createRequestConvexClient } from '../../../lib/core/auth';
+import { realEmail } from '../../../../convex/lib/placeholderEmail';
 import { runMockShipment, type ConvexShipmentContext } from '../../../lib/shipping/mockShipment';
 import { DELIVERY_TYPE } from '../../../lib/orders/orderStatus';
 import { notify } from '../../../lib/notifications/dispatch';
@@ -60,7 +61,7 @@ async function createSendcloudShipment({
     const senderPhone = owner.phone
         ? `${owner.phonePrefix ?? '+34'}${owner.phone}`.replace(/\s+/g, '')
         : '';
-    const senderEmail = owner.email || shop.contactEmail || '';
+    const senderEmail = realEmail(owner.email) ?? realEmail(shop.contactEmail) ?? '';
     if (!senderStreet || !senderCity || !senderPostalCode || !senderName || !senderPhone) {
         return { success: false, status: 400, error: 'Completa los datos del vendedor antes de generar etiquetas' };
     }

@@ -68,12 +68,25 @@ asserts the boundary directly: a second buyer, a second seller and a second
 shop exist in every fixture, and every test asks whether the wrong one can get
 through. That suite replaces the Postgres RLS tests.
 
-> **The Clerk `convex` JWT template MUST emit the `email_verified` claim.**
-> Linking an existing profile by email hands over its orders, address and
-> seller permissions, so `users.ensureCurrent` only adopts a profile when the
-> claim is `true`; a missing claim counts as unverified. Without it, returning
-> users cannot link and the mutation refuses the sign-in rather than forking
-> the account into a second profile.
+> **The Clerk `convex` JWT template MUST emit both `email` and
+> `email_verified`.**
+>
+> `email_verified` guards adoption: linking an existing profile by email hands
+> over its orders, address and seller permissions, so `users.ensureCurrent`
+> only adopts a profile when the claim is `true`; a missing claim counts as
+> unverified. Without it, returning users cannot link and the mutation refuses
+> the sign-in rather than forking the account into a second profile.
+>
+> `email` is what the account is actually reachable at. Without it a profile is
+> created holding a stand-in on the reserved `invalid.local` domain, and the
+> buyer receives no order notification, no Stripe receipt and no carrier
+> tracking mail. Nothing sends to a stand-in — `realEmail` in
+> `convex/lib/placeholderEmail.ts` resolves it to `null` at every boundary that
+> sends, charges, ships or displays — but the address is still missing, so a
+> deployment without this claim is misconfigured. The Worker logs
+> `auth.session_without_email_claim` and Convex logs
+> `profile.created_without_email` when it happens; a sign-in that does carry
+> the claim repairs the stored address in place.
 
 ## Cutover
 

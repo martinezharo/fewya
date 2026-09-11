@@ -6,6 +6,7 @@ import {
     normalizeCheckoutItems,
 } from '../../../lib/cart/checkout';
 import { createRequestConvexClient, getRequestUser } from '../../../lib/core/auth';
+import { realEmail } from '../../../../convex/lib/placeholderEmail';
 import { api } from '../../../../convex/_generated/api';
 import { toProfileFields } from '../../../lib/core/profile';
 
@@ -152,7 +153,9 @@ export const POST: APIRoute = async ({ locals, request }) => {
     ].filter(Boolean);
 
     const shippingAddress = addressParts.length > 0 ? addressParts.join(', ') : null;
-    const buyerEmail = user.email || profile.email || null;
+    // Stamped onto the order, sent to Stripe as the receipt address and passed
+    // to the carrier as the recipient, so a stand-in must not reach it.
+    const buyerEmail = realEmail(user.email) ?? realEmail(profile.email);
 
     if (variantsError) {
         console.error(JSON.stringify({

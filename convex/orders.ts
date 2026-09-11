@@ -4,6 +4,7 @@ import type { Doc } from './_generated/dataModel';
 import { v } from 'convex/values';
 import { identity, profileForIdentity } from './lib/auth';
 import { resolveStorageUrl } from './lib/storageUrl';
+import { realEmail } from './lib/placeholderEmail';
 
 type ReadCtx = QueryCtx | MutationCtx;
 
@@ -218,7 +219,7 @@ export const listForShop = query({
                         createdAt: new Date(order.createdAt).toISOString(),
                         deliveredAt: order.deliveredAt == null ? null : new Date(order.deliveredAt).toISOString(),
                         cancellationReason: order.cancellationReason ?? null,
-                        buyerEmail: order.buyerEmail ?? null,
+                        buyerEmail: realEmail(order.buyerEmail),
                         shippingFullName: order.shippingFullName ?? null,
                         shippingPhone: order.shippingPhone ?? null,
                         shippingAddress: order.shippingAddress ?? null,
@@ -275,7 +276,7 @@ type ShipmentContext = {
         lastName: string | null;
         phone: string | null;
         phonePrefix: string | null;
-        email: string;
+        email: string | null;
         addressStreet: string | null;
         addressNumber: string | null;
         addressFloor: string | null;
@@ -346,7 +347,7 @@ async function shipmentContextForSeller(ctx: QueryCtx | MutationCtx, orderId: st
         orderId: order.legacyId,
         publicId: order.publicId,
         status: order.status,
-        buyerEmail: order.buyerEmail ?? null,
+        buyerEmail: realEmail(order.buyerEmail),
         shippingFullName: order.shippingFullName ?? null,
         shippingPhone: order.shippingPhone ?? null,
         shippingAddress: order.shippingAddress ?? null,
@@ -363,7 +364,7 @@ async function shipmentContextForSeller(ctx: QueryCtx | MutationCtx, orderId: st
             lastName: owner.lastName ?? null,
             phone: owner.phone ?? null,
             phonePrefix: owner.phonePrefix ?? null,
-            email: owner.email,
+            email: realEmail(owner.email),
             addressStreet: owner.addressStreet ?? null,
             addressNumber: owner.addressNumber ?? null,
             addressFloor: owner.addressFloor ?? null,
@@ -1631,9 +1632,11 @@ async function notificationContext(ctx: ReadCtx, orderId: string) {
     return {
         orderId: order.legacyId,
         orderPublicId: order.publicId,
-        buyerEmail: order.buyerEmail ?? buyer?.email ?? null,
+        // A stand-in address resolves to null, and the dispatcher records the
+        // notification as `no_recipient` instead of hard-bouncing off Resend.
+        buyerEmail: realEmail(order.buyerEmail) ?? realEmail(buyer?.email),
         buyerLegacyId: order.buyerLegacyId ?? buyer?.legacyId ?? null,
-        sellerEmail: owner?.email ?? shop?.contactEmail ?? null,
+        sellerEmail: realEmail(owner?.email) ?? realEmail(shop?.contactEmail),
         sellerLegacyId: shop?.ownerLegacyId ?? owner?.legacyId ?? null,
         shopName: shop?.name ?? null,
         pickupPointName: order.pickupPointName ?? null,
