@@ -7,6 +7,7 @@ import { CLERK_JWT_TEMPLATE, CLERK_SECRET_KEY } from 'astro:env/server';
 import { api } from '../convex/_generated/api';
 import { createConvexClient } from './lib/core/convex';
 import { getAuthRedirectPath, isAuthPage, hasRequestAuthUser, setRequestAuthUser, type AuthUser } from './lib/core/auth';
+import { realEmail } from '../convex/lib/placeholderEmail';
 import { securityLog } from './lib/core/security-log';
 import { checkRateLimit, rateLimitResponse, type RateLimitBinding } from './lib/core/rate-limit';
 import { getT, resolveLocale } from './lib/core/i18n';
@@ -77,6 +78,22 @@ function hasClerkSessionCookie(request: Request): boolean {
     return false;
 }
 
+/**
+ * Resolves the caller once per request and publishes them on it.
+ *
+ * The identity comes from the Convex profile, not from the session token.
+ * Clerk issues two different tokens here — the `convex` JWT template, which
+ * carries `email`/`name`/`picture_url` and is what Convex verifies, and the
+ * `__session` cookie token, whose custom claims are empty unless someone adds
+ * them in the dashboard. This function used to read the second one, so every
+ * field it wanted was always `undefined` and the caller's email in particular
+ * fell back to a synthetic address that checkout then stamped onto the order.
+ *
+ * `ensureCurrent` already resolves the profile from the verified `convex`
+ * token, so it returns the stored identity too. That also makes the profile
+ * the single source of truth: name and avatar are editable in the account
+ * page, and a session claim would go stale the moment they are.
+ */
 async function hydrateClerkUser(auth: () => ClerkSessionAuth, context: APIContext) {
     const clerkAuth = auth();
     if (!clerkAuth.userId) return;
@@ -84,33 +101,25 @@ async function hydrateClerkUser(auth: () => ClerkSessionAuth, context: APIContex
     const token = await clerkAuth.getToken({ template: CLERK_JWT_TEMPLATE || 'convex' });
     if (!token) throw new Error('Clerk did not issue a Convex token');
 
-    const claims = (clerkAuth.sessionClaims ?? {}) as Record<string, unknown>;
-    const stringClaim = (...keys: string[]) => {
-        for (const key of keys) {
-            const value = claims[key];
-            if (typeof value === 'string' && value.trim()) return value.trim();
-        }
-        return undefined;
-    };
-
-    const email = stringClaim('email', 'email_address');
-    const fullName = stringClaim('name', 'full_name');
-    const firstName = stringClaim('given_name', 'first_name');
-    const lastName = stringClaim('family_name', 'last_name');
-    const pictureUrl = stringClaim('picture_url', 'image_url');
-
     const convex = createConvexClient(token);
     if (!convex) throw new Error('Convex is not configured');
 
     const linked = await convex.mutation(api.users.ensureCurrent, {});
 
+    const email = realEmail(linked.email);
+    if (!email) {
+        // The `convex` JWT template must emit `email`; without it the buyer's
+        // real address never reaches checkout, Stripe or the carrier.
+        console.warn(JSON.stringify({ event: 'auth.identity_without_email', subject: clerkAuth.userId }));
+    }
+
     const user: AuthUser = {
         id: linked.legacyId,
-        email: email ?? `clerk-${clerkAuth.userId}@invalid.local`,
-        fullName,
-        firstName,
-        lastName,
-        avatarUrl: pictureUrl,
+        email,
+        fullName: linked.fullName ?? undefined,
+        firstName: linked.firstName ?? undefined,
+        lastName: linked.lastName ?? undefined,
+        avatarUrl: linked.avatarUrl ?? undefined,
     };
     setRequestAuthUser(context.request, user, token);
 }

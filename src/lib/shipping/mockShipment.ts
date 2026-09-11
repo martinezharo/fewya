@@ -42,7 +42,7 @@ export interface ConvexShipmentContext {
         lastName: string | null;
         phone: string | null;
         phonePrefix: string | null;
-        email: string;
+        email: string | null;
         addressStreet: string | null;
         addressNumber: string | null;
         addressFloor: string | null;

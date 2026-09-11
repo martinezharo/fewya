@@ -11,7 +11,12 @@ import { createConvexClient } from './convex';
  */
 export interface AuthUser {
     id: string;
-    email: string;
+    /**
+     * Null when the identity provider sent no email claim. It is never a
+     * stand-in address: a caller that needs a real inbox must handle its
+     * absence rather than be handed something undeliverable.
+     */
+    email: string | null;
     fullName?: string;
     firstName?: string;
     lastName?: string;

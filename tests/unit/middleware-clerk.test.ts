@@ -109,4 +109,61 @@ describe('Clerk session routing', () => {
         expect(result?.headers.get('Cache-Control')).toBe('private, no-store');
         expect(next).not.toHaveBeenCalled();
     });
+    /**
+     * Regression: the caller's identity used to be read from the `__session`
+     * cookie's custom claims, which are empty unless someone adds them in the
+     * Clerk dashboard. Every field came back undefined, and the email fell
+     * back to a synthetic address that checkout stamped onto the order. The
+     * `convex` JWT template carries the real values, and `ensureCurrent`
+     * resolves them, so the profile is what the request now publishes.
+     */
+    describe('caller identity', () => {
+        it('takes the identity from the Convex profile, not the session claims', async () => {
+            mocks.mutation.mockResolvedValue({
+                legacyId: 'profile-uuid',
+                email: 'buyer@fewya.com',
+                fullName: 'A Buyer',
+                firstName: 'A',
+                lastName: 'Buyer',
+                avatarUrl: 'https://img.fewya.com/a.webp',
+            });
+            const { context, response } = call('/cart');
+            await response;
+
+            expect(getRequestUser(context.request)).toMatchObject({
+                id: 'profile-uuid',
+                email: 'buyer@fewya.com',
+                fullName: 'A Buyer',
+                avatarUrl: 'https://img.fewya.com/a.webp',
+            });
+        });
+
+        it('ignores an email claim on the session token', async () => {
+            mocks.authenticateRequest.mockResolvedValue({
+                headers: new Headers({ 'x-clerk-auth-status': 'signed-in' }),
+                toAuth: () => ({
+                    userId: 'user_test',
+                    getToken: mocks.getToken,
+                    sessionClaims: { email: 'stale@fewya.com' },
+                }),
+            });
+            mocks.mutation.mockResolvedValue({ legacyId: 'profile-uuid', email: 'buyer@fewya.com' });
+            const { context, response } = call('/cart');
+            await response;
+
+            expect(getRequestUser(context.request)?.email).toBe('buyer@fewya.com');
+        });
+
+        it('publishes a null email rather than a stand-in the caller cannot receive', async () => {
+            vi.spyOn(console, 'warn').mockImplementation(() => {});
+            mocks.mutation.mockResolvedValue({
+                legacyId: 'profile-uuid',
+                email: 'clerk-user_test@invalid.local',
+            });
+            const { context, response } = call('/cart');
+            await response;
+
+            expect(getRequestUser(context.request)?.email).toBeNull();
+        });
+    });
 });

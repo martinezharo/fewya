@@ -4,6 +4,7 @@ import ShopForm from '../../../components/seller/ShopForm.astro';
 
 import { getStripeClient, getStripeAccountStatus } from '../../../lib/payments/stripe';
 import { createRequestConvexClient, getRequestUser } from '../../../lib/core/auth';
+import { realEmail } from '../../../../convex/lib/placeholderEmail';
 import { api } from '../../../../convex/_generated/api';
 const { t } = Astro.locals;
 
@@ -74,7 +75,7 @@ if (Astro.request.method === 'POST') {
     const profile_img = formData.get('profile_img')?.toString() || user.avatarUrl;
     const banner_img = formData.get('banner_img')?.toString() || null;
     const accent_color = formData.get('accent_color')?.toString() || '#000000';
-    const contact_email = formData.get('contact_email')?.toString() || user.email;
+    const contact_email = formData.get('contact_email')?.toString() || realEmail(user.email);
     const whatsapp = formData.get('whatsapp')?.toString() || null;
     const location = formData.get('location')?.toString() || null;
 
@@ -109,7 +110,7 @@ if (Astro.request.method === 'POST') {
                 <div id="progress-bar" class="h-full bg-accent transition-all duration-300" style={`width: ${showStripeStep ? '100%' : '25%'}`}></div>
             </div>
 
-            <ShopForm mode="onboarding" shopData={{ contact_email: user.email }} />
+            <ShopForm mode="onboarding" shopData={{ contact_email: realEmail(user.email) ?? undefined }} />
 
             <!-- Messages -->
             <div id="error-message" class="text-red-500 font-medium text-sm mt-6 hidden p-4 bg-red-50 dark:bg-red-900/20 rounded-xl"></div>

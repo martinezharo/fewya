@@ -3,6 +3,7 @@ import type { MutationCtx, QueryCtx } from './_generated/server';
 import type { Doc } from './_generated/dataModel';
 import { v } from 'convex/values';
 import { identity, profileForIdentity } from './lib/auth';
+import { realEmail } from './lib/placeholderEmail';
 import { resolveStorageUrl } from './lib/storageUrl';
 
 type ReadCtx = QueryCtx | MutationCtx;
@@ -95,7 +96,7 @@ async function serializeShop(ctx: ReadCtx, shop: ShopDoc) {
         description: shop.description ?? null,
         profile_img: await resolveStorageUrl(ctx, shop.profileImg),
         banner_img: await resolveStorageUrl(ctx, shop.bannerImg),
-        contact_email: shop.contactEmail ?? null,
+        contact_email: realEmail(shop.contactEmail),
         whatsapp: shop.whatsapp ?? null,
         is_active: shop.isActive,
         status: shop.status,
@@ -129,7 +130,7 @@ export const current = query({
                 is_seller: profile.isSeller,
                 first_name: profile.firstName ?? null,
                 last_name: profile.lastName ?? null,
-                email: profile.email,
+                email: realEmail(profile.email),
                 phone: profile.phone ?? null,
                 phone_prefix: profile.phonePrefix ?? null,
                 address_street: profile.addressStreet ?? null,
@@ -172,7 +173,7 @@ export const onboarding = query({
             profile: {
                 id: profile.legacyId,
                 is_seller: profile.isSeller,
-                email: profile.email,
+                email: realEmail(profile.email),
                 avatar_url: profile.avatarUrl ?? null,
             },
             shop: shop ? await serializeShop(ctx, shop) : null,
@@ -220,7 +221,9 @@ export const updateShop = mutation({
         if (args.slug !== undefined) patch.slug = args.slug;
         if (args.description !== undefined) patch.description = args.description;
         if (args.accentColor !== undefined) patch.accentColor = args.accentColor;
-        if (args.contactEmail !== undefined) patch.contactEmail = args.contactEmail;
+        // A stand-in must not be storable as the shop's public contact, whether
+        // it is submitted directly or inherited from the owner's profile.
+        if (args.contactEmail !== undefined) patch.contactEmail = realEmail(args.contactEmail) ?? undefined;
         if (args.whatsapp !== undefined) patch.whatsapp = args.whatsapp;
         if (args.location !== undefined) patch.location = args.location;
         if (args.profileImg !== undefined) patch.profileImg = args.profileImg;
@@ -299,7 +302,7 @@ export const createShop = mutation({
             description: args.description ?? undefined,
             profileImg: args.profileImg ?? undefined,
             bannerImg: args.bannerImg ?? undefined,
-            contactEmail: args.contactEmail ?? profile.email,
+            contactEmail: realEmail(args.contactEmail) ?? realEmail(profile.email) ?? undefined,
             whatsapp: args.whatsapp ?? undefined,
             location: args.location ?? undefined,
             isActive: true,
@@ -592,7 +595,7 @@ export const listClaims = query({
                 orderId: order.legacyId,
                 publicId: order.publicId,
                 createdAt: new Date(order.createdAt).toISOString(),
-                buyerEmail: order.buyerEmail ?? null,
+                buyerEmail: realEmail(order.buyerEmail),
                 buyerName: order.shippingFullName ?? null,
                 incidentDescription: incident?.description ?? '',
                 incidentPhotos: await Promise.all((incident?.photos ?? []).map((photo) => resolveStorageUrl(ctx, photo))),

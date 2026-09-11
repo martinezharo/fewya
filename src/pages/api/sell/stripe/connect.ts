@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { createRequestConvexClient, getRequestUser, normalizeAuthRedirectPath } from '../../../../lib/core/auth';
+import { realEmail } from '../../../../../convex/lib/placeholderEmail';
 import { api } from '../../../../../convex/_generated/api';
 import {
     buildAbsoluteUrl,
@@ -55,7 +56,7 @@ export const POST: APIRoute = async ({ locals, request }) => {
             const account = await stripe.accounts.create({
                 type: 'express',
                 country: DEFAULT_STRIPE_ACCOUNT_COUNTRY,
-                email: shop.contact_email || user.email || undefined,
+                email: realEmail(shop.contact_email) ?? realEmail(user.email) ?? undefined,
                 capabilities: {
                     card_payments: { requested: true },
                     transfers: { requested: true },

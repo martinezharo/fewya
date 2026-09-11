@@ -1,9 +1,10 @@
 import { mutation, query } from './_generated/server';
 import type { MutationCtx } from './_generated/server';
-import type { Id } from './_generated/dataModel';
+import type { Doc, Id } from './_generated/dataModel';
 import { v } from 'convex/values';
 import { identity, profileByEmail, profileForIdentity } from './lib/auth';
 import { mayAdoptProfileByEmail } from './lib/identityLink';
+import { isPlaceholderEmail, placeholderEmail } from './lib/placeholderEmail';
 import { isStorageMarker, storageIdFromMarker, storageMarker } from './lib/storageMarker';
 
 /**
@@ -58,6 +59,66 @@ export const current = query({
 });
 
 /**
+ * What the Worker needs to describe the caller: resolved here rather than read
+ * from the session cookie's claims, which carry none of it. See the comment on
+ * `hydrateClerkUser`.
+ */
+function identityOf(profile: Doc<'profiles'>) {
+    return {
+        email: profile.email,
+        fullName: profile.fullName ?? null,
+        firstName: profile.firstName ?? null,
+        lastName: profile.lastName ?? null,
+        avatarUrl: profile.avatarUrl ?? null,
+    };
+}
+
+/**
+ * The address `ensureCurrent` should write on this sign-in, or `null` to leave
+ * the stored one alone.
+ *
+ * A profile created before the identity provider emitted an email claim holds
+ * an undeliverable stand-in, and nothing used to replace it: the old code only
+ * touched `email` while re-binding a profile to a new Clerk subject, so the
+ * stand-in survived every later sign-in and was handed to Stripe, the carrier
+ * and the seller's order view as if it were the customer's inbox.
+ *
+ * Two rules keep the repair from becoming a way in:
+ *
+ * - Only a *verified* address is written. `mayAdoptProfileByEmail` is the same
+ *   test that guards adoption, for the same reason: an unverified claim is
+ *   just something the caller typed.
+ * - The address must not already belong to another profile. `profiles.email`
+ *   is read through a `.unique()` index, so two rows sharing an address would
+ *   make that lookup throw for both accounts.
+ */
+async function reconciledEmail(
+    ctx: MutationCtx,
+    user: { subject: string; email?: string; emailVerified?: boolean },
+    existing: { _id: Id<'profiles'>; email: string },
+): Promise<string | null> {
+    if (!mayAdoptProfileByEmail(user)) return null;
+    const email = user.email!.trim();
+    if (existing.email === email) return null;
+
+    const clash = await profileByEmail(ctx, email);
+    if (clash && clash._id !== existing._id) {
+        console.warn(JSON.stringify({
+            event: 'profile.email_reconcile_conflict',
+            subject: user.subject,
+        }));
+        return null;
+    }
+    if (isPlaceholderEmail(existing.email)) {
+        console.info(JSON.stringify({
+            event: 'profile.placeholder_email_replaced',
+            subject: user.subject,
+        }));
+    }
+    return email;
+}
+
+/**
  * Links an existing Supabase profile by verified email on first login, or
  * creates a profile for a genuinely new Clerk user.
  *
@@ -72,13 +133,13 @@ export const ensureCurrent = mutation({
         const user = await identity(ctx);
         const existing = await profileForIdentity(ctx, user);
         if (existing) {
-            if (existing.authSubject !== user.subject) {
-                await ctx.db.patch(existing._id, {
-                    authSubject: user.subject,
-                    ...(user.email && existing.email !== user.email ? { email: user.email } : {}),
-                });
-            }
-            return { id: String(existing._id), legacyId: existing.legacyId, created: false };
+            const patch: Record<string, unknown> = {};
+            if (existing.authSubject !== user.subject) patch.authSubject = user.subject;
+            const reconciled = await reconciledEmail(ctx, user, existing);
+            if (reconciled) patch.email = reconciled;
+            if (Object.keys(patch).length > 0) await ctx.db.patch(existing._id, patch as never);
+            const current = (await ctx.db.get(existing._id)) ?? existing;
+            return { id: String(existing._id), legacyId: existing.legacyId, created: false, ...identityOf(current) };
         }
 
         // No profile was adopted. If that is only because the address is
@@ -93,7 +154,23 @@ export const ensureCurrent = mutation({
             }
         }
 
-        const email = user.email ?? `clerk-${user.subject}@invalid.local`;
+        // Only a verified address is stored, which is the same bar
+        // `reconciledEmail` holds a later sign-in to. An address the provider
+        // has not confirmed is just something the caller typed: storing it
+        // would send this account's order mail, Stripe receipt and carrier
+        // tracking to whoever really owns it, and would reserve their address
+        // against them signing up later. The profile still needs a value, so
+        // it gets a stand-in that `realEmail` refuses to send to, and the first
+        // sign-in that does carry a verified claim replaces it in place.
+        const verified = mayAdoptProfileByEmail(user);
+        const email = verified ? user.email!.trim() : placeholderEmail(user.subject);
+        if (!verified) {
+            console.warn(JSON.stringify({
+                event: 'profile.created_without_verified_email',
+                subject: user.subject,
+                hadClaim: Boolean(user.email),
+            }));
+        }
         // Mirrors the Supabase profiles.id UUID column, and is what the
         // compatibility layer authorizes on. Trusted-side only.
         const legacyId = crypto.randomUUID();
@@ -109,7 +186,8 @@ export const ensureCurrent = mutation({
             emailMarketingOptIn: false,
             createdAt: Date.now(),
         });
-        return { id: String(id), legacyId, created: true };
+        const created = await ctx.db.get(id);
+        return { id: String(id), legacyId, created: true, ...identityOf(created!) };
     },
 });
 
