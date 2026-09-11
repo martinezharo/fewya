@@ -69,7 +69,7 @@ shop exist in every fixture, and every test asks whether the wrong one can get
 through. That suite replaces the Postgres RLS tests.
 
 > **The Clerk `convex` JWT template MUST emit both `email` and
-> `email_verified`.**
+> `email_verified`.** It does, and both are load-bearing.
 >
 > `email_verified` guards adoption: linking an existing profile by email hands
 > over its orders, address and seller permissions, so `users.ensureCurrent`
@@ -77,16 +77,34 @@ through. That suite replaces the Postgres RLS tests.
 > unverified. Without it, returning users cannot link and the mutation refuses
 > the sign-in rather than forking the account into a second profile.
 >
-> `email` is what the account is actually reachable at. Without it a profile is
-> created holding a stand-in on the reserved `invalid.local` domain, and the
-> buyer receives no order notification, no Stripe receipt and no carrier
-> tracking mail. Nothing sends to a stand-in — `realEmail` in
-> `convex/lib/placeholderEmail.ts` resolves it to `null` at every boundary that
-> sends, charges, ships or displays — but the address is still missing, so a
-> deployment without this claim is misconfigured. The Worker logs
-> `auth.session_without_email_claim` and Convex logs
-> `profile.created_without_email` when it happens; a sign-in that does carry
-> the claim repairs the stored address in place.
+> `email` is what the account is reachable at. Without it a profile is created
+> holding a stand-in on the reserved `invalid.local` domain, and the buyer
+> receives no order notification, no Stripe receipt and no carrier tracking
+> mail. `realEmail` in `convex/lib/placeholderEmail.ts` resolves a stand-in to
+> `null` at every boundary that sends, charges, ships or displays, so nothing
+> is sent to one — but the address is still missing, so Convex logs
+> `profile.created_without_email` and a sign-in that does carry the claim
+> repairs the stored address in place.
+
+### Two tokens, one identity
+
+Clerk issues two different tokens to this app, and only one of them carries
+any of this:
+
+| Token | Claims | Who reads it |
+| --- | --- | --- |
+| `convex` JWT template | `email`, `email_verified`, `name`, `given_name`, `family_name`, `picture_url` | Convex, which verifies it and exposes it as `ctx.auth.getUserIdentity()` |
+| `__session` cookie | whatever "Customize session token" holds — **empty by default** | `clerkAuth.sessionClaims` in the Worker |
+
+The middleware used to build `AuthUser` from `sessionClaims`, so every field
+was `undefined` on a default instance and the email in particular fell back to
+a synthetic address that checkout then stamped onto the order. It now takes the
+identity from the value `users.ensureCurrent` returns, which is resolved from
+the verified `convex` token.
+
+Prefer the profile over a session claim when adding anything here. Name and
+avatar are editable in the account page, so a copy in the session token goes
+stale the moment they are edited, and the cookie travels on every request.
 
 ## Cutover
 

@@ -1,6 +1,6 @@
 import { mutation, query } from './_generated/server';
 import type { MutationCtx } from './_generated/server';
-import type { Id } from './_generated/dataModel';
+import type { Doc, Id } from './_generated/dataModel';
 import { v } from 'convex/values';
 import { identity, profileByEmail, profileForIdentity } from './lib/auth';
 import { mayAdoptProfileByEmail } from './lib/identityLink';
@@ -57,6 +57,21 @@ export const current = query({
         return await profileForIdentity(ctx, user);
     },
 });
+
+/**
+ * What the Worker needs to describe the caller: resolved here rather than read
+ * from the session cookie's claims, which carry none of it. See the comment on
+ * `hydrateClerkUser`.
+ */
+function identityOf(profile: Doc<'profiles'>) {
+    return {
+        email: profile.email,
+        fullName: profile.fullName ?? null,
+        firstName: profile.firstName ?? null,
+        lastName: profile.lastName ?? null,
+        avatarUrl: profile.avatarUrl ?? null,
+    };
+}
 
 /**
  * The address `ensureCurrent` should write on this sign-in, or `null` to leave
@@ -123,7 +138,8 @@ export const ensureCurrent = mutation({
             const reconciled = await reconciledEmail(ctx, user, existing);
             if (reconciled) patch.email = reconciled;
             if (Object.keys(patch).length > 0) await ctx.db.patch(existing._id, patch as never);
-            return { id: String(existing._id), legacyId: existing.legacyId, created: false };
+            const current = (await ctx.db.get(existing._id)) ?? existing;
+            return { id: String(existing._id), legacyId: existing.legacyId, created: false, ...identityOf(current) };
         }
 
         // No profile was adopted. If that is only because the address is
@@ -160,7 +176,8 @@ export const ensureCurrent = mutation({
             emailMarketingOptIn: false,
             createdAt: Date.now(),
         });
-        return { id: String(id), legacyId, created: true };
+        const created = await ctx.db.get(id);
+        return { id: String(id), legacyId, created: true, ...identityOf(created!) };
     },
 });
 
