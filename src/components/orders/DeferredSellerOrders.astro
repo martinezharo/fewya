@@ -6,6 +6,7 @@ import { api } from '../../../convex/_generated/api';
 import { createRequestConvexClient } from '../../lib/core/auth';
 
 import { ORDER_STATUS, ORDER_STATUSES, getOrderStatusLabels } from '../../lib/orders/orderStatus';
+import { ALL_ORDER_STATUSES, isSellerOrderVisible } from '../../lib/orders/sellerOrdersFilter';
 const { t } = Astro.locals;
 const orderStatusLabels = getOrderStatusLabels(t);
 
@@ -185,6 +186,9 @@ const totalSales = orders.reduce((sum, order) => sum + order.subtotal + order.sh
 const totalOrders = orders.length;
 const totalItemsSold = orders.reduce((sum, order) => sum + order.itemsSold, 0);
 const hasPendingOrders = orders.some((order) => order.status === ORDER_STATUS.PENDING);
+const initialVisibleOrders = orders.filter((order) => (
+    isSellerOrderVisible(order.status, ALL_ORDER_STATUSES, false)
+)).length;
 const currencyFormatter = new Intl.NumberFormat('es-ES', {
     style: 'currency',
     currency: 'EUR',
@@ -254,7 +258,7 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', {
                         id="status-filter"
                         class="min-w-[160px] appearance-none rounded-xl border border-border bg-surface px-3 py-2 pr-10 text-sm text-text-primary shadow-sm outline-none ring-accent focus:ring-2 transition-shadow cursor-pointer"
                     >
-                        <option value="all">{t.sellerOrdersFilterStatusAll}</option>
+                        <option value={ALL_ORDER_STATUSES}>{t.sellerOrdersFilterStatusAll}</option>
                         {ORDER_STATUSES.map((status) => (
                             <option value={status}>{orderStatusLabels[status]}</option>
                         ))}
@@ -266,11 +270,20 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', {
             </div>
         </div>
 
-        <p id="orders-filter-count" class="mt-3 text-xs text-text-tertiary" />
+        <p id="orders-filter-count" class="mt-3 text-xs text-text-tertiary">
+            {initialVisibleOrders === totalOrders
+                ? t.sellerOrdersFilterCountAll.replace('{total}', String(totalOrders))
+                : t.sellerOrdersFilterCountFiltered
+                    .replace('{visible}', String(initialVisibleOrders))
+                    .replace('{total}', String(totalOrders))}
+        </p>
 
         <div id="orders-list" class="mt-4 flex flex-col gap-4">
             {orders.map((order) => (
-                <SellerOrderCard order={order} />
+                <SellerOrderCard
+                    order={order}
+                    initiallyHidden={!isSellerOrderVisible(order.status, ALL_ORDER_STATUSES, false)}
+                />
             ))}
         </div>
     </>
@@ -290,8 +303,9 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', {
 
 <script>
     import { getClientT } from '../../lib/core/i18n';
+    import { isSellerOrderVisible } from '../../lib/orders/sellerOrdersFilter';
 
-    function initSellerOrdersFilter() {
+    function applySellerOrdersFilters() {
         const t = getClientT();
         const toggle = document.getElementById('show-pending-toggle') as HTMLInputElement | null;
         const select = document.getElementById('status-filter') as HTMLSelectElement | null;
@@ -303,31 +317,40 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', {
         const cards = Array.from(list.querySelectorAll<HTMLElement>('[data-order-status]'));
         const total = cards.length;
 
-        function applyFilters() {
-            const selectedStatus = select!.value;
-            const showPending = toggle ? toggle.checked : true;
+        const selectedStatus = select.value;
+        const showPending = toggle ? toggle.checked : true;
 
-            let visible = 0;
-            cards.forEach((card) => {
-                const status = card.dataset.orderStatus || '';
-                let shouldShow = true;
-                if (selectedStatus !== 'all') {
-                    shouldShow = status === selectedStatus;
-                } else if (!showPending) {
-                    shouldShow = status !== 'pending';
-                }
-                card.style.display = shouldShow ? '' : 'none';
-                if (shouldShow) visible++;
+        let visible = 0;
+        cards.forEach((card) => {
+            const shouldShow = isSellerOrderVisible(
+                card.dataset.orderStatus || '',
+                selectedStatus,
+                showPending,
+            );
+            card.hidden = !shouldShow;
+            if (shouldShow) visible++;
+        });
+
+        countLabel.textContent = visible === total
+            ? t.sellerOrdersFilterCountAll.replace('{total}', String(total))
+            : t.sellerOrdersFilterCountFiltered.replace('{visible}', String(visible)).replace('{total}', String(total));
+    }
+
+    let listenersAttached = false;
+
+    function initSellerOrdersFilter() {
+        if (!listenersAttached) {
+            listenersAttached = true;
+            document.addEventListener('change', (event) => {
+                const target = event.target;
+                if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement)) return;
+                if (target.id !== 'show-pending-toggle' && target.id !== 'status-filter') return;
+
+                applySellerOrdersFilters();
             });
-
-            countLabel!.textContent = visible === total
-                ? t.sellerOrdersFilterCountAll.replace('{total}', String(total))
-                : t.sellerOrdersFilterCountFiltered.replace('{visible}', String(visible)).replace('{total}', String(total));
         }
 
-        if (toggle) toggle.addEventListener('change', applyFilters);
-        select.addEventListener('change', applyFilters);
-        applyFilters();
+        applySellerOrdersFilters();
     }
 
     document.addEventListener('astro:page-load', initSellerOrdersFilter);
