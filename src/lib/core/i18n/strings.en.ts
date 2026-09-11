@@ -98,6 +98,7 @@ export const en: Strings = {
     // Auth / Login
     heroSignIn: 'Sign in',
     loginPageTitle: 'Sign in — Fewya',
+    authTemporarilyUnavailable: 'We could not load your account. Your session is still active. Please reload the page in a few seconds.',
     loginPageDescription: 'Sign in to Fewya to continue.',
     loginSubtitle: 'Sign in to shop, sell, and manage your orders.',
     loginTermsHint: 'By continuing, you accept our',

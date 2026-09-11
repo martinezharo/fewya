@@ -2,6 +2,12 @@
 // Web-push handlers, imported into the Workbox-generated service worker via
 // `workbox.importScripts` (see astro.config.mjs). Vanilla SW code — no bundling.
 
+// Retire the previous navigation cache, which could contain sign-in pages or
+// private HTML from another session. Asset and image caches remain reusable.
+self.addEventListener('activate', (event) => {
+    event.waitUntil(self.caches.delete('pages'));
+});
+
 self.addEventListener('push', (event) => {
     let payload = {};
     try {

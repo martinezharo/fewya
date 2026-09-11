@@ -98,6 +98,7 @@ export const es: Strings = {
     // Auth / Login
     heroSignIn: 'Iniciar sesión',
     loginPageTitle: 'Iniciar sesión — Fewya',
+    authTemporarilyUnavailable: 'No hemos podido cargar tu cuenta. Tu sesión sigue activa. Vuelve a cargar la página en unos segundos.',
     loginPageDescription: 'Inicia sesión en Fewya para continuar.',
     loginSubtitle: 'Inicia sesión para comprar, vender y gestionar tus pedidos.',
     loginTermsHint: 'Al continuar, aceptas nuestras',

@@ -55,16 +55,44 @@ export function createRequestConvexClient(request: Request): ConvexHttpClient | 
     return token ? createConvexClient(token) : null;
 }
 
-export function normalizeAuthRedirectPath(path: string | null | undefined) {
+export function normalizeAuthRedirectPath(path: string | null | undefined, fallback = '/') {
     // Reject anything that isn't a same-origin absolute path. Browsers normalize a
     // leading backslash to a forward slash, so `/\evil.com` would otherwise be
     // treated as safe here while resolving to a protocol-relative `//evil.com`
     // open redirect once placed in a Location header.
-    if (!path || !path.startsWith('/') || path.startsWith('//') || path.startsWith('/\\')) {
-        return '/';
+    if (!path || !path.startsWith('/') || path.startsWith('//') || path.includes('\\')
+        || /[\u0000-\u0020\u007f]/.test(path)) {
+        return fallback;
     }
 
     return path;
+}
+
+export function isAuthPage(pathname: string) {
+    return /^\/(login|sign-up)\/?$/.test(pathname);
+}
+
+/** One return destination for SSR, OAuth transfers, and both auth forms. */
+export function getAuthRedirectPath(url: URL) {
+    const requested = url.searchParams.get('redirect_to') || url.searchParams.get('redirect_url');
+    if (!requested) return '/me';
+
+    try {
+        let path = requested;
+        // Clerk's redirect_url may contain the full URL of the originating page.
+        if (/^https?:\/\//.test(path)) {
+            const target = new URL(path);
+            if (target.origin !== url.origin) return '/me';
+            path = target.pathname + target.search + target.hash;
+        }
+        path = normalizeAuthRedirectPath(path, '/me');
+        const target = new URL(path, url.origin);
+        // Normalize dot segments and encoded route names before checking for loops.
+        if (isAuthPage(decodeURIComponent(target.pathname))) return '/me';
+        return normalizeAuthRedirectPath(target.pathname + target.search + target.hash, '/me');
+    } catch {
+        return '/me';
+    }
 }
 
 /**

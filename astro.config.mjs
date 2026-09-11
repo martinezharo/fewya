@@ -85,7 +85,13 @@ export default defineConfig({
     // The integration must always be installed because the Astro components
     // resolve its virtual config module at build time. Runtime auth remains
     // conditional on the publishable key in middleware and pages.
-    clerk({ appearance: clerkAppearance }),
+    clerk({
+      appearance: clerkAppearance,
+      signInUrl: '/login',
+      signUpUrl: '/sign-up',
+      signInFallbackRedirectUrl: '/me',
+      signUpFallbackRedirectUrl: '/me',
+    }),
     requireClerkPublishableKey(),
     AstroPWA({
       injectRegister: false,
@@ -150,12 +156,9 @@ export default defineConfig({
         runtimeCaching: [
           {
             urlPattern: ({ request }) => request.mode === 'navigate',
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'pages',
-              networkTimeoutSeconds: 3,
-              cacheableResponse: { statuses: [0, 200] },
-            },
+            // SSR pages reflect the current session, including public pages'
+            // account controls. Never replay HTML from an earlier session.
+            handler: 'NetworkOnly',
           },
           {
             urlPattern: /\.(?:js|css|woff2|woff|ttf)$/i,

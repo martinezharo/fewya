@@ -1,9 +1,10 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import { SignIn } from '@clerk/astro/components';
+import { getAuthRedirectPath } from '../lib/core/auth';
 const { t } = Astro.locals;
 
-const redirectTo = Astro.url.searchParams.get('redirect_to') || '/me';
+const redirectTo = getAuthRedirectPath(Astro.url);
 const signUpUrl = `/sign-up?redirect_to=${encodeURIComponent(redirectTo)}`;
 ---
 
@@ -26,6 +27,7 @@ const signUpUrl = `/sign-up?redirect_to=${encodeURIComponent(redirectTo)}`;
         <SignIn
           routing="hash"
           forceRedirectUrl={redirectTo}
+          signUpForceRedirectUrl={redirectTo}
           signUpUrl={signUpUrl}
         />
       </div>

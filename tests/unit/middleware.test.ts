@@ -11,7 +11,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
  * page in a CDN and serves it to the next.
  */
 
-vi.mock('../../src/lib/core/auth', () => ({
+vi.mock('../../src/lib/core/auth', async (importOriginal) => ({
+    ...await importOriginal<typeof import('../../src/lib/core/auth')>(),
     hasRequestAuthUser: () => false,
     setRequestAuthUser: () => {},
 }));
@@ -304,7 +305,7 @@ describe('middleware', () => {
     });
 
     describe('caching', () => {
-        const privatePrefixes = ['/me', '/sell', '/cart', '/profile', '/wishlist', '/api'];
+        const privatePrefixes = ['/me', '/sell', '/cart', '/profile', '/wishlist', '/api', '/login', '/sign-up'];
 
         it.each(privatePrefixes)('never caches %s publicly', async (prefix) => {
             const { response } = await call(`https://fewya.com${prefix}/anything`);
