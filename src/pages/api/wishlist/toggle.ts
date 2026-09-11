@@ -14,9 +14,16 @@ export const POST: APIRoute = async ({ locals, request }) => {
         return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401 });
     }
 
-    const body = await request.json() as WishlistToggleBody;
-    const productId = body?.productId;
+    // Parsing has to be guarded: a malformed body is the caller's mistake, and
+    // letting it throw turns a 400 into an unhandled 500.
+    let body: WishlistToggleBody;
+    try {
+        body = await request.json() as WishlistToggleBody;
+    } catch {
+        return new Response(JSON.stringify({ error: 'invalid body' }), { status: 400 });
+    }
 
+    const productId = body?.productId;
     if (!productId || typeof productId !== 'string') {
         return new Response(JSON.stringify({ error: 'missing productId' }), { status: 400 });
     }
