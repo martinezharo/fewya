@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro';
 import { createRequestConvexClient } from '../../../../lib/core/auth';
 import { api } from '../../../../../convex/_generated/api';
-import { InvalidFieldError, optionalText } from '../../../../lib/core/requestFields';
+import { optionalText, requireObject } from '../../../../lib/core/requestFields';
 
 /** Storage markers and imported URLs; long enough for either, bounded either way. */
 const IMAGE_URL_MAX = 512;
@@ -17,9 +17,7 @@ export const PATCH: APIRoute = async ({ locals, request }) => {
     let profileImg: string | null | undefined;
     let bannerImg: string | null | undefined;
     try {
-        const body = await request.json();
-        if (typeof body !== 'object' || body === null) throw new InvalidFieldError('body');
-        const raw = body as Record<string, unknown>;
+        const raw = requireObject('body', await request.json());
         profileImg = optionalText('profile_img', raw.profile_img, IMAGE_URL_MAX);
         bannerImg = optionalText('banner_img', raw.banner_img, IMAGE_URL_MAX);
     } catch {

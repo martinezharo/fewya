@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro';
 import { createRequestConvexClient } from '../../../../lib/core/auth';
 import { api } from '../../../../../convex/_generated/api';
-import { optionalText, requiredText } from '../../../../lib/core/requestFields';
+import { optionalText, requireObject, requiredText } from '../../../../lib/core/requestFields';
 
 /** Matches the `maxlength` on the reply textarea; an unbounded field is a way
  * for one seller to fill the deployment. An empty reply clears an existing one. */
@@ -26,9 +26,7 @@ export const POST: APIRoute = async ({ locals, request }) => {
     let reviewId: string;
     let reply: string;
     try {
-        const body = await request.json();
-        if (typeof body !== 'object' || body === null) throw new Error('not an object');
-        const raw = body as Record<string, unknown>;
+        const raw = requireObject('body', await request.json());
         reviewId = requiredText('reviewId', raw.reviewId, REVIEW_ID_MAX);
         if (typeof raw.reply !== 'string') throw new Error('reply must be a string');
         reply = optionalText('reply', raw.reply, REPLY_MAX) ?? '';

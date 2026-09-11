@@ -45,12 +45,16 @@ export function requiredText(field: string, value: unknown, maxLength?: number):
 }
 
 /**
- * A number that is safe to store. NaN and Infinity pass `typeof x === 'number'`
- * and Convex's `v.number()`, so they have to be rejected explicitly rather than
- * being written to the database.
+ * A number that is safe to store.
+ *
+ * Only a number or a numeric string is accepted: `Number()` happily turns
+ * `true` into 1 and `[]` into 0, which would quietly become a variant's price.
+ * NaN and Infinity pass both `typeof x === 'number'` and Convex's `v.number()`,
+ * so they are rejected explicitly rather than written to the database.
  */
 export function optionalNumber(field: string, value: unknown): number | null {
     if (value === undefined || value === null || value === '') return null;
+    if (typeof value !== 'number' && typeof value !== 'string') throw new InvalidFieldError(field);
     const parsed = typeof value === 'number' ? value : Number(value);
     if (!Number.isFinite(parsed)) throw new InvalidFieldError(field);
     return parsed;
@@ -61,6 +65,20 @@ export function requiredNumber(field: string, value: unknown): number {
     const parsed = optionalNumber(field, value);
     if (parsed === null) throw new InvalidFieldError(field);
     return parsed;
+}
+
+/**
+ * A JSON object — a request body, or one entry of it.
+ *
+ * `typeof [] === 'object'`, so an array slips through the obvious check and
+ * arrives as a body whose every named field reads `undefined`. That looks like
+ * "nothing to change" rather than the malformed request it is.
+ */
+export function requireObject(field: string, value: unknown): Record<string, unknown> {
+    if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+        throw new InvalidFieldError(field);
+    }
+    return value as Record<string, unknown>;
 }
 
 /** An array of strings, or `undefined` when the key is absent. */

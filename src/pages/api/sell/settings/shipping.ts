@@ -3,7 +3,7 @@ import { createRequestConvexClient } from '../../../../lib/core/auth';
 import { api } from '../../../../../convex/_generated/api';
 
 import { normalizeShippingPlatforms, isShippingPlatform } from '../../../../lib/shipping/shippingPlatform';
-import { optionalNumber } from '../../../../lib/core/requestFields';
+import { optionalNumber, requireObject } from '../../../../lib/core/requestFields';
 
 export const GET: APIRoute = async ({ locals, request }) => {
     const { t } = locals;
@@ -33,9 +33,7 @@ export const PATCH: APIRoute = async ({ locals, request }) => {
 
     let body: Record<string, unknown>;
     try {
-        const parsed = await request.json();
-        if (typeof parsed !== 'object' || parsed === null) throw new Error('not an object');
-        body = parsed as Record<string, unknown>;
+        body = requireObject('body', await request.json());
     } catch {
         return new Response(JSON.stringify({ error: t.apiInvalidBody }), { status: 400 });
     }

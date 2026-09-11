@@ -3,6 +3,7 @@ import { createRequestConvexClient } from '../../../../lib/core/auth';
 import { api } from '../../../../../convex/_generated/api';
 
 import { enforceVariantPricing, type PricingCheckVariant } from '../../../../lib/products/pricingEnforcement';
+import { requireObject } from '../../../../lib/core/requestFields';
 
 export const PATCH: APIRoute = async ({ locals, request, url }) => {
     const { t, locale } = locals;
@@ -19,9 +20,7 @@ export const PATCH: APIRoute = async ({ locals, request, url }) => {
 
     let isActive: boolean;
     try {
-        const body = await request.json();
-        if (typeof body !== 'object' || body === null) throw new Error('not an object');
-        const value = (body as Record<string, unknown>).is_active;
+        const value = requireObject('body', await request.json()).is_active;
         if (typeof value !== 'boolean') throw new Error('is_active must be a boolean');
         isActive = value;
     } catch {

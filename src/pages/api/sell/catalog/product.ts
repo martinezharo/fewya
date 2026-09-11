@@ -11,6 +11,7 @@ import {
     optionalNumber,
     optionalStringArray,
     optionalText,
+    requireObject,
     requiredText,
 } from '../../../../lib/core/requestFields';
 
@@ -57,8 +58,7 @@ function normalizeVariants(value: unknown): NormalizedVariant[] | undefined {
     if (value === undefined || value === null) return undefined;
     if (!Array.isArray(value)) throw new InvalidFieldError('variants');
     return value.map((entry, index) => {
-        if (typeof entry !== 'object' || entry === null) throw new InvalidFieldError(`variants[${index}]`);
-        const variant = entry as Record<string, unknown>;
+        const variant = requireObject(`variants[${index}]`, entry);
         const at = (field: string) => `variants[${index}].${field}`;
         return {
             id: variant.id == null ? undefined : requiredText(at('id'), variant.id),
@@ -84,8 +84,7 @@ function normalizeVariants(value: unknown): NormalizedVariant[] | undefined {
  * the listing rather than leave it alone.
  */
 function normalizeProduct(body: unknown, options: { required: boolean }): NormalizedProduct {
-    if (typeof body !== 'object' || body === null) throw new InvalidFieldError('body');
-    const raw = body as Record<string, unknown>;
+    const raw = requireObject('body', body);
     const specifications = raw.specifications;
     if (specifications !== undefined && specifications !== null
         && (typeof specifications !== 'object' || Array.isArray(specifications))) {

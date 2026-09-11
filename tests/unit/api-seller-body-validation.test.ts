@@ -64,6 +64,15 @@ describe('seller request bodies are validated before they reach Convex', () => {
         it('rejects a body that is not an object', async () => {
             expect((await send(shipping.PATCH, { rawBody: '{', method: 'PATCH' })).status).toBe(400);
             expect((await call(null)).status).toBe(400);
+            // An array passes `typeof x === 'object'` and would read as a
+            // no-op patch, answering 200 to a malformed request.
+            expect((await call([])).status).toBe(400);
+            expect(convex.mutation).not.toHaveBeenCalled();
+        });
+
+        it('rejects a dimension given as a boolean rather than coercing it', async () => {
+            expect((await call({ default_weight_kg: true })).status).toBe(400);
+            expect(convex.mutation).not.toHaveBeenCalled();
         });
     });
 
@@ -77,6 +86,11 @@ describe('seller request bodies are validated before they reach Convex', () => {
 
         it('rejects an image reference longer than the column allows', async () => {
             expect((await call({ banner_img: 'x'.repeat(513) })).status).toBe(400);
+            expect(convex.mutation).not.toHaveBeenCalled();
+        });
+
+        it('rejects an array body', async () => {
+            expect((await call([])).status).toBe(400);
             expect(convex.mutation).not.toHaveBeenCalled();
         });
 
@@ -98,6 +112,11 @@ describe('seller request bodies are validated before they reach Convex', () => {
             expect((await call({ is_active: 'yes' })).status).toBe(400);
             expect((await call({})).status).toBe(400);
             expect((await call(null)).status).toBe(400);
+            expect(convex.mutation).not.toHaveBeenCalled();
+        });
+
+        it('rejects an array body', async () => {
+            expect((await call([])).status).toBe(400);
             expect(convex.mutation).not.toHaveBeenCalled();
         });
 

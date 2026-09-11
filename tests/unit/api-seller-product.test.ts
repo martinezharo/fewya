@@ -112,6 +112,30 @@ describe('seller product route', () => {
         expect(convex.mutation).not.toHaveBeenCalled();
     });
 
+    // `typeof [] === 'object'`, so an array body would otherwise read as a
+    // patch whose every field is absent and be answered 200.
+    it('rejects an array where an object is required', async () => {
+        expect((await patch([])).status).toBe(400);
+        expect((await patch({ variants: [[]] })).status).toBe(400);
+        expect((await patch({ specifications: [] })).status).toBe(400);
+        expect(convex.mutation).not.toHaveBeenCalled();
+    });
+
+    // `Number(true)` is 1 and `Number([])` is 0, either of which would become
+    // the variant's stored price.
+    it('rejects a price or stock that is neither a number nor a numeric string', async () => {
+        expect((await patch({ variants: [{ ...completeVariant, price: true }] })).status).toBe(400);
+        expect((await patch({ variants: [{ ...completeVariant, stock: [] }] })).status).toBe(400);
+        expect((await patch({ variants: [{ ...completeVariant, weight_kg: {} }] })).status).toBe(400);
+        expect(convex.mutation).not.toHaveBeenCalled();
+    });
+
+    it('still accepts a numeric string, which is what a number input posts', async () => {
+        const res = await patch({ variants: [{ ...completeVariant, price: '4.99', stock: '9' }] });
+        expect(res.status).toBe(200);
+        expect(variantsSentToConvex()[0]).toMatchObject({ priceCents: 499, stock: 9 });
+    });
+
     it('rejects fields of the wrong type rather than passing them to Convex', async () => {
         expect((await patch({ brand: 42 })).status).toBe(400);
         expect((await patch({ gallery_images: ['ok', 7] })).status).toBe(400);
