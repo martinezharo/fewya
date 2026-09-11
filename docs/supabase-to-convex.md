@@ -77,14 +77,19 @@ through. That suite replaces the Postgres RLS tests.
 > unverified. Without it, returning users cannot link and the mutation refuses
 > the sign-in rather than forking the account into a second profile.
 >
-> `email` is what the account is reachable at. Without it a profile is created
-> holding a stand-in on the reserved `invalid.local` domain, and the buyer
-> receives no order notification, no Stripe receipt and no carrier tracking
-> mail. `realEmail` in `convex/lib/placeholderEmail.ts` resolves a stand-in to
-> `null` at every boundary that sends, charges, ships or displays, so nothing
-> is sent to one — but the address is still missing, so Convex logs
-> `profile.created_without_email` and a sign-in that does carry the claim
-> repairs the stored address in place.
+> `email` is what the account is reachable at, and `email_verified` gates it:
+> a profile only ever stores an address the provider has confirmed. An
+> unconfirmed one is just something the caller typed, and storing it would send
+> this account's order mail, Stripe receipt and carrier tracking to whoever
+> really owns it — as well as reserve that address against the real owner
+> signing up later.
+>
+> When there is no verified address, the profile holds a stand-in on the
+> reserved `invalid.local` domain. `realEmail` in
+> `convex/lib/placeholderEmail.ts` resolves a stand-in to `null` at every
+> boundary that sends, charges, ships or displays, so nothing is ever sent to
+> one. Convex logs `profile.created_without_verified_email`, and the first
+> sign-in that does carry a verified claim replaces the stand-in in place.
 
 ### Two tokens, one identity
 

@@ -96,7 +96,7 @@ async function serializeShop(ctx: ReadCtx, shop: ShopDoc) {
         description: shop.description ?? null,
         profile_img: await resolveStorageUrl(ctx, shop.profileImg),
         banner_img: await resolveStorageUrl(ctx, shop.bannerImg),
-        contact_email: shop.contactEmail ?? null,
+        contact_email: realEmail(shop.contactEmail),
         whatsapp: shop.whatsapp ?? null,
         is_active: shop.isActive,
         status: shop.status,
@@ -221,7 +221,9 @@ export const updateShop = mutation({
         if (args.slug !== undefined) patch.slug = args.slug;
         if (args.description !== undefined) patch.description = args.description;
         if (args.accentColor !== undefined) patch.accentColor = args.accentColor;
-        if (args.contactEmail !== undefined) patch.contactEmail = args.contactEmail;
+        // A stand-in must not be storable as the shop's public contact, whether
+        // it is submitted directly or inherited from the owner's profile.
+        if (args.contactEmail !== undefined) patch.contactEmail = realEmail(args.contactEmail) ?? undefined;
         if (args.whatsapp !== undefined) patch.whatsapp = args.whatsapp;
         if (args.location !== undefined) patch.location = args.location;
         if (args.profileImg !== undefined) patch.profileImg = args.profileImg;
@@ -300,7 +302,7 @@ export const createShop = mutation({
             description: args.description ?? undefined,
             profileImg: args.profileImg ?? undefined,
             bannerImg: args.bannerImg ?? undefined,
-            contactEmail: args.contactEmail ?? realEmail(profile.email) ?? undefined,
+            contactEmail: realEmail(args.contactEmail) ?? realEmail(profile.email) ?? undefined,
             whatsapp: args.whatsapp ?? undefined,
             location: args.location ?? undefined,
             isActive: true,

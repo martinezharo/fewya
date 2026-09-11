@@ -154,12 +154,22 @@ export const ensureCurrent = mutation({
             }
         }
 
-        // No verified address to store. The profile still needs one, so it gets
-        // a stand-in that `realEmail` refuses to send to; the next sign-in that
-        // does carry the claim replaces it.
-        const email = user.email ?? placeholderEmail(user.subject);
-        if (!user.email) {
-            console.warn(JSON.stringify({ event: 'profile.created_without_email', subject: user.subject }));
+        // Only a verified address is stored, which is the same bar
+        // `reconciledEmail` holds a later sign-in to. An address the provider
+        // has not confirmed is just something the caller typed: storing it
+        // would send this account's order mail, Stripe receipt and carrier
+        // tracking to whoever really owns it, and would reserve their address
+        // against them signing up later. The profile still needs a value, so
+        // it gets a stand-in that `realEmail` refuses to send to, and the first
+        // sign-in that does carry a verified claim replaces it in place.
+        const verified = mayAdoptProfileByEmail(user);
+        const email = verified ? user.email!.trim() : placeholderEmail(user.subject);
+        if (!verified) {
+            console.warn(JSON.stringify({
+                event: 'profile.created_without_verified_email',
+                subject: user.subject,
+                hadClaim: Boolean(user.email),
+            }));
         }
         // Mirrors the Supabase profiles.id UUID column, and is what the
         // compatibility layer authorizes on. Trusted-side only.

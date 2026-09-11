@@ -139,4 +139,44 @@ describe('users.ensureCurrent', () => {
             ctx.db.query('profiles').withIndex('by_email', (q) => q.eq('email', IMPORTED_EMAIL)).unique());
         expect(imported?.legacyId).toBe('3e2c19e0-19b1-40f3-b3c5-daaa46a15247');
     });
+    /**
+     * Storing an address the provider has not confirmed would send this
+     * account's order mail, Stripe receipt and carrier tracking to whoever
+     * really owns it, and would reserve that address against the real owner
+     * signing up later. Creation therefore holds the same bar as
+     * reconciliation: verified, or a stand-in.
+     */
+    it('stores a stand-in when the email claim on a first sign-in is unverified', async () => {
+        const asUser = t.withIdentity({ subject: 'clerk|11', email: 'unproven@fewya.test' } as never);
+        const linked = await asUser.mutation(api.users.ensureCurrent, {});
+
+        expect(linked.created).toBe(true);
+        const profile = await asUser.query(api.users.current, {});
+        expect(isPlaceholderEmail(profile!.email)).toBe(true);
+        expect(profile?.email).not.toBe('unproven@fewya.test');
+    });
+
+    it('does not reserve an unverified address against its real owner', async () => {
+        const squatter = t.withIdentity({ subject: 'clerk|12', email: 'contested@fewya.test' } as never);
+        await squatter.mutation(api.users.ensureCurrent, {});
+
+        // The real owner verifies the same address and still gets it.
+        const owner = t.withIdentity({ subject: 'clerk|13', email: 'contested@fewya.test', emailVerified: true } as never);
+        await owner.mutation(api.users.ensureCurrent, {});
+
+        const profile = await owner.query(api.users.current, {});
+        expect(profile?.email).toBe('contested@fewya.test');
+    });
+
+    it('repairs the stand-in once that same address is verified', async () => {
+        const unverified = t.withIdentity({ subject: 'clerk|14', email: 'later@fewya.test' } as never);
+        const first = await unverified.mutation(api.users.ensureCurrent, {});
+
+        const verified = t.withIdentity({ subject: 'clerk|14', email: 'later@fewya.test', emailVerified: true } as never);
+        const second = await verified.mutation(api.users.ensureCurrent, {});
+
+        expect(second.legacyId).toBe(first.legacyId);
+        const profile = await verified.query(api.users.current, {});
+        expect(profile?.email).toBe('later@fewya.test');
+    });
 });
