@@ -1,9 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync, readdirSync } from 'node:fs';
+import { mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
     collectAstroFiles,
     collectComponentRoots,
+    componentRootsFor,
     findDeadTargets,
     formatViolation,
     scanTemplate,
@@ -20,7 +22,10 @@ function sourceFiles(dir: string): string[] {
 }
 
 const templates = collectAstroFiles(SRC).map((file) => ({ file, source: readFileSync(file, 'utf8') }));
-const allSources = sourceFiles(SRC).map((file) => readFileSync(file, 'utf8'));
+// Client scripts live in `.astro` templates and in `.ts` modules alike, and a
+// lookup is just as dead in either, so both are scanned.
+const sourceEntries = sourceFiles(SRC).map((file) => ({ file, source: readFileSync(file, 'utf8') }));
+const allSources = sourceEntries.map(({ source }) => source);
 
 /**
  * Both checks below target one failure mode: markup that compiles, type-checks
@@ -33,13 +38,15 @@ const allSources = sourceFiles(SRC).map((file) => readFileSync(file, 'utf8'));
 describe('markup invariants', () => {
     it('never nests a control inside another control', () => {
         const roots = collectComponentRoots(templates.map((t) => t.file));
-        const violations = templates.flatMap(({ file, source }) => scanTemplate(file, source, roots));
+        const violations = templates.flatMap(({ file, source }) =>
+            scanTemplate(file, source, componentRootsFor(file, source, roots)),
+        );
 
         expect(violations.map((v) => formatViolation(v, ROOT))).toEqual([]);
     });
 
     it('never queries the DOM for something no source file renders', () => {
-        const dead = findDeadTargets(templates, allSources);
+        const dead = findDeadTargets(sourceEntries, allSources);
 
         expect(dead.map((d) => `${d.file.replace(`${ROOT}/`, '')}:${d.line} ${d.selector}`)).toEqual([]);
     });
@@ -107,6 +114,30 @@ import SignOutButton from '../components/settings/SignOutButton.astro';
         expect(scan('<article><WishlistButton productId="1" /></article>', roots)).toEqual([]);
     });
 
+    it('records an input-only component as a control, keyed by its path', () => {
+        const dir = mkdtempSync(join(tmpdir(), 'markup-'));
+        const file = join(dir, 'QuantityInput.astro');
+        writeFileSync(file, '<input type="number" class="qty" />\n');
+
+        expect([...collectComponentRoots([file])]).toEqual([[file, 'input']]);
+    });
+
+    it('follows a default import to the component it actually names', () => {
+        const rootsByPath = new Map([['/app/src/components/WishlistButton.astro', 'button']]);
+        const source = "---\nimport FavoriteControl from '../components/WishlistButton.astro';\n---\n";
+        const roots = componentRootsFor('/app/src/pages/product.astro', source, rootsByPath);
+
+        expect(scan(`${source}<a href="/p"><FavoriteControl productId="1" /></a>`, roots)).toHaveLength(1);
+    });
+
+    it('treats a component that renders a bare input as the control it is', () => {
+        const roots = new Map([['QuantityInput', 'input']]);
+
+        expect(scan('<button type="button"><QuantityInput /></button>', roots)).toHaveLength(1);
+        // A label may hold its own control, whoever renders it.
+        expect(scan('<label><QuantityInput /></label>', roots)).toEqual([]);
+    });
+
     it('leaves valid markup alone', () => {
         // A label wrapping its own control is the idiomatic pattern.
         expect(scan('<label><input type="radio" /><span>Full</span></label>')).toEqual([]);
@@ -125,6 +156,15 @@ import SignOutButton from '../components/settings/SignOutButton.astro';
         );
 
         expect(dead.map((d) => d.selector)).toEqual(['#gone', '[data-pannel]']);
+    });
+
+    it('accepts an attribute a script creates at runtime', () => {
+        const dead = findDeadTargets(
+            [{ file: 'busy.ts', source: "el.querySelector('[data-busy-spinner]');" }],
+            ["spinner.setAttribute('data-busy-spinner', '');"],
+        );
+
+        expect(dead).toEqual([]);
     });
 
     it('accepts a target rendered by another file, or built from an interpolated id', () => {

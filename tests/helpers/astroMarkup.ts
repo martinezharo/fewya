@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { dirname, join, relative, resolve } from 'node:path';
 
 /**
  * A markup nesting rule the HTML parser silently "fixes" instead of honouring.
@@ -146,6 +146,11 @@ function interactiveAs(
  * Local components whose template is a single interactive element, so using
  * one inside a `<button>` or a link nests two interactive elements just as
  * surely as writing the tag inline.
+ *
+ * Keyed by absolute path, not by component name: the repo holds several
+ * `index.astro`, and a name-keyed map would let one file's root describe an
+ * unrelated component. `componentRootsFor` turns this into the tag names a
+ * given template actually uses.
  */
 export function collectComponentRoots(files: string[]): Map<string, string> {
     const roots = new Map<string, string>();
@@ -166,10 +171,34 @@ export function collectComponentRoots(files: string[]): Map<string, string> {
         const unique = new Set(topLevel);
         if (unique.size === 1) {
             const [only] = unique;
-            if (INTERACTIVE.has(only) && only !== 'input') {
-                roots.set(file.split('/').pop()!.replace(/\.astro$/, ''), only);
+            if (INTERACTIVE.has(only)) {
+                roots.set(file, only);
             }
         }
+    }
+    return roots;
+}
+
+/**
+ * The tag names one template uses, mapped to what each renders.
+ *
+ * Astro binds a default import to whatever local name the importer picks, so
+ * `import FavoriteControl from './WishlistButton.astro'` must be understood as
+ * a `<button>` under the name written in this file, not under the filename.
+ */
+export function componentRootsFor(
+    file: string,
+    source: string,
+    rootsByPath: Map<string, string>,
+): Map<string, string> {
+    const roots = new Map<string, string>();
+    for (const match of source.matchAll(/import\s+(\w+)\s+from\s+['"]([^'"]+\.astro)['"]/g)) {
+        const [, local, specifier] = match;
+        const resolved = specifier.startsWith('.')
+            ? resolve(dirname(file), specifier)
+            : [...rootsByPath.keys()].find((path) => path.endsWith(specifier.replace(/^[^/]*\//, '/')));
+        const root = resolved ? rootsByPath.get(resolved) : undefined;
+        if (root) roots.set(local, root);
     }
     return roots;
 }
@@ -293,6 +322,12 @@ export function collectRenderedAttributes(sources: string[]): Set<string> {
         // Strip lookups first so a selector never counts as its own target.
         const markup = source.replace(/querySelector\w*\([^)]*\)/g, '');
         for (const match of markup.matchAll(/(?:^|[\s({])(data-[\w-]+)/g)) {
+            names.add(match[1]);
+        }
+        // Scripts that create the attribute instead of rendering it: the
+        // busy-state spinner exists only after `setAttribute`, yet a lookup
+        // for it is perfectly alive.
+        for (const match of source.matchAll(/setAttribute\(\s*['"`](data-[\w-]+)/g)) {
             names.add(match[1]);
         }
     }
