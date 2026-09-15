@@ -3,6 +3,7 @@ import { getRequestUser, loginRedirectPath } from '../../lib/core/auth';
 import Layout from '../../layouts/Layout.astro';
 import Logo from '../../components/Logo.astro';
 import Icon from '../../components/icons/Icon.astro';
+import GoogleIcon from '../../components/icons/GoogleIcon.astro';
 import { getConvexSellerOnboarding } from '../../lib/seller/convexSeller';
 const { t } = Astro.locals;
 
@@ -20,7 +21,7 @@ if (isSeller && hasShop) {
 }
 
 // Contextual primary CTA: logged-in sellers without a shop go straight to
-// onboarding; everyone else signs in first.
+// onboarding; everyone else signs in with Google first.
 const isLoggedIn = !!user;
 const ctaHref = isLoggedIn
     ? '/sell/onboarding'
@@ -28,6 +29,7 @@ const ctaHref = isLoggedIn
 const ctaLabel = isLoggedIn
     ? t.sellerLandingCtaSetup
     : t.sellerLandingCtaLogin;
+const showGoogleIcon = !isLoggedIn;
 
 const brandFeatures = [
     { icon: 'image', title: t.sellerLandingBrandLogoTitle, body: t.sellerLandingBrandLogoBody },
@@ -93,6 +95,7 @@ const previewProducts = [
                             href={ctaHref}
                             class="inline-flex items-center justify-center gap-2.5 px-6 py-3.5 bg-text-primary text-surface rounded-full text-[15px] font-semibold whitespace-nowrap transition-all duration-150 hover:opacity-90 active:scale-[0.98]"
                         >
+                            {showGoogleIcon && <GoogleIcon class="w-5 h-5" />}
                             {ctaLabel}
                         </a>
                         <span class="inline-flex items-center gap-2 text-sm font-medium text-text-secondary">
@@ -246,6 +249,7 @@ const previewProducts = [
                         href={ctaHref}
                         class="inline-flex items-center justify-center gap-2.5 px-7 py-3.5 bg-text-primary text-surface rounded-full text-[15px] font-semibold whitespace-nowrap transition-all duration-150 hover:opacity-90 active:scale-[0.98]"
                     >
+                        {showGoogleIcon && <GoogleIcon class="w-5 h-5" />}
                         {ctaLabel}
                     </a>
                     <span class="inline-flex items-center gap-2 text-sm font-medium text-text-secondary">
