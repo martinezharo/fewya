@@ -114,6 +114,25 @@ describe('createShipment', () => {
             .rejects.toThrow('Parcel dimensions were rejected');
     });
 
+    it('treats a response without a parcel as an announcement failure', async () => {
+        vi.mocked(globalThis.fetch).mockResolvedValueOnce({
+            ok: true,
+            json: async () => ({
+                data: {
+                    id: 'shipment-1',
+                    parcels: [],
+                    errors: [{ detail: 'Carrier returned no parcel' }],
+                },
+            }),
+        } as Response);
+
+        await expect(createShipment(input('correos:home,national')))
+            .rejects.toMatchObject({
+                name: 'SendcloudAnnouncementError',
+                message: expect.stringContaining('Carrier returned no parcel'),
+            });
+    });
+
     it('does not accept a shipment without a label document', async () => {
         vi.mocked(globalThis.fetch).mockResolvedValueOnce({
             ok: true,

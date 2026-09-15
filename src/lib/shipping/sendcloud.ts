@@ -352,7 +352,7 @@ export async function createShipment(data: SendcloudShipmentData): Promise<Sendc
 
     if (!parcel) {
         const detail = shipment.errors?.map((e) => e.detail).filter(Boolean).join('; ') || 'no parcel returned';
-        throw new Error(`Sendcloud v3 announce returned no parcel: ${detail}`);
+        throw new SendcloudAnnouncementError(`Sendcloud v3 announce returned no parcel: ${detail}`);
     }
 
     const errors = shipment.errors?.map((error) => error.detail).filter((detail): detail is string => Boolean(detail)) ?? [];
