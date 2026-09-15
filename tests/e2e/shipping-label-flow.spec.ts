@@ -90,6 +90,7 @@ test.describe('seller shipping label flow', () => {
         });
 
         await modal.locator('.confirm-label-btn').click();
+        await expect(page.getByRole('alert')).toContainText('fixture rejection');
         await expect(modal.locator('.confirm-label-btn')).toBeEnabled();
         await expect(card).toHaveAttribute('data-order-status', 'paid');
         await expect(card.getByTestId('shipping-label-link')).toHaveCount(0);
