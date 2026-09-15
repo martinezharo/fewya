@@ -110,7 +110,6 @@ export const es: Strings = {
     // Profile Page
     profilePageTitle: 'Mi perfil — Fewya',
     profileAnonymous: 'Usuario',
-    profileSignOut: 'Cerrar sesión',
 
     // Wishlist
     wishlistPageTitle: 'Mis favoritos — Fewya',
@@ -394,6 +393,8 @@ export const es: Strings = {
     settingsThemeDark: 'Oscuro',
     settingsAccountSection: 'Cuenta',
     settingsSignOut: 'Cerrar sesión',
+    settingsSignOutSignedInAs: 'Sesión iniciada como {email}',
+    settingsSignOutHint: 'Cierra tu sesión en este dispositivo.',
     settingsLegalSection: 'Legal',
     settingsPrivacyPolicy: 'Política de privacidad',
     settingsTermsOfService: 'Condiciones de uso',

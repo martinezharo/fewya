@@ -108,7 +108,6 @@ export interface Strings {
     // Profile Page
     profilePageTitle: string;
     profileAnonymous: string;
-    profileSignOut: string;
 
     // Wishlist
     wishlistPageTitle: string;
@@ -392,6 +391,8 @@ export interface Strings {
     settingsThemeDark: string;
     settingsAccountSection: string;
     settingsSignOut: string;
+    settingsSignOutSignedInAs: string;
+    settingsSignOutHint: string;
     settingsLegalSection: string;
     settingsPrivacyPolicy: string;
     settingsTermsOfService: string;
