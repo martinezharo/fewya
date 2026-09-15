@@ -85,9 +85,9 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', {
                         <span class="text-sm font-semibold text-text-primary">{t.refundTypePartialTitle}</span>
                         <p class="mt-0.5 text-xs text-text-secondary leading-snug">{t.refundTypePartialDesc}</p>
                         <div class="partial-input-wrap hidden mt-3">
-                            <label class="block text-[11px] font-semibold uppercase tracking-wider text-text-secondary mb-1.5">
+                            <span class="block text-[11px] font-semibold uppercase tracking-wider text-text-secondary mb-1.5">
                                 {t.refundPartialInputLabel}
-                            </label>
+                            </span>
                             <div class="relative">
                                 <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-text-tertiary">€</span>
                                 <input
@@ -97,6 +97,7 @@ const currencyFormatter = new Intl.NumberFormat('es-ES', {
                                     max={totalAmount}
                                     class="partial-amount-input w-full rounded-xl border border-border bg-surface pl-7 pr-3 py-2 text-sm text-text-primary tabular-nums shadow-sm outline-none ring-accent focus:ring-2 transition-shadow"
                                     placeholder="0.00"
+                                    aria-label={t.refundPartialInputLabel}
                                 />
                             </div>
                             <p class="mt-1.5 text-[11px] text-text-tertiary tabular-nums">
