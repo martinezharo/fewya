@@ -4,6 +4,7 @@ import ShopForm from '../../../components/seller/ShopForm.astro';
 
 import { getStripeClient, getStripeAccountStatus } from '../../../lib/payments/stripe';
 import { createRequestConvexClient, getRequestUser } from '../../../lib/core/auth';
+import { getConvexSellerOnboarding } from '../../../lib/seller/convexSeller';
 import { realEmail } from '../../../../convex/lib/placeholderEmail';
 import { api } from '../../../../convex/_generated/api';
 const { t } = Astro.locals;
@@ -15,7 +16,7 @@ if (!user || !convex) {
     return Astro.redirect('/sell');
 }
 
-const onboarding = await convex.query(api.seller.onboarding, {});
+const onboarding = await getConvexSellerOnboarding(Astro.request);
 if (!onboarding) return Astro.redirect('/sell');
 const profile = onboarding.profile;
 const existingShop = onboarding.shop;
