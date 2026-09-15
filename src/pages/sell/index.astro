@@ -3,33 +3,25 @@ import { getRequestUser, loginRedirectPath } from '../../lib/core/auth';
 import Layout from '../../layouts/Layout.astro';
 import Logo from '../../components/Logo.astro';
 import Icon from '../../components/icons/Icon.astro';
-import { getRequestConvexToken } from '../../lib/core/auth';
-import { createConvexClient } from '../../lib/core/convex';
-import { getConvexSeller } from '../../lib/seller/convexSeller';
-import { api } from '../../../convex/_generated/api';
+import GoogleIcon from '../../components/icons/GoogleIcon.astro';
+import { getConvexSellerOnboarding } from '../../lib/seller/convexSeller';
 const { t } = Astro.locals;
 
 const user = getRequestUser(Astro.request);
 
-let isSeller = false;
-let hasShop = false;
-
-if (user) {
-    const token = getRequestConvexToken(Astro.request);
-    const convex = token ? createConvexClient(token) : null;
-    if (convex) {
-        const profile = await convex.query(api.users.current, {});
-        isSeller = Boolean(profile?.isSeller);
-        if (isSeller) hasShop = Boolean((await getConvexSeller(Astro.request))?.shop);
-    }
-}
+// A seller who already has a shop has no use for the pitch: the landing is
+// where you decide to sell, and they decided. One query answers both halves of
+// that, so the page an existing seller never sees costs a single round trip.
+const seller = user ? await getConvexSellerOnboarding(Astro.request) : null;
+const isSeller = Boolean(seller?.profile?.is_seller);
+const hasShop = Boolean(seller?.shop);
 
 if (isSeller && hasShop) {
     return Astro.redirect('/sell/shop');
 }
 
 // Contextual primary CTA: logged-in sellers without a shop go straight to
-// onboarding; everyone else signs in first.
+// onboarding; everyone else signs in with Google first.
 const isLoggedIn = !!user;
 const ctaHref = isLoggedIn
     ? '/sell/onboarding'
@@ -37,6 +29,7 @@ const ctaHref = isLoggedIn
 const ctaLabel = isLoggedIn
     ? t.sellerLandingCtaSetup
     : t.sellerLandingCtaLogin;
+const showGoogleIcon = !isLoggedIn;
 
 const brandFeatures = [
     { icon: 'image', title: t.sellerLandingBrandLogoTitle, body: t.sellerLandingBrandLogoBody },
@@ -102,6 +95,7 @@ const previewProducts = [
                             href={ctaHref}
                             class="inline-flex items-center justify-center gap-2.5 px-6 py-3.5 bg-text-primary text-surface rounded-full text-[15px] font-semibold whitespace-nowrap transition-all duration-150 hover:opacity-90 active:scale-[0.98]"
                         >
+                            {showGoogleIcon && <GoogleIcon class="w-5 h-5" />}
                             {ctaLabel}
                         </a>
                         <span class="inline-flex items-center gap-2 text-sm font-medium text-text-secondary">
@@ -255,6 +249,7 @@ const previewProducts = [
                         href={ctaHref}
                         class="inline-flex items-center justify-center gap-2.5 px-7 py-3.5 bg-text-primary text-surface rounded-full text-[15px] font-semibold whitespace-nowrap transition-all duration-150 hover:opacity-90 active:scale-[0.98]"
                     >
+                        {showGoogleIcon && <GoogleIcon class="w-5 h-5" />}
                         {ctaLabel}
                     </a>
                     <span class="inline-flex items-center gap-2 text-sm font-medium text-text-secondary">
