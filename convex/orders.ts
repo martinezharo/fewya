@@ -5,6 +5,7 @@ import { v } from 'convex/values';
 import { identity, profileForIdentity } from './lib/auth';
 import { resolveStorageUrl } from './lib/storageUrl';
 import { realEmail } from './lib/placeholderEmail';
+import { isPersistableShipmentLabel } from './lib/shipmentLabel';
 
 type ReadCtx = QueryCtx | MutationCtx;
 
@@ -41,6 +42,21 @@ async function variantByLegacyId(ctx: ReadCtx, legacyId: string | undefined): Pr
 async function shopByLegacyId(ctx: ReadCtx, legacyId: string | undefined): Promise<ShopDoc | null> {
     if (!legacyId) return null;
     return await ctx.db.query('shops').withIndex('by_legacy_id', (q) => q.eq('legacyId', legacyId)).unique();
+}
+
+async function buyerProfileForOrder(ctx: ReadCtx, order: OrderDoc): Promise<Doc<'profiles'> | null> {
+    if (order.buyerId) return await ctx.db.get(order.buyerId);
+    if (!order.buyerLegacyId) return null;
+    return await ctx.db
+        .query('profiles')
+        .withIndex('by_legacy_id', (q) => q.eq('legacyId', order.buyerLegacyId!))
+        .unique();
+}
+
+async function buyerEmailForOrder(ctx: ReadCtx, order: OrderDoc): Promise<string | null> {
+    const orderEmail = realEmail(order.buyerEmail);
+    if (orderEmail) return orderEmail;
+    return realEmail((await buyerProfileForOrder(ctx, order))?.email);
 }
 
 async function resolveVariant(ctx: ReadCtx, item: Doc<'orderItems'>): Promise<VariantDoc | null> {
@@ -202,10 +218,11 @@ export const listForShop = query({
             orders
                 .sort((a, b) => b.createdAt - a.createdAt)
                 .map(async (order) => {
-                    const [items, shipments, refunds] = await Promise.all([
+                    const [items, shipments, refunds, buyerEmail] = await Promise.all([
                         resolveOrderItems(ctx, order),
                         ctx.db.query('shipments').withIndex('by_order_id', (q) => q.eq('orderId', order._id)).collect(),
                         ctx.db.query('refunds').withIndex('by_order_id', (q) => q.eq('orderId', order._id)).collect(),
+                        buyerEmailForOrder(ctx, order),
                     ]);
                     const refundedAmount = refunds.reduce((sum, refund) => sum + refund.amountCents / 100, 0);
                     const shipment = shipments[0] ?? null;
@@ -219,7 +236,7 @@ export const listForShop = query({
                         createdAt: new Date(order.createdAt).toISOString(),
                         deliveredAt: order.deliveredAt == null ? null : new Date(order.deliveredAt).toISOString(),
                         cancellationReason: order.cancellationReason ?? null,
-                        buyerEmail: realEmail(order.buyerEmail),
+                        buyerEmail,
                         shippingFullName: order.shippingFullName ?? null,
                         shippingPhone: order.shippingPhone ?? null,
                         shippingAddress: order.shippingAddress ?? null,
@@ -316,9 +333,12 @@ async function shipmentContextForSeller(ctx: QueryCtx | MutationCtx, orderId: st
         throw new Error('Seller access required');
     }
 
-    const owner = shop.ownerId
-        ? await ctx.db.get(shop.ownerId)
-        : await ctx.db.query('profiles').withIndex('by_legacy_id', (q) => q.eq('legacyId', shop.ownerLegacyId)).unique();
+    const [owner, buyerEmail] = await Promise.all([
+        shop.ownerId
+            ? ctx.db.get(shop.ownerId)
+            : ctx.db.query('profiles').withIndex('by_legacy_id', (q) => q.eq('legacyId', shop.ownerLegacyId)).unique(),
+        buyerEmailForOrder(ctx, order),
+    ]);
     if (!owner) throw new Error('Seller profile not found');
 
     const orderItems = await ctx.db
@@ -347,7 +367,7 @@ async function shipmentContextForSeller(ctx: QueryCtx | MutationCtx, orderId: st
         orderId: order.legacyId,
         publicId: order.publicId,
         status: order.status,
-        buyerEmail: realEmail(order.buyerEmail),
+        buyerEmail,
         shippingFullName: order.shippingFullName ?? null,
         shippingPhone: order.shippingPhone ?? null,
         shippingAddress: order.shippingAddress ?? null,
@@ -406,7 +426,7 @@ const shipmentMutationArgs = {
     currency: v.string(),
     trackingNumber: v.optional(v.string()),
     trackingUrl: v.optional(v.string()),
-    labelUrl: v.optional(v.string()),
+    labelUrl: v.string(),
 };
 
 /** Persists a shipment and moves a paid order into seller processing. */
@@ -416,6 +436,8 @@ export const createShipmentForSeller = mutation({
         const user = await identity(ctx);
         const profile = await profileForIdentity(ctx, user);
         if (!profile?.isSeller) throw new Error('Seller access required');
+        if (!args.sendcloudShipmentId.trim()) throw new Error('Shipment provider id is required');
+        if (!isPersistableShipmentLabel(args.labelUrl)) throw new Error('A valid shipment label is required');
 
         const context = await shipmentContextForSeller(ctx, args.orderId, profile);
         if (!['paid', 'processing'].includes(context.status)) {
@@ -462,7 +484,7 @@ export const createShipmentForSeller = mutation({
             ...(args.trackingUrl === undefined ? {} : { trackingUrl: args.trackingUrl }),
             priceCents: args.priceCents,
             currency: args.currency,
-            ...(args.labelUrl === undefined ? {} : { labelUrl: args.labelUrl }),
+            labelUrl: args.labelUrl,
             requestedAt: now,
             createdAt: now,
             updatedAt: now,
@@ -475,7 +497,7 @@ export const createShipmentForSeller = mutation({
             shipmentId: args.sendcloudShipmentId,
             trackingNumber: args.trackingNumber ?? null,
             trackingUrl: args.trackingUrl ?? null,
-            labelUrl: args.labelUrl ?? null,
+            labelUrl: args.labelUrl,
             carrierName: args.carrierName ?? null,
             serviceName: args.serviceName ?? null,
             status: 'label_ready' as const,
@@ -1617,11 +1639,7 @@ async function notificationContext(ctx: ReadCtx, orderId: string) {
     const shop = order.shopId
         ? await ctx.db.get(order.shopId)
         : order.shopLegacyId ? await shopByLegacyId(ctx, order.shopLegacyId) : null;
-    const buyer = order.buyerId
-        ? await ctx.db.get(order.buyerId)
-        : order.buyerLegacyId
-            ? await ctx.db.query('profiles').withIndex('by_legacy_id', (q) => q.eq('legacyId', order.buyerLegacyId!)).unique()
-            : null;
+    const buyer = await buyerProfileForOrder(ctx, order);
     const owner = shop?.ownerId
         ? await ctx.db.get(shop.ownerId)
         : shop?.ownerLegacyId

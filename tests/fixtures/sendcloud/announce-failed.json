@@ -1,0 +1,22 @@
+{
+  "data": {
+    "id": "shipment-fixture-rejected",
+    "parcels": [
+      {
+        "id": 900002,
+        "status": {
+          "code": "ANNOUNCEMENT_FAILED",
+          "message": "Announcement failed"
+        },
+        "documents": []
+      }
+    ],
+    "errors": [
+      {
+        "status": "422",
+        "code": "carrier_rejected_parcel",
+        "detail": "The carrier rejected the parcel dimensions"
+      }
+    ]
+  }
+}

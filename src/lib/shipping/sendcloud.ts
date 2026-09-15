@@ -1,3 +1,20 @@
+import { SENDCLOUD_API_KEY, SENDCLOUD_API_SECRET } from 'astro:env/server';
+import type {
+    SendcloudAnnounceResponse,
+    SendcloudParcel,
+    SendcloudShipmentData,
+    SendcloudShipmentResult,
+} from './sendcloudContract';
+import { buildSendcloudShipmentPayload, parseSendcloudShipmentResponse } from './sendcloudContract';
+import {
+    platformForServicePointCarrier,
+    servicePointCarriersForPlatforms,
+    type ShippingPlatform,
+} from './shippingPlatform';
+
+export { SendcloudAnnouncementError } from './sendcloudContract';
+export type { SendcloudParcel, SendcloudShipmentData, SendcloudShipmentResult } from './sendcloudContract';
+
 export const DEFAULT_SHOP_SHIPPING_EUR = 3.49;
 
 export interface SendcloudConfig {
@@ -27,50 +44,6 @@ export interface SendcloudShippingQuote {
     maxWeightKg?: number;
 }
 
-export interface SendcloudParcel {
-    weight: number;
-    length?: number;
-    width?: number;
-    height?: number;
-}
-
-export interface SendcloudShipmentData {
-    orderId: string;
-    senderName: string;
-    senderCompany?: string;
-    senderAddress: string;
-    senderCity: string;
-    senderPostalCode: string;
-    senderCountry: string;
-    senderPhone: string;
-    senderEmail: string;
-    recipientName: string;
-    recipientAddress: string;
-    recipientCity: string;
-    recipientPostalCode: string;
-    recipientCountry: string;
-    recipientPhone: string;
-    recipientEmail: string;
-    parcels: SendcloudParcel[];
-    requestedService?: {
-        shippingOptionCode: string;
-    };
-    // Sendcloud service point id (pickup point). Required when the shipping
-    // option ends in /service_point — without it Sendcloud has no destination point.
-    toServicePointId?: string;
-}
-
-export interface SendcloudShipmentResult {
-    shipmentId: string;
-    reference: string;
-    trackingNumber?: string;
-    trackingUrl?: string;
-    labelUrl: string;
-    price: number;
-    currency: string;
-    status: string;
-}
-
 export interface SendcloudTrackingEvent {
     status: string;
     description: string;
@@ -83,21 +56,6 @@ export interface SendcloudLabelResult {
     shipmentId: string;
     labelUrl: string;
 }
-
-/** A carrier rejected an otherwise successful Sendcloud API request. */
-export class SendcloudAnnouncementError extends Error {
-    constructor(message: string) {
-        super(message);
-        this.name = 'SendcloudAnnouncementError';
-    }
-}
-
-import { SENDCLOUD_API_KEY, SENDCLOUD_API_SECRET } from 'astro:env/server';
-import {
-    platformForServicePointCarrier,
-    servicePointCarriersForPlatforms,
-    type ShippingPlatform,
-} from './shippingPlatform';
 
 const SENDCLOUD_API_BASE = 'https://panel.sendcloud.sc/api/v2';
 const SENDCLOUD_API_V3_BASE = 'https://panel.sendcloud.sc/api/v3';
@@ -272,112 +230,12 @@ export async function getShippingQuotes(
 }
 
 export async function createShipment(data: SendcloudShipmentData): Promise<SendcloudShipmentResult> {
-    if (!data.requestedService) {
-        throw new Error('Sendcloud createShipment requires a requestedService (shipping_option_code)');
-    }
-    const requestedService = data.requestedService;
-
-    const payload: Record<string, unknown> = {
-        apply_shipping_defaults: false,
-        apply_shipping_rules: false,
-        order_number: data.orderId,
-        from_address: {
-            name: data.senderName,
-            company_name: data.senderCompany || '',
-            address_line_1: data.senderAddress,
-            postal_code: data.senderPostalCode,
-            city: data.senderCity,
-            country_code: data.senderCountry,
-            phone_number: data.senderPhone,
-            email: data.senderEmail,
-        },
-        to_address: {
-            name: data.recipientName,
-            address_line_1: data.recipientAddress,
-            postal_code: data.recipientPostalCode,
-            city: data.recipientCity,
-            country_code: data.recipientCountry,
-            phone_number: data.recipientPhone,
-            email: data.recipientEmail,
-        },
-        ship_with: {
-            type: 'shipping_option_code',
-            properties: {
-                shipping_option_code: requestedService.shippingOptionCode,
-            },
-        },
-        parcels: data.parcels.map((p) => ({
-            weight: { value: p.weight.toFixed(3), unit: 'kg' },
-            // InPost calculates its own volumetric weight. Sending dimensions
-            // makes its API reject otherwise valid parcels when that derived
-            // value has more precision than the carrier accepts.
-            ...(!requestedService.shippingOptionCode.startsWith('inpost_es:')
-                && p.length && p.width && p.height
-                ? {
-                    dimensions: {
-                        length: String(p.length),
-                        width: String(p.width),
-                        height: String(p.height),
-                        unit: 'cm',
-                    },
-                }
-                : {}),
-        })),
-    };
-
-    if (data.toServicePointId) {
-        payload.to_service_point = { id: data.toServicePointId };
-    }
-
-    const result = await sendcloudRequestV3<{
-        data: {
-            id: string;
-            parcels: Array<{
-                id: number;
-                tracking_number?: string;
-                tracking_url?: string;
-                status?: { code?: string; message?: string };
-                documents?: Array<{ type?: string; link?: string }>;
-                label_file?: string;
-            }>;
-            errors?: Array<{ status?: string; code?: string; detail?: string }>;
-        };
-    }>('/shipments/announce-with-shipping-rules', {
+    const payload = buildSendcloudShipmentPayload(data);
+    const result = await sendcloudRequestV3<SendcloudAnnounceResponse>('/shipments/announce-with-shipping-rules', {
         method: 'POST',
         body: JSON.stringify(payload),
     });
-
-    const shipment = result.data;
-    const parcel = shipment.parcels?.[0];
-
-    if (!parcel) {
-        const detail = shipment.errors?.map((e) => e.detail).filter(Boolean).join('; ') || 'no parcel returned';
-        throw new SendcloudAnnouncementError(`Sendcloud v3 announce returned no parcel: ${detail}`);
-    }
-
-    const errors = shipment.errors?.map((error) => error.detail).filter((detail): detail is string => Boolean(detail)) ?? [];
-    const statusCode = parcel.status?.code?.trim().toUpperCase() ?? '';
-    if (statusCode.includes('FAILED') || errors.length > 0) {
-        const detail = errors.join('; ') || parcel.status?.message || statusCode || 'Carrier announcement failed';
-        throw new SendcloudAnnouncementError(detail);
-    }
-
-    const labelDoc = parcel.documents?.find((d) => d.type === 'label');
-    const labelUrl = labelDoc?.link || '';
-    if (!labelUrl) {
-        throw new SendcloudAnnouncementError('Sendcloud did not return a shipping label');
-    }
-
-    return {
-        shipmentId: String(parcel.id),
-        reference: data.orderId,
-        trackingNumber: parcel.tracking_number,
-        trackingUrl: parcel.tracking_url,
-        labelUrl,
-        price: 0, // Price is invoiced separately by Sendcloud
-        currency: 'EUR',
-        status: parcel.status?.message || parcel.status?.code || 'created',
-    };
+    return parseSendcloudShipmentResponse(result, data.orderId);
 }
 
 /** Hosts that may be sent the Sendcloud API credentials. */

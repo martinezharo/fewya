@@ -18,6 +18,15 @@ export default [
         },
     },
     {
-        ignores: ['dist/', 'node_modules/', '.astro/', 'dev-dist/', '.wrangler/', 'tests/', 'coverage/'],
+        ignores: [
+            'dist/',
+            'node_modules/',
+            '.astro/',
+            '.claude/worktrees/',
+            'dev-dist/',
+            '.wrangler/',
+            'tests/',
+            'coverage/',
+        ],
     }
 ];

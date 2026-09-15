@@ -108,7 +108,7 @@ async function createSendcloudShipment({
             recipientPostalCode,
             recipientCountry: 'ES',
             recipientPhone: context.shippingPhone || '',
-            recipientEmail: context.buyerEmail || '',
+            recipientEmail: realEmail(context.buyerEmail) ?? '',
             parcels,
             requestedService: { shippingOptionCode },
             toServicePointId: isPickup ? (context.pickupPointId || undefined) : undefined,
@@ -135,7 +135,7 @@ async function createSendcloudShipment({
             currency: result.currency || 'EUR',
             ...(result.trackingNumber ? { trackingNumber: result.trackingNumber } : {}),
             ...(result.trackingUrl ? { trackingUrl: result.trackingUrl } : {}),
-            ...(storedLabelUrl ? { labelUrl: storedLabelUrl } : {}),
+            labelUrl: storedLabelUrl,
         });
 
         return {

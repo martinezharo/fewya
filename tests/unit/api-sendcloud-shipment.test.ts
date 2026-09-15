@@ -6,8 +6,9 @@ const convex = await vi.hoisted(async () => {
     return createConvexRouteMock();
 });
 
-const { mockCreateShipment, mockNotify, mockUploadLabelPdf } = vi.hoisted(() => ({
+const { mockCreateShipment, mockDownloadLabelPdf, mockNotify, mockUploadLabelPdf } = vi.hoisted(() => ({
     mockCreateShipment: vi.fn(),
+    mockDownloadLabelPdf: vi.fn(),
     mockNotify: vi.fn(),
     mockUploadLabelPdf: vi.fn(),
 }));
@@ -25,6 +26,7 @@ vi.mock('../../src/lib/shipping/labelStorage', () => ({ uploadLabelPdf: mockUplo
 vi.mock('../../src/lib/shipping/sendcloud', async (importOriginal) => ({
     ...await importOriginal<typeof import('../../src/lib/shipping/sendcloud')>(),
     createShipment: mockCreateShipment,
+    downloadSendcloudLabelPdf: mockDownloadLabelPdf,
 }));
 
 const { SendcloudAnnouncementError } = await import('../../src/lib/shipping/sendcloud');
@@ -88,6 +90,15 @@ describe('POST /api/sendcloud/shipment', () => {
         vi.clearAllMocks();
         convex.reset();
         convex.query.mockResolvedValue(shipmentContext);
+        mockDownloadLabelPdf.mockResolvedValue(new Uint8Array([0x25, 0x50, 0x44, 0x46]));
+        mockUploadLabelPdf.mockResolvedValue({ marker: 'convex-storage:test-label', url: 'https://storage.test/label.pdf' });
+        convex.mutation.mockResolvedValue({
+            trackingNumber: 'TEST-TRACKING',
+            trackingUrl: 'https://tracking.sendcloud.sc/test',
+            labelUrl: 'convex-storage:test-label',
+            carrierName: 'InPost',
+        });
+        mockNotify.mockResolvedValue({ sent: true });
     });
 
     it('returns 422 and never persists a carrier-rejected shipment', async () => {
@@ -104,5 +115,28 @@ describe('POST /api/sendcloud/shipment', () => {
         expect(convex.mutation).not.toHaveBeenCalled();
         expect(mockUploadLabelPdf).not.toHaveBeenCalled();
         expect(mockNotify).not.toHaveBeenCalled();
+    });
+
+    it('never passes a placeholder buyer email to Sendcloud', async () => {
+        convex.query.mockResolvedValueOnce({
+            ...shipmentContext,
+            buyerEmail: 'clerk-buyer-without-email@invalid.local',
+        });
+        mockCreateShipment.mockResolvedValueOnce({
+            shipmentId: '900001',
+            reference: 'ORD-TEST',
+            trackingNumber: 'TEST-TRACKING',
+            trackingUrl: 'https://tracking.sendcloud.sc/test',
+            labelUrl: 'https://panel.sendcloud.sc/api/v2/parcels/900001/documents/label',
+            price: 0,
+            currency: 'EUR',
+            status: 'Ready to send',
+        });
+
+        const response = await call();
+
+        expect(response.status).toBe(200);
+        expect(mockCreateShipment).toHaveBeenCalledWith(expect.objectContaining({ recipientEmail: '' }));
+        expect(JSON.stringify(mockCreateShipment.mock.calls[0][0])).not.toContain('@invalid.local');
     });
 });

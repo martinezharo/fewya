@@ -33,3 +33,29 @@ bun run test:e2e
 Without both variables the commerce suite reports both tests as skipped. This makes the
 ordinary unit-test hook portable while CI or a developer with the disposable
 fixture can run the browser suite explicitly.
+
+The shipping-label browser suite additionally needs `E2E_SHIPPING_ORDER_ID`,
+pointing at a paid order owned by that seller fixture. It intercepts both
+Sendcloud mutations, so it never purchases a real label. The success case
+checks the post-generation reload and a PDF response; the rejection case checks
+that the paid card remains retryable and has no label link.
+
+```sh
+E2E_BASE_URL=https://test.example \
+E2E_AUTH_STATE=/absolute/path/to/test-seller-storage-state.json \
+E2E_SHIPPING_ORDER_ID=convex:ORD-E2E \
+bun run test:e2e tests/e2e/shipping-label-flow.spec.ts
+```
+
+The `Shipping label browser E2E` workflow runs the same suite manually. Its
+protected `shipping-e2e` environment must provide an
+`E2E_AUTH_STATE_BASE64` secret containing the disposable seller's Playwright
+storage state. The workflow inputs select the deployment and paid fixture
+order; all carrier responses remain intercepted.
+
+`Sendcloud label smoke` is a separate, manual workflow because it exercises
+the real provider and may temporarily incur the entered label cost. Keep its
+sender and recipient fixture values in the protected `sendcloud-smoke`
+environment. The recipient must be controlled test data, never a customer.
+The workflow validates the returned PDF and always attempts to cancel the
+parcel before it exits.

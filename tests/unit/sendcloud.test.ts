@@ -6,6 +6,8 @@ import {
     getServicePoints,
     parseSpanishAddress,
 } from '../../src/lib/shipping/sendcloud';
+import announceReady from '../fixtures/sendcloud/announce-ready.json';
+import announceFailed from '../fixtures/sendcloud/announce-failed.json';
 
 describe('createShipment', () => {
     const originalFetch = globalThis.fetch;
@@ -63,55 +65,67 @@ describe('createShipment', () => {
         vi.restoreAllMocks();
     });
 
-    it('omits dimensions for InPost while retaining physical weight', async () => {
+    it('accepts the anonymized HTTP 201 contract fixture only when it contains a label', async () => {
         vi.mocked(globalThis.fetch).mockResolvedValueOnce({
             ok: true,
-            json: async () => shipment(),
+            status: 201,
+            json: async () => announceReady,
         } as Response);
 
-        await createShipment(input('inpost_es:service_point,national_c2c'));
-
-        const request = vi.mocked(globalThis.fetch).mock.calls[0][1];
-        const payload = JSON.parse(String(request?.body));
-        expect(payload.parcels).toEqual([{ weight: { value: '0.400', unit: 'kg' } }]);
+        await expect(createShipment(input('correos:home,national'))).resolves.toMatchObject({
+            shipmentId: '900001',
+            trackingNumber: 'TEST-TRACKING-READY',
+            labelUrl: 'https://panel.sendcloud.sc/api/v2/parcels/900001/documents/label',
+        });
     });
 
-    it('keeps dimensions for carriers that accept them', async () => {
+    it.each([
+        {
+            name: 'InPost service point',
+            code: 'inpost_es:service_point,national_c2c',
+            servicePointId: '12345',
+            dimensions: undefined,
+            servicePoint: { id: '12345' },
+        },
+        {
+            name: 'Correos service point',
+            code: 'correos:service_point,national',
+            servicePointId: '54321',
+            dimensions: { length: '25', width: '20', height: '10', unit: 'cm' },
+            servicePoint: { id: '54321' },
+        },
+        {
+            name: 'Correos home delivery',
+            code: 'correos:home,national',
+            servicePointId: undefined,
+            dimensions: { length: '25', width: '20', height: '10', unit: 'cm' },
+            servicePoint: undefined,
+        },
+    ])('builds the carrier-specific payload for $name', async ({ code, servicePointId, dimensions, servicePoint }) => {
         vi.mocked(globalThis.fetch).mockResolvedValueOnce({
             ok: true,
-            json: async () => shipment(),
+            status: 201,
+            json: async () => announceReady,
         } as Response);
 
-        await createShipment(input('correos:home,national'));
+        await createShipment({ ...input(code), toServicePointId: servicePointId });
 
         const request = vi.mocked(globalThis.fetch).mock.calls[0][1];
         const payload = JSON.parse(String(request?.body));
-        expect(payload.parcels[0].dimensions).toEqual({
-            length: '25',
-            width: '20',
-            height: '10',
-            unit: 'cm',
-        });
+        expect(payload.parcels[0].weight).toEqual({ value: '0.400', unit: 'kg' });
+        expect(payload.parcels[0].dimensions).toEqual(dimensions);
+        expect(payload.to_service_point).toEqual(servicePoint);
     });
 
     it('rejects a carrier failure even when Sendcloud returns a successful HTTP status', async () => {
         vi.mocked(globalThis.fetch).mockResolvedValueOnce({
             ok: true,
-            json: async () => ({
-                data: {
-                    id: 'shipment-1',
-                    parcels: [{
-                        id: 123,
-                        status: { code: 'ANNOUNCEMENT_FAILED', message: 'Announcement failed' },
-                        documents: [],
-                    }],
-                    errors: [{ detail: 'Parcel dimensions were rejected' }],
-                },
-            }),
+            status: 201,
+            json: async () => announceFailed,
         } as Response);
 
         await expect(createShipment(input('inpost_es:service_point,national_c2c')))
-            .rejects.toThrow('Parcel dimensions were rejected');
+            .rejects.toThrow('The carrier rejected the parcel dimensions');
     });
 
     it('treats a response without a parcel as an announcement failure', async () => {
