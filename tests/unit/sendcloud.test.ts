@@ -1,10 +1,129 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
     calculateParcelFromItems,
+    createShipment,
     downloadSendcloudLabelPdf,
     getServicePoints,
     parseSpanishAddress,
 } from '../../src/lib/shipping/sendcloud';
+
+describe('createShipment', () => {
+    const originalFetch = globalThis.fetch;
+    const originalKey = process.env.SENDCLOUD_API_KEY;
+    const originalSecret = process.env.SENDCLOUD_API_SECRET;
+
+    const shipment = (overrides: Record<string, unknown> = {}) => ({
+        data: {
+            id: 'shipment-1',
+            parcels: [{
+                id: 123,
+                tracking_number: 'TRACK-1',
+                tracking_url: 'https://tracking.sendcloud.sc/123',
+                status: { code: 'READY_TO_SEND', message: 'Ready to send' },
+                documents: [{ type: 'label', link: 'https://panel.sendcloud.sc/api/v2/parcels/123/documents/label' }],
+                ...overrides,
+            }],
+            errors: [],
+        },
+    });
+
+    const input = (shippingOptionCode: string) => ({
+        orderId: 'ORD-TEST',
+        senderName: 'Seller Example',
+        senderAddress: 'Seller Street 1',
+        senderCity: 'Madrid',
+        senderPostalCode: '28001',
+        senderCountry: 'ES',
+        senderPhone: '+34600000000',
+        senderEmail: 'seller@example.test',
+        recipientName: 'Buyer Example',
+        recipientAddress: 'Buyer Street 2',
+        recipientCity: 'Barcelona',
+        recipientPostalCode: '08001',
+        recipientCountry: 'ES',
+        recipientPhone: '+34600000001',
+        recipientEmail: 'buyer@example.test',
+        parcels: [{ weight: 0.4, length: 25, width: 20, height: 10 }],
+        requestedService: { shippingOptionCode },
+        toServicePointId: '12345',
+    });
+
+    beforeEach(() => {
+        process.env.SENDCLOUD_API_KEY = 'test-key';
+        process.env.SENDCLOUD_API_SECRET = 'test-secret';
+        globalThis.fetch = vi.fn() as unknown as typeof fetch;
+    });
+
+    afterEach(() => {
+        globalThis.fetch = originalFetch;
+        if (originalKey === undefined) delete process.env.SENDCLOUD_API_KEY;
+        else process.env.SENDCLOUD_API_KEY = originalKey;
+        if (originalSecret === undefined) delete process.env.SENDCLOUD_API_SECRET;
+        else process.env.SENDCLOUD_API_SECRET = originalSecret;
+        vi.restoreAllMocks();
+    });
+
+    it('omits dimensions for InPost while retaining physical weight', async () => {
+        vi.mocked(globalThis.fetch).mockResolvedValueOnce({
+            ok: true,
+            json: async () => shipment(),
+        } as Response);
+
+        await createShipment(input('inpost_es:service_point,national_c2c'));
+
+        const request = vi.mocked(globalThis.fetch).mock.calls[0][1];
+        const payload = JSON.parse(String(request?.body));
+        expect(payload.parcels).toEqual([{ weight: { value: '0.400', unit: 'kg' } }]);
+    });
+
+    it('keeps dimensions for carriers that accept them', async () => {
+        vi.mocked(globalThis.fetch).mockResolvedValueOnce({
+            ok: true,
+            json: async () => shipment(),
+        } as Response);
+
+        await createShipment(input('correos:home,national'));
+
+        const request = vi.mocked(globalThis.fetch).mock.calls[0][1];
+        const payload = JSON.parse(String(request?.body));
+        expect(payload.parcels[0].dimensions).toEqual({
+            length: '25',
+            width: '20',
+            height: '10',
+            unit: 'cm',
+        });
+    });
+
+    it('rejects a carrier failure even when Sendcloud returns a successful HTTP status', async () => {
+        vi.mocked(globalThis.fetch).mockResolvedValueOnce({
+            ok: true,
+            json: async () => ({
+                data: {
+                    id: 'shipment-1',
+                    parcels: [{
+                        id: 123,
+                        status: { code: 'ANNOUNCEMENT_FAILED', message: 'Announcement failed' },
+                        documents: [],
+                    }],
+                    errors: [{ detail: 'Parcel dimensions were rejected' }],
+                },
+            }),
+        } as Response);
+
+        await expect(createShipment(input('inpost_es:service_point,national_c2c')))
+            .rejects.toThrow('Parcel dimensions were rejected');
+    });
+
+    it('does not accept a shipment without a label document', async () => {
+        vi.mocked(globalThis.fetch).mockResolvedValueOnce({
+            ok: true,
+            json: async () => shipment({ documents: [] }),
+        } as Response);
+
+        await expect(createShipment(input('correos:home,national')))
+            .rejects.toThrow('did not return a shipping label');
+    });
+});
 
 describe('calculateParcelFromItems', () => {
     it('consolida varias unidades del mismo item en un único parcel apilado', () => {

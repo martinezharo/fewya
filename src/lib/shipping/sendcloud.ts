@@ -84,6 +84,14 @@ export interface SendcloudLabelResult {
     labelUrl: string;
 }
 
+/** A carrier rejected an otherwise successful Sendcloud API request. */
+export class SendcloudAnnouncementError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = 'SendcloudAnnouncementError';
+    }
+}
+
 import { SENDCLOUD_API_KEY, SENDCLOUD_API_SECRET } from 'astro:env/server';
 import {
     platformForServicePointCarrier,
@@ -267,6 +275,7 @@ export async function createShipment(data: SendcloudShipmentData): Promise<Sendc
     if (!data.requestedService) {
         throw new Error('Sendcloud createShipment requires a requestedService (shipping_option_code)');
     }
+    const requestedService = data.requestedService;
 
     const payload: Record<string, unknown> = {
         apply_shipping_defaults: false,
@@ -294,12 +303,16 @@ export async function createShipment(data: SendcloudShipmentData): Promise<Sendc
         ship_with: {
             type: 'shipping_option_code',
             properties: {
-                shipping_option_code: data.requestedService.shippingOptionCode,
+                shipping_option_code: requestedService.shippingOptionCode,
             },
         },
         parcels: data.parcels.map((p) => ({
             weight: { value: p.weight.toFixed(3), unit: 'kg' },
-            ...(p.length && p.width && p.height
+            // InPost calculates its own volumetric weight. Sending dimensions
+            // makes its API reject otherwise valid parcels when that derived
+            // value has more precision than the carrier accepts.
+            ...(!requestedService.shippingOptionCode.startsWith('inpost_es:')
+                && p.length && p.width && p.height
                 ? {
                     dimensions: {
                         length: String(p.length),
@@ -342,8 +355,18 @@ export async function createShipment(data: SendcloudShipmentData): Promise<Sendc
         throw new Error(`Sendcloud v3 announce returned no parcel: ${detail}`);
     }
 
+    const errors = shipment.errors?.map((error) => error.detail).filter((detail): detail is string => Boolean(detail)) ?? [];
+    const statusCode = parcel.status?.code?.trim().toUpperCase() ?? '';
+    if (statusCode.includes('FAILED') || errors.length > 0) {
+        const detail = errors.join('; ') || parcel.status?.message || statusCode || 'Carrier announcement failed';
+        throw new SendcloudAnnouncementError(detail);
+    }
+
     const labelDoc = parcel.documents?.find((d) => d.type === 'label');
     const labelUrl = labelDoc?.link || '';
+    if (!labelUrl) {
+        throw new SendcloudAnnouncementError('Sendcloud did not return a shipping label');
+    }
 
     return {
         shipmentId: String(parcel.id),
