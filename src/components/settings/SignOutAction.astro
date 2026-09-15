@@ -1,0 +1,29 @@
+---
+/**
+ * The one place that wires a control up to Clerk's sign-out.
+ *
+ * `asChild` is required, not cosmetic: without it Clerk renders its own
+ * `<button>` and puts the slot inside it. A styled `<button>` in that slot
+ * produces nested buttons, which the HTML parser resolves by closing Clerk's
+ * button early — so the visible control ends up outside the element Clerk
+ * attached its click listener to, and pressing it does nothing. With `asChild`
+ * Clerk stamps its listener onto the first tag of the slot, which is our own
+ * button.
+ */
+import { SignOutButton as ClerkSignOutButton } from '@clerk/astro/components';
+
+interface Props {
+    /** Classes for the rendered button; the caller owns the styling. */
+    class?: string;
+    /** Where Clerk sends the visitor once the session is cleared. */
+    redirectUrl?: string;
+}
+
+const { class: className, redirectUrl = '/' } = Astro.props;
+---
+
+<ClerkSignOutButton asChild redirectUrl={redirectUrl}>
+    <button type="button" class={className}>
+        <slot />
+    </button>
+</ClerkSignOutButton>

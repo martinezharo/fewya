@@ -1,7 +1,7 @@
 ---
 import { getRequestUser } from '../lib/core/auth';
 import BuyerAppLayout from "../layouts/BuyerAppLayout.astro";
-import { SignOutButton } from '@clerk/astro/components';
+import SignOutAction from '../components/settings/SignOutAction.astro';
 const { t } = Astro.locals;
 
 const user = getRequestUser(Astro.request);
@@ -41,14 +41,11 @@ const avatarUrl = user.avatarUrl;
                 {user.email && <p class="text-[15px] text-text-secondary mt-1">{user.email}</p>}
             </div>
 
-            <SignOutButton redirectUrl="/">
-                <button
-                    type="button"
-                    class="mt-4 px-5 py-2.5 text-[14px] font-semibold rounded-full border border-border-light text-text-secondary transition-colors duration-150 hover:bg-border-light hover:text-text-primary"
-                >
-                    {t.profileSignOut}
-                </button>
-            </SignOutButton>
+            <SignOutAction
+                class="mt-4 px-5 py-2.5 text-[14px] font-semibold rounded-full border border-border-light text-text-secondary transition-colors duration-150 hover:bg-border-light hover:text-text-primary"
+            >
+                {t.settingsSignOut}
+            </SignOutAction>
         </div>
     </main>
 </BuyerAppLayout>

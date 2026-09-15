@@ -110,7 +110,6 @@ export const en: Strings = {
     // Profile Page
     profilePageTitle: 'My profile — Fewya',
     profileAnonymous: 'User',
-    profileSignOut: 'Sign out',
 
     // Wishlist
     wishlistPageTitle: 'My wishlist — Fewya',
@@ -394,6 +393,8 @@ export const en: Strings = {
     settingsThemeDark: 'Dark',
     settingsAccountSection: 'Account',
     settingsSignOut: 'Sign out',
+    settingsSignOutSignedInAs: 'Signed in as {email}',
+    settingsSignOutHint: 'End your session on this device.',
     settingsLegalSection: 'Legal',
     settingsPrivacyPolicy: 'Privacy policy',
     settingsTermsOfService: 'Terms of service',

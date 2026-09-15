@@ -1,19 +1,39 @@
 ---
-import { SignOutButton as ClerkSignOutButton } from '@clerk/astro/components';
+// Account card shared by the buyer (/me/settings) and seller (/sell/settings)
+// settings pages. Layout mirrors NotificationsToggle so both sides of the
+// marketplace read as one settings surface.
+import { getRequestUser } from '../../lib/core/auth';
 import Icon from '../icons/Icon.astro';
+import SignOutAction from './SignOutAction.astro';
+
 const { t } = Astro.locals;
+
+// Naming the signed-in address is the clearest confirmation of which session
+// is about to end. It is absent when the identity provider sent no email
+// claim, and the hint alone carries the card in that case.
+const email = getRequestUser(Astro.request)?.email;
 ---
 
-<div class="bg-surface border border-border-light rounded-2xl overflow-hidden">
-    <ClerkSignOutButton redirectUrl="/">
-        <button
-            type="button"
-            class="w-full flex items-center gap-3 px-5 py-4 hover:bg-border-light transition-colors"
+<div class="bg-surface border border-border-light rounded-2xl p-5">
+    <div class="flex items-center justify-between gap-4">
+        <div class="min-w-0">
+            {email ? (
+                <Fragment>
+                    <p class="text-sm font-medium text-text-primary truncate">
+                        {t.settingsSignOutSignedInAs.replace('{email}', email)}
+                    </p>
+                    <p class="mt-1 text-[13px] text-text-secondary">{t.settingsSignOutHint}</p>
+                </Fragment>
+            ) : (
+                <p class="text-sm font-medium text-text-primary">{t.settingsSignOutHint}</p>
+            )}
+        </div>
+
+        <SignOutAction
+            class="shrink-0 inline-flex items-center gap-2 rounded-lg border border-border-light px-3 py-1.5 text-sm font-medium text-red-600 dark:text-red-400 transition-colors hover:bg-red-500/10 hover:border-red-500/40 active:scale-[0.98]"
         >
-            <Icon name="log-out" size={20} class="text-text-secondary" />
-            <span class="text-[15px] font-medium text-text-primary">
-                {t.settingsSignOut}
-            </span>
-        </button>
-    </ClerkSignOutButton>
+            <Icon name="log-out" size={16} />
+            {t.settingsSignOut}
+        </SignOutAction>
+    </div>
 </div>
