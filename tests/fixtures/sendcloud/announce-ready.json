@@ -1,0 +1,23 @@
+{
+  "data": {
+    "id": "shipment-fixture-ready",
+    "parcels": [
+      {
+        "id": 900001,
+        "tracking_number": "TEST-TRACKING-READY",
+        "tracking_url": "https://tracking.sendcloud.sc/test-ready",
+        "status": {
+          "code": "READY_TO_SEND",
+          "message": "Ready to send"
+        },
+        "documents": [
+          {
+            "type": "label",
+            "link": "https://panel.sendcloud.sc/api/v2/parcels/900001/documents/label"
+          }
+        ]
+      }
+    ],
+    "errors": []
+  }
+}

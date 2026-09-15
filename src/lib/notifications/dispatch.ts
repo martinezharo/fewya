@@ -3,6 +3,7 @@ import { api } from '../../../convex/_generated/api';
 import { buildNotification } from './templates';
 import { sendEmail } from './resend';
 import { sendPush } from './push';
+import { realEmail } from '../../../convex/lib/placeholderEmail';
 import {
     type NotificationType,
     type NotificationRecipient,
@@ -63,9 +64,10 @@ export async function notify({
     const content = buildNotification(type, data);
 
     let emailStatus = 'skipped';
-    if (claimed.recipientEmail) {
+    const recipientEmail = realEmail(claimed.recipientEmail);
+    if (recipientEmail) {
         const emailResult = await sendEmail({
-            to: claimed.recipientEmail,
+            to: recipientEmail,
             subject: content.emailSubject,
             html: content.emailHtml,
         });

@@ -203,6 +203,21 @@ describe('POST /api/cart/checkout', () => {
         expect(convex.mutation).not.toHaveBeenCalled();
     });
 
+    it('never sends or stores a placeholder email at the Stripe boundary', async () => {
+        convex.reset({ id: 'buyer-without-email', email: 'clerk-buyer-without-email@invalid.local' });
+        stubReads({ profile: { ...completeProfile, email: 'clerk-imported@invalid.local' } });
+        convex.mutation.mockResolvedValue({
+            orders: [{ id: 'convex:ORD-1', public_id: 'ORD-1', shop_id: 'shop-1' }],
+        });
+
+        const res = await call({ items: [{ variantId: 'var-1', quantity: 1 }] });
+
+        expect(res.status).toBe(200);
+        expect(mockSessionCreate.mock.calls[0][0].customer_email).toBeUndefined();
+        const [, mutationArgs] = convex.mutation.mock.calls[0] as [unknown, any];
+        expect(mutationArgs.orders[0].buyerEmail).toBeUndefined();
+    });
+
     it('expires the Stripe session and returns 500 when order creation fails', async () => {
         convex.mutation.mockRejectedValueOnce(new Error('write failed'));
         const res = await call({ items: [{ variantId: 'var-1', quantity: 1 }] });

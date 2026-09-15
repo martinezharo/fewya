@@ -1,0 +1,52 @@
+name: Sendcloud label smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: Type I_ACCEPT_A_REAL_LABEL_CHARGE
+        required: true
+        type: string
+      expected_cost_eur:
+        description: Expected maximum label cost in EUR
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    if: inputs.confirmation == 'I_ACCEPT_A_REAL_LABEL_CHARGE'
+    runs-on: ubuntu-latest
+    environment: sendcloud-smoke
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+      - run: bun install --frozen-lockfile
+      - run: bun run smoke:sendcloud-label
+        env:
+          SENDCLOUD_SMOKE_CONFIRM: ${{ inputs.confirmation }}
+          SENDCLOUD_SMOKE_EXPECTED_COST_EUR: ${{ inputs.expected_cost_eur }}
+          SENDCLOUD_API_KEY: ${{ secrets.SENDCLOUD_API_KEY }}
+          SENDCLOUD_API_SECRET: ${{ secrets.SENDCLOUD_API_SECRET }}
+          SENDCLOUD_SMOKE_SHIPPING_OPTION_CODE: ${{ secrets.SENDCLOUD_SMOKE_SHIPPING_OPTION_CODE }}
+          SENDCLOUD_SMOKE_SERVICE_POINT_ID: ${{ secrets.SENDCLOUD_SMOKE_SERVICE_POINT_ID }}
+          SENDCLOUD_SMOKE_SENDER_NAME: ${{ secrets.SENDCLOUD_SMOKE_SENDER_NAME }}
+          SENDCLOUD_SMOKE_SENDER_COMPANY: ${{ secrets.SENDCLOUD_SMOKE_SENDER_COMPANY }}
+          SENDCLOUD_SMOKE_SENDER_ADDRESS: ${{ secrets.SENDCLOUD_SMOKE_SENDER_ADDRESS }}
+          SENDCLOUD_SMOKE_SENDER_CITY: ${{ secrets.SENDCLOUD_SMOKE_SENDER_CITY }}
+          SENDCLOUD_SMOKE_SENDER_POSTAL_CODE: ${{ secrets.SENDCLOUD_SMOKE_SENDER_POSTAL_CODE }}
+          SENDCLOUD_SMOKE_SENDER_COUNTRY: ${{ secrets.SENDCLOUD_SMOKE_SENDER_COUNTRY }}
+          SENDCLOUD_SMOKE_SENDER_PHONE: ${{ secrets.SENDCLOUD_SMOKE_SENDER_PHONE }}
+          SENDCLOUD_SMOKE_SENDER_EMAIL: ${{ secrets.SENDCLOUD_SMOKE_SENDER_EMAIL }}
+          SENDCLOUD_SMOKE_RECIPIENT_NAME: ${{ secrets.SENDCLOUD_SMOKE_RECIPIENT_NAME }}
+          SENDCLOUD_SMOKE_RECIPIENT_ADDRESS: ${{ secrets.SENDCLOUD_SMOKE_RECIPIENT_ADDRESS }}
+          SENDCLOUD_SMOKE_RECIPIENT_CITY: ${{ secrets.SENDCLOUD_SMOKE_RECIPIENT_CITY }}
+          SENDCLOUD_SMOKE_RECIPIENT_POSTAL_CODE: ${{ secrets.SENDCLOUD_SMOKE_RECIPIENT_POSTAL_CODE }}
+          SENDCLOUD_SMOKE_RECIPIENT_COUNTRY: ${{ secrets.SENDCLOUD_SMOKE_RECIPIENT_COUNTRY }}
+          SENDCLOUD_SMOKE_RECIPIENT_PHONE: ${{ secrets.SENDCLOUD_SMOKE_RECIPIENT_PHONE }}
+          SENDCLOUD_SMOKE_RECIPIENT_EMAIL: ${{ secrets.SENDCLOUD_SMOKE_RECIPIENT_EMAIL }}
+          SENDCLOUD_SMOKE_WEIGHT_KG: ${{ secrets.SENDCLOUD_SMOKE_WEIGHT_KG }}

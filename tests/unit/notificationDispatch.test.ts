@@ -98,6 +98,22 @@ describe('notify (dispatch)', () => {
         expect(sendEmailMock.mock.calls[0][0]).toMatchObject({ to: 'buyer@example.com' });
     });
 
+    it('does not pass a placeholder recipient to Resend', async () => {
+        mockMutation.mockResolvedValueOnce(claimed({
+            recipientEmail: 'clerk-buyer-without-email@invalid.local',
+            recipientUserLegacyId: null,
+        }));
+        const result = await notify({
+            type: NOTIFICATION_TYPE.BUYER_READY_TO_SEND,
+            orderId: 'convex:ORD-1',
+            recipient: 'buyer',
+            convexSecret: SECRET,
+        });
+
+        expect(sendEmailMock).not.toHaveBeenCalled();
+        expect(result.emailStatus).toBe('no_recipient');
+    });
+
     it('returns skipped when the order cannot be claimed', async () => {
         mockMutation.mockResolvedValueOnce({ claimed: false, reason: 'order_not_found' });
         const result = await notify({
