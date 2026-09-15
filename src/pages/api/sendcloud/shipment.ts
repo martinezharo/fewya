@@ -3,6 +3,7 @@ import { CONVEX_WEBHOOK_SECRET } from 'astro:env/server';
 import { api } from '../../../../convex/_generated/api';
 import {
     createShipment,
+    SendcloudAnnouncementError,
     parseSpanishAddress,
     calculateParcelFromItems,
     downloadSendcloudLabelPdf,
@@ -147,8 +148,11 @@ async function createSendcloudShipment({
             carrierName: persisted.carrierName,
         };
     } catch (error) {
-        console.error('Sendcloud create shipment error:', error);
-        return { success: false, status: 500, error: 'Failed to create shipment' };
+        const detail = error instanceof Error ? error.message : String(error);
+        console.error(JSON.stringify({ event: 'shipment.create_failed', orderId: context.publicId, error: detail }));
+        return error instanceof SendcloudAnnouncementError
+            ? { success: false, status: 422, error: `Sendcloud rejected the shipment: ${detail}` }
+            : { success: false, status: 500, error: 'Failed to create shipment' };
     }
 }
 
