@@ -1,6 +1,7 @@
 ---
 
 import Logo from "./Logo.astro";
+import GoogleIcon from "./icons/GoogleIcon.astro";
 const { t } = Astro.locals;
 
 interface Props {
@@ -63,6 +64,7 @@ const { isLoggedIn = false } = Astro.props;
           <a href="/login"
             class="w-full inline-flex items-center justify-center gap-2.5 px-5 py-3 bg-bg border border-border-light rounded-full text-[14px] font-semibold text-text-primary no-underline transition-colors duration-150 hover:bg-surface shadow-sm"
           >
+            <GoogleIcon class="w-5 h-5 shrink-0" />
             {t.heroSignIn}
           </a>
         )}
@@ -86,8 +88,9 @@ const { isLoggedIn = false } = Astro.props;
       <a href="/login"
         class="hero-signin-btn inline-flex items-center gap-2.5 mt-5 px-5 py-2.5 bg-bg border border-border-light rounded-full text-[14px] font-semibold text-text-primary no-underline transition-colors duration-150 hover:bg-surface shadow-sm"
       >
-            {t.heroSignIn}
-          </a>
+        <GoogleIcon class="w-5 h-5 shrink-0" />
+        {t.heroSignIn}
+      </a>
     </div>
   </section>
 )}
