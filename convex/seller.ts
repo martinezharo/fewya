@@ -219,15 +219,15 @@ export const updateShop = mutation({
         const patch: Record<string, unknown> = {};
         if (args.name !== undefined) patch.name = args.name;
         if (args.slug !== undefined) patch.slug = args.slug;
-        if (args.description !== undefined) patch.description = args.description;
-        if (args.accentColor !== undefined) patch.accentColor = args.accentColor;
+        if (args.description !== undefined) patch.description = args.description ?? undefined;
+        if (args.accentColor !== undefined) patch.accentColor = args.accentColor ?? undefined;
         // A stand-in must not be storable as the shop's public contact, whether
         // it is submitted directly or inherited from the owner's profile.
         if (args.contactEmail !== undefined) patch.contactEmail = realEmail(args.contactEmail) ?? undefined;
-        if (args.whatsapp !== undefined) patch.whatsapp = args.whatsapp;
-        if (args.location !== undefined) patch.location = args.location;
-        if (args.profileImg !== undefined) patch.profileImg = args.profileImg;
-        if (args.bannerImg !== undefined) patch.bannerImg = args.bannerImg;
+        if (args.whatsapp !== undefined) patch.whatsapp = args.whatsapp ?? undefined;
+        if (args.location !== undefined) patch.location = args.location ?? undefined;
+        if (args.profileImg !== undefined) patch.profileImg = args.profileImg ?? undefined;
+        if (args.bannerImg !== undefined) patch.bannerImg = args.bannerImg ?? undefined;
         if (Object.keys(patch).length) await ctx.db.patch(shop._id, patch as never);
         return { shopId: shop.legacyId };
     },
@@ -401,14 +401,19 @@ export const updateProduct = mutation({
         const patch: Record<string, unknown> = {};
         if (args.title !== undefined) patch.title = args.title;
         if (args.slug !== undefined) patch.slug = normalizeSlug(args.slug ?? '');
-        if (args.description !== undefined) patch.description = args.description;
+        if (args.description !== undefined) patch.description = args.description ?? undefined;
         if (args.category !== undefined) patch.category = args.category;
-        if (args.brand !== undefined) patch.brand = args.brand;
+        if (args.brand !== undefined) patch.brand = args.brand ?? undefined;
         if (args.specifications !== undefined) patch.specifications = args.specifications;
         if (args.galleryImages !== undefined) patch.galleryImages = args.galleryImages;
         if (args.isActive !== undefined) patch.isActive = args.isActive;
         if (args.title !== undefined || args.description !== undefined || args.category !== undefined || args.brand !== undefined) {
-            patch.searchText = `${args.title ?? product.title} ${args.description ?? product.description ?? ''} ${args.category ?? product.category} ${args.brand ?? product.brand ?? ''}`.trim();
+            patch.searchText = [
+                args.title ?? product.title,
+                args.description === undefined ? product.description : args.description,
+                args.category ?? product.category,
+                args.brand === undefined ? product.brand : args.brand,
+            ].filter(Boolean).join(' ');
         }
         if (Object.keys(patch).length) await ctx.db.patch(product._id, patch as never);
 
