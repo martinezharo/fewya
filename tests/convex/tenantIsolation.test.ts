@@ -151,6 +151,90 @@ describe('order mutations', () => {
 });
 
 describe('seller catalog', () => {
+    it('updates all variant fields when optional product text is blank', async () => {
+        const asSellerA = t.withIdentity(identity(SELLER_A, 'a@fewya.test'));
+        const result = await asSellerA.mutation(api.seller.updateProduct, {
+            productId: shopA.productLegacyId,
+            title: 'Product a',
+            slug: 'product-a',
+            description: 'A product',
+            category: 'tecnologia',
+            brand: null,
+            variants: [{
+                id: shopA.variantLegacyId,
+                variantName: 'Blue',
+                priceCents: 2599,
+                stock: 8,
+                isDefault: true,
+                variantImage: 'https://cdn.test/blue.webp',
+                weightKg: 2,
+                lengthCm: 20,
+                widthCm: 15,
+                heightCm: 12,
+                shippingCostCents: 499,
+            }],
+        });
+        expect(result.product?.brand).toBeNull();
+        expect(result.product?.variants[0]).toMatchObject({
+            id: shopA.variantLegacyId,
+            variant_name: 'Blue',
+            price: 25.99,
+            stock: 8,
+            variant_image: 'https://cdn.test/blue.webp',
+            weight_kg: 2,
+            length_cm: 20,
+            width_cm: 15,
+            height_cm: 12,
+            shipping_cost: 4.99,
+        });
+    });
+
+    it('clears optional description and brand without changing other product fields', async () => {
+        await t.run(async (ctx) => {
+            await ctx.db.patch(shopA.productId, { brand: 'Example brand', searchText: 'Product a A product tecnologia Example brand' });
+        });
+        const asSellerA = t.withIdentity(identity(SELLER_A, 'a@fewya.test'));
+        const result = await asSellerA.mutation(api.seller.updateProduct, {
+            productId: shopA.productLegacyId,
+            description: null,
+            brand: null,
+        });
+        expect(result.product).toMatchObject({
+            title: 'Product a',
+            description: null,
+            brand: null,
+        });
+        const stored = await t.run((ctx) => ctx.db.get(shopA.productId));
+        expect(stored?.searchText).toBe('Product a tecnologia');
+    });
+
+    it('clears optional shop fields without rejecting the seller update', async () => {
+        await t.run(async (ctx) => {
+            await ctx.db.patch(shopA.shopId, {
+                description: 'Example description',
+                accentColor: '#123456',
+                whatsapp: '+34600000000',
+                location: 'Madrid',
+                profileImg: 'https://cdn.test/profile.webp',
+                bannerImg: 'https://cdn.test/banner.webp',
+            });
+        });
+        const asSellerA = t.withIdentity(identity(SELLER_A, 'a@fewya.test'));
+        await asSellerA.mutation(api.seller.updateShop, {
+            description: null,
+            accentColor: null,
+            whatsapp: null,
+            location: null,
+            profileImg: null,
+            bannerImg: null,
+        });
+        const stored = await t.run((ctx) => ctx.db.get(shopA.shopId));
+        expect(stored).toMatchObject({ name: 'Shop a', slug: 'shop-a' });
+        for (const field of ['description', 'accentColor', 'whatsapp', 'location', 'profileImg', 'bannerImg'] as const) {
+            expect(stored?.[field]).toBeUndefined();
+        }
+    });
+
     it('refuses to toggle a product owned by another shop', async () => {
         const asSellerB = t.withIdentity(identity(SELLER_B, 'b@fewya.test'));
         await expect(
