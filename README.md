@@ -20,7 +20,7 @@ there, and what remains to switch production traffic over, is documented in
 
 ## Local development
 
-Requirements: [Bun](https://bun.sh), the credentials listed in
+Requirements: [Bun](https://bun.sh) 1.4.4 (see `.bun-version`), the credentials listed in
 [`.env.example`](.env.example), and access to the required external services.
 
 ```bash
@@ -78,3 +78,7 @@ product fields shown on the storefront.
 ## License
 
 [AGPL-3.0](LICENSE)
+
+Dependency installation uses `bun.lock` exclusively. Set `BUN_VERSION=1.4.4`
+in Cloudflare Workers Builds as well; earlier Bun releases cannot read the
+version-scoped security overrides in lockfile format 3.
